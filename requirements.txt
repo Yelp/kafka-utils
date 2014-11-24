@@ -1,0 +1,4 @@
+argparse==1.2.1
+argcomplete==0.8.1
+kazoo==2.0
+PyYAML==3.11
