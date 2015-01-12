@@ -9,7 +9,7 @@ setup(
     author="Federico Giraud",
     author_email="fgiraud@yelp.com",
     description="Shows kafka cluster information and metrics",
-    packages=["kafka_info", "kafka_info.utils"],
+    packages=["kafka_info", "kafka_info.utils", "kafka_info.commands"],
     data_files=[("bash_completion.d", ["bash_completion.d/kafka-info"])],
     scripts=["kafka-info"],
     install_requires=[
