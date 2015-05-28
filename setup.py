@@ -9,9 +9,18 @@ setup(
     author="Federico Giraud",
     author_email="fgiraud@yelp.com",
     description="Shows kafka cluster information and metrics",
-    packages=["kafka_info", "kafka_info.utils", "kafka_info.commands", "kafka_reassignment"],
-    data_files=[("bash_completion.d", ["bash_completion.d/kafka-info"], ["bash_completion.d/kafka-reassignment"])],
-    scripts=["kafka-info", "kafka-reassignment"],
+    packages=[
+        "kafka_info",
+        "kafka_info.utils",
+        "kafka_info.commands",
+        "kafka_reassignment"],
+    data_files=[
+        ("bash_completion.d",
+         ["bash_completion.d/kafka-info"],
+         ["bash_completion.d/kafka-reassignment"])],
+    scripts=[
+        "kafka-info",
+        "kafka-reassignment"],
     install_requires=[
         "argparse",
         "argcomplete",
