@@ -13,18 +13,22 @@ setup(
         "kafka_info",
         "kafka_info.utils",
         "kafka_info.commands",
-        "kafka_reassignment"],
+        "kafka_reassignment",
+        "kafka_consumer_manager",
+        "kafka_consumer_manager.commands"],
     data_files=[
         ("bash_completion.d",
          ["bash_completion.d/kafka-info"],
          ["bash_completion.d/kafka-reassignment"])],
     scripts=[
         "kafka-info",
-        "kafka-reassignment"],
+        "kafka-reassignment",
+        "kafka-consumer-manager"],
     install_requires=[
         "argparse",
         "argcomplete",
         "kazoo",
         "PyYAML",
+        "yelp-kafka",
     ],
 )

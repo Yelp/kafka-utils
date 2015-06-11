@@ -1,4 +1,5 @@
 argparse==1.2.1
 argcomplete==0.8.1
-kazoo==2.0
+kazoo==2.0.post2
 PyYAML==3.11
+yelp-kafka==3.0.1
