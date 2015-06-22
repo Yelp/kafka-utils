@@ -18,8 +18,8 @@ setup(
         "kafka_consumer_manager.commands"],
     data_files=[
         ("bash_completion.d",
-         ["bash_completion.d/kafka-info"],
-         ["bash_completion.d/kafka-reassignment"])],
+         ["kafka-info"],
+         ["kafka-reassignment"])],
     scripts=[
         "kafka-info",
         "kafka-reassignment",
