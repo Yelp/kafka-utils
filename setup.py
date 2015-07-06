@@ -21,9 +21,10 @@ setup(
          ["bash_completion.d/kafka-info"]),
     ],
     scripts=[
-        "kafka-info",
-        "kafka-reassignment",
-        "kafka-consumer-manager"],
+        "scripts/kafka-info",
+        "scripts/kafka-reassignment",
+        "scripts/kafka-consumer-manager",
+    ],
     install_requires=[
         "argparse",
         "argcomplete",
