@@ -3,21 +3,13 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
-import argparse
+
 import sys
 
 from kafka import KafkaClient
-from kafka.common import FailedPayloadsError
-
-from kafka_consumer_manager.commands.offset_manager import (
-    OffsetManagerBase,
-    OffsetWriter,
-)
-from yelp_kafka.error import (
-    UnknownPartitions,
-    UnknownTopic,
-)
 from yelp_kafka.offsets import rewind_consumer_offsets
+
+from .offset_manager import OffsetWriter
 
 
 class OffsetRewind(OffsetWriter):
@@ -26,7 +18,7 @@ class OffsetRewind(OffsetWriter):
         parser_offset_rewind = subparsers.add_parser(
             "offset_rewind",
             description="Rewind consumer offsets for the specified consumer "
-                "group to the earliest message in the topic partition",
+            "group to the earliest message in the topic partition",
             add_help=False
         )
         parser_offset_rewind.add_argument(
@@ -40,14 +32,14 @@ class OffsetRewind(OffsetWriter):
         parser_offset_rewind.add_argument(
             "--topic",
             help="Kafka topic whose offsets shall be manipulated. If no topic is "
-                "specified, offsets from all topics that the consumer is "
-                "subscribed to, shall be rewinded."
+            "specified, offsets from all topics that the consumer is "
+            "subscribed to, shall be rewinded."
         )
         parser_offset_rewind.add_argument(
             "--partitions", nargs='+', type=int,
             help="List of partitions within the topic. If no partitions are "
-                "specified, offsets from all partitions of the topic shall "
-                "be rewinded."
+            "specified, offsets from all partitions of the topic shall "
+            "be rewinded."
         )
         parser_offset_rewind.set_defaults(command=OffsetRewind.run)
 
@@ -61,7 +53,7 @@ class OffsetRewind(OffsetWriter):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         try:
-            result = rewind_consumer_offsets(client, args.groupid, topics_dict)
+            rewind_consumer_offsets(client, args.groupid, topics_dict)
         except TypeError:
             print(
                 "Error: Badly formatted input, please re-run command "

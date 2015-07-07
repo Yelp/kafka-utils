@@ -1,9 +1,10 @@
-import argparse
+from __future__ import absolute_import
+
 import sys
 
 from kafka import KafkaClient
 
-from kafka_consumer_manager.commands.offset_manager import OffsetManagerBase
+from .offset_manager import OffsetManagerBase
 
 
 class ListTopics(OffsetManagerBase):

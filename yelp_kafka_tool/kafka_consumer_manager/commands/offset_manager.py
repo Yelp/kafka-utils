@@ -4,11 +4,9 @@ from __future__ import (
     unicode_literals,
 )
 import sys
-from kafka import KafkaClient
-from textwrap import fill
-
-from kafka_info.utils.zookeeper import ZK
 from kazoo.exceptions import NoNodeError
+
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class OffsetManagerBase(object):

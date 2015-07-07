@@ -8,11 +8,11 @@ import sys
 
 from kafka import KafkaClient
 from kafka.common import (
-    FailedPayloadsError
+    FailedPayloadsError,
 )
 
-from kafka_info.utils.utils import print_json
-from kafka_consumer_manager.commands.offset_manager import OffsetManagerBase
+from yelp_kafka_tool.util import print_json
+from .offset_manager import OffsetManagerBase
 from yelp_kafka.monitoring import get_consumer_offsets_metadata
 
 

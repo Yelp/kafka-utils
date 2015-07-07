@@ -3,6 +3,7 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
+
 import argparse
 import sys
 
@@ -10,17 +11,16 @@ from kafka import KafkaClient
 from kafka.common import (
     FailedPayloadsError
 )
-
-from kafka_consumer_manager.commands.offset_manager import (
-    OffsetManagerBase,
-    OffsetWriter,
-)
 from yelp_kafka.error import (
     UnknownPartitions,
     UnknownTopic,
 )
 from yelp_kafka.offsets import advance_consumer_offsets
 
+from .offset_manager import (
+    OffsetManagerBase,
+    OffsetWriter,
+)
 
 class OffsetAdvance(OffsetWriter):
     @classmethod

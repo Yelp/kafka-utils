@@ -1,11 +1,13 @@
+from __future__ import absolute_import
+
 import argparse
 import sys
 
 from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
-from kafka_consumer_manager.commands.offset_manager import OffsetWriter
-from kafka_info.utils.zookeeper import ZK
+from .offset_manager import OffsetWriter
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class DeleteTopics(OffsetWriter):

@@ -3,22 +3,14 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
-import argparse
+
 import sys
 from collections import defaultdict
 
 from kafka import KafkaClient
-
-from kafka_consumer_manager.commands.offset_manager import (
-    OffsetManagerBase,
-    OffsetWriter,
-)
-from yelp_kafka.error import (
-    OffsetCommitError,
-    UnknownPartitions,
-    UnknownTopic,
-)
 from yelp_kafka.offsets import set_consumer_offsets
+
+from .offset_manager import OffsetWriter
 
 
 class OffsetSet(OffsetWriter):
@@ -30,7 +22,7 @@ class OffsetSet(OffsetWriter):
             topic, partition_offset = string.rsplit(".", 1)
             partition, offset = partition_offset.split("=", 1)
             cls.new_offsets_dict[topic][int(partition)] = int(offset)
-        except ValueError as e:
+        except ValueError:
             print(
                 "Error: Badly formatted input, please re-run command "
                 "with --help option.", file=sys.stderr
@@ -70,7 +62,7 @@ class OffsetSet(OffsetWriter):
         client.load_metadata_for_topics()
 
         # Let's verify that the consumer does exist in Zookeeper
-        _ = cls.get_topics_from_consumer_group_id(
+        cls.get_topics_from_consumer_group_id(
             cluster_config,
             args.groupid
         )

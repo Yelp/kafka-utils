@@ -4,14 +4,13 @@ from __future__ import (
     unicode_literals,
 )
 from collections import defaultdict
-import argparse
 import sys
 
 from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
-from kafka_consumer_manager.commands.offset_manager import OffsetWriter
-from kafka_info.utils.zookeeper import ZK
+from .offset_manager import OffsetWriter
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class RenameGroup(OffsetWriter):
@@ -109,7 +108,7 @@ class RenameGroup(OffsetWriter):
             )
             for topic, partition_offsets in old_offsets.iteritems():
                 for partition, offset in partition_offsets.iteritems():
-                    old_path = old_base_path + "/offsets/{topic}/{partition}".format(
+                    old_base_path + "/offsets/{topic}/{partition}".format(
                         topic=topic,
                         partition=partition
                     )
