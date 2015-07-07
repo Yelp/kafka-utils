@@ -7,11 +7,6 @@ import argparse
 import sys
 import logging
 
-from yelp_kafka.discovery import (
-    get_all_clusters,
-    get_local_cluster,
-)
-
 from .commands.delete_topics import DeleteTopics
 from .commands.list_topics import ListTopics
 from .commands.offset_advance import OffsetAdvance
@@ -19,6 +14,7 @@ from .commands.offset_get import OffsetGet
 from .commands.offset_rewind import OffsetRewind
 from .commands.offset_set import OffsetSet
 from .commands.rename_group import RenameGroup
+from yelp_kafka_tool.util.config import get_cluster_config
 
 
 def parse_args():
@@ -52,24 +48,5 @@ def parse_args():
 def run():
     logging.basicConfig(level=logging.ERROR)
     args = parse_args()
-
-    conf = None
-    if not args.cluster_name:
-        conf = get_local_cluster(args.cluster_type)
-    else:
-        clusters = get_all_clusters(args.cluster_type)
-        for cluster in clusters:
-            if cluster.name == args.cluster_name:
-                conf = cluster
-                break
-
-    if not conf:
-        print(
-            "Error: Kafka cluster: {cluster} not found.".format(
-                cluster=args.cluster_name
-            ),
-            file=sys.stderr
-        )
-        sys.exit(1)
-
+    conf = get_cluster_config(args.cluster_type, args.cluster_name)
     args.command(args, conf)
