@@ -3,5 +3,5 @@ argcomplete==0.8.1
 kazoo==2.2
 PyYAML==3.11
 requests==2.4.3
-yelp_kafka==3.2.1
+yelp_kafka==3.3.0
 numpy==1.5.1
