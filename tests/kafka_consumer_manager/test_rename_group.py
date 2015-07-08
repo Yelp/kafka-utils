@@ -2,31 +2,35 @@ import contextlib
 import mock
 import pytest
 import sys
-import pdb
 from kazoo.exceptions import ZookeeperError
 
-from kafka_consumer_manager.commands.rename_group import (
-    RenameGroup,
-    ZK,
+from yelp_kafka_tool.kafka_consumer_manager. \
+    commands.rename_group import RenameGroup
+
+
+@mock.patch(
+    'yelp_kafka_tool.kafka_consumer_manager.'
+    'commands.rename_group.KafkaClient',
+    autospec=True,
 )
-
-
-@mock.patch('kafka_consumer_manager.commands.rename_group.KafkaClient')
 class TestRenameGroup(object):
     @contextlib.contextmanager
     def mock_kafka_info(self, topics_partitions):
         with contextlib.nested(
             mock.patch(
-                "kafka_consumer_manager.commands.offset_manager.OffsetManagerBase."
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.offset_manager.OffsetManagerBase."
                 "preprocess_args",
                 return_value=topics_partitions,
             ),
             mock.patch(
-                "kafka_consumer_manager.commands.offset_manager.OffsetWriter."
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.offset_manager.OffsetWriter."
                 "prompt_user_input"
             ),
             mock.patch(
-                'kafka_consumer_manager.commands.rename_group.ZK',
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.rename_group.ZK",
                 autospec=True
             ),
         ) as (mock_process_args, mock_user_confirm, mock_ZK):

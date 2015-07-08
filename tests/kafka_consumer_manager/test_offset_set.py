@@ -4,7 +4,7 @@ import mock
 import pytest
 import sys
 
-from kafka_consumer_manager.commands.offset_set import (
+from yelp_kafka_tool.kafka_consumer_manager.commands.offset_set import (
     OffsetCommitError,
     OffsetSet,
 )
@@ -15,8 +15,7 @@ class TestOffsetTest(object):
     def test_topics_dict(self):
         offset_update_tuple = "topic1.23=1000"
         expected_topics_dict = {
-            "topic1":
-                {23: 1000}
+            "topic1": {23: 1000},
         }
         OffsetSet.topics_dict(offset_update_tuple)
         assert OffsetSet.new_offsets_dict == expected_topics_dict
@@ -25,8 +24,7 @@ class TestOffsetTest(object):
         OffsetSet.new_offsets_dict = defaultdict(dict)
         offset_update_tuple = "scribe.sfo2.ranger.12=200"
         expected_topics_dict = {
-            "scribe.sfo2.ranger":
-                {12: 200}
+            "scribe.sfo2.ranger": {12: 200},
         }
         OffsetSet.topics_dict(offset_update_tuple)
         assert OffsetSet.new_offsets_dict == expected_topics_dict
@@ -42,7 +40,11 @@ class TestOffsetTest(object):
             OffsetSet.topics_dict(offset_update_tuple)
             mock_exit.assert_called_once_with(1)
 
-    @mock.patch('kafka_consumer_manager.commands.offset_set.KafkaClient')
+    @mock.patch(
+        'yelp_kafka_tool.kafka_consumer_manager.'
+        'commands.offset_set.KafkaClient',
+        autospec=True,
+    )
     def test_run(self, mock_client):
         OffsetSet.new_offsets_dict = {
             "topic1": {
@@ -58,11 +60,14 @@ class TestOffsetTest(object):
 
         with contextlib.nested(
             mock.patch(
-                "kafka_consumer_manager.commands.offset_manager."
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.offset_manager."
                 "OffsetManagerBase.get_topics_from_consumer_group_id",
+                autospec=True
             ),
             mock.patch(
-               "kafka_consumer_manager.commands.offset_set.set_consumer_offsets",
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.offset_set.set_consumer_offsets",
                 return_value=[],
                 autospec=True
             ),
@@ -75,13 +80,18 @@ class TestOffsetTest(object):
             cluster_config = mock.Mock()
             OffsetSet.run(args, cluster_config)
 
-            mock_client.return_value.load_metadata_for_topics.assert_called_once_with()
+            mock_client.return_value.load_metadata_for_topics. \
+                assert_called_once_with()
             mock_client.return_value.close.assert_called_once_with()
             ordered_args, _ = mock_set_offsets.call_args
             assert ordered_args[1] == args.groupid
             assert ordered_args[2] == OffsetSet.new_offsets_dict
 
-    @mock.patch('kafka_consumer_manager.commands.offset_set.KafkaClient')
+    @mock.patch(
+        'yelp_kafka_tool.kafka_consumer_manager.'
+        'commands.offset_set.KafkaClient',
+        autospec=True,
+    )
     def test_run_error_committing_offsets(self, mock_client):
         OffsetSet.new_offsets_dict = {
             "topic1": {
@@ -95,15 +105,18 @@ class TestOffsetTest(object):
 
         with contextlib.nested(
             mock.patch(
-                "kafka_consumer_manager.commands.offset_manager."
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.offset_manager."
                 "OffsetManagerBase.get_topics_from_consumer_group_id",
+                autospec=True,
             ),
             mock.patch(
-               "kafka_consumer_manager.commands.offset_set.set_consumer_offsets",
+                "yelp_kafka_tool.kafka_consumer_manager."
+                "commands.offset_set.set_consumer_offsets",
                 return_value=[
                     OffsetCommitError("topic1", 1, "my_error 1"),
                     OffsetCommitError("topic2", 0, "my_error 2"),
-                 ],
+                ],
                 autospec=True
             ),
             mock.patch.object(sys, "exit", autospec=True),
@@ -116,23 +129,29 @@ class TestOffsetTest(object):
             cluster_config = mock.Mock()
             OffsetSet.run(args, cluster_config)
 
-            mock_client.return_value.load_metadata_for_topics.assert_called_once_with()
+            mock_client.return_value.load_metadata_for_topics. \
+                assert_called_once_with()
             mock_client.return_value.close.assert_called_once_with()
             ordered_args, _ = mock_set_offsets.call_args
             assert ordered_args[1] == args.groupid
             assert ordered_args[2] == OffsetSet.new_offsets_dict
             mock_exit.assert_called_with(1)
 
-    @mock.patch('kafka_consumer_manager.commands.offset_set.KafkaClient')
+    @mock.patch(
+        'yelp_kafka_tool.kafka_consumer_manager.'
+        'commands.offset_set.KafkaClient',
+        autospec=True,
+    )
     def test_run_bad_topics_dict(self, mock_client):
         OffsetSet.new_offsets_dict = {
             "topic1": 23,
             "topic2": 32,
         }
         with mock.patch(
-            "kafka_consumer_manager.commands.offset_manager."
+            "yelp_kafka_tool.kafka_consumer_manager.commands.offset_manager."
             "OffsetManagerBase.get_topics_from_consumer_group_id",
-        ) as mock_get_topics:
+            autospec=True,
+        ):
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,

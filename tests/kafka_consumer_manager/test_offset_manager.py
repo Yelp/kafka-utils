@@ -3,10 +3,10 @@ import mock
 import pytest
 import sys
 
-from kafka_consumer_manager.commands.offset_manager import(
-    KafkaClient,
-    OffsetManagerBase,
-)
+from kafka.client import KafkaClient
+
+from yelp_kafka_tool.kafka_consumer_manager. \
+    commands.offset_manager import OffsetManagerBase
 
 
 class TestOffsetManagerBase(object):
@@ -29,13 +29,15 @@ class TestOffsetManagerBase(object):
         mock_kafka_client = mock.MagicMock(
             spec=KafkaClient
         )
-        mock_kafka_client.get_partition_ids_for_topic.side_effect = self._get_partition_ids_for_topic
+        mock_kafka_client.get_partition_ids_for_topic. \
+            side_effect = self._get_partition_ids_for_topic
         return mock_kafka_client
 
     @contextlib.contextmanager
     def mock_get_topics(self):
         with mock.patch(
-            "kafka_consumer_manager.commands.offset_manager.OffsetManagerBase."
+            "yelp_kafka_tool.kafka_consumer_manager.commands"
+            ".offset_manager.OffsetManagerBase."
             "get_topics_from_consumer_group_id",
             return_value=["topic1", "topic2", "topic3"],
         ) as mock_get_topics:
@@ -109,7 +111,7 @@ class TestOffsetManagerBase(object):
             self.mock_get_topics(),
             mock.patch.object(sys, "exit", autospec=True),
         ) as (mock_get_topics, mock_exit):
-            topics_dict = OffsetManagerBase.preprocess_args(
+            OffsetManagerBase.preprocess_args(
                 args.groupid,
                 args.topic,
                 args.partitions,
@@ -130,7 +132,7 @@ class TestOffsetManagerBase(object):
             self.mock_get_topics(),
             mock.patch.object(sys, "exit", autospec=True),
         ) as (mock_get_topics, mock_exit):
-            topics_dict = OffsetManagerBase.preprocess_args(
+            OffsetManagerBase.preprocess_args(
                 args.groupid,
                 args.topic,
                 args.partitions,
