@@ -3,23 +3,23 @@ from __future__ import print_function
 import json
 import sys
 
-import kazoo.client
-import kazoo.exceptions
-import kazoo.handlers.threading
-import kazoo.recipe.watchers
-from kafka_info.utils import config
+from kazoo.client import KazooClient
+from kazoo.exceptions import NoNodeError
+from yelp_kafka_tool.util import config
 
 
 class ZK:
-    """Opens a connection to a kafka zookeeper. To be used in the 'with' statement."""
+    """Opens a connection to a kafka zookeeper. "
+    "To be used in the 'with' statement."""
 
     def __init__(self, cluster_config):
         self.cluster_config = cluster_config
 
     def __enter__(self):
-        self.zk = kazoo.client.KazooClient(
+        self.zk = KazooClient(
             hosts=self.cluster_config.zookeeper,
-            read_only=True)
+            read_only=True,
+        )
         if config.debug:
             print(
                 "[INFO] ZK: Creating new zookeeper connection: {zookeeper}"
@@ -35,13 +35,19 @@ class ZK:
     def get_children(self, path, watch=None):
         """Returns the children of the specified node."""
         if config.debug:
-            print("[INFO] ZK: Getting children of {path}".format(path=path), file=sys.stderr)
+            print(
+                "[INFO] ZK: Getting children of {path}".format(path=path),
+                file=sys.stderr,
+            )
         return self.zk.get_children(path, watch)
 
     def get(self, path, watch=None):
         """Returns the data of the specified node."""
         if config.debug:
-            print("[INFO] ZK: Getting {path}".format(path=path), file=sys.stderr)
+            print(
+                "[INFO] ZK: Getting {path}".format(path=path),
+                file=sys.stderr,
+            )
         return self.zk.get(path, watch)
 
     def get_json(self, path, watch=None):
@@ -61,8 +67,10 @@ class ZK:
         brokers = {}
         for b_id in broker_ids:
             try:
-                broker_json, _ = self.get("/brokers/ids/{b_id}".format(b_id=b_id))
-            except kazoo.exceptions.NoNodeError:
+                broker_json, _ = self.get(
+                    "/brokers/ids/{b_id}".format(b_id=b_id)
+                )
+            except NoNodeError:
                 print(
                     "[ERROR] broker '{b_id}' not found.".format(b_id=b_id),
                     file=sys.stderr
@@ -80,8 +88,11 @@ class ZK:
         if names_only:
             return topic_ids
         try:
-            topics = [self.get("/brokers/topics/{id}".format(id=id)) for id in topic_ids]
-        except kazoo.exceptions.NoNodeError:
+            topics = [
+                self.get("/brokers/topics/{id}".format(id=id))
+                for id in topic_ids
+            ]
+        except NoNodeError:
             print(
                 "[ERROR] topic '{topic}' not found.".format(topic=topic_name),
                 file=sys.stderr
@@ -100,7 +111,7 @@ class ZK:
                     )
                     partitions_data[p_id] = json.loads(partition_json)
                     partitions_data[p_id]['replicas'] = replicas
-                except kazoo.exceptions.NoNodeError:
+                except NoNodeError:
                     partitions_data[p_id] = None  # The partition has no data
             topic['partitions'] = partitions_data
             result[topic_id] = topic

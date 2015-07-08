@@ -34,8 +34,8 @@ class OffsetSet(OffsetWriter):
         parser_offset_set = subparsers.add_parser(
             "offset_set",
             description="Modify consumer offsets for the specified consumer "
-                "group to the specified offset.",
-             add_help=False
+            "group to the specified offset.",
+            add_help=False
         )
         parser_offset_set.add_argument(
             "-h", "--help", action="help",
@@ -49,8 +49,9 @@ class OffsetSet(OffsetWriter):
         parser_offset_set.add_argument(
             "newoffsets", nargs='+', metavar=('<topic>.<partition>=<offset>'),
             type=cls.topics_dict,
-            help="Tuple containing the Kafka topic, partition and the the intended "
-                "new offset."
+            help="Tuple containing the Kafka topic, partition and "
+            "the the intended "
+            "new offset."
         )
 
         parser_offset_set.set_defaults(command=cls.run)

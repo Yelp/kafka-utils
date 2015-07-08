@@ -1,8 +1,5 @@
 from __future__ import absolute_import
 
-import argparse
-import sys
-
 from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 

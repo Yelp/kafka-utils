@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import sys
-
 import yaml
 from yelp_kafka.discovery import (
     get_cluster_by_name,

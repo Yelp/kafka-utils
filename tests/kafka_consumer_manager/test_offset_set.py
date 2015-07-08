@@ -4,10 +4,10 @@ import mock
 import pytest
 import sys
 
-from yelp_kafka_tool.kafka_consumer_manager.commands.offset_set import (
-    OffsetCommitError,
-    OffsetSet,
-)
+from yelp_kafka.error import OffsetCommitError
+
+from yelp_kafka_tool.kafka_consumer_manager. \
+    commands.offset_set import OffsetSet
 
 
 class TestOffsetTest(object):
@@ -59,11 +59,10 @@ class TestOffsetTest(object):
         }
 
         with contextlib.nested(
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager."
-                "OffsetManagerBase.get_topics_from_consumer_group_id",
-                autospec=True
+            mock.patch.object(
+                OffsetSet,
+                'get_topics_from_consumer_group_id',
+                spec=OffsetSet.get_topics_from_consumer_group_id,
             ),
             mock.patch(
                 "yelp_kafka_tool.kafka_consumer_manager."
@@ -104,11 +103,10 @@ class TestOffsetTest(object):
         }
 
         with contextlib.nested(
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager."
-                "OffsetManagerBase.get_topics_from_consumer_group_id",
-                autospec=True,
+            mock.patch.object(
+                OffsetSet,
+                'get_topics_from_consumer_group_id',
+                spec=OffsetSet.get_topics_from_consumer_group_id,
             ),
             mock.patch(
                 "yelp_kafka_tool.kafka_consumer_manager."

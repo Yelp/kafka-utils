@@ -35,12 +35,13 @@ class TestOffsetManagerBase(object):
 
     @contextlib.contextmanager
     def mock_get_topics(self):
-        with mock.patch(
-            "yelp_kafka_tool.kafka_consumer_manager.commands"
-            ".offset_manager.OffsetManagerBase."
+        with mock.patch.object(
+            OffsetManagerBase,
             "get_topics_from_consumer_group_id",
+            spec=OffsetManagerBase.get_topics_from_consumer_group_id,
             return_value=["topic1", "topic2", "topic3"],
         ) as mock_get_topics:
+            mock_get_topics
             yield mock_get_topics
 
     def test_preprocess_args_with_topics_and_partitions(self, mock_kafka_client):

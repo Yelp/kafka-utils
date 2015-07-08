@@ -4,23 +4,13 @@ from __future__ import (
     unicode_literals,
 )
 
-import argparse
 import sys
 
 from kafka import KafkaClient
-from kafka.common import (
-    FailedPayloadsError
-)
-from yelp_kafka.error import (
-    UnknownPartitions,
-    UnknownTopic,
-)
 from yelp_kafka.offsets import advance_consumer_offsets
 
-from .offset_manager import (
-    OffsetManagerBase,
-    OffsetWriter,
-)
+from .offset_manager import OffsetWriter
+
 
 class OffsetAdvance(OffsetWriter):
     @classmethod
@@ -28,7 +18,7 @@ class OffsetAdvance(OffsetWriter):
         parser_offset_advance = subparsers.add_parser(
             "offset_advance",
             description="Advance consumer offsets for the specified consumer "
-                "group to the latest message in the topic partition",
+            "group to the latest message in the topic partition",
             add_help=False
         )
         parser_offset_advance.add_argument(
@@ -42,14 +32,14 @@ class OffsetAdvance(OffsetWriter):
         parser_offset_advance.add_argument(
             "--topic",
             help="Kafka topic whose offsets shall be manipulated. If no topic "
-                "is specified, offsets from all topics that the consumer is "
-                "subscribed to, shall be advanced."
+            "is specified, offsets from all topics that the consumer is "
+            "subscribed to, shall be advanced."
         )
         parser_offset_advance.add_argument(
             "--partitions", nargs='+', type=int,
             help="List of partitions within the topic. If no partitions are "
-                "specified, offsets from all partitions of the topic shall "
-                "be advanced."
+            "specified, offsets from all partitions of the topic shall "
+            "be advanced."
         )
         parser_offset_advance.set_defaults(command=cls.run)
 
@@ -63,7 +53,7 @@ class OffsetAdvance(OffsetWriter):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         try:
-            result = advance_consumer_offsets(client, args.groupid, topics_dict)
+            advance_consumer_offsets(client, args.groupid, topics_dict)
         except TypeError:
             print(
                 "Error: Badly formatted input, please re-run command ",

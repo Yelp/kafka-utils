@@ -4,7 +4,6 @@ from __future__ import (
     unicode_literals,
 )
 import argparse
-import sys
 import logging
 
 from .commands.delete_topics import DeleteTopics

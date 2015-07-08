@@ -3,13 +3,9 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
-import argparse
 import sys
 
 from kafka import KafkaClient
-from kafka.common import (
-    FailedPayloadsError,
-)
 
 from yelp_kafka_tool.util import print_json
 from .offset_manager import OffsetManagerBase
@@ -21,7 +17,8 @@ class OffsetGet(OffsetManagerBase):
     def setup_subparser(cls, subparsers):
         parser_offset_get = subparsers.add_parser(
             "offset_get",
-            description="Get consumer offsets for the specified consumer group",
+            description="Get consumer offsets for the"
+            " specified consumer group",
             add_help=False
         )
         parser_offset_get.add_argument(
@@ -35,22 +32,22 @@ class OffsetGet(OffsetManagerBase):
         parser_offset_get.add_argument(
             "--topic",
             help="Kafka topic whose offsets shall be fetched. If no topic is "
-                "specified, offsets from all topics that the consumer is "
-                "subscribed to, shall be fetched."
+            "specified, offsets from all topics that the consumer is "
+            "subscribed to, shall be fetched."
         )
         parser_offset_get.add_argument(
             "--partitions", nargs='+', type=int,
             help="List of partitions within the topic. If no partitions are "
-                "specified, offsets from all partitions of the topic shall "
-                "be fetched."
+            "specified, offsets from all partitions of the topic shall "
+            "be fetched."
         )
         parser_offset_get.add_argument(
             "--watermark",
             choices=["high", "low", "current", "all"],
             help="Type of offset watermark. \"high\" represents the offset "
-                "corresponding to the latest message. \"low\" represents "
-                "the offset corresponding to the earliest message. \"current\" "
-                "represents the current commited offset for this consumer",
+            "corresponding to the latest message. \"low\" represents "
+            "the offset corresponding to the earliest message. \"current\" "
+            "represents the current commited offset for this consumer",
             default="all"
         )
         parser_offset_get.add_argument(
