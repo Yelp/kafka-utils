@@ -145,10 +145,10 @@ class TestOffsetTest(object):
             "topic1": 23,
             "topic2": 32,
         }
-        with mock.patch(
-            "yelp_kafka_tool.kafka_consumer_manager.commands.offset_manager."
-            "OffsetManagerBase.get_topics_from_consumer_group_id",
-            autospec=True,
+        with mock.patch.object(
+            OffsetSet,
+            'get_topics_from_consumer_group_id',
+            spec=OffsetSet.get_topics_from_consumer_group_id,
         ):
             args = mock.Mock(
                 groupid="some_group",

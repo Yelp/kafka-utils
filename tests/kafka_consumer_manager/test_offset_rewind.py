@@ -16,11 +16,11 @@ class TestOffsetRewind(object):
                 'commands.offset_rewind.KafkaClient')
     def test_run(self, mock_client):
         with contextlib.nested(
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager.OffsetWriter."
+            mock.patch.object(
+                OffsetRewind,
                 "preprocess_args",
-                return_value=self.topics_partitions
+                spec=OffsetRewind.preprocess_args,
+                return_value=self.topics_partitions,
             ),
             mock.patch(
                 "yelp_kafka_tool.kafka_consumer_manager."
@@ -46,11 +46,11 @@ class TestOffsetRewind(object):
     @mock.patch('yelp_kafka_tool.kafka_consumer_manager'
                 '.commands.offset_rewind.KafkaClient')
     def test_run_type_error(self, mock_client):
-        with mock.patch(
-            "yelp_kafka_tool.kafka_consumer_manager."
-            "commands.offset_manager.OffsetWriter."
+        with mock.patch.object(
+            OffsetRewind,
             "preprocess_args",
-            return_value="some_string"
+            spec=OffsetRewind.preprocess_args,
+            return_value="some_string",
         ):
             args = mock.Mock(
                 groupid="some_group",

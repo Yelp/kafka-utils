@@ -115,7 +115,7 @@ class OffsetWriter(OffsetManagerBase):
         client,
         fail_on_error=True
     ):
-        topics_dict = super(OffsetWriter, cls).preprocess_args(
+        topics_dict = cls.preprocess_args(
             groupid, topic, partitions, cluster_config, client, fail_on_error
         )
         topics_str = ""

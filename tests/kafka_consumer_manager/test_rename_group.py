@@ -17,16 +17,16 @@ class TestRenameGroup(object):
     @contextlib.contextmanager
     def mock_kafka_info(self, topics_partitions):
         with contextlib.nested(
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager.OffsetManagerBase."
+            mock.patch.object(
+                RenameGroup,
                 "preprocess_args",
+                spec=RenameGroup.preprocess_args,
                 return_value=topics_partitions,
             ),
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager.OffsetWriter."
-                "prompt_user_input"
+            mock.patch.object(
+                RenameGroup,
+                "prompt_user_input",
+                spec=RenameGroup.prompt_user_input,
             ),
             mock.patch(
                 "yelp_kafka_tool.kafka_consumer_manager."
@@ -104,7 +104,10 @@ class TestRenameGroup(object):
         ) as (mock_process_args, mock_user_confirm, mock_ZK):
             with mock.patch.object(sys, "exit", autospec=True) as mock_exit:
                 cluster_config = mock.Mock(zookeeper='some_ip')
-                args = mock.Mock(old_groupid='my_group', new_groupid='my_group')
+                args = mock.Mock(
+                    old_groupid='my_group',
+                    new_groupid='my_group',
+                )
 
                 RenameGroup.run(args, cluster_config)
 
@@ -121,7 +124,10 @@ class TestRenameGroup(object):
             with mock.patch.object(sys, "exit", autospec=True) as mock_exit:
                 obj = mock_ZK.return_value.__enter__.return_value
                 cluster_config = mock.Mock(zookeeper='some_ip')
-                args = mock.Mock(old_groupid='old_group', new_groupid='new_group')
+                args = mock.Mock(
+                    old_groupid='old_group',
+                    new_groupid='new_group',
+                )
                 obj.get_children.return_value = ['topic1']
                 obj.get.return_value = (0, 0)
 

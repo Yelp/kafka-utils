@@ -16,10 +16,10 @@ class TestOffsetAdvance(object):
 
     def test_run(self, mock_client):
         with contextlib.nested(
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager.OffsetWriter."
+            mock.patch.object(
+                OffsetAdvance,
                 "preprocess_args",
+                spec=OffsetAdvance.preprocess_args,
                 return_value=self.topics_partitions,
             ),
             mock.patch(
@@ -44,11 +44,11 @@ class TestOffsetAdvance(object):
             mock_client.return_value.close.assert_called_once_with()
 
     def test_run_type_error(self, mock_client):
-        with mock.patch(
-            "yelp_kafka_tool.kafka_consumer_manager."
-            "commands.offset_manager.OffsetWriter."
+        with mock.patch.object(
+            OffsetAdvance,
             "preprocess_args",
-            return_value="some_string"
+            spec=OffsetAdvance.preprocess_args,
+            return_value="some_string",
         ):
             args = mock.Mock(
                 groupid="some_group",

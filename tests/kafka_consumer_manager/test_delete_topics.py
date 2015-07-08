@@ -1,11 +1,14 @@
 import contextlib
 import mock
 import pytest
-from kazoo.exceptions import ZookeeperError
-from yelp_kafka_tool.kafka_consumer_manager.commands.delete_topics import (
-    DeleteTopics,
+
+from kazoo.exceptions import (
     NoNodeError,
+    ZookeeperError,
 )
+
+from yelp_kafka_tool.kafka_consumer_manager.commands. \
+    delete_topics import DeleteTopics
 
 
 @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
@@ -19,11 +22,11 @@ class TestDeleteTopics(object):
     @contextlib.contextmanager
     def mock_kafka_info(self):
         with contextlib.nested(
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_manager.OffsetWriter."
+            mock.patch.object(
+                DeleteTopics,
                 "preprocess_args",
-                return_value=self.topics_partitions
+                spec=DeleteTopics.preprocess_args,
+                return_value=self.topics_partitions,
             ),
             mock.patch(
                 'yelp_kafka_tool.kafka_consumer_manager.'

@@ -48,13 +48,15 @@ class RenameGroup(OffsetWriter):
         client = KafkaClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
-        topics_dict = super(OffsetWriter, cls).preprocess_args(
+        topics_dict = cls.preprocess_args(
             args.old_groupid, None, None, cluster_config, client
         )
         with ZK(cluster_config) as zk:
             try:
                 topics = zk.get_children(
-                    "/consumers/{groupid}/offsets".format(groupid=args.new_groupid)
+                    "/consumers/{groupid}/offsets".format(
+                        groupid=args.new_groupid
+                    )
                 )
             except NoNodeError:
                 # Consumer Group ID doesn't exist.
@@ -108,10 +110,6 @@ class RenameGroup(OffsetWriter):
             )
             for topic, partition_offsets in old_offsets.iteritems():
                 for partition, offset in partition_offsets.iteritems():
-                    old_base_path + "/offsets/{topic}/{partition}".format(
-                        topic=topic,
-                        partition=partition
-                    )
                     new_path = "/consumers/{groupid}/offsets/{topic}/{partition}".format(
                         groupid=args.new_groupid,
                         topic=topic,
