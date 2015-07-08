@@ -94,8 +94,6 @@ class OffsetManagerBase(object):
     def add_parser(cls, subparsers):
         cls.setup_subparser(subparsers)
 
-
-class OffsetWriter(OffsetManagerBase):
     @classmethod
     def prompt_user_input(cls, in_str):
         while(True):
@@ -104,6 +102,9 @@ class OffsetWriter(OffsetManagerBase):
                 sys.exit(0)
             if answer == "y" or answer == "yes":
                 return
+
+
+class OffsetWriter(OffsetManagerBase):
 
     @classmethod
     def preprocess_args(
@@ -115,7 +116,7 @@ class OffsetWriter(OffsetManagerBase):
         client,
         fail_on_error=True
     ):
-        topics_dict = cls.preprocess_args(
+        topics_dict = super(OffsetWriter, cls).preprocess_args(
             groupid, topic, partitions, cluster_config, client, fail_on_error
         )
         topics_str = ""

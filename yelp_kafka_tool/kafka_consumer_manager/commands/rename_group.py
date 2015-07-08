@@ -9,11 +9,12 @@ import sys
 from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
-from .offset_manager import OffsetWriter
+from .offset_manager import OffsetManagerBase
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-class RenameGroup(OffsetWriter):
+class RenameGroup(OffsetManagerBase):
+
     @classmethod
     def setup_subparser(cls, subparsers):
         parser_rename_group = subparsers.add_parser(
