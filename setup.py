@@ -5,7 +5,7 @@ from yelp_kafka_tool import __version__
 
 
 setup(
-    name="yelp-kafka-tools",
+    name="yelp-kafka-tool",
     version=__version__,
     author="Distributed systems team",
     author_email="team-dist-sys@yelp.com",
