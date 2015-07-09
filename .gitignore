@@ -11,14 +11,8 @@ env/
 build/
 dist/
 dist
-develop-eggs/
-downloads/
 eggs/
-lib/
-lib64/
-parts/
 sdist/
-var/
 *.egg-info/
 .installed.cfg
 *.egg
