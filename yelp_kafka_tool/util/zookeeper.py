@@ -128,10 +128,12 @@ class ZK:
         return self.get_children(path)
 
     def get_my_subscribed_partitions(self, groupid, topic):
-        """Get the list of topics that a consumer is subscribed to
+        """Get the list of partitions of a topic
+        that a consumer is subscribed to
 
         :param: groupid: The consumer group ID for the consumer
-        :returns list of kafka topics
+        :param: topic: The topic name
+        :returns list of partitions
         :rtype: list
         """
         path = "/consumers/{group_id}/offsets/{topic}".format(
