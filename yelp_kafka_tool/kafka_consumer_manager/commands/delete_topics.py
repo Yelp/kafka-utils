@@ -58,3 +58,5 @@ class DeleteTopics(OffsetWriter):
                 except NoNodeError:
                     # If node doesn't exit, nothing to do.
                     pass
+                if not zk.get_my_subscribed_partitions(args.groupid, topic):
+                    zk.delete_topic(args.groupid, topic)

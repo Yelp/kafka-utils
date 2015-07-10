@@ -100,3 +100,35 @@ class TestZK(object):
                     ),
                 ]
                 assert mock_delete.call_args_list == call_list
+
+    def test_delete_topic(self, _):
+        with mock.patch.object(
+            ZK,
+            'delete',
+            autospec=True
+        ) as mock_delete:
+            with ZK(self.cluster_config) as zk:
+                zk.delete_topic(
+                    'some_group',
+                    'some_topic',
+                )
+                mock_delete.assert_called_once_with(
+                    zk,
+                    '/consumers/some_group/offsets/some_topic',
+                )
+
+    def test_get_my_subscribed_partitions(self, _):
+        with mock.patch.object(
+            ZK,
+            'get_children',
+            autospec=True,
+        ) as mock_children:
+            with ZK(self.cluster_config) as zk:
+                zk.get_my_subscribed_partitions(
+                    'some_group',
+                    'some_topic',
+                )
+                mock_children.assert_called_once_with(
+                    zk,
+                    '/consumers/some_group/offsets/some_topic',
+                )
