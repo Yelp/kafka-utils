@@ -1,14 +1,13 @@
 PyStaticConfiguration==0.9.0
 PyYAML==3.11
 argcomplete==0.8.1
-cffi==0.8.6
+cffi==1.1.2
 cryptography==0.8.2
 enum34==1.0.4
 jsonschema==2.4.0
 kafka-python==0.9.4
 kazoo==2.2
 ndg-httpsclient==0.3.3
-numpy==1.9.2
 pyOpenSSL==0.15.1
 pyasn1==0.1.7
 pycparser==2.10
