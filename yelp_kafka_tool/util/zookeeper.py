@@ -127,6 +127,19 @@ class ZK:
         path = "/consumers/{group_id}/offsets".format(group_id=groupid)
         return self.get_children(path)
 
+    def get_my_subscribed_partitions(self, groupid, topic):
+        """Get the list of topics that a consumer is subscribed to
+
+        :param: groupid: The consumer group ID for the consumer
+        :returns list of kafka topics
+        :rtype: list
+        """
+        path = "/consumers/{group_id}/offsets/{topic}".format(
+            group_id=groupid,
+            topic=topic,
+        )
+        return self.get_children(path)
+
     def create(
         self,
         path,
@@ -181,3 +194,10 @@ class ZK:
                 partition=partition
             )
             self.delete(path)
+
+    def delete_topic(self, groupid, topic):
+        path = "/consumers/{groupid}/offsets/{topic}".format(
+            groupid=groupid,
+            topic=topic,
+        )
+        self.delete(path)

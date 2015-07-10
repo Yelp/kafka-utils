@@ -34,10 +34,10 @@ class TestDeleteTopics(object):
                 autospec=True
             )
         ) as (mock_writer_process_args, mock_ZK):
-            mock_ZK.return_value.__enter__.return_value = mock_ZK
+            mock_ZK.return_value.__enter__.return_value = mock_ZK.return_value
             yield mock_writer_process_args, mock_ZK
 
-    def test_run(self, mock_client):
+    def test_run_some_partitions_left(self, mock_client):
         with self.mock_kafka_info(
         ) as (mock_writer_process_args, mock_ZK):
             args = mock.Mock(
@@ -46,6 +46,8 @@ class TestDeleteTopics(object):
                 partitions=None
             )
             cluster_config = mock.Mock(zookeeper='some_ip')
+            mock_ZK.return_value.get_my_subscribed_partitions.return_value = [3]
+
             DeleteTopics.run(args, cluster_config)
 
             calls = [
@@ -61,15 +63,49 @@ class TestDeleteTopics(object):
                 ),
             ]
 
-            mock_ZK.return_value.__enter__.assert_called_once()
-            obj = mock_ZK.return_value.__enter__.return_value
+            obj = mock_ZK.return_value
             obj.delete_topic_partitions.call_args_list == calls
-            obj.__exit__.assert_called_once()
+            # Delete topic should not be called because the group is still
+            # subscribed to some topic partitions
+            assert not obj.delete_topic.called
+
+    def test_run_wipe_all_partitions(self, mock_client):
+        with self.mock_kafka_info(
+        ) as (mock_writer_process_args, mock_ZK):
+            args = mock.Mock(
+                groupid="some_group",
+                topic=None,
+                partitions=None
+            )
+            mock_ZK.return_value.get_my_subscribed_partitions.return_value = []
+            cluster_config = mock.Mock(zookeeper='some_ip')
+
+            DeleteTopics.run(args, cluster_config)
+
+            calls = [
+                mock.call(
+                    args.groupid,
+                    "topic1",
+                    [0, 1, 2]
+                ),
+                mock.call(
+                    args.groupid,
+                    "topic2",
+                    [0, 1]
+                ),
+            ]
+
+            obj = mock_ZK.return_value
+            obj.delete_topic_partitions.call_args_list == calls
+            obj.delete_topic.call_args_list == [
+                mock.call(args.groupid, "topic1"),
+                mock.call(args.groupid, "topic2"),
+            ]
 
     def test_run_no_node_error(self, mock_client):
         with self.mock_kafka_info(
         ) as (mock_writer_process_args, mock_ZK):
-            obj = mock_ZK.return_value.__enter__.return_value
+            obj = mock_ZK.return_value
             obj.delete_topic_partitions.side_effect = NoNodeError("Boom!")
             args = mock.Mock(
                 groupid="some_group",
@@ -79,10 +115,7 @@ class TestDeleteTopics(object):
             cluster_config = mock.Mock(zookeeper='some_ip')
 
             DeleteTopics.run(args, cluster_config)
-
-            mock_ZK.return_value.__enter__.assert_called_once()
-            obj.__exit__.assert_called_once()
-            # We should not raise the exception
+            assert mock_ZK.return_value.delete_topic_partitions.called
 
     def test_run_any_other_exception(self, mock_client):
         with self.mock_kafka_info(
@@ -99,5 +132,3 @@ class TestDeleteTopics(object):
 
             with pytest.raises(ZookeeperError):
                 DeleteTopics.run(args, cluster_config)
-            mock_ZK.return_value.__enter__.assert_called_once()
-            obj.__exit__.assert_called_once()
