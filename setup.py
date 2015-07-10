@@ -1,34 +1,30 @@
 from setuptools import setup
+from setuptools import find_packages
 
-from kafka_info import __version__
+from yelp_kafka_tool import __version__
 
 
 setup(
-    name="kafka-info",
+    name="yelp-kafka-tool",
     version=__version__,
-    author="Federico Giraud",
-    author_email="fgiraud@yelp.com",
-    description="Shows kafka cluster information and metrics",
-    packages=[
-        "kafka_info",
-        "kafka_info.utils",
-        "kafka_info.commands",
-        "kafka_reassignment",
-        "kafka_consumer_manager",
-        "kafka_consumer_manager.commands"],
+    author="Distributed systems team",
+    author_email="team-dist-sys@yelp.com",
+    description="Kafka management tools",
+    packages=find_packages(exclude=["scripts", "tests"]),
     data_files=[
         ("bash_completion.d",
          ["bash_completion.d/kafka-info"]),
     ],
     scripts=[
-        "kafka-info",
-        "kafka-reassignment",
-        "kafka-consumer-manager"],
+        "scripts/kafka-info",
+        "scripts/kafka-reassignment",
+        "scripts/kafka-consumer-manager",
+    ],
     install_requires=[
-        "argparse",
         "argcomplete",
-        "kazoo",
-        "PyYAML",
-        "yelp-kafka",
+        "kazoo>=2.0.post2,<3.0.0",
+        "PyYAML<4.0.0",
+        "yelp-kafka>=3.2.0,<4.0.0",
+        "requests<3.0.0"
     ],
 )

@@ -9,15 +9,10 @@ __pycache__/
 .Python
 env/
 build/
-develop-eggs/
 dist/
-downloads/
+dist
 eggs/
-lib/
-lib64/
-parts/
 sdist/
-var/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -34,27 +29,14 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
 .tox/
 .coverage
 .cache
 nosetests.xml
 coverage.xml
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-
 # Sphinx documentation
 docs/_build/
 
-# PyBuilder
-target/
-
-secreth_graphite_auth
-bin/
-include/
-
+# virtualenv
+virtualenv_run/
