@@ -19,6 +19,7 @@ setup(
         "scripts/kafka-info",
         "scripts/kafka-reassignment",
         "scripts/kafka-consumer-manager",
+        "scripts/yelpkafka",
     ],
     install_requires=[
         "argcomplete",
