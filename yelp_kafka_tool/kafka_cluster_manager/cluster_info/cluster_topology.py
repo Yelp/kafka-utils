@@ -116,6 +116,11 @@ class ClusterTopology(object):
                     'broker {broker}'.format(broker=broker.id)
                 )
                 rg_name = 'localhost'
+                # TODO: remove, temporary for localhost
+                if int(broker.id) % 2 == 0:
+                    rg_name = 'localhost1'
+                else:
+                    rg_name = 'localhost2'
             else:
                 print(
                     '[ERROR] Could not parse replication group for {broker} '
@@ -141,109 +146,75 @@ class ClusterTopology(object):
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""
-        self._segregate_partitions()
-        # Step-1
-        self._rebalance_greater_replicated_partitions()
-        # Step-2
-        self._rebalance_evenly_replicated_partitions()
-        # Step-3
-        self._rebalance_lesser_replicated_partitions()
-        # Step-4
-        self._rebalance_pending_partitions()
+        partitions = self.get_partitions()
+        under_replicated_rgs, over_replicated_rgs, spare_rgs = \
+            self.segregate_replication_groups(self.rgs.values(), partitions)
+        self.rebalance_partition_replicas_over_replication_groups(
+            under_replicated_rgs,
+            over_replicated_rgs,
+            spare_rgs,
+            partitions,
+        )
 
-    def _segregate_partitions(self):
-        """Prepare data for cases 1, 2 and 3.
-
-        Rp: Replication factor; G: #AZ;
-        Case 1:
-            Rp  >  G and
-            Rp % G != 0:    Each group should be with Rp/G or Rp/G+1 #replicas
-        Case 2:
-            Rp  % G = 0:    Same #replicas should be over G eventually
-        Case 3: Rp < G
-            Rp < G:         Each replica should be in different G eventually
-        """
-        self._greater_replicated_partitions = []
-        self._lesser_replicated_partitions = []
-        self._evenly_replicated_partitions = []
-        rg_count = len(self.rgs)
-        for partition in self.get_partitions():
-            replication_factor = len(partition.replicas)
-            # Case 1
-            if (replication_factor > rg_count and
-                    replication_factor % rg_count != 0):
-                self._greater_replicated_partitions.append(partition)
-            # Case 2
-            elif replication_factor % rg_count == 0:
-                self._evenly_replicated_partitions.append(partition)
-            # Case 3
-            else:
-                self._lesser_replicated_partitions.append(partition)
-
-    def _rebalance_evenly_replicated_partitions(self):
-        """Re-assign partitions with replication-factor multiple of
-        #placement-groups.
-        """
-        return
-
-    def _rebalance_lesser_replicated_partitions(self):
-        """Re-assign partitions with replication-factor lesser than
-        #placement-groups.
-        """
-        return
-
-    def _rebalance_greater_replicated_partitions(self):
-        """Re-assign partitions with replication-factor greater than
-        #placement-groups.
-
-        Case 1: Rp > G and Rp % G != 0
-        """
-        # Get under and over replicated replication-groups
-        under_replicated_rgs, over_replicated_rgs = \
-            self._segregate_replication_groups(
-                self._greater_replicated_partitions
-            )
-        # Reassign partitions amongst unbalanced-replication-groups
+    def rebalance_partition_replicas_over_replication_groups(
+        self,
+        under_replicated_rgs_partition,
+        over_replicated_rgs_partition,
+        spare_rgs_partition,
+        partitions,
+    ):
+        """Rebalance given segregated replication-groups."""
         # Decision-factor-1: Decide group-from, group-to
         # Move partition from under-replicated replication-group to
         # over-replicated replication-group
-        self._rebalance_rgs(under_replicated_rgs, over_replicated_rgs)
+        for partition in partitions:
+            if partition not in under_replicated_rgs_partition.keys():
+                continue
+            under_replicated_rgs = under_replicated_rgs_partition[partition]
+            over_replicated_rgs = over_replicated_rgs_partition[partition]
+            spare_rgs = spare_rgs[partition]
+            for rg in over_replicated_rgs:
+                while rg.replica_count(partition) > opt_replica_count + 1:
+                    # Move partitions in under-replicated replication-groups
+                    # until the group is empty
+                    if under_replicated_rgs:
+                        # TODO: why to select first rg?, random, or some criteria?
+                        rg.move_partition(partition, under_replicated_rgs[0])
+                        if (under_replicated_rgs[0].replica_count(partition) ==
+                                opt_replica_count):
+                            spare_rgs.append(under_replicated_rgs[0])
+                            del under_replicated_rgs[0]
+                    # Move remaining partitions into spare replication-groups
+                    elif spare_rgs:
+                        # TODO: why to select first rg?, random, or some criteria?
+                        rg.move_partition(partition, spare_rgs[0])
+                        if (spare_rgs[0].replica_count(partition) >
+                                opt_replica_count):
+                            del spare_rgs[0]
+                    else:
+                        print('No more re-balancing over replication-groups possible')
 
-    def _rebalance_rgs(self, under_replicated_rgs, over_replicated_rgs):
-        """Rebalance given segregated replication-groups."""
-        for rg in under_replicated_rgs:
-            while rg.replica_count(partition) < opt_replica_count:
-                rg.move_partition(partition, over_replicated_rgs[0])
-                if (over_replicated_rgs[0].replica_count(partition) <=
-                        opt_replica_count + 1):
-                    self._spare_replicas.append(partition)
-                    del over_replicated_rgs[0]
-
-    def _segregate_replication_groups(self, partitions):
+    def segregate_replication_groups(self, rgs, partitions):
         """Separate replication-groups into under-replicated, over-replicated
         and optimally replicated groups.
         """
-        under_replicated_rgs = []
-        over_replicated_rgs = []
+        under_replicated_rgs = defaultdict(list)
+        over_replicated_rgs = defaultdict(list)
+        spare_rgs = defaultdict(list)
         for partition in partitions:
             replication_factor = len(partition.replicas)
-            opt_replica_count = replication_factor // len(self.rgs)
-            for rg in self.rgs:
-                if partition in rg.get_partitions():
+            opt_replica_count = replication_factor // len(rgs)
+            for rg in rgs:
+                if partition in rg.partitions:
                     if rg.replica_count(partition) < opt_replica_count:
-                        under_replicated_rgs.append(rg)
-                    elif (over_replicated_rgs[0].replica_count(partition) ==
-                            opt_replica_count + 1):
-                        self._spare_replicas.append(partition)
+                        under_replicated_rgs[partition].append(rg)
+                    elif rg.replica_count(partition) == opt_replica_count:
+                        spare_rgs[partition].append(rg)
                     elif rg.replica_count(partition) > opt_replica_count + 1:
                         # This could be a priority queue on the replica count
                         # so we'll use pop and push.
-                        over_replicated_rgs.append(rg)
-        return under_replicated_rgs, over_replicated_rgs
-
-    def _rebalance_pending_partitions(self):
-        """Re-assign partitions with spare replicas."""
-        return
+                        over_replicated_rgs[partition].append(rg)
+        return under_replicated_rgs, over_replicated_rgs, spare_rgs
 
     # End Balancing replication-groups.
 

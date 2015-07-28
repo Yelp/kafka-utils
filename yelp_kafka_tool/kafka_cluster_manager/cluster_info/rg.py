@@ -130,3 +130,9 @@ class ReplicationGroup(object):
         assert(broker_to)
         assert(broker_from != broker_to)
         return broker_from, broker_to
+
+    def replica_count(self, partition):
+        """Return the count of replicas of given partitions."""
+        return len(
+            [broker for broker in partition.replicas if broker in self._brokers]
+        )
