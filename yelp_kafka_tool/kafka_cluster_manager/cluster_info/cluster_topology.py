@@ -134,7 +134,106 @@ class ClusterTopology(object):
         to_execute,
     ):
         """Display or execute the final-state based on rebalancing option."""
+        self.rebalance_replication_groups()
         pass
+
+    # Balancing api's
+    # Balacing replication-groups: S0 --> S1
+    def rebalance_replication_groups(self):
+        """Rebalance partitions over placement groupgs (availability-zones)."""
+        self._segregate_partitions()
+        # Step-1
+        self._rebalance_greater_replicated_partitions()
+        # Step-2
+        self._rebalance_evenly_replicated_partitions()
+        # Step-3
+        self._rebalance_lesser_replicated_partitions()
+        # Step-4
+        self._rebalance_pending_partitions()
+
+    def _segregate_partitions(self):
+        """Prepare data for cases 1, 2 and 3.
+
+        Rp: Replication factor; G: #AZ;
+        Case 1:
+            Rp  >  G and
+            Rp % G != 0:    Each group should be with Rp/G or Rp/G+1 #replicas
+        Case 2:
+            Rp  % G = 0:    Same #replicas should be over G eventually
+        Case 3: Rp < G
+            Rp < G:         Each replica should be in different G eventually
+        """
+        self._greater_replicated_partitions = []
+        self._lesser_replicated_partitions = []
+        self._evenly_replicated_partitions = []
+        rg_count = len(self.rgs)
+        for partition in self.get_partitions():
+            replication_factor = len(partition.replicas)
+            # Case 1
+            if (replication_factor > rg_count and
+                    replication_factor % rg_count != 0):
+                self._greater_replicated_partitions.append(partition)
+            # Case 2
+            elif replication_factor % rg_count == 0:
+                self._evenly_replicated_partitions.append(partition)
+            # Case 3
+            else:
+                self._lesser_replicated_partitions.append(partition)
+
+    def _rebalance_evenly_replicated_partitions(self):
+        """Re-assign partitions with replication-factor multiple of
+        #placement-groups.
+        """
+        return
+
+    def _rebalance_lesser_replicated_partitions(self):
+        """Re-assign partitions with replication-factor lesser than
+        #placement-groups.
+        """
+        return
+
+    def _rebalance_pending_partitions(self):
+        """Re-assign partitions with spare replicas."""
+        return
+
+    def _rebalance_greater_replicated_partitions(self):
+        """Re-assign partitions with replication-factor greater than
+        #placement-groups.
+        """
+        # Case 1: Rp > G and Rp % G != 0
+        under_replicated_rgs = []
+        over_replicated_rgs = []
+        for partition in self._greater_replicated_partitions:
+            opt_replica_count = partition.replication_factor // len(self.rgs)
+            for rg in self.rgs:
+                if partition in rg.get_partitions():
+                    if rg.replica_count(partition) < opt_replica_count:
+                        under_replicated_rgs.append(rg)
+                    elif (over_replicated_rgs[0].replica_count(partition) ==
+                            opt_replica_count + 1):
+                        self._spare_replicas.append(partition)
+                    elif rg.replica_count(partition) > opt_replica_count + 1:
+                        # This could be a priority queue on the replica count
+                        # so we'll use pop and push.
+                        over_replicated_rgs.append(rg)
+
+            # Reassign partitions amongst unbalanced-azs
+            # Decision-factor1: Decide group-from, group-to
+            # Move partition from under-replicated replication-group to
+            # over-replicated replication-group
+            for rg in under_replicated_rgs:
+                while rg.replica_count(partition) < opt_replica_count:
+                    rg.move_partition(partition, over_replicated_rgs[0])
+                    if (over_replicated_rgs[0].replica_count(partition) <=
+                            opt_replica_count + 1):
+                        self._spare_replicas.append(partition)
+                        del over_replicated_rgs[0]
+
+    def get_partitions(self):
+        partitions = []
+        for rg in self.rgs.itervalues():
+            partitions += rg.partitions
+        return partitions
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
