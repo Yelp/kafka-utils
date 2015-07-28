@@ -7,6 +7,7 @@ is per the design document at:-
 https://docs.google.com/document/d/1qloANcOHkzuu8wYVm0ZAMCGY5Mmb-tdcxUywNIXfQFI
 """
 from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
@@ -21,10 +22,10 @@ from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
 from .util import (
-    _display_same_replica_count_rg,
-    _display_same_topic_partition_count_broker,
-    _display_partition_count_per_broker,
-    _display_leader_count_per_broker,
+    display_same_replica_count_rg,
+    display_same_topic_partition_count_broker,
+    display_partition_count_per_broker,
+    display_leader_count_per_broker,
 )
 
 
@@ -204,33 +205,47 @@ class ClusterTopology(object):
             leaders_per_broker[partition.leader] += 1
         return leaders_per_broker
 
-    def _get_same_topic_partition_count_per_broker(self):
+    def _get_same_topic_partition_imbalance_per_broker(self):
         """Return count of topics and partitions on each broker having multiple
         partitions of same topic.
 
-        :rtype dict(broker_id: (same-topic-count, same-topic-partition-count))
+        :rtype dict(broker_id: same-topic-partition count)
+        Example: If broker has 3 partitions of given topic then this implies
+        it has 2 extra partitions than recommened partitions as 1.
+        So the same-topic-partition-imbalance-count is 2
         """
         brokers_same_topic_partition_count = {}
         for replication_group in self.rgs.values():
             for broker in replication_group.brokers:
+                # Get extra-partition-count of only those topics which has more
+                # than 1 partition  in a broker
                 partition_count = sum(
+                    (partition_count - 1) for partition_count in
                     broker.get_per_topic_partitions_count().values()
+                    if partition_count > 1
                 )
                 if partition_count > 0:
-                    brokers_same_topic_partition_count[broker] = \
-                        partition_count - 1
+                    brokers_same_topic_partition_count[broker] = partition_count
         return brokers_same_topic_partition_count
 
     # Get imbalance stats
     def _standard_deviation(self, data):
-        avg_data = sum(data) * 1.0 / len(data)
+        avg_data = sum(data) / len(data)
         variance = map(lambda x: (x - avg_data) ** 2, data)
-        avg_variance = sum(variance) * 1.0 / len(data)
+        avg_variance = sum(variance) / len(data)
         return sqrt(avg_variance)
 
     def _actual_imbalance(self, count_per_broker):
         """Calculate and return actual imbalance based on given count of
         partitions or leaders per broker.
+
+        Actual imbalance in case of partitions implies total number of
+        extra partitions from optimal count over all brokers.
+        This is also implies, the minimum number of partition movements
+        required for overall balancing.
+
+        For leaders, actual imbalance implies total number of extra brokers
+        as leaders from optimal count.
         """
         actual_imbalance = 0
         opt_count = sum(count_per_broker) // \
@@ -260,7 +275,7 @@ class ClusterTopology(object):
         actual_imbalance = self._actual_imbalance(
             partitions_per_broker.values()
         )
-        _display_partition_count_per_broker(
+        display_partition_count_per_broker(
             self,
             partitions_per_broker,
             stdev_imbalance,
@@ -277,7 +292,7 @@ class ClusterTopology(object):
 
         # Calcuation actual imbalance
         actual_imbalance = self._actual_imbalance(leaders_per_broker.values())
-        _display_leader_count_per_broker(
+        display_leader_count_per_broker(
             self,
             leaders_per_broker,
             stdev_imbalance,
@@ -288,8 +303,8 @@ class ClusterTopology(object):
     def topic_imbalance(self):
         """Calculate count of partitions of same topic over a broker."""
         same_topic_partition_count = \
-            self._get_same_topic_partition_count_per_broker()
-        _display_same_topic_partition_count_broker(
+            self._get_same_topic_partition_imbalance_per_broker()
+        display_same_topic_partition_count_broker(
             self,
             same_topic_partition_count,
         )
@@ -318,5 +333,5 @@ class ClusterTopology(object):
                 else:
                     rg_ids.append(rg_id)
         rg_imbalance = sum(same_replica_per_rg.values())
-        _display_same_replica_count_rg(self, same_replica_per_rg)
+        display_same_replica_count_rg(self, same_replica_per_rg)
         return rg_imbalance

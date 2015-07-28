@@ -1,3 +1,4 @@
+from collections import Counter
 from socket import gethostbyaddr, herror
 
 
@@ -62,10 +63,4 @@ class Broker(object):
 
     def get_per_topic_partitions_count(self):
         """Return partition-count of each topic."""
-        count = {}
-        for partition in self._partitions:
-            if partition.topic in count:
-                count[partition.topic] += 1
-            else:
-                count[partition.topic] = 1
-        return count
+        return Counter((partition.topic for partition in self._partitions))
