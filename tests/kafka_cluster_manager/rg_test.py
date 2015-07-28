@@ -1,8 +1,6 @@
-from mock import sentinel, Mock
-import mock
+from mock import Mock, sentinel
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
-
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 
 
@@ -50,11 +48,6 @@ class TestReplicationGroup(object):
     def test_partitions(self):
         mock_brokers = self.mock_brokers(['b1', 'b2'])
         rg = ReplicationGroup('test_rg1', mock_brokers)
-        expected = mock_brokers
-        rg = ReplicationGroup(
-            'test_rg1',
-            mock_brokers,
-        )
         expected = [broker.partitions for broker in mock_brokers]
         actual = rg.partitions
 
