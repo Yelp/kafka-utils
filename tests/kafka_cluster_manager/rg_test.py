@@ -46,8 +46,13 @@ class TestReplicationGroup(object):
         assert expected == actual
 
     def test_partitions(self):
-        mock_brokers = self.mock_brokers(['b1', 'b2'])
-        rg = ReplicationGroup('test_rg1', mock_brokers)
+        mock_brokers = [sentinel.broker1, sentinel.broker2]
+        rg = ReplicationGroup(
+            'test_rg1',
+            mock_brokers,
+        )
+        sentinel.broker1.partitions = ['p1', 'p2']
+        sentinel.broker2.partitions = ['p3']
         expected = [broker.partitions for broker in mock_brokers]
         actual = rg.partitions
 
