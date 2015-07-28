@@ -11,7 +11,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import sys
-from collections import defaultdict
 from collections import OrderedDict
 from math import sqrt
 
@@ -180,10 +179,6 @@ class ClusterTopology(object):
     def assignment(self):
         kafka = KafkaInterface()
         return kafka.get_assignment_map(self.get_assignment_json())[0]
-
-    def _get_leader_id(self, replica_ids):
-        """Return preferred-leader for given replica."""
-        return replica_ids[0]
 
     def _get_partitions_per_broker(self):
         """Return partition count for each broker."""
