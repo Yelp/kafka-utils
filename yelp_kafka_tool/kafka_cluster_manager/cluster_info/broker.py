@@ -41,7 +41,17 @@ class Broker(object):
 
     def remove_partition(self, partition):
         """Remove partition from partition list."""
-        self._partitions.remove(partition)
+        if partition in self._partitions:
+            self._partitions.remove(partition)
+        else:
+            raise ValueError(
+                'Partition: {topic_id}:{partition_id} not found in broker '
+                '{broker_id}'.format(
+                    topic_id=partition.topic.id,
+                    partition_id=partition.partition_id,
+                    broker_id=self._id,
+                )
+            )
 
     def add_partition(self, partition):
         """Add partition to partition list."""
@@ -50,3 +60,12 @@ class Broker(object):
     def partition_count(self):
         """Total partitions in broker."""
         return len(self._partitions)
+
+    def get_per_topic_partitions_count(self):
+        count = {}
+        for partition in self._partitions:
+            if partition.topic in count:
+                count[partition.topic] += 1
+            else:
+                count[partition.topic] = 1
+        return count

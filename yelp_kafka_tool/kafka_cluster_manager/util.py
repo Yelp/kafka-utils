@@ -11,7 +11,6 @@ import tempfile
 from collections import OrderedDict
 
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
-KAFKA_SCRIPT_PATH = '/nail/home/manpreet/pg/yelp-kafka-util/kafka-info/kafka_reassignment/kafka/bin'
 
 
 # NOTE: You can ignore reviewing this class as of now.
