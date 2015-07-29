@@ -32,7 +32,13 @@ class ReplicationGroup(object):
             partitions += broker.partitions
         return partitions
 
-    def move_partition(self, partition, destination_rg):
+    def move_partition(
+        self,
+        victim_partition,
+        destination_rg,
+        total_brokers_cluster,
+        total_partitions_cluster,
+    ):
         """Move partition from current replication-group to destination
         replication-group.
 
@@ -42,58 +48,91 @@ class ReplicationGroup(object):
         Decide source broker and destination broker to move the partition.
         """
         # Assert given partition belongs to current replication-group
-        assert(partition in self.partitions)
-        over_loaded_brokers = self.get_over_loaded_brokers()
-        under_loaded_brokers = destination_pg.get_under_loaded_brokers()
+        print('victim-partition-in move', victim_partition.name)
+        partition_ids = [p.name for p in self.partitions]
+        print('partitions in rg', self.id, ':', len(partition_ids))
+        assert(victim_partition.name in partition_ids)
+        over_loaded_brokers = self.get_over_loaded_brokers(
+            victim_partition,
+            total_brokers_cluster,
+            total_partitions_cluster,
+        )
+        for broker in over_loaded_brokers:
+            # over-loaded-brokers should be part of current replication-group
+            assert(broker in self.brokers)
+        under_loaded_brokers = destination_rg.get_under_loaded_brokers(
+            total_brokers_cluster,
+            total_partitions_cluster
+        )
 
         # In descending order
         broker_from, broker_to = self.get_target_brokers(
             over_loaded_brokers,
             under_loaded_brokers,
-            partition,
+            victim_partition,
         )
         assert(broker_from in self.brokers)
+        print('partition:', victim_partition.name)
+        print('broker_from:', broker_from.id)
+        print('partitions in broker_from', [p.name for p in broker_from.partitions])
+        assert(victim_partition.name in [p.name for p in broker_from.partitions])
         assert(broker_to in destination_rg.brokers)
+        assert(destination_rg.id != self.id)
 
         # Moving partition
-        broker_from.remove_partition(partition)
-        broker_to.add_partition(partition)
+        broker_from.remove_partition(victim_partition)
+        # Remove broker from partitions's replica list
+        victim_partition.replicas.remove(broker_from)
+        broker_to.add_partition(victim_partition)
+        # Add broker from partitions's replica list
+        victim_partition.replicas.append(broker_to)
+        print('partition', victim_partition.name, 'moved')
 
-    def get_over_loaded_brokers(self):
+    def get_over_loaded_brokers(
+        self,
+        victim_partition,
+        total_brokers_cluster,
+        total_partitions_cluster,
+    ):
         """Get list of overloaded brokers."""
-        total_partitions_cluster = get_total_partitions()
-        total_brokers_cluster = get_total_brokers()
+        # Get total partitions across cluster (including replicas)
         opt_partition_count = total_partitions_cluster // total_brokers_cluster
+        print('opt partition count', opt_partition_count)
         over_loaded_brokers = [
             broker for broker in self._brokers
-            if broker.partition_count() > opt_partition_count + 1
+            if broker.partition_count() > opt_partition_count + 1 and
+            victim_partition.name in [p.name for p in broker.partitions]
         ]
         # Pick-broker with maximum partition, if no over-loaded-brokers found
         if not over_loaded_brokers:
             max_partition_count = 0
             # TODO: list-comprehension
-            for broker in self._brokers:
-                if len(broker.partions) > max_partition_count:
+            valid_brokers = [broker for broker in self.brokers if victim_partition.name in [p.name for p in broker.partitions]]
+            for broker in valid_brokers:
+                if len(broker.partitions) > max_partition_count:
                     over_loaded_brokers = [broker]
                     max_partition_count = len(broker.partitions)
-        return over_loaded_broker
+        assert(over_loaded_brokers)
+        return over_loaded_brokers
 
-    def get_under_loaded_brokers(self):
+    def get_under_loaded_brokers(
+        self,
+        total_brokers_cluster,
+        total_partitions_cluster,
+    ):
         """Get list of underloaded brokers."""
         # TODO: Get total counts
-        total_partitions_cluster = get_total_partitions()
-        total_brokers_cluster = get_total_brokers()
-        opt_partition_count = total_partitions_cluster / total_brokers_cluster
+        opt_partition_count = total_partitions_cluster // total_brokers_cluster
         under_loaded_brokers = [
             broker for broker in self._brokers
             if broker.partition_count() < opt_partition_count
         ]
         # Pick broker with minimum partitions if no under-loaded brokers found
-        if not over_loaded_brokers:
+        if not under_loaded_brokers:
             min_partition_count = -1
             # TODO: list-comprehension
             for broker in self._brokers:
-                if len(broker.partions) < min_partition_count \
+                if len(broker.partitions) < min_partition_count \
                         or min_partition_count == -1:
                     under_loaded_brokers = [broker]
                     min_partition_count = len(broker.partitions)
@@ -103,24 +142,28 @@ class ReplicationGroup(object):
             self,
             over_loaded_brokers,
             under_loaded_brokers,
-            partition,
+            victim_partition,
     ):
         """Select valid source broker with partition and destination broker
         from under loaded brokers not having partition.
         """
+        print('victim-partition', victim_partition.name)
         broker_from = None
         broker_to = None
         # Decision factor-2: Balancing #partition-count over brokers
         # Get broker having maximum partitions and given partition
         for broker in over_loaded_brokers:
-            if partition in broker.partitions:
+            partition_ids = [p.name for p in broker.partitions]
+            if victim_partition.name in partition_ids:
+                print('broker-from decided', broker.id, 'for partition', victim_partition.name)
                 broker_from = broker
+
         # Decision-factor 3: Pick broker not having topic in that broker
         # Helps in load balancing
         # Decision-factor 2: Pick broker with least #partition-count
         for broker in under_loaded_brokers:
-            topic_ids = [partition.topic_id for partition in broker.partitions]
-            if partition[0] not in topic_ids:
+            topic_ids = [partition.topic.id for partition in broker.partitions]
+            if partition.topic.id not in topic_ids:
                 broker_to = broker
         # If no valid broker found
         if not broker_to:

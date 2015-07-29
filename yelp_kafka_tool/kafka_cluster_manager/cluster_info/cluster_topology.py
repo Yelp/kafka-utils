@@ -75,6 +75,12 @@ class ClusterTopology(object):
             # Creating replica objects
             replicas = [self.brokers[broker_id] for broker_id in replica_ids]
 
+            # TODO: remove
+            if partition_name == ('T0', 1):
+                print('Ignoring 3rd replica, on broker 0 for partition (T0, 1)')
+                broker = self.brokers[0]
+                replicas.remove(broker)
+
             # Get topic
             topic_id = partition_name[0]
             topic = self.topics[topic_id]
@@ -118,9 +124,9 @@ class ClusterTopology(object):
                 rg_name = 'localhost'
                 # TODO: remove, temporary for localhost
                 if int(broker.id) % 2 == 0:
-                    rg_name = 'localhost1'
+                    rg_name = 'rg2'
                 else:
-                    rg_name = 'localhost2'
+                    rg_name = 'rg1'
             else:
                 print(
                     '[ERROR] Could not parse replication group for {broker} '
@@ -144,11 +150,25 @@ class ClusterTopology(object):
 
     # Balancing api's
     # Balancing replication-groups: S0 --> S1
+    # TODO: change do for each partition in here itself
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""
-        partitions = self.get_partitions()
+        partitions = self.partitions.values()
+        print('got partitions, cout', len(partitions))
+        print('total rgs', len(self.rgs))
+        '''
+        print('partitions in rg 1', len(self.rgs['rg1'].brokers))
+        print('partitions in rg 2', len(self.rgs['rg2'].brokers))
+        print('partitons in b0', len(self.brokers[0].partitions))
+        broker_ids_rg1 = [broker.id for broker in self.rgs['rg1'].brokers]
+        print('rg1 brokers', broker_ids_rg1)
+        broker_ids_rg2 = [broker.id for broker in self.rgs['rg2'].brokers]
+        print('rg2 brokers', broker_ids_rg2)
+        '''
+
         under_replicated_rgs, over_replicated_rgs, spare_rgs = \
             self.segregate_replication_groups(self.rgs.values(), partitions)
+        print('under-replicated and over-replicated')
         self.rebalance_partition_replicas_over_replication_groups(
             under_replicated_rgs,
             over_replicated_rgs,
@@ -169,30 +189,89 @@ class ClusterTopology(object):
         # over-replicated replication-group
         for partition in partitions:
             if partition not in under_replicated_rgs_partition.keys():
+                print('ignoring')
                 continue
             under_replicated_rgs = under_replicated_rgs_partition[partition]
             over_replicated_rgs = over_replicated_rgs_partition[partition]
-            spare_rgs = spare_rgs[partition]
-            for rg in over_replicated_rgs:
-                while rg.replica_count(partition) > opt_replica_count + 1:
+            spare_rgs = spare_rgs_partition[partition]
+            replication_factor = len(partition.replicas)
+            rg_count = len(self.rgs)
+            opt_replica_count = replication_factor // rg_count
+            while over_replicated_rgs:
+                rg_from = over_replicated_rgs[0]
+                print('still in over-replicated-rgs')
+                while rg_from.replica_count(partition) > opt_replica_count:
+                    print('current replica-count', rg_from.replica_count(partition))
+                    print('required replica-count', opt_replica_count)
+                    print('Trying moving partition:', partition.name)
                     # Move partitions in under-replicated replication-groups
                     # until the group is empty
                     if under_replicated_rgs:
                         # TODO: why to select first rg?, random, or some criteria?
-                        rg.move_partition(partition, under_replicated_rgs[0])
-                        if (under_replicated_rgs[0].replica_count(partition) ==
-                                opt_replica_count):
-                            spare_rgs.append(under_replicated_rgs[0])
-                            del under_replicated_rgs[0]
+                        rg_to = None
+                        for rg_under in under_replicated_rgs:
+                            if rg_under.replica_count(partition) < \
+                                    rg_from.replica_count(partition) - 1:
+                                rg_to = rg_under
+                                break
+                        if not rg_to:
+                            # rg_from is cannot be adjusted further
+                            assert(
+                                rg_from.replica_count(partition) <=
+                                opt_replica_count + 1
+                            )
+                            print(rg_from.id, 'cant be reduced further')
+                            break
+                        # Get total partitions and brokers in cluster
+                        total_brokers_cluster = len(self.brokers)
+                        total_partitions_cluster = len(self.get_all_partitions())
+                        rg_from.move_partition(
+                            partition,
+                            rg_to,
+                            total_brokers_cluster,
+                            total_partitions_cluster,
+                        )
+                        if rg_to.replica_count(partition) == opt_replica_count:
+                            under_replicated_rgs.remove(rg_to)
+                            # spare_rgs.append(under_replicated_rgs[0])
+                            # del under_replicated_rgs[0]
                     # Move remaining partitions into spare replication-groups
+                    '''
                     elif spare_rgs:
                         # TODO: why to select first rg?, random, or some criteria?
                         rg.move_partition(partition, spare_rgs[0])
                         if (spare_rgs[0].replica_count(partition) >
                                 opt_replica_count):
                             del spare_rgs[0]
-                    else:
-                        print('No more re-balancing over replication-groups possible')
+                    '''
+                over_replicated_rgs.remove(rg_from)
+
+    def replication_load(self, rg, partition):
+        """Depending upon replication-factor and #replication-groups
+        decide and return if given replication-group is under or over replicated
+        or can be used as spare replication group for rebalancing.
+        """
+        replication_factor = len(partition.replicas)
+        rg_count = len(self.rgs)
+        opt_replica_count = replication_factor // rg_count
+        result = None
+        replica_count = rg.replica_count(partition)
+        print('replica-count', replica_count, 'for partition', partition.name, 'over rg', rg.id)
+        # Case 2: Rp % G == 0: Replication-groups should have same replica-count
+        if replication_factor % rg_count == 0:
+            if replica_count < opt_replica_count:
+                result = 'under-replicated'
+            elif replica_count > opt_replica_count:
+                result = 'over-replicated'
+            else:
+                result = 'evenly-replicated'
+        # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
+        else:
+            if replica_count <= opt_replica_count:
+                result = 'under-replicated'
+            elif replica_count > opt_replica_count:
+                result = 'over-replicated'
+        return result
 
     def segregate_replication_groups(self, rgs, partitions):
         """Separate replication-groups into under-replicated, over-replicated
@@ -201,24 +280,33 @@ class ClusterTopology(object):
         under_replicated_rgs = defaultdict(list)
         over_replicated_rgs = defaultdict(list)
         spare_rgs = defaultdict(list)
+        print('segregating rgs for each partition')
         for partition in partitions:
             replication_factor = len(partition.replicas)
+            print('\n', partition.name, ': repl-factor', replication_factor)
             opt_replica_count = replication_factor // len(rgs)
+            print('opt-count of replicas', opt_replica_count)
             for rg in rgs:
-                if partition in rg.partitions:
-                    if rg.replica_count(partition) < opt_replica_count:
-                        under_replicated_rgs[partition].append(rg)
-                    elif rg.replica_count(partition) == opt_replica_count:
-                        spare_rgs[partition].append(rg)
-                    elif rg.replica_count(partition) > opt_replica_count + 1:
-                        # This could be a priority queue on the replica count
-                        # so we'll use pop and push.
-                        over_replicated_rgs[partition].append(rg)
+                if self.replication_load(rg, partition) == 'under-replicated':
+                    under_replicated_rgs[partition].append(rg)
+                    print('adding', rg.id, 'for under-replicated')
+                elif self.replication_load(rg, partition) == 'spare':
+                    spare_rgs[partition].append(rg)
+                    print('adding rg', rg.id, 'for spare-replicated')
+                elif self.replication_load(rg, partition) == 'over-replicated':
+                    print('adding rg', rg.id, 'for over-replicated')
+                    over_replicated_rgs[partition].append(rg)
+                elif self.replication_load(rg, partition) == 'evenly-replicated':
+                    # TODO: remove
+                    print(rg.id, 'optimally replicated, no need to take care')
+                else:
+                    print('error, falls under no category')
+        print('unbalanced partitions over rgs')
         return under_replicated_rgs, over_replicated_rgs, spare_rgs
 
     # End Balancing replication-groups.
 
-    def get_partitions(self):
+    def get_all_partitions(self):
         partitions = []
         for rg in self.rgs.itervalues():
             partitions += rg.partitions
@@ -269,3 +357,55 @@ class ClusterTopology(object):
 
     def display_current_cluster_topology(self):
         print(self.get_assignment_json())
+
+
+# TODO: remove code before review
+    def replication_group_imbalance(self):
+        """Calculate same replica count over each replication-group.
+        Can only be calculated on current cluster-state.
+        """
+        same_replica_per_rg = dict((rg_id, 0) for rg_id in self.rgs.keys())
+
+        # Get broker-id to rg-id map
+        broker_rg_id = {}
+        for rg in self.rgs.itervalues():
+            for broker in rg.brokers:
+                broker_rg_id[broker.id] = rg.id
+
+        # Evaluate duplicate replicas count in each replication-group
+        counter = 0
+        total_part = 0
+        for partition in self.partitions.itervalues():
+            rg_ids = []
+            total_part += 1
+            for broker in partition.replicas:
+                counter += 1
+                rg_id = broker_rg_id[broker.id]
+                # Duplicate replica found
+                if rg_id in rg_ids:
+                    same_replica_per_rg[rg_id] += 1
+                else:
+                    rg_ids.append(rg_id)
+        rg_imbalance = sum(same_replica_per_rg.values())
+        print('total replicas', counter)
+        print('total part', total_part)
+        self.display_same_replica_count_rg(same_replica_per_rg)
+        return rg_imbalance
+
+    def display_same_replica_count_rg(self, same_replica_per_rg):
+        """Display same topic/partition count over brokers."""
+        print("=" * 35)
+        print("Replication-group Same-replica-count")
+        print("=" * 35)
+        for rg_id, replica_count in same_replica_per_rg.iteritems():
+            count = int(replica_count)
+            print(
+                "{b:^7s} {cnt:^10d}".format(
+                    b=rg_id,
+                    cnt=int(count),
+                )
+            )
+        print("=" * 35)
+        print('\nTotal replication-group imbalance {imbalance}\n\n'.format(
+            imbalance=sum(same_replica_per_rg.values()),
+        ))

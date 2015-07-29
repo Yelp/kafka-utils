@@ -37,3 +37,12 @@ class Partition(object):
 
     def replication_factor(self):
         return len(self._replicas)
+
+    def remove_broker(self, broker):
+        """Remove broker from replica list."""
+        assert(broker in self.replicas)
+        self._replicas.remove(broker)
+
+    def add_broker(self, broker):
+        """Add broker to replicas."""
+        self._replicas.add(broker)

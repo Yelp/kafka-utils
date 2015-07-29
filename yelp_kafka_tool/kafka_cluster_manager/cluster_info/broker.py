@@ -1,5 +1,6 @@
 from socket import gethostbyaddr, herror
 import socket
+import sys
 
 
 class Broker(object):
@@ -17,12 +18,14 @@ class Broker(object):
         try:
             result = gethostbyaddr(str(self._id))[0]
         except herror:
+            '''
             print(
                 '[WARNING] Unknown host for broker {broker}'.format(
                     broker=self._id
                 )
             )
             print('Returning as localhost.')
+            '''
             result = gethostbyaddr('localhost')[0]
         return result
 
@@ -41,6 +44,26 @@ class Broker(object):
 
     def remove_partition(self, partition):
         """Remove partition from partition list."""
+        # Get valid partition
+        remove_partition = None
+        if partition in self.partitions:
+            remove_partition = partition
+        else:
+            valid_partitions = [
+                p for p in self.partitions if p.name == partition.name
+            ]
+            if valid_partitions:
+                remove_partition = valid_partitions[0]
+            else:
+                print(
+                    "[ERROR] partition {partition} not found in broker {broker}"
+                    .format(partition=partition.name, broker=self.id)
+                )
+                print('all partitions')
+                p_ids = [p.name for p in self.partitions]
+                print(p_ids)
+                sys.exit(1)
+        # Remove partition from current list of partitions
         self._partitions.remove(partition)
 
     def add_partition(self, partition):
