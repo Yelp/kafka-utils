@@ -386,13 +386,22 @@ class ClusterTopology(object):
                     same_replica_per_rg[rg_id] += 1
                 else:
                     rg_ids.append(rg_id)
-        rg_imbalance = sum(same_replica_per_rg.values())
+        net_imbalance = sum(same_replica_per_rg.values())
+        # However partitions with Rp > G will have to have same replicas in some
+        # az so we need to ignore those
+        # Calculate total replicas greater than #G
+        rg_count = len(same_replica_per_rg)
+        for partition in self.partitions.itervalues():
+            replication_factor = len(partition.replicas)
+            if replication_factor > rg_count:
+                allowed_duplicate_replicas = replication_factor - rg_count
+                net_imbalance -= allowed_duplicate_replicas
         print('total replicas', counter)
         print('total part', total_part)
-        self.display_same_replica_count_rg(same_replica_per_rg)
-        return rg_imbalance
+        self.display_same_replica_count_rg(same_replica_per_rg, net_imbalance)
+        return net_imbalance
 
-    def display_same_replica_count_rg(self, same_replica_per_rg):
+    def display_same_replica_count_rg(self, same_replica_per_rg, net_imbalance):
         """Display same topic/partition count over brokers."""
         print("=" * 35)
         print("Replication-group Same-replica-count")
@@ -407,5 +416,5 @@ class ClusterTopology(object):
             )
         print("=" * 35)
         print('\nTotal replication-group imbalance {imbalance}\n\n'.format(
-            imbalance=sum(same_replica_per_rg.values()),
+            imbalance=net_imbalance,
         ))
