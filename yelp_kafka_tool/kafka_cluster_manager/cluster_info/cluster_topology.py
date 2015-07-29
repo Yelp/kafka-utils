@@ -332,7 +332,20 @@ class ClusterTopology(object):
                     same_replica_per_rg[rg_id] += 1
                 else:
                     rg_ids.append(rg_id)
-        rg_imbalance = sum(same_replica_per_rg.values())
+        net_imbalance = sum(same_replica_per_rg.values())
+
+        # Adjust imbalance to ignore duplicate replicas with
+        # replication-factor greater than #replication-groups
+        rg_count = len(self.rgs)
+        for partition in self.partitions.itervalues():
+            replication_factor = len(partition.replicas)
+            if replication_factor > rg_count:
+                net_imbalance -= (replication_factor - rg_count)
+
         if display:
-            display_same_replica_count_rg(self, same_replica_per_rg)
-        return rg_imbalance
+            display_same_replica_count_rg(
+                self,
+                same_replica_per_rg,
+                net_imbalance,
+            )
+        return net_imbalance

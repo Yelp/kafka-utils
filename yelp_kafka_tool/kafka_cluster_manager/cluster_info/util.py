@@ -11,7 +11,11 @@ def display_current_cluster_topology(cluster_topology):
     print(cluster_topology.get_assignment_json())
 
 
-def display_same_replica_count_rg(cluster_topology, same_replica_per_rg):
+def display_same_replica_count_rg(
+    cluster_topology,
+    same_replica_per_rg,
+    imbalance,
+):
     """Display same topic/partition count over brokers."""
     print("=" * 35)
     print("Replication-group Same-replica-count")
@@ -26,7 +30,7 @@ def display_same_replica_count_rg(cluster_topology, same_replica_per_rg):
         )
     print("=" * 35)
     print('\nTotal replication-group imbalance {imbalance}\n\n'.format(
-        imbalance=sum(same_replica_per_rg.values()),
+        imbalance=imbalance,
     ))
 
 
