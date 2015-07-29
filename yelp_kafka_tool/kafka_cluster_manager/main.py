@@ -73,9 +73,9 @@ def reassign_partitions(cluster_config, args):
         assert(ct.initial_assignment == ct.assignment)
 
         # Get imbalance stats
-        ct.partition_imbalance()
-        ct.leader_imbalance()
-        ct.replication_group_imbalance()
+        ct.partition_imbalance(display=True)
+        ct.leader_imbalance(display=True)
+        ct.replication_group_imbalance(display=True)
         ct.topic_imbalance()
 
 

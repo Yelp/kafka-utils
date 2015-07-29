@@ -198,8 +198,7 @@ class ClusterTopology(object):
         """
         leaders_per_broker = dict(
             (broker, 0)
-            for replication_group in self.rgs.itervalues()
-            for broker in replication_group.brokers
+            for broker in self.brokers.itervalues()
         )
         for partition in self.partitions.itervalues():
             leaders_per_broker[partition.leader] += 1
@@ -248,10 +247,8 @@ class ClusterTopology(object):
         as leaders from optimal count.
         """
         actual_imbalance = 0
-        opt_count = sum(count_per_broker) // \
-            len(count_per_broker)
-        more_opt_count_allowed = sum(count_per_broker) % \
-            len(count_per_broker)
+        opt_count = sum(count_per_broker) // len(count_per_broker)
+        more_opt_count_allowed = sum(count_per_broker) % len(count_per_broker)
         for count in count_per_broker:
             if count > opt_count:
                 if more_opt_count_allowed > 0:
@@ -261,7 +258,7 @@ class ClusterTopology(object):
                     actual_imbalance += (count - opt_count)
         return actual_imbalance
 
-    def partition_imbalance(self):
+    def partition_imbalance(self, display=False):
         """Report partition count imbalance over brokers for given assignment
         or assignment in current state.
         """
@@ -275,15 +272,16 @@ class ClusterTopology(object):
         actual_imbalance = self._actual_imbalance(
             partitions_per_broker.values()
         )
-        display_partition_count_per_broker(
-            self,
-            partitions_per_broker,
-            stdev_imbalance,
-            actual_imbalance,
-        )
+        if display:
+            display_partition_count_per_broker(
+                self,
+                partitions_per_broker,
+                stdev_imbalance,
+                actual_imbalance,
+            )
         return stdev_imbalance, actual_imbalance
 
-    def leader_imbalance(self):
+    def leader_imbalance(self, display=False):
         """Report leader imbalance count over each broker."""
         leaders_per_broker = self._get_leaders_per_broker()
 
@@ -292,25 +290,27 @@ class ClusterTopology(object):
 
         # Calcuation actual imbalance
         actual_imbalance = self._actual_imbalance(leaders_per_broker.values())
-        display_leader_count_per_broker(
-            self,
-            leaders_per_broker,
-            stdev_imbalance,
-            actual_imbalance,
-        )
+        if display:
+            display_leader_count_per_broker(
+                self,
+                leaders_per_broker,
+                stdev_imbalance,
+                actual_imbalance,
+            )
         return stdev_imbalance, actual_imbalance
 
-    def topic_imbalance(self):
+    def topic_imbalance(self, display=False):
         """Calculate count of partitions of same topic over a broker."""
         same_topic_partition_count = \
             self._get_same_topic_partition_imbalance_per_broker()
-        display_same_topic_partition_count_broker(
-            self,
-            same_topic_partition_count,
-        )
+        if display:
+            display_same_topic_partition_count_broker(
+                self,
+                same_topic_partition_count,
+            )
         return sum(same_topic_partition_count.values())
 
-    def replication_group_imbalance(self):
+    def replication_group_imbalance(self, display=True):
         """Calculate same replica count over each replication-group.
         Can only be calculated on current cluster-state.
         """
@@ -333,5 +333,6 @@ class ClusterTopology(object):
                 else:
                     rg_ids.append(rg_id)
         rg_imbalance = sum(same_replica_per_rg.values())
-        display_same_replica_count_rg(self, same_replica_per_rg)
+        if display:
+            display_same_replica_count_rg(self, same_replica_per_rg)
         return rg_imbalance
