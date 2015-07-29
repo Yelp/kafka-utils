@@ -1,5 +1,4 @@
 from collections import Counter
-from socket import gethostbyaddr, herror
 
 
 class Broker(object):
@@ -11,19 +10,17 @@ class Broker(object):
         self._id = id
         self._partitions = partitions or []
 
-    @property
-    def hostname(self):
-        """Get hostname of broker."""
+    def get_hostname(self, zk):
+        """Get hostname of broker from zookeeper."""
         try:
-            result = gethostbyaddr(str(self._id))[0]
-        except herror:
+            hostname = zk.get_brokers(self._id)
+            result = hostname[self._id]['host']
+        except KeyError:
             print(
-                '[WARNING] Unknown host for broker {broker}'.format(
-                    broker=self._id
-                )
+                '[WARNING] Unknown host for broker {broker}. Returning as'
+                ' localhost'.format(broker=self._id)
             )
-            print('Returning as localhost.')
-            result = gethostbyaddr('localhost')[0]
+            result = 'localhost'
         return result
 
     @property

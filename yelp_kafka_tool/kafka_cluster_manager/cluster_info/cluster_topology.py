@@ -113,24 +113,25 @@ class ClusterTopology(object):
     def _get_replication_group_id(self, broker):
         """Fetch replication-group to broker map from zookeeper."""
         try:
-            habitat = broker.hostname.rsplit('-', 1)[1]
-            rg_name = habitat.split('.', 1)[0]
-        except IndexError:
-            if 'localhost' in broker.hostname:
+            hostname = broker.get_hostname(self._zk)
+            if 'localhost' in hostname:
                 print(
                     '[WARNING] Setting replication-group as localhost for '
                     'broker {broker}'.format(broker=broker.id)
                 )
                 rg_name = 'localhost'
             else:
-                print(
-                    '[ERROR] Could not parse replication group for {broker} '
-                    'with hostname:{host}'.format(
-                        broker=broker.id,
-                        host=broker.hostname
-                    )
+                habitat = hostname.rsplit('-', 1)[1]
+                rg_name = habitat.split('.', 1)[0]
+        except IndexError:
+            print(
+                '[ERROR] Could not parse replication group for {broker} '
+                'with hostname:{host}'.format(
+                    broker=broker.id,
+                    host=hostname,
                 )
-                sys.exit(1)
+            )
+            sys.exit(1)
         return rg_name
 
     def reassign_partitions(
@@ -185,8 +186,7 @@ class ClusterTopology(object):
         """Return partition count for each broker."""
         partitions_per_broker = dict(
             (broker, len(broker.partitions))
-            for replication_group in self.rgs.itervalues()
-            for broker in replication_group.brokers
+            for broker in self.brokers.itervalues()
         )
         return OrderedDict(
             sorted(partitions_per_broker.items(), key=lambda x: x[0].id)
@@ -234,29 +234,29 @@ class ClusterTopology(object):
         avg_variance = sum(variance) / len(data)
         return sqrt(avg_variance)
 
-    def _actual_imbalance(self, count_per_broker):
-        """Calculate and return actual imbalance based on given count of
+    def _net_imbalance(self, count_per_broker):
+        """Calculate and return net imbalance based on given count of
         partitions or leaders per broker.
 
-        Actual imbalance in case of partitions implies total number of
+        Net-imbalance in case of partitions implies total number of
         extra partitions from optimal count over all brokers.
         This is also implies, the minimum number of partition movements
         required for overall balancing.
 
-        For leaders, actual imbalance implies total number of extra brokers
+        For leaders, net imbalance implies total number of extra brokers
         as leaders from optimal count.
         """
-        actual_imbalance = 0
+        net_imbalance = 0
         opt_count = sum(count_per_broker) // len(count_per_broker)
         more_opt_count_allowed = sum(count_per_broker) % len(count_per_broker)
         for count in count_per_broker:
             if count > opt_count:
                 if more_opt_count_allowed > 0:
                     more_opt_count_allowed -= 1
-                    actual_imbalance += (count - opt_count - 1)
+                    net_imbalance += (count - opt_count - 1)
                 else:
-                    actual_imbalance += (count - opt_count)
-        return actual_imbalance
+                    net_imbalance += (count - opt_count)
+        return net_imbalance
 
     def partition_imbalance(self, display=False):
         """Report partition count imbalance over brokers for given assignment
@@ -268,8 +268,8 @@ class ClusterTopology(object):
         stdev_imbalance = self._standard_deviation(
             partitions_per_broker.values()
         )
-        # Actual total imbalance of partition count over all brokers
-        actual_imbalance = self._actual_imbalance(
+        # Net total imbalance of partition count over all brokers
+        net_imbalance = self._net_imbalance(
             partitions_per_broker.values()
         )
         if display:
@@ -277,9 +277,9 @@ class ClusterTopology(object):
                 self,
                 partitions_per_broker,
                 stdev_imbalance,
-                actual_imbalance,
+                net_imbalance,
             )
-        return stdev_imbalance, actual_imbalance
+        return stdev_imbalance, net_imbalance
 
     def leader_imbalance(self, display=False):
         """Report leader imbalance count over each broker."""
@@ -288,16 +288,16 @@ class ClusterTopology(object):
         # Calculate standard deviation of leader imbalance
         stdev_imbalance = self._standard_deviation(leaders_per_broker.values())
 
-        # Calcuation actual imbalance
-        actual_imbalance = self._actual_imbalance(leaders_per_broker.values())
+        # Calcuation net imbalance
+        net_imbalance = self._net_imbalance(leaders_per_broker.values())
         if display:
             display_leader_count_per_broker(
                 self,
                 leaders_per_broker,
                 stdev_imbalance,
-                actual_imbalance,
+                net_imbalance,
             )
-        return stdev_imbalance, actual_imbalance
+        return stdev_imbalance, net_imbalance
 
     def topic_imbalance(self, display=False):
         """Calculate count of partitions of same topic over a broker."""
@@ -310,7 +310,7 @@ class ClusterTopology(object):
             )
         return sum(same_topic_partition_count.values())
 
-    def replication_group_imbalance(self, display=True):
+    def replication_group_imbalance(self, display=False):
         """Calculate same replica count over each replication-group.
         Can only be calculated on current cluster-state.
         """
