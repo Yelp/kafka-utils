@@ -112,6 +112,14 @@ def get_leader_imbalance_stats(brokers, partitions):
 
 
 def get_topic_imbalance_stats(rgs, brokers, topics):
+    """Return count of topics and partitions on each broker having multiple
+    partitions of same topic.
+
+    :rtype dict(broker_id: same-topic-partition count)
+    Example: If broker has 3 partitions of given topic then this implies
+    it has 2 extra partitions than recommended partitions as 1.
+    So the same-topic-partition-imbalance-count is 2
+    """
     same_topic_partition_count_per_broker = {}
     for replication_group in rgs.values():
         for broker in replication_group.brokers:

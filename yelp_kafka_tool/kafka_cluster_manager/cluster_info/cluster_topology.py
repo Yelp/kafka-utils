@@ -193,16 +193,9 @@ class ClusterTopology(object):
     def topic_imbalance(self):
         """Return count of topics and partitions on each broker having multiple
         partitions of same topic.
-
-        :rtype dict(broker_id: same-topic-partition count)
-        Example: If broker has 3 partitions of given topic then this implies
-        it has 2 extra partitions than recommended partitions as 1.
-        So the same-topic-partition-imbalance-count is 2
         """
         return get_topic_imbalance_stats(self.rgs, self.brokers, self.topics)
 
     def replication_group_imbalance(self):
-        """Calculate same replica count over each replication-group.
-        Can only be calculated on current cluster-state.
-        """
+        """Calculate same replica count over each replication-group."""
         return get_replication_group_imbalance_stats(self.rgs, self.partitions)

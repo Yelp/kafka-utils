@@ -45,10 +45,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology \
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    display_initial_cluster_topology,
-    display_current_cluster_topology,
-)
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
+    display_cluster_topology,
     display_same_replica_count_rg,
     display_same_topic_partition_count_broker,
     display_partition_count_per_broker,
@@ -64,7 +61,7 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk)
         # Display cluster topology as fetched from zookeeper
         print('Displaying current cluster topology')
-        display_initial_cluster_topology(ct)
+        display_cluster_topology(ct)
 
         # Display topology as built from objects
         ct.reassign_partitions(
@@ -74,7 +71,7 @@ def reassign_partitions(cluster_config, args):
         )
 
         print('Displaying cluster topology after reassignment')
-        display_current_cluster_topology(ct)
+        display_cluster_topology(ct)
         assert(ct.initial_assignment == ct.assignment)
 
         # Get imbalance stats
@@ -104,7 +101,8 @@ def reassign_partitions(cluster_config, args):
         )
 
         # Same topic-partition count
-        net_imbalance, same_topic_partition_count_per_broker = ct.topic_imbalance()
+        net_imbalance, same_topic_partition_count_per_broker = \
+            ct.topic_imbalance()
         display_same_topic_partition_count_broker(
             same_topic_partition_count_per_broker,
             net_imbalance,

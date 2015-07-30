@@ -2,12 +2,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 
-def display_initial_cluster_topology(cluster_topology):
-    """Display the current cluster topology."""
-    print(cluster_topology.get_initial_assignment_json())
-
-
-def display_current_cluster_topology(cluster_topology):
+def display_cluster_topology(cluster_topology):
     print(cluster_topology.get_assignment_json())
 
 
