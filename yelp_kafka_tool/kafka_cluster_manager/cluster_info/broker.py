@@ -73,3 +73,13 @@ class Broker(object):
     def partition_count(self):
         """Total partitions in broker."""
         return len(self._partitions)
+
+    def move_partition(self, partition, broker_destination):
+        """Move partition to destination broker and adjust replicas."""
+        # Remove partition and broker from replicas
+        self.remove_partition(partition)
+        partition.replicas.remove(self)
+
+        # Add partition and broker in replicas
+        broker_destination.add_partition(partition)
+        partition.replicas.append(broker_destination)

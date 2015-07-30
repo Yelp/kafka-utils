@@ -153,156 +153,99 @@ class ClusterTopology(object):
     # TODO: change do for each partition in here itself
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""
-        partitions = self.partitions.values()
-        print('got partitions, cout', len(partitions))
-        print('total rgs', len(self.rgs))
-        '''
-        print('partitions in rg 1', len(self.rgs['rg1'].brokers))
-        print('partitions in rg 2', len(self.rgs['rg2'].brokers))
-        print('partitons in b0', len(self.brokers[0].partitions))
-        broker_ids_rg1 = [broker.id for broker in self.rgs['rg1'].brokers]
-        print('rg1 brokers', broker_ids_rg1)
-        broker_ids_rg2 = [broker.id for broker in self.rgs['rg2'].brokers]
-        print('rg2 brokers', broker_ids_rg2)
-        '''
+        self.rebalance_partition_replicas_over_replication_groups()
 
-        under_replicated_rgs, over_replicated_rgs, spare_rgs = \
-            self.segregate_replication_groups(self.rgs.values(), partitions)
-        print('under-replicated and over-replicated')
-        self.rebalance_partition_replicas_over_replication_groups(
-            under_replicated_rgs,
-            over_replicated_rgs,
-            spare_rgs,
-            partitions,
-        )
-
-    def rebalance_partition_replicas_over_replication_groups(
-        self,
-        under_replicated_rgs_partition,
-        over_replicated_rgs_partition,
-        spare_rgs_partition,
-        partitions,
-    ):
+    def rebalance_partition_replicas_over_replication_groups(self):
         """Rebalance given segregated replication-groups."""
         # Decision-factor-1: Decide group-from, group-to
         # Move partition from under-replicated replication-group to
         # over-replicated replication-group
-        for partition in partitions:
-            if partition not in under_replicated_rgs_partition.keys():
-                print('ignoring')
-                continue
-            under_replicated_rgs = under_replicated_rgs_partition[partition]
-            over_replicated_rgs = over_replicated_rgs_partition[partition]
-            spare_rgs = spare_rgs_partition[partition]
+        for partition in self.partitions.values():
+            # Fetch potentially under-replicated and over-replicated
+            # replication-groups
+            under_replicated_rgs, over_replicated_rgs = \
+                self.segregate_replication_groups(partition)
             replication_factor = len(partition.replicas)
             rg_count = len(self.rgs)
             opt_replica_count = replication_factor // rg_count
-            while over_replicated_rgs:
-                rg_from = over_replicated_rgs[0]
-                print('still in over-replicated-rgs')
-                while rg_from.replica_count(partition) > opt_replica_count:
-                    print('current replica-count', rg_from.replica_count(partition))
-                    print('required replica-count', opt_replica_count)
-                    print('Trying moving partition:', partition.name)
+
+            # Move partition-replicas from over-replicated to under-replicated
+            # replication-groups
+            for rg_source in over_replicated_rgs:
+                # Keep reducing partition-replicas over source over-replicated
+                # replication-group until either it is evenly-replicated
+                # or no under-replicated replication-group is found
+                while rg_source.replica_count(partition) > opt_replica_count:
                     # Move partitions in under-replicated replication-groups
                     # until the group is empty
-                    if under_replicated_rgs:
-                        # TODO: why to select first rg?, random, or some criteria?
-                        rg_to = None
-                        for rg_under in under_replicated_rgs:
-                            if rg_under.replica_count(partition) < \
-                                    rg_from.replica_count(partition) - 1:
-                                rg_to = rg_under
-                                break
-                        if not rg_to:
-                            # rg_from is cannot be adjusted further
-                            assert(
-                                rg_from.replica_count(partition) <=
-                                opt_replica_count + 1
-                            )
-                            print(rg_from.id, 'cant be reduced further')
+                    # if under_replicated_rgs:
+                    # TODO: why to select first rg?, random, or some criteria?
+                    if not under_replicated_rgs:
+                        break
+                    rg_destination = None
+                    # Locate under-replicated replication-group with lesser
+                    # replica count source replication-group
+                    for rg_under in under_replicated_rgs:
+                        if rg_under.replica_count(partition) < \
+                                rg_source.replica_count(partition) - 1:
+                            rg_destination = rg_under
                             break
+                    # Destination under-replicated replication-group found
+                    if rg_destination:
                         # Get total partitions and brokers in cluster
                         total_brokers_cluster = len(self.brokers)
                         total_partitions_cluster = len(self.get_all_partitions())
-                        rg_from.move_partition(
+                        rg_source.move_partition(
                             partition,
-                            rg_to,
+                            rg_destination,
                             total_brokers_cluster,
                             total_partitions_cluster,
                         )
-                        if rg_to.replica_count(partition) == opt_replica_count:
-                            under_replicated_rgs.remove(rg_to)
-                            # spare_rgs.append(under_replicated_rgs[0])
-                            # del under_replicated_rgs[0]
-                    # Move remaining partitions into spare replication-groups
-                    '''
-                    elif spare_rgs:
-                        # TODO: why to select first rg?, random, or some criteria?
-                        rg.move_partition(partition, spare_rgs[0])
-                        if (spare_rgs[0].replica_count(partition) >
-                                opt_replica_count):
-                            del spare_rgs[0]
-                    '''
-                over_replicated_rgs.remove(rg_from)
+                        if rg_destination.replica_count(partition) == opt_replica_count:
+                            under_replicated_rgs.remove(rg_destination)
+                    else:
+                        # rg_source is cannot be adjusted further
+                        # partition is evenly-replicated for source replication-group
+                        break
+                if rg_source.replica_count(partition) > opt_replica_count + 1:
+                    print(
+                        '[WARNING] Could not re-balance over-replicated'
+                        'replication-group {rg_id} for partition '
+                        '{topic}:{p_id}'.format(
+                            rg_id=rg_source.id,
+                            partition=partition.topic.id,
+                            p_id=partition.partition_id,
+                        )
+                    )
+                over_replicated_rgs.remove(rg_source)
 
-    def replication_load(self, rg, partition):
-        """Depending upon replication-factor and #replication-groups
-        decide and return if given replication-group is under or over replicated
-        or can be used as spare replication group for rebalancing.
-        """
-        replication_factor = len(partition.replicas)
-        rg_count = len(self.rgs)
-        opt_replica_count = replication_factor // rg_count
-        result = None
-        replica_count = rg.replica_count(partition)
-        print('replica-count', replica_count, 'for partition', partition.name, 'over rg', rg.id)
-        # Case 2: Rp % G == 0: Replication-groups should have same replica-count
-        if replication_factor % rg_count == 0:
-            if replica_count < opt_replica_count:
-                result = 'under-replicated'
-            elif replica_count > opt_replica_count:
-                result = 'over-replicated'
-            else:
-                result = 'evenly-replicated'
-        # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
-        else:
-            if replica_count <= opt_replica_count:
-                result = 'under-replicated'
-            elif replica_count > opt_replica_count:
-                result = 'over-replicated'
-        return result
-
-    def segregate_replication_groups(self, rgs, partitions):
+    def segregate_replication_groups(self, partition):
         """Separate replication-groups into under-replicated, over-replicated
         and optimally replicated groups.
         """
-        under_replicated_rgs = defaultdict(list)
-        over_replicated_rgs = defaultdict(list)
-        spare_rgs = defaultdict(list)
-        print('segregating rgs for each partition')
-        for partition in partitions:
-            replication_factor = len(partition.replicas)
-            print('\n', partition.name, ': repl-factor', replication_factor)
-            opt_replica_count = replication_factor // len(rgs)
-            print('opt-count of replicas', opt_replica_count)
-            for rg in rgs:
-                if self.replication_load(rg, partition) == 'under-replicated':
-                    under_replicated_rgs[partition].append(rg)
-                    print('adding', rg.id, 'for under-replicated')
-                elif self.replication_load(rg, partition) == 'spare':
-                    spare_rgs[partition].append(rg)
-                    print('adding rg', rg.id, 'for spare-replicated')
-                elif self.replication_load(rg, partition) == 'over-replicated':
-                    print('adding rg', rg.id, 'for over-replicated')
-                    over_replicated_rgs[partition].append(rg)
-                elif self.replication_load(rg, partition) == 'evenly-replicated':
-                    # TODO: remove
-                    print(rg.id, 'optimally replicated, no need to take care')
+        under_replicated_rgs = []
+        over_replicated_rgs = []
+        replication_factor = len(partition.replicas)
+        rg_count = len(self.rgs)
+        opt_replica_count = replication_factor // len(self.rgs)
+        for rg in self.rgs.values():
+            replica_count = rg.replica_count(partition)
+            if replica_count < opt_replica_count:
+                under_replicated_rgs.append(rg)
+            elif replica_count > opt_replica_count:
+                over_replicated_rgs.append(rg)
+            else:
+                # replica_count == opt_replica_count
+                if replication_factor % rg_count == 0:
+                    # Case 2: Rp % G == 0: Replication-groups should have same replica-count
+                    # Nothing to be done since it's replication-group is already balanced
+                    pass
                 else:
-                    print('error, falls under no category')
-        print('unbalanced partitions over rgs')
-        return under_replicated_rgs, over_replicated_rgs, spare_rgs
+                    # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
+                    # Helps in adjusting one extra replica if required
+                    under_replicated_rgs.append(rg)
+        # TODO: should be sorted?
+        return under_replicated_rgs, over_replicated_rgs
 
     # End Balancing replication-groups.
 
@@ -396,8 +339,6 @@ class ClusterTopology(object):
             if replication_factor > rg_count:
                 allowed_duplicate_replicas = replication_factor - rg_count
                 net_imbalance -= allowed_duplicate_replicas
-        print('total replicas', counter)
-        print('total part', total_part)
         self.display_same_replica_count_rg(same_replica_per_rg, net_imbalance)
         return net_imbalance
 
