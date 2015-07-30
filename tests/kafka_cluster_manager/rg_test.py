@@ -22,16 +22,14 @@ class TestReplicationGroup(object):
         )
         rg.add_broker(sentinel.broker)
         expected = sentinel.broker
-        actual = rg.brokers
 
-        assert expected in actual
+        assert expected in rg.brokers
 
     def test_id(self):
         rg = ReplicationGroup('test_rg', None)
         expected = 'test_rg'
-        actual = rg.id
 
-        assert expected == actual
+        assert expected == rg.id
 
     def test_partitions(self):
         mock_brokers = [
@@ -50,9 +48,8 @@ class TestReplicationGroup(object):
             sentinel.partition2,
             sentinel.partition3,
         ]
-        actual = rg.partitions
 
-        assert expected == actual
+        assert expected == rg.partitions
 
     def test_brokers(self):
         rg = ReplicationGroup(
@@ -60,6 +57,5 @@ class TestReplicationGroup(object):
             [sentinel.broker1, sentinel.broker2],
         )
         expected = [sentinel.broker1, sentinel.broker2]
-        actual = rg.brokers
 
-        assert expected == actual
+        assert expected == rg.brokers
