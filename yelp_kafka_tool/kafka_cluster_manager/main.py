@@ -48,7 +48,12 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     display_initial_cluster_topology,
     display_current_cluster_topology,
 )
-
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
+    display_same_replica_count_rg,
+    display_same_topic_partition_count_broker,
+    display_partition_count_per_broker,
+    display_leader_count_per_broker,
+)
 
 DEFAULT_MAX_CHANGES = 5
 
@@ -73,10 +78,37 @@ def reassign_partitions(cluster_config, args):
         assert(ct.initial_assignment == ct.assignment)
 
         # Get imbalance stats
-        ct.partition_imbalance(display=True)
-        ct.leader_imbalance(display=True)
-        ct.replication_group_imbalance(display=True)
-        ct.topic_imbalance()
+        # Partition-count imbalance
+        stdev_imbalance, net_imbalance, partitions_per_broker = \
+            ct.partition_imbalance()
+        display_partition_count_per_broker(
+            partitions_per_broker,
+            stdev_imbalance,
+            net_imbalance,
+        )
+        # Leader-count imbalance
+        stdev_imbalance, net_imbalance, leaders_per_broker = \
+            ct.leader_imbalance()
+        display_leader_count_per_broker(
+            leaders_per_broker,
+            stdev_imbalance,
+            net_imbalance,
+        )
+
+        # Duplicate-replica-count imbalance
+        net_imbalance, duplicate_replica_count_per_rg = \
+            ct.replication_group_imbalance()
+        display_same_replica_count_rg(
+            duplicate_replica_count_per_rg,
+            net_imbalance,
+        )
+
+        # Same topic-partition count
+        net_imbalance, same_topic_partition_count_per_broker = ct.topic_imbalance()
+        display_same_topic_partition_count_broker(
+            same_topic_partition_count_per_broker,
+            net_imbalance,
+        )
 
 
 def parse_args():

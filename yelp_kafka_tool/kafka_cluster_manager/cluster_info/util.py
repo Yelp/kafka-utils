@@ -12,15 +12,14 @@ def display_current_cluster_topology(cluster_topology):
 
 
 def display_same_replica_count_rg(
-    cluster_topology,
-    same_replica_per_rg,
+    duplicate_replica_count_per_rg,
     imbalance,
 ):
     """Display same topic/partition count over brokers."""
     print("=" * 35)
     print("Replication-group Same-replica-count")
     print("=" * 35)
-    for rg_id, replica_count in same_replica_per_rg.iteritems():
+    for rg_id, replica_count in duplicate_replica_count_per_rg.iteritems():
         count = int(replica_count)
         print(
             "{b:^7s} {cnt:^10d}".format(
@@ -35,8 +34,8 @@ def display_same_replica_count_rg(
 
 
 def display_same_topic_partition_count_broker(
-    cluster_topology,
     same_topic_partition_count,
+    imbalance,
 ):
     """Display same topic/partition count over brokers."""
     print("=" * 55)
@@ -44,7 +43,6 @@ def display_same_topic_partition_count_broker(
     print("=" * 55)
     for broker, partition_count in \
             same_topic_partition_count.iteritems():
-
         print(
             "{b:^7d} {partition_count:^18d}".format(
                 b=broker.id,
@@ -53,16 +51,17 @@ def display_same_topic_partition_count_broker(
         )
     print("=" * 55)
     print('\n\nSame topic/partition count imbalance:\n')
-    print('Total same topic-partition imbalance count: {actual}\n'.format(
-        actual=sum(same_topic_partition_count.values()))
+    print(
+        'Total same topic-partition imbalance count: {imbalance}\n'.format(
+            imbalance=imbalance,
+        )
     )
 
 
 def display_partition_count_per_broker(
-    cluster_topology,
     partition_count,
     stdev_imbalance,
-    actual_imbalance,
+    imbalance,
 ):
     """Display partition count over brokers."""
     print("=" * 25)
@@ -79,21 +78,20 @@ def display_partition_count_per_broker(
 
     print('\n\nPartition-count imbalance:\n')
     print('Standard-deviation: {stdev}'.format(stdev=stdev_imbalance))
-    print('Actual-imbalance: Total extra partitions over brokers')
-    print('{actual}\n'.format(actual=actual_imbalance))
+    print('Net-imbalance: Total extra partitions over brokers')
+    print('{imbalance}\n'.format(imbalance=imbalance))
     print(
-        'Actual-imbalance-ratio: Total extra partitions over brokers '
+        'Net-imbalance-ratio: Total extra partitions over brokers '
         'per 100 partitions'
     )
-    ratio = actual_imbalance / float(sum(partition_count.values())) * 100
+    ratio = imbalance / float(sum(partition_count.values())) * 100
     print('{ratio}\n'.format(ratio=ratio))
 
 
 def display_leader_count_per_broker(
-    cluster_topology,
     leader_count,
     stdev_imbalance,
-    actual_imbalance,
+    imbalance,
 ):
     """Display partition and leader count for each broker."""
     print("=" * 33)
@@ -110,8 +108,8 @@ def display_leader_count_per_broker(
 
     print('\n\nLeader-count imbalance:\n')
     print('Standard-deviation: {stdev}'.format(stdev=stdev_imbalance))
-    print('Actual-imbalance: Total extra brokers as leaders')
-    print('{actual}\n'.format(actual=actual_imbalance))
-    print('Actual-imbalance-ratio: Total extra brokers as leaders per 100 partitions')
-    ratio = actual_imbalance / float(sum(leader_count.values())) * 100.0
+    print('Net-imbalance: Total extra brokers as leaders')
+    print('{imbalance}\n'.format(imbalance=imbalance))
+    print('Net-imbalance-ratio: Total extra brokers as leaders per 100 partitions')
+    ratio = imbalance / float(sum(leader_count.values())) * 100.0
     print('{ratio}\n'.format(ratio=ratio))
