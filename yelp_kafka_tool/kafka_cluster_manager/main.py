@@ -69,6 +69,7 @@ def reassign_partitions(cluster_config, args):
         print('Displaying cluster topology after reassignment')
         # ct.display_current_cluster_topology()
         # assert(ct.initial_assignment == ct.assignment)
+    assert(False)
 
 
 def parse_args():

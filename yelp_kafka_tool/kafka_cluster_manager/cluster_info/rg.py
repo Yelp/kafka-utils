@@ -57,17 +57,14 @@ class ReplicationGroup(object):
         # If no over-loaded_brokers found, pick the broker with maximum
         if not over_loaded_brokers:
             # Pick-broker with maximum partition, if no over-loaded-brokers found
-            max_partition_count = 0
             valid_brokers = [
                 broker
                 for broker in self.brokers
                 if victim_partition.name in [p.name for p in broker.partitions]
             ]
-            # TODO: list-comprehension
-            for broker in valid_brokers:
-                if len(broker.partitions) > max_partition_count:
-                    over_loaded_brokers = [broker]
-                    max_partition_count = len(broker.partitions)
+            over_loaded_brokers = [
+                max(valid_brokers, key=lambda b:len(b.partitions))
+            ]
 
         under_loaded_brokers = rg_destination.get_under_loaded_brokers(
             total_brokers_cluster,
@@ -75,19 +72,24 @@ class ReplicationGroup(object):
         )
         # Pick broker with minimum partitions if no under-loaded brokers found
         if not under_loaded_brokers:
-            min_partition_count = self._brokers[0]
-            # TODO: list-comprehension
-            preferred_under_loaded_broker = None
-            for broker in rg_destination.brokers:
-                if len(broker.partitions) < min_partition_count:
-                    min_loaded_broker = [broker]
-                    if victim_partition.name not in [p.name for p in broker.partitions]:
-                        preferred_min_loaded_broker = [broker]
-                    min_partition_count = len(broker.partitions)
-            if preferred_under_loaded_broker:
-                under_loaded_brokers = preferred_min_loaded_broker
+            sorted_brokers = sorted(
+                rg_destination.brokers, key=lambda b: len(b.partitions)
+            )
+            # Try getting destination broker not containing the partition of
+            # same topic
+            preferred_broker = None
+            for broker in sorted_brokers:
+                topic_ids = [p.topic.id for p in broker.partitions]
+                if victim_partition.topic.id not in topic_ids:
+                    preferred_broker = broker
+                    print('found preferred-broker')
+                    break
+            if preferred_broker:
+                under_loaded_brokers = [preferred_broker]
+                if preferred_broker == sorted_brokers[0]:
+                    print('hurry, preferred broker concept worked!')
             else:
-                under_loaded_brokers = min_loaded_broker
+                under_loaded_brokers = [sorted_brokers[0]]
 
         # Get source and destination brokers for partition
         broker_source, broker_destination = self.broker_selection(
