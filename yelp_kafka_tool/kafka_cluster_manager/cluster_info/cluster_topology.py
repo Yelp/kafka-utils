@@ -21,6 +21,9 @@ from .broker import Broker
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
+from yelp_kafka_tool.kafka_cluster_manager.reassign.rg_rebalance import (
+    rebalance_replicas,
+)
 
 
 class ClusterTopology(object):
@@ -139,114 +142,7 @@ class ClusterTopology(object):
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""
-        self.rebalance_partition_replicas_over_replication_groups()
-
-    def rebalance_partition_replicas_over_replication_groups(self):
-        """Rebalance given segregated replication-groups."""
-        for partition in self.partitions.values():
-            # Fetch potentially under-replicated and over-replicated
-            # replication-groups for each partition
-            under_replicated_rgs, over_replicated_rgs = \
-                self.segregate_replication_groups(partition)
-            replication_factor = len(partition.replicas)
-            rg_count = len(self.rgs)
-            opt_replica_count = replication_factor // rg_count
-
-            # Move partition-replicas from over-replicated to under-replicated
-            # replication-groups
-            for rg_source in over_replicated_rgs:
-                # Keep reducing partition-replicas over source over-replicated
-                # replication-group until either it is evenly-replicated
-                # or no under-replicated replication-group is found
-                while rg_source.replica_count(partition) > opt_replica_count:
-                    # Move partitions in under-replicated replication-groups
-                    # until the group is empty
-                    rg_destination = None
-                    # Locate under-replicated replication-group with lesser
-                    # replica count than source replication-group
-                    for rg_under in under_replicated_rgs:
-                        if rg_under.replica_count(partition) < \
-                                rg_source.replica_count(partition) - 1:
-                            rg_destination = rg_under
-                            break
-                    if rg_destination:
-                        total_brokers_cluster = len(self.brokers)
-                        total_partitions_cluster = len(self.get_all_partitions())
-                        # Actual movement of partition
-                        rg_source.move_partition(
-                            partition,
-                            rg_destination,
-                            total_brokers_cluster,
-                            total_partitions_cluster,
-                        )
-                        if rg_destination.replica_count(partition) == opt_replica_count:
-                            under_replicated_rgs.remove(rg_destination)
-                    else:
-                        # Destination under-replicated replication-group not found
-                        # Partition is evenly-replicated for source replication-group
-                        # Or under-replicated replication-groups is empty
-                        break
-                if rg_source.replica_count(partition) > opt_replica_count + 1:
-                    print(
-                        '[WARNING] Could not re-balance over-replicated'
-                        'replication-group {rg_id} for partition '
-                        '{topic}:{p_id}'.format(
-                            rg_id=rg_source.id,
-                            partition=partition.topic.id,
-                            p_id=partition.partition_id,
-                        )
-                    )
-                over_replicated_rgs.remove(rg_source)
-
-            # List remaining under-replicated replication-groups left, if any.
-            if not under_replicated_rgs:
-                for rg in under_replicated_rgs:
-                    if rg.replica_count(partition) < opt_replica_count:
-                        print(
-                            '[WARNING] Could not re-balance under-replicated'
-                            'replication-group {rg_id} for partition '
-                            '{topic}:{p_id}'.format(
-                                rg_id=rg.id,
-                                partition=partition.topic.id,
-                                p_id=partition.partition_id,
-                            )
-                        )
-
-    def segregate_replication_groups(self, partition):
-        """Separate replication-groups into under-replicated, over-replicated
-        and optimally replicated groups.
-        """
-        under_replicated_rgs = []
-        over_replicated_rgs = []
-        replication_factor = len(partition.replicas)
-        rg_count = len(self.rgs)
-        opt_replica_count = replication_factor // len(self.rgs)
-        for rg in self.rgs.values():
-            replica_count = rg.replica_count(partition)
-            if replica_count < opt_replica_count:
-                under_replicated_rgs.append(rg)
-            elif replica_count > opt_replica_count:
-                over_replicated_rgs.append(rg)
-            else:
-                # replica_count == opt_replica_count
-                if replication_factor % rg_count == 0:
-                    # Case 2: Rp % G == 0: Replication-groups should have same replica-count
-                    # Nothing to be done since it's replication-group is already balanced
-                    pass
-                else:
-                    # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
-                    # Helps in adjusting one extra replica if required
-                    under_replicated_rgs.append(rg)
-        return under_replicated_rgs, over_replicated_rgs
-
-    # End Balancing replication-groups.
-
-    def get_all_partitions(self):
-        """Return list of partitions across all brokers."""
-        partitions = []
-        for rg in self.rgs.itervalues():
-            partitions += rg.partitions
-        return partitions
+        rebalance_replicas(self.partitions, self.brokers, self.rgs)
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
