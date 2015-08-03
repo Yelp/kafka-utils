@@ -136,7 +136,6 @@ class ClusterTopology(object):
         """Display or execute the final-state based on rebalancing option."""
         self.rebalance_replication_groups()
 
-    # Balancing api's
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""

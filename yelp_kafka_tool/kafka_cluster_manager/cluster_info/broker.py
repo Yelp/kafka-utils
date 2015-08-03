@@ -62,7 +62,13 @@ class Broker(object):
 
     def add_partition(self, partition):
         """Add partition to partition list."""
-        self._partitions.append(partition)
+        if partition.name in [p.name for p in self._partitions]:
+            print(
+                '[WARNING] Partition {id} already present in broker {broker}'
+                .format(id=partition.name, broker=self._id)
+            )
+        else:
+            self._partitions.append(partition)
 
     def partition_count(self):
         """Total partitions in broker."""
