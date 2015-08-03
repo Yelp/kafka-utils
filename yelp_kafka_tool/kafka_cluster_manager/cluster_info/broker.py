@@ -18,14 +18,12 @@ class Broker(object):
         try:
             result = gethostbyaddr(str(self._id))[0]
         except herror:
-            '''
             print(
                 '[WARNING] Unknown host for broker {broker}'.format(
                     broker=self._id
                 )
             )
             print('Returning as localhost.')
-            '''
             result = gethostbyaddr('localhost')[0]
         return result
 
@@ -43,7 +41,7 @@ class Broker(object):
         return set([partition.topic for partition in self._partitions])
 
     def remove_partition(self, partition):
-        """Remove partition from partition list."""
+        """Remove partition from partition list with same partition-name."""
         # Get valid partition
         remove_partition = None
         if partition in self.partitions:
@@ -59,12 +57,9 @@ class Broker(object):
                     "[ERROR] partition {partition} not found in broker {broker}"
                     .format(partition=partition.name, broker=self.id)
                 )
-                print('all partitions')
-                p_ids = [p.name for p in self.partitions]
-                print(p_ids)
                 sys.exit(1)
         # Remove partition from current list of partitions
-        self._partitions.remove(partition)
+        self._partitions.remove(remove_partition)
 
     def add_partition(self, partition):
         """Add partition to partition list."""

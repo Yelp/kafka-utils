@@ -22,6 +22,7 @@ class ReplicationGroup(object):
         return self._brokers
 
     def add_broker(self, broker):
+        """Add broker to current list."""
         self._brokers.append(broker)
 
     @property
@@ -73,7 +74,7 @@ class ReplicationGroup(object):
                 rg_destination.brokers, key=lambda b: len(b.partitions)
             )
 
-        # Select optimal source and destination brokers for partition
+        # Select best-fit source and destination brokers for partition
         assert(over_loaded_brokers and under_loaded_brokers)
         broker_source, broker_destination = self.broker_selection(
             over_loaded_brokers,
@@ -97,14 +98,12 @@ class ReplicationGroup(object):
         """Get list of overloaded brokers in sorted order containing
         the more partitions than optimal count.
         """
-        # Get total partitions across cluster (including replicas)
         opt_partition_count = total_partitions // total_brokers
         over_loaded_brokers = [
             broker for broker in self._brokers
             if broker.partition_count() > opt_partition_count + 1
         ]
 
-        # Get over loaded brokers containing the given partition
         if partition:
             result = [
                 broker for broker in over_loaded_brokers
@@ -113,7 +112,7 @@ class ReplicationGroup(object):
         else:
             result = over_loaded_brokers
         return sorted(
-            over_loaded_brokers,
+            result,
             key=lambda b: len(b.partitions),
             reverse=True,
         )
@@ -125,7 +124,7 @@ class ReplicationGroup(object):
         partition=None,
     ):
         """Get list of brokers with lesser partitions than optimal amount for
-        each broker containing the given partition
+        each broker containing the given partition.
         """
         opt_partition_count = total_partitions_cluster // total_brokers_cluster
         under_loaded_brokers = [
@@ -134,7 +133,7 @@ class ReplicationGroup(object):
         ]
         if partition:
             result = [
-                broker for broker in over_loaded_brokers
+                broker for broker in under_loaded_brokers
                 if partition.name in [p.name for p in broker.partitions]
             ]
         else:
@@ -147,14 +146,14 @@ class ReplicationGroup(object):
             under_loaded_brokers,
             victim_partition,
     ):
-        """Select valid source broker with partition and destination broker
-        from under loaded brokers not having partition.
+        """Select best-fit source and destination brokers based on partition
+        count and presense of partition over the broker.
 
-        Key criteria:
-        Select source broker containing the victim-partition with maximum
-        partitions.
-        Select destination broker NOT containing the victim-partition with
-        minimum partitions. If no such broker found, return first broker.
+        Best-fit Selection Criteria:
+        Source broker: Select broker containing the victim-partition with
+        maximum partitions.
+        Destination broker: NOT containing the victim-partition with minimum
+        partitions. If no such broker found, return first broker.
 
         This helps in ensuring:-
         * Topic-partitions are distributed across brokers.
@@ -162,15 +161,13 @@ class ReplicationGroup(object):
         """
         broker_source = None
         broker_destination = None
-        # Decision factor-2: Balancing #partition-count over brokers
-        # Get broker having maximum partitions and given partition
         for broker in over_loaded_brokers:
             partition_ids = [p.name for p in broker.partitions]
             if victim_partition.name in partition_ids:
                 broker_source = broker
+                break
 
-        # Decision-factor 2: Pick broker with least #partition-count
-        # Decision-factor 3: Pick broker not having topic in that broker
+        # Pick broker not having topic in that broker
         for broker in under_loaded_brokers:
             topic_ids = [partition.topic.id for partition in broker.partitions]
             if victim_partition.topic.id not in topic_ids:
