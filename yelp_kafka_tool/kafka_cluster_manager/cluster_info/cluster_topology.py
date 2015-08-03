@@ -75,12 +75,6 @@ class ClusterTopology(object):
             # Creating replica objects
             replicas = [self.brokers[broker_id] for broker_id in replica_ids]
 
-            # TODO: remove
-            if partition_name == ('T0', 1):
-                print('Ignoring 3rd replica, on broker 0 for partition (T0, 1)')
-                broker = self.brokers[0]
-                replicas.remove(broker)
-
             # Get topic
             topic_id = partition_name[0]
             topic = self.topics[topic_id]
@@ -122,11 +116,6 @@ class ClusterTopology(object):
                     'broker {broker}'.format(broker=broker.id)
                 )
                 rg_name = 'localhost'
-                # TODO: remove, temporary for localhost
-                if int(broker.id) % 2 == 0:
-                    rg_name = 'rg2'
-                else:
-                    rg_name = 'rg1'
             else:
                 print(
                     '[ERROR] Could not parse replication group for {broker} '
@@ -146,11 +135,9 @@ class ClusterTopology(object):
     ):
         """Display or execute the final-state based on rebalancing option."""
         self.rebalance_replication_groups()
-        pass
 
     # Balancing api's
     # Balancing replication-groups: S0 --> S1
-    # TODO: change do for each partition in here itself
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""
         self.rebalance_partition_replicas_over_replication_groups()
@@ -300,62 +287,3 @@ class ClusterTopology(object):
 
     def display_current_cluster_topology(self):
         print(self.get_assignment_json())
-
-
-# TODO: remove code before review
-    def replication_group_imbalance(self):
-        """Calculate same replica count over each replication-group.
-        Can only be calculated on current cluster-state.
-        """
-        same_replica_per_rg = dict((rg_id, 0) for rg_id in self.rgs.keys())
-
-        # Get broker-id to rg-id map
-        broker_rg_id = {}
-        for rg in self.rgs.itervalues():
-            for broker in rg.brokers:
-                broker_rg_id[broker.id] = rg.id
-
-        # Evaluate duplicate replicas count in each replication-group
-        counter = 0
-        total_part = 0
-        for partition in self.partitions.itervalues():
-            rg_ids = []
-            total_part += 1
-            for broker in partition.replicas:
-                counter += 1
-                rg_id = broker_rg_id[broker.id]
-                # Duplicate replica found
-                if rg_id in rg_ids:
-                    same_replica_per_rg[rg_id] += 1
-                else:
-                    rg_ids.append(rg_id)
-        net_imbalance = sum(same_replica_per_rg.values())
-        # However partitions with Rp > G will have to have same replicas in some
-        # az so we need to ignore those
-        # Calculate total replicas greater than #G
-        rg_count = len(same_replica_per_rg)
-        for partition in self.partitions.itervalues():
-            replication_factor = len(partition.replicas)
-            if replication_factor > rg_count:
-                allowed_duplicate_replicas = replication_factor - rg_count
-                net_imbalance -= allowed_duplicate_replicas
-        self.display_same_replica_count_rg(same_replica_per_rg, net_imbalance)
-        return net_imbalance
-
-    def display_same_replica_count_rg(self, same_replica_per_rg, net_imbalance):
-        """Display same topic/partition count over brokers."""
-        print("=" * 35)
-        print("Replication-group Same-replica-count")
-        print("=" * 35)
-        for rg_id, replica_count in same_replica_per_rg.iteritems():
-            count = int(replica_count)
-            print(
-                "{b:^7s} {cnt:^10d}".format(
-                    b=rg_id,
-                    cnt=int(count),
-                )
-            )
-        print("=" * 35)
-        print('\nTotal replication-group imbalance {imbalance}\n\n'.format(
-            imbalance=net_imbalance,
-        ))
