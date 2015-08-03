@@ -18,12 +18,21 @@ class ReplicationGroup(object):
 
     @property
     def brokers(self):
-        """Return list of brokers ."""
+        """Return list of brokers."""
         return self._brokers
 
     def add_broker(self, broker):
-        """Add broker to current list."""
-        self._brokers.append(broker)
+        """Add broker to current broker-list."""
+        if broker not in self.brokers:
+            self._brokers.append(broker)
+        else:
+            print(
+                '[WARNING] Broker {broker_id} already present in '
+                'replication-group {rg_id}'.format(
+                    broker_id=broker.id,
+                    rg_id=self.id,
+                )
+            )
 
     @property
     def partitions(self):
@@ -40,7 +49,7 @@ class ReplicationGroup(object):
         total_brokers_cluster,
         total_partitions_cluster,
     ):
-        """Move partition from current replication-group to destination
+        """Move partition(victim) from current replication-group to destination
         replication-group.
 
         Step 1: Get overloaded and underloaded brokers
@@ -50,13 +59,12 @@ class ReplicationGroup(object):
         Decide source broker and destination broker to move the partition.
         """
         # Get overloaded and underloaded brokers
-        # This ensures partiton-count balancing implicitly
         over_loaded_brokers = self.get_over_loaded_brokers(
             total_brokers_cluster,
             total_partitions_cluster,
             victim_partition,
         )
-        # If no over-loaded_brokers found, pick broker with maximum partitions
+        # If no over-loaded_brokers found, sort brokers with partition-count
         if not over_loaded_brokers:
             over_loaded_brokers = sorted(
                 self.brokers,
@@ -68,13 +76,15 @@ class ReplicationGroup(object):
             total_brokers_cluster,
             total_partitions_cluster,
         )
-        # Pick broker with minimum partitions if no under-loaded brokers found
+        # If no under-loaded brokers found, sort brokers with partition-count
         if not under_loaded_brokers:
             under_loaded_brokers = sorted(
                 rg_destination.brokers, key=lambda b: len(b.partitions)
             )
 
         # Select best-fit source and destination brokers for partition
+        # Best-fit is based on partition-count and presence/absence of
+        # Same topic-partition over brokers
         assert(over_loaded_brokers and under_loaded_brokers)
         broker_source, broker_destination = self.broker_selection(
             over_loaded_brokers,
@@ -86,7 +96,7 @@ class ReplicationGroup(object):
         assert(broker_destination in rg_destination.brokers)
         assert(rg_destination.id != self.id)
 
-        # Moving partition
+        # Actual-movement of victim-partition
         broker_source.move_partition(victim_partition, broker_destination)
 
     def get_over_loaded_brokers(
@@ -147,7 +157,7 @@ class ReplicationGroup(object):
             victim_partition,
     ):
         """Select best-fit source and destination brokers based on partition
-        count and presense of partition over the broker.
+        count and presence of partition over the broker.
 
         Best-fit Selection Criteria:
         Source broker: Select broker containing the victim-partition with

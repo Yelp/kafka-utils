@@ -58,7 +58,6 @@ class Broker(object):
                     .format(partition=partition.name, broker=self.id)
                 )
                 sys.exit(1)
-        # Remove partition from current list of partitions
         self._partitions.remove(remove_partition)
 
     def add_partition(self, partition):

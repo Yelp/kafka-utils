@@ -243,10 +243,7 @@ class ClusterTopology(object):
     # End Balancing replication-groups.
 
     def get_all_partitions(self):
-        """Return list of partitions across all brokers.
-
-        Contains partition-replicas as well.
-        """
+        """Return list of partitions across all brokers."""
         partitions = []
         for rg in self.rgs.itervalues():
             partitions += rg.partitions

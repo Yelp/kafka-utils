@@ -56,7 +56,6 @@ def reassign_partitions(cluster_config, args):
         # Display cluster topology as fetched from zookeeper
         print('Displaying current cluster topology')
         ct.display_initial_cluster_topology()
-        ct.replication_group_imbalance()
 
         # Display topology as built from objects
         ct.reassign_partitions(
@@ -64,7 +63,6 @@ def reassign_partitions(cluster_config, args):
             args.max_changes,
             args.apply
         )
-        ct.replication_group_imbalance()
 
         print('Displaying cluster topology after reassignment')
         ct.display_current_cluster_topology()
