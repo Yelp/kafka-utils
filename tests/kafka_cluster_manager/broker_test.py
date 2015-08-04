@@ -1,4 +1,4 @@
-from mock import Mock, sentinel, MagicMock
+from mock import Mock, sentinel
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
