@@ -41,10 +41,11 @@ class ReplicationGroup(object):
     @property
     def partitions(self):
         """Evaluate and return set of all partitions in replication-group."""
-        partitions = []
-        for broker in self._brokers:
-            partitions += broker.partitions
-        return partitions
+        return [
+            partition
+            for broker in self._brokers
+            for partition in broker.partitions
+        ]
 
     def move_partition(
         self,
