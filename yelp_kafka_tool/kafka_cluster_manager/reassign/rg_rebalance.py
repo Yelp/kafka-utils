@@ -42,11 +42,12 @@ def rebalance_replicas(partitions, brokers, rgs):
                         partition,
                         opt_partition_count,
                     )
-                    if replica_count(partition, rg_destination) == opt_replica_count:
+                    if replica_count(partition, rg_destination) == \
+                            opt_replica_count:
                         under_replicated_rgs.remove(rg_destination)
                 else:
                     # Destination under-replicated replication-group not found
-                    # Partition is evenly-replicated for source replication-group
+                    # Partition evenly-replicated for source replication-group
                     # Or under-replicated replication-groups is empty
                     break
             if source_replica_cnt > opt_replica_count + 1:
@@ -109,10 +110,7 @@ def segregate_replication_groups(partition, rgs):
 
 def get_all_partitions(rgs):
     """Return list of partitions across all brokers."""
-    partitions = []
-    for rg in rgs.itervalues():
-        partitions += rg.partitions
-    return partitions
+    return [partition for rg in rgs.itervalues() for partition in rg.partitions]
 
 
 def move_partition(
