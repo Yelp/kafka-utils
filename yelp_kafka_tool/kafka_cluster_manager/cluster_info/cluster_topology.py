@@ -1,6 +1,6 @@
 """Contains information for partition layout on given cluster.
 
-Also contains api's dealing with dealing with changes in partition layout.
+Also contains api's dealing with changes in partition layout.
 The steps (1-6) and states S0 -- S2 and algorithm for re-assigning-partitions
 is per the design document at:-
 

@@ -1,3 +1,6 @@
+from yelp_kafka_tool.kafka_cluster_manager.reassign.broker_rebalance import (
+    segregate_brokers,
+)
 
 
 def rebalance_replicas(partitions, brokers, rgs):
@@ -30,14 +33,14 @@ def rebalance_replicas(partitions, brokers, rgs):
                         rg_destination = rg_under
                         break
                 if rg_destination:
-                    total_brokers_cluster = len(brokers)
-                    total_partitions_cluster = len(get_all_partitions(rgs))
+                    opt_partition_count = len(get_all_partitions(rgs)) // \
+                        len(brokers)
                     # Actual movement of partition
-                    rg_source.move_partition(
-                        partition,
+                    move_partition(
+                        rg_source,
                         rg_destination,
-                        total_brokers_cluster,
-                        total_partitions_cluster,
+                        partition,
+                        opt_partition_count,
                     )
                     if replica_count(partition, rg_destination) == opt_replica_count:
                         under_replicated_rgs.remove(rg_destination)
@@ -116,8 +119,7 @@ def move_partition(
     rg_source,
     rg_destination,
     victim_partition,
-    total_brokers_cluster,
-    total_partitions_cluster,
+    opt_partition_count,
 ):
     """Move partition(victim) from current replication-group to destination
     replication-group.
@@ -129,12 +131,10 @@ def move_partition(
     Decide source broker and destination broker to move the partition.
     """
     # Get overloaded brokers in source replication-group
-    over_loaded_brokers = get_over_loaded_brokers(
+    over_loaded_brokers = segregate_brokers(
         rg_source,
-        total_brokers_cluster,
-        total_partitions_cluster,
-        victim_partition,
-    )
+        opt_partition_count,
+    )[0]
     if not over_loaded_brokers:
         over_loaded_brokers = sorted(
             rg_source.brokers,
@@ -142,12 +142,11 @@ def move_partition(
             reverse=True,
         )
 
-    # Get underloaded brokers from destination replication-group
-    under_loaded_brokers = get_under_loaded_brokers(
+    # Get underloaded brokers in destination replication-group
+    under_loaded_brokers = segregate_brokers(
         rg_destination,
-        total_brokers_cluster,
-        total_partitions_cluster,
-    )
+        opt_partition_count,
+    )[1]
     if not under_loaded_brokers:
         under_loaded_brokers = sorted(
             rg_destination.brokers, key=lambda b: len(b.partitions)
@@ -169,59 +168,6 @@ def move_partition(
 
     # Actual-movement of victim-partition
     broker_source.move_partition(victim_partition, broker_destination)
-
-
-def get_over_loaded_brokers(
-    replication_group,
-    total_brokers,
-    total_partitions,
-    partition=None,
-):
-    """Get list of overloaded brokers in sorted order containing
-    the more partitions than optimal count.
-    """
-    opt_partition_count = total_partitions // total_brokers
-    over_loaded_brokers = [
-        broker for broker in replication_group.brokers
-        if broker.partition_count() > opt_partition_count + 1
-    ]
-
-    if partition:
-        result = [
-            broker for broker in over_loaded_brokers
-            if partition.name in [p.name for p in broker.partitions]
-        ]
-    else:
-        result = over_loaded_brokers
-    return sorted(
-        result,
-        key=lambda b: len(b.partitions),
-        reverse=True,
-    )
-
-
-def get_under_loaded_brokers(
-    replication_group,
-    total_brokers_cluster,
-    total_partitions_cluster,
-    partition=None,
-):
-    """Get list of brokers with lesser partitions than optimal amount for
-    each broker containing the given partition.
-    """
-    opt_partition_count = total_partitions_cluster // total_brokers_cluster
-    under_loaded_brokers = [
-        broker for broker in replication_group.brokers
-        if broker.partition_count() < opt_partition_count
-    ]
-    if partition:
-        result = [
-            broker for broker in under_loaded_brokers
-            if partition.name in [p.name for p in broker.partitions]
-        ]
-    else:
-        result = under_loaded_brokers
-    return sorted(result, key=lambda b: len(b.partitions))
 
 
 def broker_selection(
@@ -251,6 +197,7 @@ def broker_selection(
             break
 
     # Pick broker not having topic in that broker
+    preferred_destination = None
     for broker in under_loaded_brokers:
         topic_ids = [partition.topic.id for partition in broker.partitions]
         if victim_partition.topic.id not in topic_ids:
