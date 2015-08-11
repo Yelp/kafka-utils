@@ -142,7 +142,11 @@ class ClusterTopology(object):
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
         """Rebalance partitions over placement groups (availability-zones)."""
-        rebalance_replicas(self.partitions, self.brokers, self.rgs)
+        rebalance_replicas(
+            self.partitions.values(),
+            self.brokers.values(),
+            self.rgs.values(),
+        )
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
