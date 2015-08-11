@@ -1,4 +1,4 @@
-from collections import Counter, OrderedDict
+from collections import Counter
 
 
 def get_partitions_per_broker(brokers):
