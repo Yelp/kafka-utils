@@ -41,7 +41,11 @@ class Broker(object):
         return set([partition.topic for partition in self._partitions])
 
     def remove_partition(self, partition):
-        """Remove partition from partition list with same partition-name."""
+        """Remove partition from partition list with same partition-name.
+
+        NOTE: It will remove partition with name as in given partition
+        but may not be the same partition.
+        """
         # Get valid partition
         remove_partition = None
         if partition in self.partitions:

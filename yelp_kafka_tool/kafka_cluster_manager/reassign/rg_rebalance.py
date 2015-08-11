@@ -11,7 +11,7 @@ def get_target_replication_groups(
     over_replicated_rgs,
     partition,
 ):
-    """Decide source replication-grup and destination replication-group
+    """Decide source replication-group and destination replication-group
     based on partition-count.
     """
     # TODO: decide based on partition-count
@@ -229,6 +229,7 @@ def broker_selection(
     preferred_destination = None
     for broker in under_loaded_brokers:
         topic_ids = [partition.topic.id for partition in broker.partitions]
+        # TODO: change this to check for count of topic-ids and not presence
         if victim_partition.topic.id not in topic_ids:
             preferred_destination = broker
             break
