@@ -11,7 +11,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import sys
+import logging
 
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
@@ -36,6 +36,8 @@ class ClusterTopology(object):
     def __init__(self, zk):
         self._name = zk.cluster_config.name
         self._zk = zk
+        logging.basicConfig()
+        self.log = logging.getLogger(self.__class__.__name__)
         # Getting Initial assignment
         broker_ids = [
             int(broker) for broker in self._zk.get_brokers().iterkeys()
@@ -113,23 +115,20 @@ class ClusterTopology(object):
         try:
             hostname = broker.get_hostname(self._zk)
             if 'localhost' in hostname:
-                print(
-                    '[WARNING] Setting replication-group as localhost for '
-                    'broker {broker}'.format(broker=broker.id)
+                self.log.warning(
+                    "Setting replication-group as localhost for broker %s",
+                    broker.id,
                 )
                 rg_name = 'localhost'
             else:
                 habitat = hostname.rsplit('-', 1)[1]
                 rg_name = habitat.split('.', 1)[0]
         except IndexError:
-            print(
-                '[ERROR] Could not parse replication group for {broker} '
-                'with hostname:{host}'.format(
-                    broker=broker.id,
-                    host=hostname,
-                )
+            self.log.error(
+                "Could not parse replication group for %s with hostname:%s",
+                broker.id,
+                hostname,
             )
-            sys.exit(1)
         return rg_name
 
     def reassign_partitions(
@@ -184,18 +183,27 @@ class ClusterTopology(object):
         """Report partition count imbalance over brokers for given assignment
         or assignment in current state.
         """
-        return get_partition_imbalance_stats(self.brokers)
+        return get_partition_imbalance_stats(self.brokers.values())
 
     def leader_imbalance(self):
         """Report leader imbalance count over each broker."""
-        return get_leader_imbalance_stats(self.brokers, self.partitions)
+        return get_leader_imbalance_stats(
+            self.brokers.values(),
+            self.partitions.values(),
+        )
 
     def topic_imbalance(self):
         """Return count of topics and partitions on each broker having multiple
         partitions of same topic.
         """
-        return get_topic_imbalance_stats(self.rgs, self.brokers, self.topics)
+        return get_topic_imbalance_stats(
+            self.brokers.values(),
+            self.topics.values(),
+        )
 
     def replication_group_imbalance(self):
         """Calculate same replica count over each replication-group."""
-        return get_replication_group_imbalance_stats(self.rgs, self.partitions)
+        return get_replication_group_imbalance_stats(
+            self.rgs.values(),
+            self.partitions.values(),
+        )

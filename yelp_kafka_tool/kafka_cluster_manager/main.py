@@ -44,7 +44,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.display import (
     display_cluster_topology,
     display_same_replica_count_rg,
     display_same_topic_partition_count_broker,

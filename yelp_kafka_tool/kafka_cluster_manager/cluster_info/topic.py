@@ -3,6 +3,7 @@
 Useful as part of reassignment project when deciding upon moving
 partitions of same topic over different brokers.
 """
+import logging
 
 
 class Topic(object):
@@ -21,6 +22,8 @@ class Topic(object):
         self._replication_factor = replication_factor
         self._partitions = partitions or []
         self.weight = weight
+        logging.basicConfig()
+        self.log = logging.getLogger(self.__class__.__name__)
 
     @property
     def id(self):
@@ -40,8 +43,8 @@ class Topic(object):
             self._replication_factor = replication_factor_partition
         else:
             if (self._replication_factor != replication_factor_partition):
-                print(
-                    '[WARNING] Replication factor for topic {topic} is not '
+                self.log.warning(
+                    'Replication factor for topic {topic} is not '
                     'consistent for its partitions. Replication-factor of topic'
                     ' is {repl_factor1} , Replication-factor of partition with '
                     'id:{partition} is {repl_factor2}'.format(

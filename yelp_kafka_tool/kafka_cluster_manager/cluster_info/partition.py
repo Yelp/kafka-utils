@@ -35,5 +35,6 @@ class Partition(object):
         """Leader broker for the partition."""
         return self._replicas[0]
 
+    @property
     def replication_factor(self):
         return len(self._replicas)

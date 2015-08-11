@@ -1,3 +1,5 @@
+import logging
+
 from collections import Counter
 
 
@@ -9,6 +11,8 @@ class Broker(object):
     def __init__(self, id, partitions=None):
         self._id = id
         self._partitions = partitions or []
+        logging.basicConfig()
+        self.log = logging.getLogger(self.__class__.__name__)
 
     def get_hostname(self, zk):
         """Get hostname of broker from zookeeper."""
@@ -16,8 +20,8 @@ class Broker(object):
             hostname = zk.get_brokers(self._id)
             result = hostname[self._id]['host']
         except KeyError:
-            print(
-                '[WARNING] Unknown host for broker {broker}. Returning as'
+            self.log.warning(
+                'Unknown host for broker {broker}. Returning as'
                 ' localhost'.format(broker=self._id)
             )
             result = 'localhost'
@@ -57,7 +61,3 @@ class Broker(object):
     def partition_count(self):
         """Total partitions in broker."""
         return len(self._partitions)
-
-    def get_per_topic_partitions_count(self):
-        """Return partition-count of each topic."""
-        return Counter((partition.topic for partition in self._partitions))
