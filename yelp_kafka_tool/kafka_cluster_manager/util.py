@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-
 import logging
 import json
 import os
@@ -20,7 +19,6 @@ class KafkaInterface(object):
 
     def __init__(self, kafka_script_path=KAFKA_SCRIPT_PATH):
         self._kafka_script_path = KAFKA_SCRIPT_PATH
-        logging.basicConfig()
         self.log = logging.getLogger(self.__class__.__name__)
 
     def run_repartition_cmd(

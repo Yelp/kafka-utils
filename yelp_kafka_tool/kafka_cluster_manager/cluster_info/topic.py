@@ -22,7 +22,6 @@ class Topic(object):
         self._replication_factor = replication_factor
         self._partitions = partitions or []
         self.weight = weight
-        logging.basicConfig()
         self.log = logging.getLogger(self.__class__.__name__)
 
     @property

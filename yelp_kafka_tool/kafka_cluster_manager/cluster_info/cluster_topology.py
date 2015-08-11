@@ -35,7 +35,6 @@ class ClusterTopology(object):
     def __init__(self, zk):
         self._name = zk.cluster_config.name
         self._zk = zk
-        logging.basicConfig()
         self.log = logging.getLogger(self.__class__.__name__)
         # Getting Initial assignment
         broker_ids = [
@@ -123,11 +122,10 @@ class ClusterTopology(object):
                 habitat = hostname.rsplit('-', 1)[1]
                 rg_name = habitat.split('.', 1)[0]
         except IndexError:
-            self.log.error(
-                "Could not parse replication group for %s with hostname:%s",
-                broker.id,
-                hostname,
-            )
+            errorMsg = "Could not parse replication group for broker {id} with"\
+                " hostname:{hostname}".format(id=broker.id, hostname=hostname)
+            self.log.exception(errorMsg)
+            raise ValueError(errorMsg)
         return rg_name
 
     def reassign_partitions(

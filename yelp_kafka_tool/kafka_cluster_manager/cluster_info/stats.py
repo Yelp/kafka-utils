@@ -52,15 +52,21 @@ def get_extra_element_count(
 ):
     """Evaluate and return extra same element count based on given values.
 
+    @key-term:
+    group:  In here group can be any base where elements are place
+            i.e. replcation-group while placing replicas (elements)
+            or  brokers while placing partitions (elements).
+    element/ele:  Generic term for units which are optimally placed over group.
+
     @params:
-    given_ele_count:        Given count
-    evenly_distribute:  Implies every broker should have equal number of
+    given_ele_count:    Given count
+    evenly_distribute:  Implies every group should have equal number of
                         element-count. Any extra element from opt-count
                         is counted towards overall imbalance extra-element
                         count.
-    opt_ele_count:     Optimal count for each broker.
-    extra_allowed_ele_cnt: Count of brokers which can have 1 extra broker
-
+    opt_ele_count:      Optimal count for each group.
+    extra_allowed_ele_cnt: Count of groups which can have 1 extra element
+                           on each group
     """
     extra_cnt = 0
     if evenly_distribute:
