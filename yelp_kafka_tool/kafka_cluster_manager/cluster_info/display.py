@@ -36,11 +36,11 @@ def display_same_topic_partition_count_broker(
     print("=" * 55)
     print("Broker   Extra-Topic-Partition Count")
     print("=" * 55)
-    for broker, partition_count in \
+    for broker_id, partition_count in \
             same_topic_partition_count.iteritems():
         print(
             "{b:^7d} {partition_count:^18d}".format(
-                b=broker.id,
+                b=broker_id,
                 partition_count=partition_count,
             ),
         )
@@ -62,10 +62,10 @@ def display_partition_count_per_broker(
     print("=" * 25)
     print("Broker   Partition Count")
     print("=" * 25)
-    for broker, count in partition_count.iteritems():
+    for broker_id, count in partition_count.iteritems():
         print(
             "{b:^7d} {cnt:^18d}".format(
-                b=broker.id,
+                b=broker_id,
                 cnt=count,
             ),
         )
@@ -92,10 +92,10 @@ def display_leader_count_per_broker(
     print("=" * 33)
     print("Broker   Preferred Leader Count")
     print("=" * 33)
-    for broker, count in leader_count.iteritems():
+    for broker_id, count in leader_count.iteritems():
         print(
             "{b:^7d} {cnt:^20d}".format(
-                b=broker.id,
+                b=broker_id,
                 cnt=count,
             ),
         )

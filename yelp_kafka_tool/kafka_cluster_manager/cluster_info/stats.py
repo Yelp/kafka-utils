@@ -1,15 +1,14 @@
 """This files contains supporting api's required to evaluate stats of the
 cluster at any given time.
 """
+from collections import defaultdict
 from math import sqrt
 
 from .util import (
     get_partitions_per_broker,
     get_leaders_per_broker,
-    get_per_topic_partitions_count,
+    get_optimal_metrics,
 )
-
-from collections import defaultdict
 
 
 # Get imbalance stats
@@ -43,13 +42,6 @@ def get_net_imbalance(count_per_broker):
             else:
                 net_imbalance += (count - opt_count)
     return net_imbalance
-
-
-def get_evaluation_parameters(total_elements, total_groups):
-    opt_element_cnt = total_elements // total_groups
-    extra_elements_allowed_cnt = total_elements % total_groups
-    evenly_distribute = bool(not extra_elements_allowed_cnt)
-    return opt_element_cnt, extra_elements_allowed_cnt, evenly_distribute
 
 
 def get_extra_element_count(
@@ -105,12 +97,12 @@ def get_replication_group_imbalance_stats(rgs, partitions):
         tot_replicas = partition.replication_factor
         # Get optimal replica-count for each partition
         opt_replica_cnt, extra_replicas_allowed_cnt, evenly_distribute = \
-            get_evaluation_parameters(tot_replicas, tot_rgs)
+            get_optimal_metrics(tot_replicas, tot_rgs)
 
         # Extra replica count for each rg
         for rg in rgs:
-            replica_cnt_rg = len([
-                rg_partition
+            replica_cnt_rg = sum([
+                1
                 for rg_partition in rg.partitions
                 if rg_partition.name == partition.name
             ])
@@ -121,9 +113,9 @@ def get_replication_group_imbalance_stats(rgs, partitions):
                     evenly_distribute,
                     extra_replicas_allowed_cnt,
                 )
-            extra_replica_cnt_per_rg[rg] += extra_replica_cnt
+            extra_replica_cnt_per_rg[rg.id] += extra_replica_cnt
 
-    # Evaluate net imbalance ecross all replication-groups
+    # Evaluate net imbalance across all replication-groups
     net_imbalance = sum(extra_replica_cnt_per_rg.values())
     return net_imbalance, extra_replica_cnt_per_rg
 
@@ -139,7 +131,11 @@ def get_leader_imbalance_stats(brokers, partitions):
 
     # Calculation net imbalance
     net_imbalance = get_net_imbalance(leaders_per_broker.values())
-    return stdev_imbalance, net_imbalance, leaders_per_broker
+    leaders_per_broker_id = dict(
+        (broker.id, count)
+        for broker, count in leaders_per_broker.iteritems()
+    )
+    return stdev_imbalance, net_imbalance, leaders_per_broker_id
 
 
 def get_topic_imbalance_stats(brokers, topics):
@@ -157,12 +153,12 @@ def get_topic_imbalance_stats(brokers, topics):
         # Optimal partition-count per topic per broker
         total_partitions_all = topic.partition_count * topic.replication_factor
         opt_part_count, extra_partitions_allowed_cnt, evenly_distribute = \
-            get_evaluation_parameters(total_partitions_all, tot_brokers)
+            get_optimal_metrics(total_partitions_all, tot_brokers)
 
         # Get extra-partition count per broker for each topic
         for broker in brokers:
-            partition_cnt_broker = len([
-                partition
+            partition_cnt_broker = sum([
+                1
                 for partition in broker.partitions
                 if partition.topic == topic
             ])
@@ -173,7 +169,7 @@ def get_topic_imbalance_stats(brokers, topics):
                     evenly_distribute,
                     extra_partitions_allowed_cnt,
                 )
-            extra_partition_cnt_per_broker[broker] += extra_partitions
+            extra_partition_cnt_per_broker[broker.id] += extra_partitions
 
     # Net extra partitions over all brokers
     net_imbalance = sum(extra_partition_cnt_per_broker.itervalues())
@@ -187,4 +183,8 @@ def get_partition_imbalance_stats(brokers):
     stdev_imbalance = standard_deviation(partitions_per_broker.values())
     # Net total imbalance of partition count over all brokers
     net_imbalance = get_net_imbalance(partitions_per_broker.values())
-    return stdev_imbalance, net_imbalance, partitions_per_broker
+    partitions_per_broker_id = dict(
+        (partition.id, count)
+        for partition, count in partitions_per_broker.iteritems()
+    )
+    return stdev_imbalance, net_imbalance, partitions_per_broker_id
