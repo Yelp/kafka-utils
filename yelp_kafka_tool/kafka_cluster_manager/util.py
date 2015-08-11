@@ -3,10 +3,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
+import logging
 import json
 import os
 import subprocess
-import sys
 import tempfile
 from collections import OrderedDict
 
@@ -20,6 +20,8 @@ class KafkaInterface(object):
 
     def __init__(self, kafka_script_path=KAFKA_SCRIPT_PATH):
         self._kafka_script_path = KAFKA_SCRIPT_PATH
+        logging.basicConfig()
+        self.log = logging.getLogger(self.__class__.__name__)
 
     def run_repartition_cmd(
         self,
@@ -112,5 +114,8 @@ class KafkaInterface(object):
                         .format(output=result[0], error=result[1])
                     )
             except ValueError as error:
-                print('[ERROR] {error}'.format(error=error), file=sys.stderr)
-                sys.exit(1)
+                self.log.error('%s', error)
+                raise ValueError(
+                    'Could not parse output of kafka-executable script %s',
+                    result,
+                )
