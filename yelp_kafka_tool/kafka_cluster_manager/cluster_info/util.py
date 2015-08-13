@@ -27,7 +27,7 @@ def get_per_topic_partitions_count(broker):
     return Counter((partition.topic for partition in broker.partitions))
 
 
-def get_optimal_metrics(total_elements, total_groups):
+def computer_optimal_count(total_elements, total_groups):
     """Return optimal count and extra-elements allowed based on base
     total count of elements and groups.
     """

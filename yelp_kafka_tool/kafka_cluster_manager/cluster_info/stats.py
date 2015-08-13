@@ -7,7 +7,7 @@ from math import sqrt
 from .util import (
     get_partitions_per_broker,
     get_leaders_per_broker,
-    get_optimal_metrics,
+    computer_optimal_count,
 )
 
 
@@ -32,22 +32,18 @@ def get_net_imbalance(count_per_broker):
     as leaders from optimal count.
     """
     net_imbalance = 0
-    opt_count = sum(count_per_broker) // len(count_per_broker)
-    more_opt_count_allowed = sum(count_per_broker) % len(count_per_broker)
+    opt_count, extra_ele_allowed_count, _ = \
+        computer_optimal_count(sum(count_per_broker), len(count_per_broker))
     for count in count_per_broker:
-        if count > opt_count:
-            if more_opt_count_allowed > 0:
-                more_opt_count_allowed -= 1
-                net_imbalance += (count - opt_count - 1)
-            else:
-                net_imbalance += (count - opt_count)
+        extra_cnt, extra_ele_allowed_count = \
+            get_extra_element_count(count, opt_count, extra_ele_allowed_count)
+        net_imbalance += extra_cnt
     return net_imbalance
 
 
 def get_extra_element_count(
     given_ele_count,
     opt_ele_count,
-    evenly_distribute,
     extra_allowed_ele_cnt,
 ):
     """Evaluate and return extra same element count based on given values.
@@ -60,29 +56,19 @@ def get_extra_element_count(
 
     @params:
     given_ele_count:    Given count
-    evenly_distribute:  Implies every group should have equal number of
-                        element-count. Any extra element from opt-count
-                        is counted towards overall imbalance extra-element
-                        count.
     opt_ele_count:      Optimal count for each group.
     extra_allowed_ele_cnt: Count of groups which can have 1 extra element
                            on each group
     """
-    extra_cnt = 0
-    if evenly_distribute:
-        if given_ele_count > opt_ele_count:
+    if given_ele_count > opt_ele_count:
+        # We still can allow 1 extra count
+        if extra_allowed_ele_cnt > 0:
+            extra_allowed_ele_cnt -= 1
+            extra_cnt = given_ele_count - opt_ele_count - 1
+        else:
             extra_cnt = given_ele_count - opt_ele_count
     else:
-        if given_ele_count <= opt_ele_count:
-            # No extra partition of same topic
-            pass
-        elif given_ele_count > opt_ele_count:
-            # We still can allow 1 extra count
-            if extra_allowed_ele_cnt > 0:
-                extra_allowed_ele_cnt -= 1
-                extra_cnt = given_ele_count - opt_ele_count - 1
-            else:
-                extra_cnt = given_ele_count - opt_ele_count
+        extra_cnt = 0
     return extra_cnt, extra_allowed_ele_cnt
 
 
@@ -102,8 +88,8 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     for partition in partitions:
         tot_replicas = partition.replication_factor
         # Get optimal replica-count for each partition
-        opt_replica_cnt, extra_replicas_allowed_cnt, evenly_distribute = \
-            get_optimal_metrics(tot_replicas, tot_rgs)
+        opt_replica_cnt, extra_replicas_allowed_cnt, _ = \
+            computer_optimal_count(tot_replicas, tot_rgs)
 
         # Extra replica count for each rg
         for rg in rgs:
@@ -116,7 +102,6 @@ def get_replication_group_imbalance_stats(rgs, partitions):
                 get_extra_element_count(
                     replica_cnt_rg,
                     opt_replica_cnt,
-                    evenly_distribute,
                     extra_replicas_allowed_cnt,
                 )
             extra_replica_cnt_per_rg[rg.id] += extra_replica_cnt
@@ -158,9 +143,8 @@ def get_topic_imbalance_stats(brokers, topics):
     for topic in topics:
         # Optimal partition-count per topic per broker
         total_partitions_all = topic.partition_count * topic.replication_factor
-        opt_part_count, extra_partitions_allowed_cnt, evenly_distribute = \
-            get_optimal_metrics(total_partitions_all, tot_brokers)
-
+        opt_partition_cnt, extra_partitions_allowed_cnt, _ = \
+            computer_optimal_count(total_partitions_all, tot_brokers)
         # Get extra-partition count per broker for each topic
         for broker in brokers:
             partition_cnt_broker = sum([
@@ -171,8 +155,7 @@ def get_topic_imbalance_stats(brokers, topics):
             extra_partitions, extra_partitions_allowed_cnt = \
                 get_extra_element_count(
                     partition_cnt_broker,
-                    opt_part_count,
-                    evenly_distribute,
+                    opt_partition_cnt,
                     extra_partitions_allowed_cnt,
                 )
             extra_partition_cnt_per_broker[broker.id] += extra_partitions

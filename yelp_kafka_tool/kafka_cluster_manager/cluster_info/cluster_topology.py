@@ -41,7 +41,7 @@ class ClusterTopology(object):
             int(broker) for broker in self._zk.get_brokers().iterkeys()
         ]
         topic_ids = sorted(self._zk.get_topics(names_only=True))
-        self.fetch_initial_assignment(broker_ids, topic_ids)
+        self._fetch_initial_assignment(broker_ids, topic_ids)
         # Sequence of building objects
         self._build_topics(topic_ids)
         self._build_brokers(broker_ids)
@@ -95,7 +95,7 @@ class ClusterTopology(object):
                 broker = self.brokers[broker_id]
                 broker.add_partition(partition)
 
-    def fetch_initial_assignment(self, broker_ids, topic_ids):
+    def _fetch_initial_assignment(self, broker_ids, topic_ids):
         """Fetch initial assignment from zookeeper.
 
         Assignment is ordered by partition name tuple.
