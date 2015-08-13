@@ -7,7 +7,7 @@ from math import sqrt
 from .util import (
     get_partitions_per_broker,
     get_leaders_per_broker,
-    computer_optimal_count,
+    compute_optimal_count,
 )
 
 
@@ -33,7 +33,7 @@ def get_net_imbalance(count_per_broker):
     """
     net_imbalance = 0
     opt_count, extra_ele_allowed_count, _ = \
-        computer_optimal_count(sum(count_per_broker), len(count_per_broker))
+        compute_optimal_count(sum(count_per_broker), len(count_per_broker))
     for count in count_per_broker:
         extra_cnt, extra_ele_allowed_count = \
             get_extra_element_count(count, opt_count, extra_ele_allowed_count)
@@ -89,7 +89,7 @@ def get_replication_group_imbalance_stats(rgs, partitions):
         tot_replicas = partition.replication_factor
         # Get optimal replica-count for each partition
         opt_replica_cnt, extra_replicas_allowed_cnt, _ = \
-            computer_optimal_count(tot_replicas, tot_rgs)
+            compute_optimal_count(tot_replicas, tot_rgs)
 
         # Extra replica count for each rg
         for rg in rgs:
@@ -144,7 +144,7 @@ def get_topic_imbalance_stats(brokers, topics):
         # Optimal partition-count per topic per broker
         total_partitions_all = topic.partition_count * topic.replication_factor
         opt_partition_cnt, extra_partitions_allowed_cnt, _ = \
-            computer_optimal_count(total_partitions_all, tot_brokers)
+            compute_optimal_count(total_partitions_all, tot_brokers)
         # Get extra-partition count per broker for each topic
         for broker in brokers:
             partition_cnt_broker = sum([
