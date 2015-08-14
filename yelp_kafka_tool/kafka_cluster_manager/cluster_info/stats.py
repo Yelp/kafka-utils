@@ -32,7 +32,7 @@ def get_net_imbalance(count_per_broker):
     as leaders from optimal count.
     """
     net_imbalance = 0
-    opt_count, extra_ele_allowed_count, _ = \
+    opt_count, extra_ele_allowed_count = \
         compute_optimal_count(sum(count_per_broker), len(count_per_broker))
     for count in count_per_broker:
         extra_cnt, extra_ele_allowed_count = \
@@ -88,7 +88,7 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     for partition in partitions:
         tot_replicas = partition.replication_factor
         # Get optimal replica-count for each partition
-        opt_replica_cnt, extra_replicas_allowed_cnt, _ = \
+        opt_replica_cnt, extra_replicas_allowed_cnt = \
             compute_optimal_count(tot_replicas, tot_rgs)
 
         # Extra replica count for each rg
@@ -143,7 +143,7 @@ def get_topic_imbalance_stats(brokers, topics):
     for topic in topics:
         # Optimal partition-count per topic per broker
         total_partitions_all = topic.partition_count * topic.replication_factor
-        opt_partition_cnt, extra_partitions_allowed_cnt, _ = \
+        opt_partition_cnt, extra_partitions_allowed_cnt = \
             compute_optimal_count(total_partitions_all, tot_brokers)
         # Get extra-partition count per broker for each topic
         for broker in brokers:

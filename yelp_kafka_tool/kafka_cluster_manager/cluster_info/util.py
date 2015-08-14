@@ -33,5 +33,4 @@ def compute_optimal_count(total_elements, total_groups):
     """
     opt_element_cnt = total_elements // total_groups
     extra_elements_allowed_cnt = total_elements % total_groups
-    evenly_distribute = bool(not extra_elements_allowed_cnt)
-    return opt_element_cnt, extra_elements_allowed_cnt, evenly_distribute
+    return opt_element_cnt, extra_elements_allowed_cnt

@@ -12,8 +12,6 @@ from collections import OrderedDict
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 
 
-# NOTE: You can ignore reviewing this class as of now.
-# These are exactly the same api's to interact with kafka-scripts
 class KafkaInterface(object):
     """This class acts as an interface to interact with kafka-scripts."""
 
