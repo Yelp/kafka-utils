@@ -13,13 +13,10 @@ def get_leaders_per_broker(brokers, partitions):
     """Return count for each broker the number of times
     it is assigned as preferred leader.
     """
-    leaders_per_broker = dict(
-        (broker, 0)
+    return dict(
+        (broker, broker.count_preferred_replica())
         for broker in brokers
     )
-    for partition in partitions:
-        leaders_per_broker[partition.leader] += 1
-    return leaders_per_broker
 
 
 def get_per_topic_partitions_count(broker):

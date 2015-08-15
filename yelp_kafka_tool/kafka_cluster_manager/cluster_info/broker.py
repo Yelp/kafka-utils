@@ -60,3 +60,17 @@ class Broker(object):
     def partition_count(self):
         """Total partitions in broker."""
         return len(self._partitions)
+
+    def count_topic_partitions(self, topic):
+        """Return count of partitions for given topic."""
+        return sum([
+            1
+            for p in self._partitions
+            if p.topic == topic
+        ])
+
+    def count_preferred_replica(self):
+        """Return number of times broker is set as preferred leader."""
+        return sum(
+            [1 for partition in self.partitions if partition.leader == self],
+        )

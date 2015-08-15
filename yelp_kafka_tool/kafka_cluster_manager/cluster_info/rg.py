@@ -32,3 +32,11 @@ class ReplicationGroup(object):
             for broker in self._brokers
             for partition in broker.partitions
         ]
+
+    def replica_count(self, partition):
+        """Return count of replicas of given partition."""
+        return sum([
+            1
+            for p in self.partitions
+            if p.name == partition.name
+        ])
