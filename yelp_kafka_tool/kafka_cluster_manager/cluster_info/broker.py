@@ -10,7 +10,7 @@ class Broker(object):
     """
     def __init__(self, id, partitions=None):
         self._id = id
-        self._partitions = partitions or []
+        self._partitions = partitions or set()
         self.log = logging.getLogger(self.__class__.__name__)
 
     def get_hostname(self, zk):
@@ -55,7 +55,8 @@ class Broker(object):
 
     def add_partition(self, partition):
         """Add partition to partition list."""
-        self._partitions.append(partition)
+        assert(partition not in self._partitions)
+        self._partitions.add(partition)
 
     def partition_count(self):
         """Total partitions in broker."""

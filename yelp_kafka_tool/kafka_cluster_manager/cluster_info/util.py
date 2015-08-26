@@ -9,7 +9,7 @@ def get_partitions_per_broker(brokers):
     )
 
 
-def get_leaders_per_broker(brokers, partitions):
+def get_leaders_per_broker(brokers):
     """Return count for each broker the number of times
     it is assigned as preferred leader.
     """

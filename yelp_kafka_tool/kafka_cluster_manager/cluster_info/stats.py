@@ -87,7 +87,7 @@ def get_replication_group_imbalance_stats(rgs, partitions):
 
         # Extra replica count for each rg
         for rg in rgs:
-            replica_cnt_rg = rg.replica_count(partition)
+            replica_cnt_rg = rg.count_replica(partition)
             extra_replica_cnt, extra_replicas_allowed = \
                 get_extra_element_count(
                     replica_cnt_rg,
@@ -105,7 +105,7 @@ def get_leader_imbalance_stats(brokers, partitions):
     """Return for each broker the number of times it is assigned as preferred
     leader. Also return net leader-imbalance and imbalance stdev.
     """
-    leaders_per_broker = get_leaders_per_broker(brokers, partitions)
+    leaders_per_broker = get_leaders_per_broker(brokers)
 
     # Calculate standard deviation of leader imbalance
     stdev_imbalance = standard_deviation(leaders_per_broker.values())
