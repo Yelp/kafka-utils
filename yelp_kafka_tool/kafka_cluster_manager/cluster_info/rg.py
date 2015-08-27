@@ -40,7 +40,9 @@ class ReplicationGroup(object):
 
     @property
     def partitions(self):
-        """Evaluate and return set of all partitions in replication-group."""
+        """Evaluate and return set of all partitions in replication-group.
+        rtype: list, replicas of partitions can reside in this group
+        """
         return [
             partition
             for broker in self._brokers
@@ -61,3 +63,7 @@ class ReplicationGroup(object):
             total_brokers_cluster,
             total_partitions_cluster,
         )
+
+    def count_replica(self, partition):
+        """Return count of replicas of given partition."""
+        return self.partitions.count(partition)

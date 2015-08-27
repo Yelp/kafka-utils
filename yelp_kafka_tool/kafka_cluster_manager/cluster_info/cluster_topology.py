@@ -7,13 +7,10 @@ is per the design document at:-
 https://docs.google.com/document/d/1qloANcOHkzuu8wYVm0ZAMCGY5Mmb-tdcxUywNIXfQFI
 """
 from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import division
 from __future__ import unicode_literals
 
-import sys
-from collections import defaultdict
-from collections import OrderedDict
-from math import sqrt
+import logging
 
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
@@ -35,6 +32,13 @@ from yelp_kafka_tool.kafka_cluster_manager.reassign.internal_stats import (
     display_same_replica_count_rg,
 )
 
+from .stats import (
+    get_partition_imbalance_stats,
+    get_leader_imbalance_stats,
+    get_topic_imbalance_stats,
+    get_replication_group_imbalance_stats,
+)
+
 
 class ClusterTopology(object):
     """Represent a Kafka cluster and functionalities supported over the cluster.
@@ -45,12 +49,13 @@ class ClusterTopology(object):
     def __init__(self, zk):
         self._name = zk.cluster_config.name
         self._zk = zk
+        self.log = logging.getLogger(self.__class__.__name__)
         # Getting Initial assignment
         broker_ids = [
             int(broker) for broker in self._zk.get_brokers().iterkeys()
         ]
         topic_ids = sorted(self._zk.get_topics(names_only=True))
-        self.fetch_initial_assignment(broker_ids, topic_ids)
+        self._fetch_initial_assignment(broker_ids, topic_ids)
         # Sequence of building objects
         self._build_topics(topic_ids)
         self._build_brokers(broker_ids)
@@ -103,7 +108,7 @@ class ClusterTopology(object):
                 broker = self.brokers[broker_id]
                 broker.add_partition(partition)
 
-    def fetch_initial_assignment(self, broker_ids, topic_ids):
+    def _fetch_initial_assignment(self, broker_ids, topic_ids):
         """Fetch initial assignment from zookeeper.
 
         Assignment is ordered by partition name tuple.
@@ -119,13 +124,11 @@ class ClusterTopology(object):
     def _get_replication_group_id(self, broker):
         """Fetch replication-group to broker map from zookeeper."""
         try:
-            habitat = broker.hostname.rsplit('-', 1)[1]
-            rg_name = habitat.split('.', 1)[0]
-        except IndexError:
-            if 'localhost' in broker.hostname:
-                print(
-                    '[WARNING] Setting replication-group as localhost for '
-                    'broker {broker}'.format(broker=broker.id)
+            hostname = broker.get_hostname(self._zk)
+            if 'localhost' in hostname:
+                self.log.warning(
+                    "Setting replication-group as localhost for broker %s",
+                    broker.id,
                 )
                 rg_name = 'localhost'
 
@@ -139,14 +142,13 @@ class ClusterTopology(object):
                 else:
                     rg_name = 'rg4'
             else:
-                print(
-                    '[ERROR] Could not parse replication group for {broker} '
-                    'with hostname:{host}'.format(
-                        broker=broker.id,
-                        host=broker.hostname
-                    )
-                )
-                sys.exit(1)
+                habitat = hostname.rsplit('-', 1)[1]
+                rg_name = habitat.split('.', 1)[0]
+        except IndexError:
+            errorMsg = "Could not parse replication group for broker {id} with"\
+                " hostname:{hostname}".format(id=broker.id, hostname=hostname)
+            self.log.exception(errorMsg)
+            raise ValueError(errorMsg)
         return rg_name
 
     def reassign_partitions(
@@ -211,9 +213,31 @@ class ClusterTopology(object):
         kafka = KafkaInterface()
         return kafka.get_assignment_map(self.get_assignment_json())[0]
 
-    def display_initial_cluster_topology(self):
-        """Display the current cluster topology."""
-        print(self.get_initial_assignment_json())
+    def partition_imbalance(self):
+        """Report partition count imbalance over brokers for given assignment
+        or assignment in current state.
+        """
+        return get_partition_imbalance_stats(self.brokers.values())
 
-    def display_current_cluster_topology(self):
-        print(self.get_assignment_json())
+    def leader_imbalance(self):
+        """Report leader imbalance count over each broker."""
+        return get_leader_imbalance_stats(
+            self.brokers.values(),
+            self.partitions.values(),
+        )
+
+    def topic_imbalance(self):
+        """Return count of topics and partitions on each broker having multiple
+        partitions of same topic.
+        """
+        return get_topic_imbalance_stats(
+            self.brokers.values(),
+            self.topics.values(),
+        )
+
+    def replication_group_imbalance(self):
+        """Calculate same replica count over each replication-group."""
+        return get_replication_group_imbalance_stats(
+            self.rgs.values(),
+            self.partitions.values(),
+        )

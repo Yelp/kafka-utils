@@ -2,25 +2,22 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-
+import logging
 import json
 import os
 import subprocess
-import sys
 import tempfile
 from collections import OrderedDict
 
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
-KAFKA_SCRIPT_PATH = '/nail/home/manpreet/pg/yelp-kafka-util/kafka-info/kafka_reassignment/kafka/bin'
 
 
-# NOTE: You can ignore reviewing this class as of now.
-# These are exactly the same api's to interact with kafka-scripts
 class KafkaInterface(object):
     """This class acts as an interface to interact with kafka-scripts."""
 
     def __init__(self, kafka_script_path=KAFKA_SCRIPT_PATH):
         self._kafka_script_path = KAFKA_SCRIPT_PATH
+        self.log = logging.getLogger(self.__class__.__name__)
 
     def run_repartition_cmd(
         self,
@@ -113,5 +110,8 @@ class KafkaInterface(object):
                         .format(output=result[0], error=result[1])
                     )
             except ValueError as error:
-                print('[ERROR] {error}'.format(error=error), file=sys.stderr)
-                sys.exit(1)
+                self.log.error('%s', error)
+                raise ValueError(
+                    'Could not parse output of kafka-executable script %s',
+                    result,
+                )

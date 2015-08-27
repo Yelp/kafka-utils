@@ -1,6 +1,4 @@
-from socket import gethostbyaddr, herror
-import socket
-import sys
+import logging
 
 
 class Broker(object):
@@ -10,21 +8,20 @@ class Broker(object):
     """
     def __init__(self, id, partitions=None):
         self._id = id
-        self._partitions = partitions or []
+        self._partitions = partitions or set()
+        self.log = logging.getLogger(self.__class__.__name__)
 
-    @property
-    def hostname(self):
-        """Get hostname of broker."""
+    def get_hostname(self, zk):
+        """Get hostname of broker from zookeeper."""
         try:
-            result = gethostbyaddr(str(self._id))[0]
-        except herror:
-            print(
-                '[WARNING] Unknown host for broker {broker}'.format(
-                    broker=self._id
-                )
+            hostname = zk.get_brokers(self._id)
+            result = hostname[self._id]['host']
+        except KeyError:
+            self.log.warning(
+                'Unknown host for broker {broker}. Returning as'
+                ' localhost'.format(broker=self._id)
             )
-            print('Returning as localhost.')
-            result = gethostbyaddr('localhost')[0]
+            result = 'localhost'
         return result
 
     @property
@@ -41,38 +38,23 @@ class Broker(object):
         return set([partition.topic for partition in self._partitions])
 
     def remove_partition(self, partition):
-        """Remove partition from partition list with same partition-name.
-
-        NOTE: It will remove partition with name as in given partition
-        but may not be the same partition.
-        """
-        # Get valid partition
-        remove_partition = None
-        if partition in self.partitions:
-            remove_partition = partition
+        """Remove partition from partition list."""
+        if partition in self._partitions:
+            self._partitions.remove(partition)
         else:
-            valid_partitions = [
-                p for p in self.partitions if p.name == partition.name
-            ]
-            if valid_partitions:
-                remove_partition = valid_partitions[0]
-            else:
-                print(
-                    "[ERROR] partition {partition} not found in broker {broker}"
-                    .format(partition=partition.name, broker=self.id)
+            raise ValueError(
+                'Partition: {topic_id}:{partition_id} not found in broker '
+                '{broker_id}'.format(
+                    topic_id=partition.topic.id,
+                    partition_id=partition.partition_id,
+                    broker_id=self._id,
                 )
-                sys.exit(1)
-        self._partitions.remove(remove_partition)
+            )
 
     def add_partition(self, partition):
         """Add partition to partition list."""
-        if partition.name in [p.name for p in self._partitions]:
-            print(
-                '[WARNING] Partition {id} already present in broker {broker}'
-                .format(id=partition.name, broker=self._id)
-            )
-        else:
-            self._partitions.append(partition)
+        assert(partition not in self._partitions)
+        self._partitions.add(partition)
 
     def partition_count(self):
         """Total partitions in broker."""
@@ -87,3 +69,17 @@ class Broker(object):
         # Add partition and broker in replicas
         broker_destination.add_partition(partition)
         partition.replicas.append(broker_destination)
+
+    def count_topic_partitions(self, topic):
+        """Return count of partitions for given topic."""
+        return sum([
+            1
+            for p in self._partitions
+            if p.topic == topic
+        ])
+
+    def count_preferred_replica(self):
+        """Return number of times broker is set as preferred leader."""
+        return sum(
+            [1 for partition in self.partitions if partition.leader == self],
+        )
