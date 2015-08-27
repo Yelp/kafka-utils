@@ -2,7 +2,7 @@ from yelp_kafka_tool.kafka_cluster_manager.reassign.broker_rebalance import (
     segregate_brokers,
 )
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    get_optimal_metrics,
+    compute_optimal_count,
 )
 
 
@@ -34,10 +34,11 @@ def rebalance_replicas(partitions, brokers, rgs):
     # Balance replicas over replication-groups for each partition
     for partition in partitions:
         # Get optimal replica count
-        opt_replica_count, extra_replicas_cnt, evenly_distribute_replicas = \
-            get_optimal_metrics(partition.replication_factor, len(rgs))
+        opt_replica_count, extra_replicas_cnt = \
+            compute_optimal_count(partition.replication_factor, len(rgs))
 
         # Segregate replication-groups into under and over replicated
+        evenly_distribute_replicas = bool(not extra_replicas_cnt)
         under_replicated_rgs, over_replicated_rgs = \
             segregate_replication_groups(
                 rgs,
@@ -56,16 +57,15 @@ def rebalance_replicas(partitions, brokers, rgs):
             )
 
             if rg_destination and rg_source:
-                assert(rg_source in over_replicated_rgs)
-                assert(rg_destination in under_replicated_rgs)
-                assert(partition.name in [p.name for p in rg_source.partitions])
 
                 # Get current count stats
-                dest_repica_cnt = rg_destination.count_replica(partition)
+                dest_replica_cnt = rg_destination.count_replica(partition)
                 source_replica_cnt = rg_source.count_replica(partition)
                 total_partitions_all = len(get_all_partitions(rgs))
-                opt_partition_count, extra_partition_count, evenly_distribute_partitions = \
-                    get_optimal_metrics(total_partitions_all, len(brokers))
+                opt_partition_count, extra_partition_count = \
+                    compute_optimal_count(total_partitions_all, len(brokers))
+
+                evenly_distribute_partitions = bool(not extra_partition_count)
                 # Actual movement of partition
                 move_partition(
                     rg_source,
@@ -78,7 +78,7 @@ def rebalance_replicas(partitions, brokers, rgs):
                 # Remove group if balanced
                 if source_replica_cnt == opt_partition_count:
                     over_replicated_rgs.remove(rg_source)
-                if dest_repica_cnt + evenly_distribute_replicas == \
+                if dest_replica_cnt + evenly_distribute_replicas == \
                         opt_replica_count:
                     under_replicated_rgs.remove(rg_destination)
             else:
@@ -178,16 +178,11 @@ def move_partition(
     # Select best-fit source and destination brokers for partition
     # Best-fit is based on partition-count and presence/absence of
     # Same topic-partition over brokers
-    assert(over_loaded_brokers and under_loaded_brokers)
     broker_source, broker_destination = broker_selection(
         over_loaded_brokers,
         under_loaded_brokers,
         victim_partition,
     )
-    assert(victim_partition.name in [p.name for p in broker_source.partitions])
-    assert(broker_source in rg_source.brokers)
-    assert(broker_destination in rg_destination.brokers)
-    assert(rg_destination.id != rg_source.id)
 
     # Actual-movement of victim-partition
     broker_source.move_partition(victim_partition, broker_destination)
@@ -233,9 +228,4 @@ def broker_selection(
     else:
         broker_destination = under_loaded_brokers[0]
 
-    assert(
-        broker_source
-        and broker_destination
-        and broker_destination != broker_source
-    )
     return broker_source, broker_destination

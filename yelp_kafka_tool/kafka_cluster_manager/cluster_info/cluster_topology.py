@@ -25,6 +25,16 @@ from yelp_kafka_tool.kafka_cluster_manager.reassign.rg_rebalance import (
     rebalance_replicas,
 )
 
+# TODO: remove
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import(
+    get_replication_group_imbalance_stats,
+)
+
+# TODO: remove
+from yelp_kafka_tool.kafka_cluster_manager.reassign.internal_stats import (
+    display_same_replica_count_rg,
+)
+
 
 class ClusterTopology(object):
     """Represent a Kafka cluster and functionalities supported over the cluster.
@@ -77,7 +87,6 @@ class ClusterTopology(object):
         for partition_name, replica_ids in self._initial_assignment.iteritems():
             # Creating replica objects
             replicas = [self.brokers[broker_id] for broker_id in replica_ids]
-
             # Get topic
             topic_id = partition_name[0]
             topic = self.topics[topic_id]
@@ -119,6 +128,16 @@ class ClusterTopology(object):
                     'broker {broker}'.format(broker=broker.id)
                 )
                 rg_name = 'localhost'
+
+                # TODO: remove, temporary for localhost
+                if int(broker.id) % 3 == 0:
+                    rg_name = 'rg1'
+                elif int(broker.id) % 3 == 1:
+                    rg_name = 'rg2'
+                elif int(broker.id) % 3 == 2:
+                    rg_name = 'rg3'
+                else:
+                    rg_name = 'rg4'
             else:
                 print(
                     '[ERROR] Could not parse replication group for {broker} '
@@ -137,11 +156,16 @@ class ClusterTopology(object):
         to_execute,
     ):
         """Display or execute the final-state based on rebalancing option."""
+        # TODO: remove
+        imbal, extra_count = get_replication_group_imbalance_stats(self.rgs.values(), self.partitions.values())
+        display_same_replica_count_rg(extra_count, imbal)
         self.rebalance_replication_groups()
+        imbal, extra_count = get_replication_group_imbalance_stats(self.rgs.values(), self.partitions.values())
+        display_same_replica_count_rg(extra_count, imbal)
 
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
-        """Rebalance partitions over placement groups (availability-zones)."""
+        """Rebalance partitions over replication groups (availability-zones)."""
         rebalance_replicas(
             self.partitions.values(),
             self.brokers.values(),
