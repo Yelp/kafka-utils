@@ -22,8 +22,8 @@ def get_target_replication_groups(
     # Locate under-replicated replication-group with lesser
     # replica count than source replication-group
     for under_replicated_rg in under_replicated_rgs:
-        if replica_count(partition, under_replicated_rg) < \
-                replica_count(partition, rg_source) - 1:
+        if under_replicated_rg.count_replica(partition) < \
+                rg_source.count_replica(partition) - 1:
             rg_destination = under_replicated_rg
             break
     return rg_source, rg_destination
@@ -61,8 +61,8 @@ def rebalance_replicas(partitions, brokers, rgs):
                 assert(partition.name in [p.name for p in rg_source.partitions])
 
                 # Get current count stats
-                dest_repica_cnt = replica_count(partition, rg_destination)
-                source_replica_cnt = replica_count(partition, rg_source)
+                dest_repica_cnt = rg_destination.count_replica(partition)
+                source_replica_cnt = rg_source.count_replica(partition)
                 total_partitions_all = len(get_all_partitions(rgs))
                 opt_partition_count, extra_partition_count, evenly_distribute_partitions = \
                     get_optimal_metrics(total_partitions_all, len(brokers))
@@ -88,19 +88,13 @@ def rebalance_replicas(partitions, brokers, rgs):
             # Re-sort replication-groups based on current-replica count
             sorted(
                 under_replicated_rgs,
-                key=lambda rg: replica_count(partition, rg),
+                key=lambda rg: rg.count_replica(partition),
             )
             sorted(
                 over_replicated_rgs,
-                key=lambda rg: replica_count(partition, rg),
+                key=lambda rg: rg.count_replica(partition),
                 reverse=True,
             )
-
-        # Report any unbalanced replication-groups
-        report_unbalanced_replication_groups(
-            under_replicated_rgs,
-            over_replicated_rgs,
-        )
 
 
 def segregate_replication_groups(
@@ -116,7 +110,7 @@ def segregate_replication_groups(
     over_replicated_rgs = []
     replication_factor = partition.replication_factor
     for rg in rgs:
-        replica_cnt = replica_count(partition, rg)
+        replica_cnt = rg.count_replica(partition)
         if replica_cnt < opt_replica_count:
             under_replicated_rgs.append(rg)
         elif replica_cnt > opt_replica_count:
@@ -131,8 +125,8 @@ def segregate_replication_groups(
                 # Helps in adjusting one extra replica if required
                 under_replicated_rgs.append(rg)
     return (
-        sorted(under_replicated_rgs, key=lambda rg: replica_count(partition, rg)),
-        sorted(over_replicated_rgs, key=lambda rg: replica_count(partition, rg), reverse=True),
+        sorted(under_replicated_rgs, key=lambda rg: rg.count_replica(partition)),
+        sorted(over_replicated_rgs, key=lambda rg: rg.count_replica(partition), reverse=True),
     )
 
 
@@ -245,43 +239,3 @@ def broker_selection(
         and broker_destination != broker_source
     )
     return broker_source, broker_destination
-
-
-def replica_count(partition, replication_group):
-    """Return the count of replicas of given partitions."""
-    return sum([
-        1 for broker in partition.replicas
-        if broker in replication_group._brokers
-    ])
-
-
-def report_unbalanced_replication_groups(
-    under_replicated_rgs,
-    over_replicated_rgs,
-):
-    # List remaining under-replicated replication-groups left, if any.
-    if not under_replicated_rgs:
-        for rg in under_replicated_rgs:
-            if replica_count(partition, rg) < opt_replica_count:
-                print(
-                    '[WARNING] Could not re-balance under-replicated'
-                    'replication-group {rg_id} for partition '
-                    '{topic}:{p_id}'.format(
-                        rg_id=rg.id,
-                        partition=partition.topic.id,
-                        p_id=partition.partition_id,
-                    )
-                )
-    if not over_replicated_rgs:
-        for rg in over_replicated_rgs:
-            if replica_count(partition, rg) > \
-                    opt_replica_count + evenly_distribute_replicas:
-                print(
-                    '[WARNING] Could not re-balance under-replicated'
-                    'replication-group {rg_id} for partition '
-                    '{topic}:{p_id}'.format(
-                        rg_id=rg.id,
-                        partition=partition.topic.id,
-                        p_id=partition.partition_id,
-                    )
-                )
