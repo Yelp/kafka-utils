@@ -1,5 +1,6 @@
-from socket import gethostbyaddr, herror
-import socket
+import logging
+
+from collections import Counter
 
 
 class Broker(object):
@@ -9,21 +10,20 @@ class Broker(object):
     """
     def __init__(self, id, partitions=None):
         self._id = id
-        self._partitions = partitions or []
+        self._partitions = partitions or set()
+        self.log = logging.getLogger(self.__class__.__name__)
 
-    @property
-    def hostname(self):
-        """Get hostname of broker."""
+    def get_hostname(self, zk):
+        """Get hostname of broker from zookeeper."""
         try:
-            result = gethostbyaddr(str(self._id))[0]
-        except herror:
-            print(
-                '[WARNING] Unknown host for broker {broker}'.format(
-                    broker=self._id
-                )
+            hostname = zk.get_brokers(self._id)
+            result = hostname[self._id]['host']
+        except KeyError:
+            self.log.warning(
+                'Unknown host for broker {broker}. Returning as'
+                ' localhost'.format(broker=self._id)
             )
-            print('Returning as localhost.')
-            result = gethostbyaddr('localhost')[0]
+            result = 'localhost'
         return result
 
     @property
@@ -41,12 +41,37 @@ class Broker(object):
 
     def remove_partition(self, partition):
         """Remove partition from partition list."""
-        self._partitions.remove(partition)
+        if partition in self._partitions:
+            self._partitions.remove(partition)
+        else:
+            raise ValueError(
+                'Partition: {topic_id}:{partition_id} not found in broker '
+                '{broker_id}'.format(
+                    topic_id=partition.topic.id,
+                    partition_id=partition.partition_id,
+                    broker_id=self._id,
+                )
+            )
 
     def add_partition(self, partition):
         """Add partition to partition list."""
-        self._partitions.append(partition)
+        assert(partition not in self._partitions)
+        self._partitions.add(partition)
 
     def partition_count(self):
         """Total partitions in broker."""
         return len(self._partitions)
+
+    def count_topic_partitions(self, topic):
+        """Return count of partitions for given topic."""
+        return sum([
+            1
+            for p in self._partitions
+            if p.topic == topic
+        ])
+
+    def count_preferred_replica(self):
+        """Return number of times broker is set as preferred leader."""
+        return sum(
+            [1 for partition in self.partitions if partition.leader == self],
+        )
