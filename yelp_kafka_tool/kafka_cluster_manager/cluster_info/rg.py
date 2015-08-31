@@ -1,6 +1,7 @@
 """This file incorporates handling partitions over replication-groups
 (Availability-zones) in our case.
 """
+import logging
 
 
 class ReplicationGroup(object):
@@ -10,6 +11,7 @@ class ReplicationGroup(object):
     def __init__(self, id, brokers=None):
         self._id = id
         self._brokers = brokers or set()
+        self.log = logging.getLogger(self.__class__.__name__)
 
     @property
     def id(self):
@@ -23,10 +25,10 @@ class ReplicationGroup(object):
 
     def add_broker(self, broker):
         """Add broker to current broker-list."""
-        if broker not in self.brokers:
+        if broker not in self._brokers:
             self._brokers.add(broker)
         else:
-            print(
+            self.log.warning(
                 '[WARNING] Broker {broker_id} already present in '
                 'replication-group {rg_id}'.format(
                     broker_id=broker.id,
@@ -127,7 +129,7 @@ class ReplicationGroup(object):
         self,
         victim_partition,
     ):
-        """Get brokers in ascending sorteder order of partition-count
+        """Get brokers in ascending sorted order of partition-count
         not containing victim-partition.
         """
         under_loaded_brokers = [
@@ -142,7 +144,7 @@ class ReplicationGroup(object):
         return over_loaded_brokers[0]
 
     def _elect_dest_broker(self, under_loaded_brokers, victim_partition):
-        """Select first borker from under_loaded_brokers preferring not having
+        """Select first broker from under_loaded_brokers preferring not having
         partition of same topic as victim partition.
         """
         # Pick broker having least partitions of the given topic
@@ -157,7 +159,6 @@ class ReplicationGroup(object):
                 (broker, broker.partition_count(victim_partition.topic))
                 for broker in under_loaded_brokers
             ]
-            print('broker_topic', broker_topic_partition_cnt)
             min_count_pair = min(
                 broker_topic_partition_cnt,
                 key=lambda ele: ele[1],
