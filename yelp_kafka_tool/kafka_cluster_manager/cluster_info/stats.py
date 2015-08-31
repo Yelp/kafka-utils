@@ -188,14 +188,14 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
     dict((partition,  (from_broker_set, to_broker_set)), total_movements
     """
     total_movements = 0
-    result = {}
+    movements = {}
     for prev_partition, prev_replicas in prev_assignment.items():
         curr_replicas = curr_assignment[prev_partition]
         diff = len(set(curr_replicas) - set(prev_replicas))
         if diff:
             total_movements += 1
-            result[prev_partition] = (
+            movements[prev_partition] = (
                 (set(prev_replicas) - set(curr_replicas)),
                 (set(curr_replicas) - set(prev_replicas)),
             )
-    return result, total_movements
+    return movements, total_movements

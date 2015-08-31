@@ -9,7 +9,7 @@ class ReplicationGroup(object):
     """
     def __init__(self, id, brokers=None):
         self._id = id
-        self._brokers = brokers or []
+        self._brokers = brokers or set()
 
     @property
     def id(self):
@@ -24,7 +24,7 @@ class ReplicationGroup(object):
     def add_broker(self, broker):
         """Add broker to current broker-list."""
         if broker not in self.brokers:
-            self._brokers.append(broker)
+            self._brokers.add(broker)
         else:
             print(
                 '[WARNING] Broker {broker_id} already present in '
@@ -63,7 +63,7 @@ class ReplicationGroup(object):
         # Select best-fit source and destination brokers for partition
         # Best-fit is based on partition-count and presence/absence of
         # Same topic-partition over brokers
-        broker_source, broker_destination = self.broker_selection(
+        broker_source, broker_destination = self._broker_selection(
             rg_destination,
             victim_partition,
         )
@@ -71,39 +71,7 @@ class ReplicationGroup(object):
         # Actual-movement of victim-partition
         broker_source.move_partition(victim_partition, broker_destination)
 
-    def _eval_over_loaded_brokers(
-        self,
-        victim_partition,
-    ):
-        """Get over-loaded brokers as sorted broker in partition-count and
-        containing victim-partition.
-        """
-        over_loaded_brokers = [
-            broker
-            for broker in self._brokers
-            if victim_partition in broker.partitions
-        ]
-        return sorted(
-            over_loaded_brokers,
-            key=lambda b: len(b.partitions),
-            reverse=True,
-        )
-
-    def eval_under_loaded_brokers(
-        self,
-        victim_partition,
-    ):
-        """Get brokers in ascending sorteder order of partition-count
-        not containing victim-partition.
-        """
-        under_loaded_brokers = [
-            broker
-            for broker in self._brokers
-            if victim_partition not in broker.partitions
-        ]
-        return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
-
-    def broker_selection(
+    def _broker_selection(
         self,
         rg_destination,
         victim_partition,
@@ -123,11 +91,11 @@ class ReplicationGroup(object):
         * Partition-count is balanced across replication-groups.
         """
         # Get overloaded brokers in source replication-group
-        over_loaded_brokers = self._eval_over_loaded_brokers(
+        over_loaded_brokers = self._select_over_loaded_brokers(
             victim_partition,
         )
         # Get underloaded brokers in destination replication-group
-        under_loaded_brokers = rg_destination.eval_under_loaded_brokers(
+        under_loaded_brokers = rg_destination._select_under_loaded_brokers(
             victim_partition,
         )
         broker_source = self._elect_source_broker(over_loaded_brokers)
@@ -137,6 +105,38 @@ class ReplicationGroup(object):
         )
         return broker_source, broker_destination
 
+    def _select_over_loaded_brokers(
+        self,
+        victim_partition,
+    ):
+        """Get over-loaded brokers as sorted broker in partition-count and
+        containing victim-partition.
+        """
+        over_loaded_brokers = [
+            broker
+            for broker in self._brokers
+            if victim_partition in broker.partitions
+        ]
+        return sorted(
+            over_loaded_brokers,
+            key=lambda b: len(b.partitions),
+            reverse=True,
+        )
+
+    def _select_under_loaded_brokers(
+        self,
+        victim_partition,
+    ):
+        """Get brokers in ascending sorteder order of partition-count
+        not containing victim-partition.
+        """
+        under_loaded_brokers = [
+            broker
+            for broker in self._brokers
+            if victim_partition not in broker.partitions
+        ]
+        return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
+
     def _elect_source_broker(self, over_loaded_brokers):
         """Select first broker from given brokers having victim_partition."""
         return over_loaded_brokers[0]
@@ -145,7 +145,7 @@ class ReplicationGroup(object):
         """Select first borker from under_loaded_brokers preferring not having
         partition of same topic as victim partition.
         """
-        # Pick broker not having topic in that broker
+        # Pick broker having least partitions of the given topic
         preferred_destination = None
         for broker in under_loaded_brokers:
             topic_ids = [partition.topic.id for partition in broker.partitions]
