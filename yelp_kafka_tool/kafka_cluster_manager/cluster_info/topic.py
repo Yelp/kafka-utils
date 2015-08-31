@@ -53,7 +53,6 @@ class Topic(object):
                         repl_factor2=replication_factor_partition,
                     )
                 )
-            pass
         self._partitions.append(partition)
 
     @property

@@ -2,10 +2,6 @@
 (Availability-zones) in our case.
 """
 
-from yelp_kafka_tool.kafka_cluster_manager.reassign.rg_rebalance import (
-    move_partition,
-)
-
 
 class ReplicationGroup(object):
     """Represent attributes and functions specific to replication-groups
@@ -49,21 +45,122 @@ class ReplicationGroup(object):
             for partition in broker.partitions
         ]
 
-    def move_partition(
-        self,
-        victim_partition,
-        rg_destination,
-        total_brokers_cluster,
-        total_partitions_cluster,
-    ):
-        move_partition(
-            self,
-            rg_destination,
-            victim_partition,
-            total_brokers_cluster,
-            total_partitions_cluster,
-        )
-
     def count_replica(self, partition):
         """Return count of replicas of given partition."""
         return self.partitions.count(partition)
+
+    def move_partition(
+            self,
+            rg_destination,
+            victim_partition,
+    ):
+        """Move partition(victim) from current replication-group to destination
+        replication-group.
+
+        Step 1: Evaluate source and destination broker
+        Step 2: Move partition from source-broker to destination-broker
+        """
+        # Select best-fit source and destination brokers for partition
+        # Best-fit is based on partition-count and presence/absence of
+        # Same topic-partition over brokers
+        broker_source, broker_destination = self.broker_selection(
+            rg_destination,
+            victim_partition,
+        )
+
+        # Actual-movement of victim-partition
+        broker_source.move_partition(victim_partition, broker_destination)
+
+    def _eval_over_loaded_brokers(
+        self,
+        victim_partition,
+    ):
+        """Get over-loaded brokers as sorted broker in partition-count and
+        containing victim-partition.
+        """
+        over_loaded_brokers = [
+            broker
+            for broker in self._brokers
+            if victim_partition in broker.partitions
+        ]
+        return sorted(
+            over_loaded_brokers,
+            key=lambda b: len(b.partitions),
+            reverse=True,
+        )
+
+    def eval_under_loaded_brokers(
+        self,
+        victim_partition,
+    ):
+        """Get brokers in ascending sorteder order of partition-count
+        not containing victim-partition.
+        """
+        under_loaded_brokers = [
+            broker
+            for broker in self._brokers
+            if victim_partition not in broker.partitions
+        ]
+        return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
+
+    def broker_selection(
+        self,
+        rg_destination,
+        victim_partition,
+    ):
+        """Select best-fit source and destination brokers based on partition
+        count and presence of partition over the broker.
+
+        * Get overloaded and underloaded brokers
+        Best-fit Selection Criteria:
+        Source broker: Select broker containing the victim-partition with
+        maximum partitions.
+        Destination broker: NOT containing the victim-partition with minimum
+        partitions. If no such broker found, return first broker.
+
+        This helps in ensuring:-
+        * Topic-partitions are distributed across brokers.
+        * Partition-count is balanced across replication-groups.
+        """
+        # Get overloaded brokers in source replication-group
+        over_loaded_brokers = self._eval_over_loaded_brokers(
+            victim_partition,
+        )
+        # Get underloaded brokers in destination replication-group
+        under_loaded_brokers = rg_destination.eval_under_loaded_brokers(
+            victim_partition,
+        )
+        broker_source = self._elect_source_broker(over_loaded_brokers)
+        broker_destination = self._elect_dest_broker(
+            under_loaded_brokers,
+            victim_partition,
+        )
+        return broker_source, broker_destination
+
+    def _elect_source_broker(self, over_loaded_brokers):
+        """Select first broker from given brokers having victim_partition."""
+        return over_loaded_brokers[0]
+
+    def _elect_dest_broker(self, under_loaded_brokers, victim_partition):
+        """Select first borker from under_loaded_brokers preferring not having
+        partition of same topic as victim partition.
+        """
+        # Pick broker not having topic in that broker
+        preferred_destination = None
+        for broker in under_loaded_brokers:
+            topic_ids = [partition.topic.id for partition in broker.partitions]
+            if victim_partition.topic.id not in topic_ids:
+                preferred_destination = broker
+                break
+        if not preferred_destination:
+            broker_topic_partition_cnt = [
+                (broker, broker.partition_count(victim_partition.topic))
+                for broker in under_loaded_brokers
+            ]
+            print('broker_topic', broker_topic_partition_cnt)
+            min_count_pair = min(
+                broker_topic_partition_cnt,
+                key=lambda ele: ele[1],
+            )
+            preferred_destination = min_count_pair[0]
+        return preferred_destination

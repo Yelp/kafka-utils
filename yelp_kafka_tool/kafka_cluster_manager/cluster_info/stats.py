@@ -101,7 +101,7 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     return net_imbalance, extra_replica_cnt_per_rg
 
 
-def get_leader_imbalance_stats(brokers, partitions):
+def get_leader_imbalance_stats(brokers):
     """Return for each broker the number of times it is assigned as preferred
     leader. Also return net leader-imbalance and imbalance stdev.
     """
@@ -176,3 +176,26 @@ def get_partition_imbalance_stats(brokers):
         for partition, count in partitions_per_broker.iteritems()
     )
     return stdev_imbalance, net_imbalance, partitions_per_broker_id
+
+
+def calculate_partition_movement(prev_assignment, curr_assignment):
+    """Calculate the partition movements from initial to current assignment.
+    Algorithm:
+        For each partition in initital assignment
+            # If replica set different in current assignment:
+                # Get Difference in sets
+    @rtype: tuple
+    dict((partition,  (from_broker_set, to_broker_set)), total_movements
+    """
+    total_movements = 0
+    result = {}
+    for prev_partition, prev_replicas in prev_assignment.items():
+        curr_replicas = curr_assignment[prev_partition]
+        diff = len(set(curr_replicas) - set(prev_replicas))
+        if diff:
+            total_movements += 1
+            result[prev_partition] = (
+                (set(prev_replicas) - set(curr_replicas)),
+                (set(curr_replicas) - set(prev_replicas)),
+            )
+    return result, total_movements

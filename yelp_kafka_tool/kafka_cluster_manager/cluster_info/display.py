@@ -1,3 +1,4 @@
+from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
@@ -12,7 +13,7 @@ def display_same_replica_count_rg(
 ):
     """Display same topic/partition count over brokers."""
     print("=" * 35)
-    print("Replication-group Same-replica-count")
+    print("Replication-group Extra-Same-replica-count")
     print("=" * 35)
     for rg_id, replica_count in duplicate_replica_count_per_rg.iteritems():
         count = int(replica_count)
@@ -79,7 +80,11 @@ def display_partition_count_per_broker(
         'Net-imbalance-ratio: Total extra partitions over brokers '
         'per 100 partitions'
     )
-    ratio = imbalance / float(sum(partition_count.values())) * 100
+    total_partition_count = sum(partition_count.values())
+    if total_partition_count > 0:
+        ratio = imbalance / total_partition_count * 100
+    else:
+        ratio = 0
     print('{ratio}\n'.format(ratio=ratio))
 
 
@@ -106,5 +111,9 @@ def display_leader_count_per_broker(
     print('Net-imbalance: Total extra brokers as leaders')
     print('{imbalance}\n'.format(imbalance=imbalance))
     print('Net-imbalance-ratio: Total extra brokers as leaders per 100 partitions')
-    ratio = imbalance / float(sum(leader_count.values())) * 100.0
+    leader_count = sum(leader_count.values())
+    if leader_count > 0:
+        ratio = imbalance / leader_count * 100.0
+    else:
+        ratio = 0
     print('{ratio}\n'.format(ratio=ratio))

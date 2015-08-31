@@ -3,12 +3,11 @@ class Partition(object):
     It contains topic-partition_id tuple as name, topic and replicas
     (list of brokers).
     """
-    def __init__(self, name, topic, replicas):
+    def __init__(self, name, topic, replicas=None):
         # Every partition name has (topic, partition) tuple
         assert(len(name) == 2)
-        assert(len(replicas) > 0)
         self._name = name
-        self._replicas = replicas
+        self._replicas = replicas or []
         self._topic = topic
 
     @property

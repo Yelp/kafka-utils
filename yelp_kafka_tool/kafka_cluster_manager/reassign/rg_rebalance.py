@@ -67,8 +67,7 @@ def rebalance_replicas(partitions, brokers, rgs):
 
                 evenly_distribute_partitions = bool(not extra_partition_count)
                 # Actual movement of partition
-                move_partition(
-                    rg_source,
+                rg_source.move_partition(
                     rg_destination,
                     partition,
                     opt_partition_count,
@@ -96,136 +95,38 @@ def rebalance_replicas(partitions, brokers, rgs):
                 reverse=True,
             )
 
-
-def segregate_replication_groups(
-    rgs,
-    partition,
-    opt_replica_count,
-    evenly_distribute_replicas,
-):
-    """Separate replication-groups into under-replicated, over-replicated
-    and optimally replicated groups.
-    """
-    under_replicated_rgs = []
-    over_replicated_rgs = []
-    replication_factor = partition.replication_factor
-    for rg in rgs:
-        replica_cnt = rg.count_replica(partition)
-        if replica_cnt < opt_replica_count:
-            under_replicated_rgs.append(rg)
-        elif replica_cnt > opt_replica_count:
-            over_replicated_rgs.append(rg)
-        else:
-            if evenly_distribute_replicas:
-                # Case 2: Rp % G == 0: Replication-groups should have same replica-count
-                # Nothing to be done since it's replication-group is already balanced
-                pass
-            else:
-                # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
-                # Helps in adjusting one extra replica if required
+    def segregate_replication_groups(
+        rgs,
+        partition,
+        opt_replica_count,
+        evenly_distribute_replicas,
+    ):
+        """Separate replication-groups into under-replicated, over-replicated
+        and optimally replicated groups.
+        """
+        under_replicated_rgs = []
+        over_replicated_rgs = []
+        replication_factor = partition.replication_factor
+        for rg in rgs:
+            replica_cnt = rg.count_replica(partition)
+            if replica_cnt < opt_replica_count:
                 under_replicated_rgs.append(rg)
-    return (
-        sorted(under_replicated_rgs, key=lambda rg: rg.count_replica(partition)),
-        sorted(over_replicated_rgs, key=lambda rg: rg.count_replica(partition), reverse=True),
-    )
-
-
-def get_all_partitions(rgs):
-    """Return list of partitions across all brokers."""
-    return [partition for rg in rgs for partition in rg.partitions]
-
-
-def move_partition(
-    rg_source,
-    rg_destination,
-    victim_partition,
-    opt_partition_count,
-    evenly_distribute_partitions,
-):
-    """Move partition(victim) from current replication-group to destination
-    replication-group.
-
-    Step 1: Get overloaded and underloaded brokers
-    Step 2: Evaluate source and destination broker
-    Step 3: Move partition from source-broker to destination-broker
-
-    Decide source broker and destination broker to move the partition.
-    """
-    # Get overloaded brokers in source replication-group
-    over_loaded_brokers = segregate_brokers(
-        rg_source.brokers,
-        opt_partition_count,
-        evenly_distribute_partitions,
-    )[0]
-    if not over_loaded_brokers:
-        over_loaded_brokers = sorted(
-            rg_source.brokers,
-            key=lambda b: len(b.partitions),
-            reverse=True,
+            elif replica_cnt > opt_replica_count:
+                over_replicated_rgs.append(rg)
+            else:
+                if evenly_distribute_replicas:
+                    # Case 2: Rp % G == 0: Replication-groups should have same replica-count
+                    # Nothing to be done since it's replication-group is already balanced
+                    pass
+                else:
+                    # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
+                    # Helps in adjusting one extra replica if required
+                    under_replicated_rgs.append(rg)
+        return (
+            sorted(under_replicated_rgs, key=lambda rg: rg.count_replica(partition)),
+            sorted(over_replicated_rgs, key=lambda rg: rg.count_replica(partition), reverse=True),
         )
 
-    # Get underloaded brokers in destination replication-group
-    under_loaded_brokers = segregate_brokers(
-        rg_destination.brokers,
-        opt_partition_count,
-        evenly_distribute_partitions,
-    )[1]
-    if not under_loaded_brokers:
-        under_loaded_brokers = sorted(
-            rg_destination.brokers, key=lambda b: len(b.partitions)
-        )
-
-    # Select best-fit source and destination brokers for partition
-    # Best-fit is based on partition-count and presence/absence of
-    # Same topic-partition over brokers
-    broker_source, broker_destination = broker_selection(
-        over_loaded_brokers,
-        under_loaded_brokers,
-        victim_partition,
-    )
-
-    # Actual-movement of victim-partition
-    broker_source.move_partition(victim_partition, broker_destination)
-
-
-def broker_selection(
-        over_loaded_brokers,
-        under_loaded_brokers,
-        victim_partition,
-):
-    """Select best-fit source and destination brokers based on partition
-    count and presence of partition over the broker.
-
-    Best-fit Selection Criteria:
-    Source broker: Select broker containing the victim-partition with
-    maximum partitions.
-    Destination broker: NOT containing the victim-partition with minimum
-    partitions. If no such broker found, return first broker.
-
-    This helps in ensuring:-
-    * Topic-partitions are distributed across brokers.
-    * Partition-count is balanced across replication-groups.
-    """
-    broker_source = None
-    broker_destination = None
-    for broker in over_loaded_brokers:
-        partition_ids = [p.name for p in broker.partitions]
-        if victim_partition.name in partition_ids:
-            broker_source = broker
-            break
-
-    # Pick broker not having topic in that broker
-    preferred_destination = None
-    for broker in under_loaded_brokers:
-        topic_ids = [partition.topic.id for partition in broker.partitions]
-        # TODO: change this to check for count of topic-ids and not presence
-        if victim_partition.topic.id not in topic_ids:
-            preferred_destination = broker
-            break
-    # If no valid broker found pick broker with minimum partitions
-    if preferred_destination:
-        broker_destination = preferred_destination
-    else:
-        broker_destination = under_loaded_brokers[0]
-
-    return broker_source, broker_destination
+    def get_all_partitions(rgs):
+        """Return list of partitions across all brokers."""
+        return [partition for rg in rgs for partition in rg.partitions]
