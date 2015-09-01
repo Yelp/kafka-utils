@@ -5,7 +5,7 @@ cffi==1.1.2
 cryptography==0.8.2
 enum34==1.0.4
 jsonschema==2.4.0
-kafka-python==0.9.4
+kafka-python==0.9.4.post1
 kazoo==2.2
 ndg-httpsclient==0.3.3
 pyOpenSSL==0.15.1
