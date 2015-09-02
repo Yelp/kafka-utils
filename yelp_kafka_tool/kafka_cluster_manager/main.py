@@ -3,7 +3,7 @@ Generate and/or execute the reassignment plan with minimal
 movements having optimally balanced partitions or leaders or both.
 
 Example:
-    kafka-reassignment --cluster-type scribe rebalance --broker-list '0,1,2'
+    kafka-cluster-manager --cluster-type scribe rebalance --broker-list '0,1,2'
         --partitions
 
     The above command first applies the re-balancing algorithm
@@ -44,7 +44,13 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
-
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.display import (
+    display_cluster_topology,
+    display_same_replica_count_rg,
+    display_same_topic_partition_count_broker,
+    display_partition_count_per_broker,
+    display_leader_count_per_broker,
+)
 
 DEFAULT_MAX_CHANGES = 5
 
@@ -55,7 +61,7 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk)
         # Display cluster topology as fetched from zookeeper
         print('Displaying current cluster topology')
-        ct.display_initial_cluster_topology()
+        display_cluster_topology(ct)
 
         # Display topology as built from objects
         ct.reassign_partitions(
@@ -65,8 +71,42 @@ def reassign_partitions(cluster_config, args):
         )
 
         print('Displaying cluster topology after reassignment')
-        ct.display_current_cluster_topology()
+        display_cluster_topology(ct)
         assert(ct.initial_assignment == ct.assignment)
+
+        # Get imbalance stats
+        # Partition-count imbalance
+        stdev_imbalance, net_imbalance, partitions_per_broker = \
+            ct.partition_imbalance()
+        display_partition_count_per_broker(
+            partitions_per_broker,
+            stdev_imbalance,
+            net_imbalance,
+        )
+        # Leader-count imbalance
+        stdev_imbalance, net_imbalance, leaders_per_broker = \
+            ct.leader_imbalance()
+        display_leader_count_per_broker(
+            leaders_per_broker,
+            stdev_imbalance,
+            net_imbalance,
+        )
+
+        # Duplicate-replica-count imbalance
+        net_imbalance, duplicate_replica_count_per_rg = \
+            ct.replication_group_imbalance()
+        display_same_replica_count_rg(
+            duplicate_replica_count_per_rg,
+            net_imbalance,
+        )
+
+        # Same topic-partition count
+        net_imbalance, same_topic_partition_count_per_broker = \
+            ct.topic_imbalance()
+        display_same_topic_partition_count_broker(
+            same_topic_partition_count_per_broker,
+            net_imbalance,
+        )
 
 
 def parse_args():
