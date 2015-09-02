@@ -54,7 +54,3 @@ class Topic(object):
                     )
                 )
         self._partitions.append(partition)
-
-    @property
-    def partition_count(self):
-        return len(self._partitions)

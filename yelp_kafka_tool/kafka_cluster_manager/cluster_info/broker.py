@@ -62,26 +62,12 @@ class Broker(object):
         # Add broker to replica list
         partition.replicas.append(self)
 
-    def partition_count(self, topic=None):
-        """Total partitions in broker for given topic or total partitions."""
-        if topic:
-            # Return partitions of given topic in broker
-            return sum([
-                1 for partition in topic.partitions
-                if partition in self.partitions
-            ])
-        else:
-            return len(self._partitions)
-
     def move_partition(self, partition, broker_destination):
         """Move partition to destination broker and adjust replicas."""
-        # Remove partition and broker from replicas
         self.remove_partition(partition)
-
-        # Add partition and broker in replicas
         broker_destination.add_partition(partition)
 
-    def count_topic_partitions(self, topic):
+    def count_partitions(self, topic):
         """Return count of partitions for given topic."""
         return sum([
             1

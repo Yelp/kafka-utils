@@ -141,12 +141,12 @@ def get_topic_imbalance_stats(brokers, topics):
     for topic in topics:
         # Optimal partition-count per topic per broker
         total_partition_replicas = \
-            topic.partition_count * topic.replication_factor
+            len(topic.partitions) * topic.replication_factor
         opt_partition_cnt, extra_partitions_allowed = \
             compute_optimal_count(total_partition_replicas, tot_brokers)
         # Get extra-partition count per broker for each topic
         for broker in brokers:
-            partition_cnt_broker = broker.count_topic_partitions(topic)
+            partition_cnt_broker = broker.count_partitions(topic)
             extra_partitions, extra_partitions_allowed = \
                 get_extra_element_count(
                     partition_cnt_broker,

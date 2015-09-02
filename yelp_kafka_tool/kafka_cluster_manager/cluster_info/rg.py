@@ -65,7 +65,7 @@ class ReplicationGroup(object):
         # Select best-fit source and destination brokers for partition
         # Best-fit is based on partition-count and presence/absence of
         # Same topic-partition over brokers
-        broker_source, broker_destination = self._broker_selection(
+        broker_source, broker_destination = self._select_broker(
             rg_destination,
             victim_partition,
         )
@@ -73,7 +73,7 @@ class ReplicationGroup(object):
         # Actual-movement of victim-partition
         broker_source.move_partition(victim_partition, broker_destination)
 
-    def _broker_selection(
+    def _select_broker(
         self,
         rg_destination,
         victim_partition,
@@ -149,19 +149,13 @@ class ReplicationGroup(object):
         """
         # Pick broker having least partitions of the given topic
         preferred_destination = None
-        for broker in under_loaded_brokers:
-            topic_ids = [partition.topic.id for partition in broker.partitions]
-            if victim_partition.topic.id not in topic_ids:
-                preferred_destination = broker
-                break
-        if not preferred_destination:
-            broker_topic_partition_cnt = [
-                (broker, broker.partition_count(victim_partition.topic))
-                for broker in under_loaded_brokers
-            ]
-            min_count_pair = min(
-                broker_topic_partition_cnt,
-                key=lambda ele: ele[1],
-            )
-            preferred_destination = min_count_pair[0]
+        broker_topic_partition_cnt = [
+            (broker, broker.count_partitions(victim_partition.topic))
+            for broker in under_loaded_brokers
+        ]
+        min_count_pair = min(
+            broker_topic_partition_cnt,
+            key=lambda ele: ele[1],
+        )
+        preferred_destination = min_count_pair[0]
         return preferred_destination
