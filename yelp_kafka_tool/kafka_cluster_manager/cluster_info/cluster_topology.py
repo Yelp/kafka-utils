@@ -246,59 +246,35 @@ class ClusterTopology(object):
             )
         # Move replicas from over-replicated to under-replicated groups
         while under_replicated_rgs and over_replicated_rgs:
-            if self._rebalance_segregated_groups(
-                under_replicated_rgs,
+            # Decide source and destination group
+            rg_source = self._elect_source_replication_group(
                 over_replicated_rgs,
                 partition,
-                opt_replica_count,
-                evenly_distribute_replicas,
-            ):
-                # Groups balanced or cannot be balanced further
-                break
-
-    def _rebalance_segregated_groups(
-        self,
-        under_replicated_rgs,
-        over_replicated_rgs,
-        partition,
-        opt_replica_count,
-        evenly_distribute_replicas,
-    ):
-        """Decide source and destination replication groups
-        and move partition across them.
-
-        rtype: bool: Return True if groups are balanced, False
-                     otherwise
-        """
-        # Decide source and destination group
-        rg_source = self._elect_source_replication_group(
-            over_replicated_rgs,
-            partition,
-        )
-        rg_destination = self._elect_dest_replication_group(
-            rg_source.count_replica(partition),
-            under_replicated_rgs,
-            partition,
-        )
-        if rg_source and rg_destination:
-            # Actual movement of partition
-            rg_source.move_partition(
-                rg_destination,
+            )
+            rg_destination = self._elect_dest_replication_group(
+                rg_source.count_replica(partition),
+                under_replicated_rgs,
                 partition,
             )
-            # Get current count stats
-            source_replica_cnt = rg_source.count_replica(partition)
-            dest_replica_cnt = rg_destination.count_replica(partition)
-            # Remove group if balanced
-            if source_replica_cnt == opt_replica_count:
-                over_replicated_rgs.remove(rg_source)
-            allowed_dest_cnt = dest_replica_cnt + 1 \
-                if evenly_distribute_replicas else dest_replica_cnt
-            if allowed_dest_cnt == opt_replica_count:
-                under_replicated_rgs.remove(rg_destination)
-            return False
-        else:
-            return True
+            if rg_source and rg_destination:
+                # Actual movement of partition
+                rg_source.move_partition(
+                    rg_destination,
+                    partition,
+                )
+                # Update replication groups after movement of partition
+                source_replica_cnt = rg_source.count_replica(partition)
+                dest_replica_cnt = rg_destination.count_replica(partition)
+                # Remove group from list if balanced
+                if source_replica_cnt == opt_replica_count:
+                    over_replicated_rgs.remove(rg_source)
+                allowed_dest_cnt = dest_replica_cnt + 1 \
+                    if not evenly_distribute_replicas else dest_replica_cnt
+                if allowed_dest_cnt == opt_replica_count:
+                    under_replicated_rgs.remove(rg_destination)
+            else:
+                # Groups balanced or cannot be balanced further
+                break
 
     def _segregate_replication_groups(
         self,

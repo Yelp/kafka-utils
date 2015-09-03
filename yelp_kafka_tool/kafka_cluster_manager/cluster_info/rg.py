@@ -148,7 +148,6 @@ class ReplicationGroup(object):
         partition of same topic as victim partition.
         """
         # Pick broker having least partitions of the given topic
-        preferred_destination = None
         broker_topic_partition_cnt = [
             (broker, broker.count_partitions(victim_partition.topic))
             for broker in under_loaded_brokers
@@ -157,5 +156,4 @@ class ReplicationGroup(object):
             broker_topic_partition_cnt,
             key=lambda ele: ele[1],
         )
-        preferred_destination = min_count_pair[0]
-        return preferred_destination
+        return min_count_pair[0]
