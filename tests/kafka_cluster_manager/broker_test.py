@@ -46,10 +46,10 @@ class TestBroker(object):
             Mock(spec=Partition, topic=sentinel.t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t2, replicas=sentinel.r1),
-            Mock(spec=Partition, topic=sentinel.t2, replicas=sentinel.r1),
         ]
         broker = Broker('test-broker', partitions)
         assert broker.count_partitions(topic) == 2
+        assert broker.count_partitions(sentinel.t3) == 0
 
     def test_move_partition(self):
         victim_partition = Partition(('p1', 0), topic=sentinel.t1)

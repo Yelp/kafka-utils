@@ -37,3 +37,7 @@ class Partition(object):
     @property
     def replication_factor(self):
         return len(self._replicas)
+
+    def add_replica(self, broker):
+        """Add broker to existing set of replicas."""
+        self._replicas.append(broker)

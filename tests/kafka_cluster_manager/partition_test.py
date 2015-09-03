@@ -27,7 +27,7 @@ class TestPartition(object):
         assert partition.leader == sentinel.r1
 
     def test_replication_factor(self, partition):
-        assert partition.replication_factor() == 2
+        assert partition.replication_factor == 2
 
     def test_partition_id(self, partition):
         assert partition.partition_id == 0

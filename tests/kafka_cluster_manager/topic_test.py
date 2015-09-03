@@ -39,6 +39,3 @@ class TestTopic(object):
             mock_partitions[1],
             new_partition,
         ]
-
-    def test_partition_count(self, topic):
-        assert topic.partition_count == 2
