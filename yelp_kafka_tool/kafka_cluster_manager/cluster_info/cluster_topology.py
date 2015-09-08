@@ -23,7 +23,7 @@ from .stats import (
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
 )
-from .util import compute_optimal_count
+from .util import compute_optimal_count, get_assignment_map
 
 
 class ClusterTopology(object):
@@ -176,8 +176,7 @@ class ClusterTopology(object):
 
     @property
     def assignment(self):
-        kafka = KafkaInterface()
-        return kafka.get_assignment_map(self.get_assignment_json())[0]
+        return get_assignment_map(self.get_assignment_json())
 
     @property
     def partition_replicas(self):
