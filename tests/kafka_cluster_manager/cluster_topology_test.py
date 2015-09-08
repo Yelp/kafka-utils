@@ -1,13 +1,13 @@
+import contextlib
 from collections import OrderedDict
 from mock import sentinel, patch, MagicMock
+from pytest import fixture
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import (
     ClusterTopology,
+    KafkaInterface,
 )
 from yelp_kafka_tool.kafka_cluster_manager.main import ZK
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    get_assignment_map,
-)
 from yelp_kafka.config import ClusterConfig
 
 
@@ -29,32 +29,49 @@ class TestClusterToplogy(object):
         ]
     )
 
-    def get_replication_group_id(self, broker):
-        return self.broker_id_rg_id_map[broker.id]
+    @fixture
+    def mock_zk(self):
+        # Mock zookeeper
+        mock_cluster_config = MagicMock(spec=ClusterConfig)
+        mock_cluster_config.name = "test-config"
+        mock_zk = MagicMock(spec=ZK, cluster_config=mock_cluster_config)
 
-    @patch('yelp_kafka_tool.kafka_cluster_manager.'
-           'cluster_info.cluster_topology.KafkaInterface')
-    def test_creating_cluster_object(self, mock_kafka):
+        mock_zk.get_brokers.return_value = self.brokers_info
+        mock_zk.get_topics.return_value = self.topic_ids
+        return mock_zk
+
+    @fixture
+    def ct(self, mock_zk):
+        with contextlib.nested(
+            self.mock_kafka_assignment(),
+            self.mock_get_replication_id(),
+        ):
+            # Create cluster-object
+            return ClusterTopology(mock_zk)
+
+    @contextlib.contextmanager
+    def mock_kafka_assignment(self):
+        with patch.object(
+            KafkaInterface,
+            "get_cluster_assignment",
+            spec=KafkaInterface.get_cluster_assignment,
+            return_value=self._initial_assignment,
+        ) as mock_kafka_assignment:
+            yield mock_kafka_assignment
+
+    @contextlib.contextmanager
+    def mock_get_replication_id(self):
         with patch.object(
             ClusterTopology,
             "_get_replication_group_id",
             spec=ClusterTopology._get_replication_group_id,
             side_effect=self.get_replication_group_id,
-        ):
-            # Mock zookeeper
-            mock_cluster_config = MagicMock(spec=ClusterConfig)
-            mock_zk = MagicMock(spec=ZK, cluster_config=mock_cluster_config)
+        ) as mock_get_replication_id:
+            yield mock_get_replication_id
 
-            mock_zk.get_brokers.return_value = self.brokers_info
-            mock_zk.get_topics.return_value = self.topic_ids
-            mock_kafka.return_value.get_cluster_assignment.return_value = \
-                self._initial_assignment
+    def get_replication_group_id(self, broker):
+        return self.broker_id_rg_id_map[broker.id]
 
-            # Create cluster-object
-            ct = ClusterTopology(mock_zk)
-            mock_kafka.get_assignment_map.side_effect = get_assignment_map(
-                ct.get_assignment_json()
-            )
-
-            # Verify creation of_objects
-            assert(ct.assignment == ct.initial_assignment)
+    def test_creating_cluster_object(self, ct):
+        # Verify creation of_cluster-topology objects
+        assert(ct.assignment == ct.initial_assignment)
