@@ -115,16 +115,6 @@ class ClusterTopology(object):
                     broker.id,
                 )
                 rg_name = 'localhost'
-
-                # TODO: remove, temporary for localhost
-                if int(broker.id) % 3 == 0:
-                    rg_name = 'rg1'
-                elif int(broker.id) % 3 == 1:
-                    rg_name = 'rg2'
-                elif int(broker.id) % 3 == 2:
-                    rg_name = 'rg3'
-                else:
-                    rg_name = 'rg4'
             else:
                 habitat = hostname.rsplit('-', 1)[1]
                 rg_name = habitat.split('.', 1)[0]
@@ -307,7 +297,7 @@ class ClusterTopology(object):
         """Decide source replication-group based as group with highest replica
         count.
         """
-        # TODO?: decide based on partition-count
+        # TODO: optimization: decide based on partition-count
         return max(
             over_replicated_rgs,
             key=lambda rg: rg.count_replica(partition),
@@ -320,13 +310,12 @@ class ClusterTopology(object):
         partition,
     ):
         """Decide destination replication-group based on replica-count."""
-
-        under_replicated_rgs.sort(key=lambda rg: rg.count_replica(partition))
+        min_replicated_rg = min(
+            under_replicated_rgs,
+            key=lambda rg: rg.count_replica(partition),
+        )
         # Locate under-replicated replication-group with lesser
         # replica count than source replication-group
-
-        for under_replicated_rg in under_replicated_rgs:
-            if under_replicated_rg.count_replica(partition) < \
-                    replica_count_source - 1:
-                return under_replicated_rg
+        if min_replicated_rg.count_replica(partition) < replica_count_source - 1:
+            return min_replicated_rg
         return None
