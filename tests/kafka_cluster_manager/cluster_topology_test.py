@@ -103,3 +103,16 @@ class TestClusterToplogy(object):
             self.brokers_info.keys(),
         )
         assert(ct.assignment == ct.initial_assignment)
+
+    def test_rebalance_replication_groups(self, ct):
+        ct.rebalance_replication_groups()
+        expected_assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T0', 1), [2, 0]),
+                ((u'T1', 0), [2, 1]),
+                ((u'T2', 0), [2]),
+                ((u'T2', 1), [1]),
+            ]
+        )
+        assert(ct.assignment == expected_assignment)
