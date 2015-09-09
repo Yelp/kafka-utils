@@ -59,6 +59,7 @@ def reassign_partitions(cluster_config, args):
             args.max_changes,
             args.apply,
             args.force,
+            args.proposed_plan_file,
         )
 
 
@@ -121,6 +122,13 @@ def parse_args():
         action='store_true',
         help='Proposed-plan will be executed without confirmation',
     )
+    parser_rebalance.add_argument(
+        '--json',
+        dest='proposed_plan_file',
+        type=str,
+        help='Export candidate partition reassignment configuration '
+             'to given json file.',
+    )
     parser_rebalance.set_defaults(command=reassign_partitions)
     return parser.parse_args()
 
@@ -146,6 +154,8 @@ def validate_args(args):
     if not any(rebalance_options):
         _log.error('\'--replication-groups\' flag required.')
         result = False
+    if args.force and not args.apply:
+        _log.error('--apply required with --force flag.')
     return result
 
 

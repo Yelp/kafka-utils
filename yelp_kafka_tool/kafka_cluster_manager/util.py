@@ -117,7 +117,7 @@ class KafkaInterface(object):
         with tempfile.NamedTemporaryFile() as temp_reassignment_file:
             temp_reassignment_file.write(json.dumps(proposed_layout))
             temp_reassignment_file.flush()
-            run_repartition_cmd(
+            self.run_repartition_cmd(
                 zookeeper,
                 brokers,
                 temp_reassignment_file.name,
