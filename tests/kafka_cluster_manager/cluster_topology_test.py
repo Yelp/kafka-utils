@@ -12,7 +12,7 @@ from yelp_kafka.config import ClusterConfig
 
 
 class TestClusterToplogy(object):
-    broker_id_rg_id_map = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg1', 4: 'rg3'}
+    broker_id_rg_id_map = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg3', 5: 'rg1'}
     topic_ids = ['T0', 'T1', 'T2']
     brokers_info = {
         '0': sentinel.obj1,
@@ -103,11 +103,14 @@ class TestClusterToplogy(object):
         )
         assert(ct.assignment == ct.initial_assignment)
 
-    def assert_equal(self, actual_assignment, expected_assignment):
+    def assert_equal(self, assignment1, assignment2):
         """Assert assignments are same, taking replicas as set."""
-        assert(actual_assignment.keys() == expected_assignment.keys())
+        assert(assignment1.keys() == assignment2.keys())
         for t_p in self._initial_assignment.iterkeys():
-            assert(set(actual_assignment[t_p]) == set(expected_assignment[t_p]))
+            assert(
+                sorted(assignment1[t_p]) ==
+                sorted(assignment2[t_p])
+            )
 
     def test_rebalance_replication_groups(self, ct):
         ct.rebalance_replication_groups()
@@ -120,5 +123,52 @@ class TestClusterToplogy(object):
                 ((u'T2', 1), [1]),
             ]
         )
-        actual_assignment = ct.assignment
-        self.assert_equal(actual_assignment, expected_assignment)
+        self.assert_equal(ct.assignment, expected_assignment)
+
+    def test_rebalance_replication_groups_1(self):
+        # Case 1: replication-groups(2) < replication-factor (3)
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2, 1]),
+                ((u'T0', 1), [2, 0, 1]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T2', 0), [2, 3]),
+                ((u'T2', 1), [1, 0]),
+            ]
+        )
+        ct = self.ct_assignment(assignment, ['0', '1', '2', '3'])
+        ct.reassign_partitions()
+        expected_assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2, 1]),
+                ((u'T0', 1), [2, 0, 1]),
+                ((u'T1', 0), [1, 3]),
+                ((u'T2', 0), [3, 0]),
+                ((u'T2', 1), [1, 2]),
+            ]
+        )
+        self.assert_equal(ct.assignment, expected_assignment)
+
+    def test_rebalance_replication_groups_1(self):
+        # Case 1: replication-groups(2) < replication-factor (3)
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2, 1]),
+                ((u'T0', 1), [2, 0, 1]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T2', 0), [2, 3]),
+                ((u'T2', 1), [1, 0]),
+            ]
+        )
+        ct = self.ct_assignment(assignment, ['0', '1', '2', '3'])
+        ct.reassign_partitions()
+        expected_assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2, 1]),
+                ((u'T0', 1), [2, 0, 1]),
+                ((u'T1', 0), [1, 3]),
+                ((u'T2', 0), [3, 0]),
+                ((u'T2', 1), [1, 2]),
+            ]
+        )
+        self.assert_equal(ct.assignment, expected_assignment)
