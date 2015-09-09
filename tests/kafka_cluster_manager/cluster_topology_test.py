@@ -78,7 +78,6 @@ class TestClusterToplogy(object):
         mock_zk = MagicMock(spec=ZK, cluster_config=mock_cluster_config)
         brokers_info = {broker_id: sentinel.obj for broker_id in broker_ids}
         topic_ids = sorted(set([t_p[0] for t_p in assignment.iterkeys()]))
-        print('topic-ids', topic_ids)
         mock_zk.get_brokers.return_value = brokers_info
         mock_zk.get_topics.return_value = topic_ids
         with contextlib.nested(
@@ -104,6 +103,12 @@ class TestClusterToplogy(object):
         )
         assert(ct.assignment == ct.initial_assignment)
 
+    def assert_equal(self, actual_assignment, expected_assignment):
+        """Assert assignments are same, taking replicas as set."""
+        assert(actual_assignment.keys() == expected_assignment.keys())
+        for t_p in self._initial_assignment.iterkeys():
+            assert(set(actual_assignment[t_p]) == set(expected_assignment[t_p]))
+
     def test_rebalance_replication_groups(self, ct):
         ct.rebalance_replication_groups()
         expected_assignment = OrderedDict(
@@ -115,4 +120,5 @@ class TestClusterToplogy(object):
                 ((u'T2', 1), [1]),
             ]
         )
-        assert(ct.assignment == expected_assignment)
+        actual_assignment = ct.assignment
+        self.assert_equal(actual_assignment, expected_assignment)
