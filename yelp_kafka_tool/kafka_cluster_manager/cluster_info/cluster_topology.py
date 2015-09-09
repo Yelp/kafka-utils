@@ -24,6 +24,7 @@ from .stats import (
     get_replication_group_imbalance_stats,
 )
 from .util import compute_optimal_count, get_assignment_map
+from .display import display_assignment_changes
 
 
 class ClusterTopology(object):
@@ -125,11 +126,13 @@ class ClusterTopology(object):
             raise ValueError(errorMsg)
         return rg_name
 
-    def reassign_partitions(self):
+    def reassign_partitions(self, rebalance_options):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
         """
-        self.rebalance_replication_groups()
+        # Rebalance replication-groups
+        if rebalance_options[0]:
+            self.rebalance_replication_groups()
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
@@ -319,3 +322,94 @@ class ClusterTopology(object):
         if min_replicated_rg.count_replica(partition) < replica_count_source - 1:
             return min_replicated_rg
         return None
+
+    # Execute or display cluster-topology in zookeeper
+    def execute_plan(
+        self,
+        max_changes,
+        apply,
+        force_execute,
+    ):
+        # Get final-proposed-plan
+        proposed_plan = self._get_reduced_proposed_plan(max_changes)
+        # Execute or display the plan
+        if proposed_plan:
+            if apply:
+                if force_execute:
+                    self.log.info('Executing Proposed Plan')
+                    self._execute_plan(proposed_plan)
+                else:
+                    permit = ''
+                    while permit.lower() not in ('yes', 'no'):
+                        permit = raw_input('Execute Proposed Plan? [yes/no] ')
+                    if permit.lower() == 'yes':
+                        self.log.info('Executing Proposed Plan')
+                        self._execute_plan(proposed_plan)
+            else:
+                self.log.info('Proposed Plan won\'t be executed.')
+        else:
+            self.log.info('No topic-partition layout changes proposed.')
+
+    def _get_reduced_proposed_plan(self, max_changes):
+        """Return new plan with upper limit on total actions.
+
+        These actions involve actual partition movement
+        and/or change in preferred leader.
+        Get the difference of current and new proposed plan
+        and take the subset of this plan for given limit.
+        Convert the resultant assignment into json format and return.
+
+        Argument(s):
+        max_changes:        Maximum number of actions allowed
+        """
+        original_assignment = self._initial_assignment
+        new_assignment = self.assignment
+        if original_assignment == new_assignment:
+            return {}
+        assert(
+            set(original_assignment.keys()) == set(new_assignment.keys())
+        ), 'Mismatch in topic-partitions set in original and proposed plans.'
+        # Get change-list for given assignments
+        proposed_assignment = [
+            (t_p_key, new_assignment[t_p_key])
+            for t_p_key, replica in original_assignment.iteritems()
+            if replica != new_assignment[t_p_key]
+        ]
+        total_changes = len(proposed_assignment)
+        red_proposed_plan_list = proposed_assignment[:max_changes]
+        red_curr_plan_list = [(tp_repl[0], original_assignment[tp_repl[0]])
+                              for tp_repl in red_proposed_plan_list]
+        display_assignment_changes(
+            red_curr_plan_list,
+            red_proposed_plan_list,
+            total_changes,
+        )
+        red_proposed_assignment = dict(
+            (ele[0], ele[1])
+            for ele in red_proposed_plan_list
+        )
+        return {
+            'version': 1,
+            'partitions':
+            [{'topic': t_p_key[0],
+              'partition': t_p_key[1],
+              'replicas': replica
+              } for t_p_key, replica in red_proposed_assignment.iteritems()]
+        }
+
+    def _execute_plan(self, proposed_plan):
+        """Execute the proposed plan.
+
+        Execute the given proposed plan over given
+        brokers and zookeeper configuration
+
+        Arguments:
+        proposed_plan:   Proposed plan in json format
+        """
+        kafka = KafkaInterface()
+        kafka.execute_plan(
+            proposed_plan,
+            self._zk.cluster_config.zookeeper,
+            self.brokers.keys(),
+            self.topics.keys(),
+        )
