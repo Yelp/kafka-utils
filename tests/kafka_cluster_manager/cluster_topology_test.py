@@ -148,27 +148,3 @@ class TestClusterToplogy(object):
             ]
         )
         self.assert_equal(ct.assignment, expected_assignment)
-
-    def test_rebalance_replication_groups_1(self):
-        # Case 1: replication-groups(2) < replication-factor (3)
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2, 1]),
-                ((u'T0', 1), [2, 0, 1]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T2', 0), [2, 3]),
-                ((u'T2', 1), [1, 0]),
-            ]
-        )
-        ct = self.ct_assignment(assignment, ['0', '1', '2', '3'])
-        ct.reassign_partitions()
-        expected_assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2, 1]),
-                ((u'T0', 1), [2, 0, 1]),
-                ((u'T1', 0), [1, 3]),
-                ((u'T2', 0), [3, 0]),
-                ((u'T2', 1), [1, 2]),
-            ]
-        )
-        self.assert_equal(ct.assignment, expected_assignment)
