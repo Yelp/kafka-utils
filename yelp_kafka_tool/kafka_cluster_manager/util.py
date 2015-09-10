@@ -114,8 +114,11 @@ class KafkaInterface(object):
         Arguments:
         proposed_plan:   Proposed plan in json format
         """
+        # TODO: REMOVE:
+        print('psuedo executed')
+        return
         with tempfile.NamedTemporaryFile() as temp_reassignment_file:
-            temp_reassignment_file.write(json.dumps(proposed_layout))
+            json.dump(proposed_layout, temp_reassignment_file)
             temp_reassignment_file.flush()
             self.run_repartition_cmd(
                 zookeeper,

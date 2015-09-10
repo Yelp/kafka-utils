@@ -52,13 +52,13 @@ def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
         ct = ClusterTopology(zk)
-        rebalance_options = [args.replication_groups]
-        ct.reassign_partitions(rebalance_options)
+        if args.replication_groups:
+            ct.reassign_partitions('replication-groups')
         # Execute or displan plan
         ct.execute_plan(
             args.max_changes,
             args.apply,
-            args.force,
+            args.no_confirm,
             args.proposed_plan_file,
         )
 
@@ -117,8 +117,8 @@ def parse_args():
         help='Proposed-plan will be executed on confirmation'
     )
     parser_rebalance.add_argument(
-        '--force',
-        dest='force',
+        '--no-confirm',
+        dest='no_confirm',
         action='store_true',
         help='Proposed-plan will be executed without confirmation',
     )
@@ -154,8 +154,8 @@ def validate_args(args):
     if not any(rebalance_options):
         _log.error('\'--replication-groups\' flag required.')
         result = False
-    if args.force and not args.apply:
-        _log.error('--apply required with --force flag.')
+    if args.no_confirm and not args.apply:
+        _log.error('--apply required with --no-confirm flag.')
     return result
 
 

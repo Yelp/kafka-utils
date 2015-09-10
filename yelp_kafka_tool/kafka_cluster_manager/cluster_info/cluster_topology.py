@@ -135,7 +135,7 @@ class ClusterTopology(object):
         rebalancing option.
         """
         # Rebalance replication-groups
-        if rebalance_options[0]:
+        if rebalance_options == 'replication-groups':
             self.rebalance_replication_groups()
 
     def get_assignment_json(self):

@@ -72,7 +72,6 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
         set(original_assignment.keys()) == set(new_assignment.keys())
     ), 'Mismatch in topic-partitions set in original and proposed plans.'
     # Get change-list for given assignments
-    # TODO: check if it can directly be taken as dict?
     proposed_assignment = [
         (t_p_key, new_assignment[t_p_key])
         for t_p_key, replica in original_assignment.iteritems()
@@ -91,13 +90,17 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
         (ele[0], ele[1])
         for ele in red_proposed_plan_list
     )
+    return get_plan_str(red_proposed_assignment)
+
+
+def get_plan_str(proposed_assignment):
     return {
         'version': 1,
         'partitions':
         [{'topic': t_p_key[0],
           'partition': t_p_key[1],
           'replicas': replica
-          } for t_p_key, replica in red_proposed_assignment.iteritems()]
+          } for t_p_key, replica in proposed_assignment.iteritems()]
     }
 
 
