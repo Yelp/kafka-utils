@@ -7,6 +7,9 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import 
     ClusterTopology,
     KafkaInterface,
 )
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
+    get_replication_group_imbalance_stats,
+)
 from yelp_kafka_tool.kafka_cluster_manager.main import ZK
 from yelp_kafka.config import ClusterConfig
 
@@ -103,27 +106,31 @@ class TestClusterToplogy(object):
         )
         assert(ct.assignment == ct.initial_assignment)
 
-    def assert_equal(self, assignment1, assignment2):
-        """Assert assignments are same, taking replicas as set."""
-        assert(assignment1.keys() == assignment2.keys())
-        for t_p in self._initial_assignment.iterkeys():
-            assert(
-                sorted(assignment1[t_p]) ==
-                sorted(assignment2[t_p])
-            )
+    def assert_valid(self, new_assignment, orig_assignment, orig_brokers):
+        """Assert if new-assignment is valid based on given assignment.
+
+        Asserts the results for following parameters:
+        a) Asserts that keys in both assignments are same
+        b) Asserts that replication-factor of result remains same
+        c) Assert that new-replica-brokers are amongst given broker-list
+        """
+        # Asserts that partitions remain same
+        assert(sorted(orig_assignment.keys()) == sorted(new_assignment.keys()))
+        for t_p, new_replicas in new_assignment.iteritems():
+            orig_replicas = orig_assignment[t_p]
+            # Assert that new-replias are amongst given broker-list
+            assert(all([broker in orig_brokers for broker in new_replicas]))
+            # Assert that replication-factor remains same
+            assert(len(new_replicas) == len(orig_replicas))
 
     def test_rebalance_replication_groups(self, ct):
         ct.rebalance_replication_groups()
-        expected_assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T0', 1), [2, 0]),
-                ((u'T1', 0), [2, 1]),
-                ((u'T2', 0), [2]),
-                ((u'T2', 1), [1]),
-            ]
+        net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+            ct.rgs.values(),
+            ct.partitions.values(),
         )
-        self.assert_equal(ct.assignment, expected_assignment)
+        assert(net_imbal, 0)
+        self.assert_valid(ct.assignment, self._initial_assignment, ct.brokers.keys())
 
     def test_rebalance_replication_groups_1(self):
         # Case 1: replication-groups(2) < replication-factor (3)
@@ -138,13 +145,9 @@ class TestClusterToplogy(object):
         )
         ct = self.ct_assignment(assignment, ['0', '1', '2', '3'])
         ct.reassign_partitions()
-        expected_assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2, 1]),
-                ((u'T0', 1), [2, 0, 1]),
-                ((u'T1', 0), [1, 3]),
-                ((u'T2', 0), [3, 0]),
-                ((u'T2', 1), [1, 2]),
-            ]
+        net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+            ct.rgs.values(),
+            ct.partitions.values(),
         )
-        self.assert_equal(ct.assignment, expected_assignment)
+        assert(net_imbal, 0)
+        self.assert_valid(ct.assignment, assignment, ct.brokers.keys())
