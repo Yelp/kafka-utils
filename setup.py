@@ -26,7 +26,7 @@ setup(
         "argcomplete",
         "kazoo>=2.0.post2,<3.0.0",
         "PyYAML<4.0.0",
-        "yelp-kafka>=3.2.0,<4.0.0",
+        "yelp-kafka>=4.0.0,<5.0.0",
         "requests<3.0.0"
     ],
 )
