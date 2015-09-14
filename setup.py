@@ -18,7 +18,7 @@ setup(
     scripts=[
         "scripts/kafka-info",
         "scripts/kafka-reassignment",
-        "scripts/kafka-partition-management",
+        "scripts/kafka-partition-manager",
         "scripts/kafka-consumer-manager",
         "scripts/yelpkafka",
     ],
