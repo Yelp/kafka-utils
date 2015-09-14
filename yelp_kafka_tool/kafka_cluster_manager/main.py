@@ -42,6 +42,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
+from .execute_assignment import execute_plan
 
 
 DEFAULT_MAX_CHANGES = 5
@@ -55,11 +56,17 @@ def reassign_partitions(cluster_config, args):
         if args.replication_groups:
             ct.reassign_partitions('replication-groups')
         # Execute or displan plan
-        ct.execute_plan(
+        execute_plan(
+            ct.initial_assignment,
+            ct.assignment,
             args.max_changes,
             args.apply,
             args.no_confirm,
             args.proposed_plan_file,
+            zk,
+            ct.brokers.keys(),
+            ct.topics.keys(),
+            _log,
         )
 
 

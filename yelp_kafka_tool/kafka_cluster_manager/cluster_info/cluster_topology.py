@@ -26,9 +26,6 @@ from .stats import (
 from .util import (
     compute_optimal_count,
     get_assignment_map,
-    confirm_execution,
-    proposed_plan_json,
-    get_reduced_proposed_plan,
 )
 
 
@@ -326,43 +323,3 @@ class ClusterTopology(object):
         if min_replicated_rg.count_replica(partition) < replica_count_source - 1:
             return min_replicated_rg
         return None
-
-    # Execute or display cluster-topology in zookeeper
-    def execute_plan(
-        self,
-        max_changes,
-        apply,
-        force_execute,
-        proposed_plan_file,
-    ):
-        # Get final-proposed-plan
-        proposed_plan = get_reduced_proposed_plan(
-            self._initial_assignment,
-            self.assignment,
-            max_changes,
-        )
-        # Execute or display the plan
-        if proposed_plan:
-            to_execute = False
-            if apply:
-                if force_execute:
-                    to_execute = True
-                else:
-                    if confirm_execution():
-                        to_execute = True
-            # Execute proposed-plan
-            if to_execute:
-                self.log.info('Executing Proposed Plan')
-                KafkaInterface().execute_plan(
-                    proposed_plan,
-                    self._zk.cluster_config.zookeeper,
-                    self.brokers.keys(),
-                    self.topics.keys(),
-                )
-            else:
-                self.log.info('Proposed Plan won\'t be executed.')
-            # Export proposed-plan to json file
-            if proposed_plan_file:
-                proposed_plan_json(proposed_plan, proposed_plan_file)
-        else:
-            self.log.info('No topic-partition layout changes proposed.')
