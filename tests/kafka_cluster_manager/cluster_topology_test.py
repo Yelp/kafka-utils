@@ -5,7 +5,6 @@ from pytest import fixture
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import (
     ClusterTopology,
-    KafkaInterface,
 )
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
     get_replication_group_imbalance_stats,
@@ -18,7 +17,7 @@ from yelp_kafka.config import ClusterConfig
 
 
 class TestClusterToplogy(object):
-    broker_id_rg_id_map = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
+    broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
     topic_ids = ['T0', 'T1', 'T2', 'T3']
     brokers_info = {
         '0': sentinel.obj1,
@@ -64,25 +63,6 @@ class TestClusterToplogy(object):
         mock_zk.get_topics.return_value = self.topic_ids
         return mock_zk
 
-    @fixture
-    def ct(self, mock_zk):
-        with contextlib.nested(
-            self.mock_cluster_assignment(),
-            self.mock_get_replication_group_id(),
-        ):
-            # Create cluster-object
-            return ClusterTopology(mock_zk)
-
-    @contextlib.contextmanager
-    def mock_cluster_assignment(self):
-        with patch.object(
-            KafkaInterface,
-            "get_cluster_assignment",
-            spec=KafkaInterface.get_cluster_assignment,
-            return_value=self._initial_assignment,
-        ) as mock_cluster_assignment:
-            yield mock_cluster_assignment
-
     @contextlib.contextmanager
     def mock_get_replication_group_id(self):
         with patch.object(
@@ -94,39 +74,33 @@ class TestClusterToplogy(object):
             yield mock_get_replication_group_id
 
     def get_replication_group_id(self, broker):
-        return self.broker_id_rg_id_map[broker.id]
+        return self.broker_rg[broker.id]
 
-    def ct_assignment(self, assignment, broker_ids):
+    @contextlib.contextmanager
+    def build_cluster_topology(self, assignment=None, broker_ids=None):
         """Create cluster topology from given assignment."""
+        if not assignment:
+            assignment = self._initial_assignment
         mock_cluster_config = MagicMock(spec=ClusterConfig)
         mock_cluster_config.name = "test-config"
         mock_zk = MagicMock(spec=ZK, cluster_config=mock_cluster_config)
-        brokers_info = {broker_id: sentinel.obj for broker_id in broker_ids}
+        if broker_ids:
+            brokers_info = {broker_id: sentinel.obj for broker_id in broker_ids}
+        else:
+            brokers_info = self.brokers_info
         topic_ids = sorted(set([t_p[0] for t_p in assignment.iterkeys()]))
         mock_zk.get_brokers.return_value = brokers_info
         mock_zk.get_topics.return_value = topic_ids
         with contextlib.nested(
-            patch.object(
-                KafkaInterface,
-                "get_cluster_assignment",
-                spec=KafkaInterface.get_cluster_assignment,
-                return_value=assignment,
+            patch(
+                "yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology.KafkaInterface",
+                autospec=True,
             ),
             self.mock_get_replication_group_id(),
-        ):
+        ) as (mock_kafka, mock_rg_groups):
             # Create cluster-object
-            return ClusterTopology(mock_zk)
-
-    def test_creating_cluster_object(self, ct):
-        # Verify creation of_cluster-topology objects
-        assert(ct.assignment == ct.initial_assignment)
-
-    def test_sample_cluster_object(self):
-        ct = self.ct_assignment(
-            self._initial_assignment,
-            self.brokers_info.keys(),
-        )
-        assert(ct.assignment == ct.initial_assignment)
+            mock_kafka.return_value.get_cluster_assignment.return_value = assignment
+            yield ClusterTopology(mock_zk)
 
     def assert_valid(self, new_assignment, orig_assignment, orig_brokers):
         """Assert if new-assignment is valid based on given assignment.
@@ -145,14 +119,16 @@ class TestClusterToplogy(object):
             # Assert that replication-factor remains same
             assert(len(new_replicas) == len(orig_replicas))
 
-    def test_rebalance_replication_groups(self, ct):
-        ct.rebalance_replication_groups()
-        net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
-            ct.rgs.values(),
-            ct.partitions.values(),
-        )
-        assert(net_imbal, 0)
-        self.assert_valid(ct.assignment, self._initial_assignment, ct.brokers.keys())
+    def test_rebalance_replication_groups(self):
+        with self.build_cluster_topology() as ct:
+            print('ct1', ct)
+            ct.rebalance_replication_groups()
+            net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            assert(net_imbal, 0)
+            self.assert_valid(ct.assignment, self._initial_assignment, ct.brokers.keys())
 
     def test_rebalance_replication_groups_balanced(self):
         # Replication-group is already balanced
@@ -164,19 +140,19 @@ class TestClusterToplogy(object):
                 ((u'T3', 0), [0, 1, 2]),
             ]
         )
-        ct = self.ct_assignment(assignment, ['0', '1', '2', '3', '4'])
-        net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
-            ct.rgs.values(),
-            ct.partitions.values(),
-        )
-        assert net_imbal == 0
-        ct.reassign_partitions()
-        net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
-            ct.rgs.values(),
-            ct.partitions.values(),
-        )
-        assert(net_imbal, 0)
-        self.assert_valid(ct.assignment, assignment, ct.brokers.keys())
+        with self.build_cluster_topology(assignment, ['0', '1', '2', '3', '4']) as ct:
+            net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            assert net_imbal == 0
+            ct.reassign_partitions()
+            net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            assert(net_imbal, 0)
+            self.assert_valid(ct.assignment, assignment, ct.brokers.keys())
 
     def get_partition_data(self, ct, p_name):
         partition = ct.partitions[p_name]
@@ -187,25 +163,26 @@ class TestClusterToplogy(object):
             )
         return partition, opt_cnt, not extra_cnt
 
-    def test_segregate_replication_groups_case1(self, ct):
+    def test_segregate_replication_groups_case1(self):
         """Test segregation of replication-groups based on under
         or over-replicated partitions.
 
         Case 1: repl-factor % rg-count == 0
         """
 
-        # Partition: T0-0
-        partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T0', 0))
-        under_replicated_rgs, over_replicated_rgs = \
-            ct._segregate_replication_groups(
-                partition,
-                opt_cnt,
-                evenly_distribute,
-            )
-        # Tests compute-optimal-count
-        assert opt_cnt == 1 and evenly_distribute is True
-        # Tests segregation of rg's
-        assert not (over_replicated_rgs or under_replicated_rgs)
+        with self.build_cluster_topology() as ct:
+            # Partition: T0-0
+            partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T0', 0))
+            under_replicated_rgs, over_replicated_rgs = \
+                ct._segregate_replication_groups(
+                    partition,
+                    opt_cnt,
+                    evenly_distribute,
+                )
+            # Tests compute-optimal-count
+            assert opt_cnt == 1 and evenly_distribute is True
+            # Tests segregation of rg's
+            assert not (over_replicated_rgs or under_replicated_rgs)
 
         # Partition T0-1: # Already-balanced
         # opt-count == 1
@@ -233,53 +210,54 @@ class TestClusterToplogy(object):
         assert opt_cnt == 2 and evenly_distribute is True
         assert not (over_replicated_rgs or under_replicated_rgs)
 
-    def test_segregate_replication_groups_case_2(self, ct):
+    def test_segregate_replication_groups_case_2(self):
         """Test segregation of replication-groups based on under
         or over-replicated partitions.
 
         Case 2: repl-factor % rg-count != 0
         """
 
-        # Partition: T2-0: repl-factor < rg-count
-        # opt-count:  0
-        partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T2', 0))
-        under_replicated_rgs, over_replicated_rgs = \
-            ct._segregate_replication_groups(
-                partition,
-                opt_cnt,
-                evenly_distribute,
-            )
-        under_rg_ids = [rg.id for rg in under_replicated_rgs]
-        over_rg_ids = [rg.id for rg in over_replicated_rgs]
-        # Tests compute-optimal-count
-        assert opt_cnt == 0 and evenly_distribute is False
-        # Tests segregation of rg's
-        assert (over_rg_ids == ['rg2']) and (under_rg_ids == ['rg1'])
+        with self.build_cluster_topology() as ct:
+            # Partition: T2-0: repl-factor < rg-count
+            # opt-count:  0
+            partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T2', 0))
+            under_replicated_rgs, over_replicated_rgs = \
+                ct._segregate_replication_groups(
+                    partition,
+                    opt_cnt,
+                    evenly_distribute,
+                )
+            under_rg_ids = [rg.id for rg in under_replicated_rgs]
+            over_rg_ids = [rg.id for rg in over_replicated_rgs]
+            # Tests compute-optimal-count
+            assert opt_cnt == 0 and evenly_distribute is False
+            # Tests segregation of rg's
+            assert (over_rg_ids == ['rg2']) and (under_rg_ids == ['rg1'])
 
-        # Partition T3-0: # Already-balanced
-        # opt-count: 1
-        partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T3', 0))
-        under_replicated_rgs, over_replicated_rgs = \
-            ct._segregate_replication_groups(
-                partition,
-                opt_cnt,
-                evenly_distribute,
-            )
-        under_rg_ids = [rg.id for rg in under_replicated_rgs]
-        over_rg_ids = [rg.id for rg in over_replicated_rgs]
-        assert opt_cnt == 1 and evenly_distribute is False
-        assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
+            # Partition T3-0: # Already-balanced
+            # opt-count: 1
+            partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T3', 0))
+            under_replicated_rgs, over_replicated_rgs = \
+                ct._segregate_replication_groups(
+                    partition,
+                    opt_cnt,
+                    evenly_distribute,
+                )
+            under_rg_ids = [rg.id for rg in under_replicated_rgs]
+            over_rg_ids = [rg.id for rg in over_replicated_rgs]
+            assert opt_cnt == 1 and evenly_distribute is False
+            assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
 
-        # Partition: T3-1 # not-balanced: repl-factor > rg-count
-        # opt-count > 1
-        partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T3', 1))
-        under_replicated_rgs, over_replicated_rgs = \
-            ct._segregate_replication_groups(
-                partition,
-                opt_cnt,
-                evenly_distribute,
-            )
-        under_rg_ids = [rg.id for rg in under_replicated_rgs]
-        over_rg_ids = [rg.id for rg in over_replicated_rgs]
-        assert opt_cnt == 1 and evenly_distribute is False
-        assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
+            # Partition: T3-1 # not-balanced: repl-factor > rg-count
+            # opt-count > 1
+            partition, opt_cnt, evenly_distribute = self.get_partition_data(ct, ('T3', 1))
+            under_replicated_rgs, over_replicated_rgs = \
+                ct._segregate_replication_groups(
+                    partition,
+                    opt_cnt,
+                    evenly_distribute,
+                )
+            under_rg_ids = [rg.id for rg in under_replicated_rgs]
+            over_rg_ids = [rg.id for rg in over_replicated_rgs]
+            assert opt_cnt == 1 and evenly_distribute is False
+            assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
