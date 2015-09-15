@@ -1,5 +1,5 @@
 import contextlib
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from mock import sentinel, patch, MagicMock
 from pytest import fixture
 
@@ -17,7 +17,7 @@ from yelp_kafka.config import ClusterConfig
 
 
 class TestClusterToplogy(object):
-    broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
+    broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3', 6: 'rg4'}
     topic_ids = ['T0', 'T1', 'T2', 'T3']
     brokers_info = {
         '0': sentinel.obj1,
@@ -261,3 +261,146 @@ class TestClusterToplogy(object):
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
             assert opt_cnt == 1 and evenly_distribute is False
             assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
+
+    def test_partition_replicas(self):
+        with self.build_cluster_topology() as ct:
+            partition_replicas = [partition.name for partition in ct.partition_replicas]
+            # Get dict for count of each partition
+            partition_replicas_cnt = Counter(partition_replicas)
+            # Assert that replica-count for each partition as the value
+            assert partition_replicas_cnt[('T0', 0)] == 2
+            assert partition_replicas_cnt[('T0', 1)] == 2
+            assert partition_replicas_cnt[('T1', 0)] == 4
+            assert partition_replicas_cnt[('T1', 1)] == 4
+            assert partition_replicas_cnt[('T2', 0)] == 1
+            assert partition_replicas_cnt[('T3', 0)] == 3
+            assert partition_replicas_cnt[('T3', 1)] == 3
+
+    def test_assignment(self):
+        with self.build_cluster_topology() as ct:
+            # Verify if the returned assignment is valid
+            assert sorted(ct.assignment) == sorted(self._initial_assignment)
+            # Assert initial-assignment
+            assert sorted(ct.initial_assignment) == sorted(self._initial_assignment)
+
+    def test_get_assignment_json(self):
+        with self.build_cluster_topology() as ct:
+            assignment_json = {'version': 1, 'partitions': []}
+            for partition, replicas in self._initial_assignment.iteritems():
+                partition_info = {'topic': partition[0], 'partition': partition[1], 'replicas': replicas}
+                assignment_json['partitions'].append(partition_info)
+            assert sorted(ct.get_assignment_json()) == sorted(assignment_json)
+
+    def test_elect_source_replication_group(self):
+        # Sample assignment with 3 replication groups
+        # with replica-count as as per map
+        # broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
+        # rg-id: (brokers), count
+        # rg1: (0, 2, 4) = 3
+        # rg2: (1, 3) = 2
+        # rg3: (5) = 1
+        # Clearly, rg1 and rg2 are over-replicated and rg3 being under-replicated
+        # source-replication-group should be rg1 having the highest replicas
+        p1 = ((u'T0', 0), [0, 1, 2, 3, 4, 5, 6])
+        assignment = OrderedDict([p1])
+        with self.build_cluster_topology(
+            assignment,
+            ['0', '1', '2', '3', '4', '5', '6'],
+        ) as ct:
+            # For partition p1
+            p1, opt_cnt, evenly_dist = self.get_partition_data(ct, ('T0', 0))
+            assert opt_cnt == 1  # 7/3
+            assert evenly_dist is False  # 7 % 3
+            under_replicated_rgs, over_replicated_rgs = ct._segregate_replication_groups(
+                p1,
+                opt_cnt,
+                evenly_dist,
+            )
+            # Assert 'rg1' and 'rg2' are over-replicated groups
+            assert set([rg.id for rg in over_replicated_rgs]) == set(['rg1', 'rg2'])
+            # Assert 'rg3' and 'rg4' are under-replicated groups
+            assert set([rg.id for rg in under_replicated_rgs]) == set(['rg3', 'rg4'])
+
+            # Get source-replication group
+            rg_source = ct._elect_source_replication_group(
+                over_replicated_rgs,
+                p1,
+            )
+            # since, 'rg1' as more replicas i.e. 3, it should be selected
+            assert 'rg1' == rg_source.id
+
+            # Case 1: rg_source = 'rg1', find destination-replica
+            rg_source = ct.rgs['rg1']
+            source_replica_cnt = rg_source.count_replica(p1)
+            # 3 replicas of p1 are in 'rg1'
+            assert source_replica_cnt == 3
+            # Test-destination-replication-group for partition: p1
+            rg_dest = ct._elect_dest_replication_group(
+                source_replica_cnt,
+                under_replicated_rgs,
+                p1,
+            )
+            # Dest-replica can be either 'rg3' or 'rg4' since both have replica-count 1
+            assert rg_dest.id in ['rg3', 'rg4']
+
+            # Case 2: rg-source == 'rg2': No destination group found
+            rg_source = ct.rgs['rg2']
+            source_replica_cnt = rg_source.count_replica(p1)
+            # 3 replicas of p1 are in 'rg2'
+            assert source_replica_cnt == 2
+            # Test-destination-replication-group for partition: p1
+            rg_dest = ct._elect_dest_replication_group(
+                source_replica_cnt,
+                under_replicated_rgs,
+                p1,
+            )
+            # Since none of under-replicated-groups (rg3, and rg4) have lower
+            # 2-1=0 replicas for the given partition p1
+            # No eligible dest-group is there where partition-can be sent to
+            assert rg_dest is None
+
+    def test_elect_dest_replication_group(self):
+        # Sample assignment with 3 replication groups
+        # with replica-count as as per map
+        # broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
+        # rg-id: (brokers), count
+        # rg1: (0, 2, 4) = 3
+        # rg2: (1, 3) = 2
+        # rg3: (5) = 1
+        # Clearly, rg1 and rg2 are over-replicated and rg3 being under-replicated
+        # source-replication-group should be rg1 having the highest replicas
+        p1 = ((u'T0', 0), [0, 1, 2, 3, 4, 5, 6])
+        assignment = OrderedDict([p1])
+        with self.build_cluster_topology(
+            assignment,
+            ['0', '1', '2', '3', '4', '5', '6'],
+        ) as ct:
+            # Case 1: rg_source = 'rg1', find destination-replica
+            rg_source = ct.rgs['rg1']
+            source_replica_cnt = rg_source.count_replica(p1)
+            # 3 replicas of p1 are in 'rg1'
+            assert source_replica_cnt == 3
+            # Test-destination-replication-group for partition: p1
+            rg_dest = ct._elect_dest_replication_group(
+                source_replica_cnt,
+                under_replicated_rgs,
+                p1,
+            )
+            # Dest-replica can be either 'rg3' or 'rg4' since both have replica-count 1
+            assert rg_dest.id in ['rg3', 'rg4']
+
+            # Case 2: rg-source == 'rg2': No destination group found
+            rg_source = ct.rgs['rg2']
+            source_replica_cnt = rg_source.count_replica(p1)
+            # 3 replicas of p1 are in 'rg2'
+            assert source_replica_cnt == 2
+            # Test-destination-replication-group for partition: p1
+            rg_dest = ct._elect_dest_replication_group(
+                source_replica_cnt,
+                under_replicated_rgs,
+                p1,
+            )
+            # Since none of under-replicated-groups (rg3, and rg4) have lower
+            # 2-1=0 replicas for the given partition p1
+            # No eligible dest-group is there where partition-can be sent to
+            assert rg_dest is None
