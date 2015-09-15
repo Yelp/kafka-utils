@@ -11,8 +11,8 @@ class TestBroker(object):
         assert broker.partitions == set()
 
     def test_partitions(self):
-        broker = Broker('test-broker', [sentinel.p1, sentinel.p2])
-        assert broker.partitions == [sentinel.p1, sentinel.p2]
+        broker = Broker('test-broker', set([sentinel.p1, sentinel.p2]))
+        assert broker.partitions == set([sentinel.p1, sentinel.p2])
 
     def test_remove_partition(self):
         p1 = Partition(('p1', 0), topic=sentinel.t1)
@@ -32,21 +32,21 @@ class TestBroker(object):
         assert p2.replicas == [broker]
 
     def test_topics(self):
-        partitions = [
+        partitions = set([
             Mock(spec=Partition, topic=sentinel.t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t2, replicas=sentinel.r1),
-        ]
+        ])
         broker = Broker('test-broker', partitions)
         assert broker.topics == set([sentinel.t1, sentinel.t2])
 
     def test_partition_count(self):
         topic = sentinel.t1
-        partitions = [
+        partitions = set([
             Mock(spec=Partition, topic=sentinel.t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t2, replicas=sentinel.r1),
-        ]
+        ])
         broker = Broker('test-broker', partitions)
         assert broker.count_partitions(topic) == 2
         assert broker.count_partitions(sentinel.t3) == 0

@@ -20,7 +20,7 @@ class Topic(object):
     def __init__(self, id, replication_factor=0, partitions=None, weight=1.0):
         self._id = id
         self._replication_factor = replication_factor
-        self._partitions = partitions or []
+        self._partitions = partitions or set([])
         self.weight = weight
         self.log = logging.getLogger(self.__class__.__name__)
 
@@ -53,4 +53,4 @@ class Topic(object):
                         repl_factor2=replication_factor_partition,
                     )
                 )
-        self._partitions.append(partition)
+        self._partitions.add(partition)

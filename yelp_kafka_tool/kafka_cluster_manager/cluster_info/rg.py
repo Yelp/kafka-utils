@@ -65,7 +65,7 @@ class ReplicationGroup(object):
         # Select best-fit source and destination brokers for partition
         # Best-fit is based on partition-count and presence/absence of
         # Same topic-partition over brokers
-        broker_source, broker_destination = self._select_broker(
+        broker_source, broker_destination = self._select_broker_pair(
             rg_destination,
             victim_partition,
         )
@@ -73,7 +73,7 @@ class ReplicationGroup(object):
         # Actual-movement of victim-partition
         broker_source.move_partition(victim_partition, broker_destination)
 
-    def _select_broker(
+    def _select_broker_pair(
         self,
         rg_destination,
         victim_partition,
