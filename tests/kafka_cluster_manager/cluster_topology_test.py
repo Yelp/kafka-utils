@@ -139,7 +139,7 @@ class TestClusterToplogy(object):
                 ((u'T3', 0), [0, 1, 2]),
             ]
         )
-        with self.build_cluster_topology(assignment, ['0', '1', '2', '3', '4']) as ct:
+        with self.build_cluster_topology(assignment, self.srange(5)) as ct:
             net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
                 ct.rgs.values(),
                 ct.partitions.values(),
@@ -278,9 +278,9 @@ class TestClusterToplogy(object):
     def test_assignment(self):
         with self.build_cluster_topology() as ct:
             # Verify if the returned assignment is valid
-            assert sorted(ct.assignment) == sorted(self._initial_assignment)
+            assert ct.assignment == self._initial_assignment
             # Assert initial-assignment
-            assert sorted(ct.initial_assignment) == sorted(self._initial_assignment)
+            assert ct.initial_assignment == self._initial_assignment
 
     def test_get_assignment_json(self):
         with self.build_cluster_topology() as ct:
@@ -293,7 +293,7 @@ class TestClusterToplogy(object):
     def test_elect_source_replication_group(self):
         # Sample assignment with 3 replication groups
         # with replica-count as as per map
-        # broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
+        # broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3', 6: 'rg4'}
         # rg-id: (brokers), count
         # rg1: (0, 2, 4) = 3
         # rg2: (1, 3) = 2
@@ -304,7 +304,7 @@ class TestClusterToplogy(object):
         assignment = OrderedDict([p1])
         with self.build_cluster_topology(
             assignment,
-            ['0', '1', '2', '3', '4', '5', '6'],
+            self.srange(7),
         ) as ct:
             # For partition p1
             p1, opt_cnt, evenly_dist = self.get_partition_data(ct, ('T0', 0))
@@ -372,12 +372,11 @@ class TestClusterToplogy(object):
         assignment = OrderedDict([p1_info])
         with self.build_cluster_topology(
             assignment,
-            ['0', '1', '2', '3', '4', '5', '6'],
+            self.srange(7),
         ) as ct:
             p1 = ct.partitions[p1_info[0]]
             # Case 1: rg_source = 'rg1', find destination-replica
             rg_source = ct.rgs['rg1']
-            partitions = [p.name for p in rg_source.partitions]
             source_replica_cnt = rg_source.count_replica(p1)
             # 3 replicas of p1 are in 'rg1'
             assert source_replica_cnt == 3
@@ -478,3 +477,7 @@ class TestClusterToplogy(object):
             if replica_cnt_rg > opt_cnt + extra_cnt:
                 imbal = True
         assert imbal is True
+
+    def srange(self, n):
+        """Return list of integers as string from 0 to n-1."""
+        return [str(x) for x in range(n)]
