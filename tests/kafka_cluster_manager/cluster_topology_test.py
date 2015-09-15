@@ -406,64 +406,95 @@ class TestClusterToplogy(object):
             # No eligible dest-group is there where partition-can be sent to
             assert rg_dest is None
 
-    def test_rebalance_partition(self):
+    def test_rebalance_partition_imbalanced(self):
+        # Test im-balanced partitions for below cases
+        # NOTE: In initial-assignment, all partitions with id-1 are 'imbalanced'
         with self.build_cluster_topology() as ct:
-            # Case 1: p1 is balanced, evenly-balance = True
-            # p1: replicas: [1, 2]
-            p1 = ct.partitions[('T0', 0)]
-            # Check if p1 is rg-imbalanced
-            opt_cnt, extra_cnt = \
-                compute_optimal_count(
-                    p1.replication_factor,
-                    len(ct.rgs.values()),
-                )
-            assert opt_cnt == 1
-            assert extra_cnt == 0
-            # Assert already balanced partition
-            self.assert_balanced_partition(ct, p1, opt_cnt)
-            # Assert not change in replicas
-            old_replicas = p1.replicas
-            ct._rebalance_partition(p1)
-            new_replicas = p1.replicas
-
-            # since partition is already balancing, there shouldn't be any change
-            assert old_replicas == new_replicas
-
-            # Case 1-a: p1 is un-balanced, evenly-balance = True
-            # p1: replicas: [2, 3]
+            # CASE 1: repl-factor % rg-count == 0
+            # 1a: repl-factor == rg-count
+            # p1: replicas: ('T0', 1): [2,3]
             p1 = ct.partitions[('T0', 1)]
-            # Check if p1 is rg-imbalanced
-            opt_cnt, extra_cnt = \
-                compute_optimal_count(
-                    p1.replication_factor,
-                    len(ct.rgs.values()),
-                )
-            assert opt_cnt == 1
-            assert extra_cnt == 0
+            opt_cnt = 1    # 2/2
+            # Verify imbalanced p1
             self.assert_rg_imbalanced_partition(ct, p1, opt_cnt)
+            # Assert no change in replicas after rebalancing
             ct._rebalance_partition(p1)
-            # since partition is already balancing, there shouldn't be any change
-            self.assert_balanced_partition(ct, p1, opt_cnt)
+            self.assert_rg_balanced_partition(ct, p1, opt_cnt)
 
-            # Case 2:  repl-count % rg-count != 0 (3 % 2)
-            # p2 is un-balanced, evenly-balance = True
-            # p2: replicas: ((u'T3', 1), [0, 1, 4]),
-            p2 = ct.partitions[('T3', 1)]
-            # Check if p1 is rg-imbalanced
-            opt_cnt, extra_cnt = \
-                compute_optimal_count(
-                    p2.replication_factor,
-                    len(ct.rgs.values()),
-                )
-            assert opt_cnt == 1
-            assert extra_cnt == 1
-            # Assert imbalanced-partition
-            self.assert_rg_imbalanced_partition(ct, p2, opt_cnt, extra_cnt)
-            ct._rebalance_partition(p2)
-            # since partition is already balancing, there shouldn't be any change
-            self.assert_balanced_partition(ct, p2, opt_cnt, extra_cnt)
+            # 1b:  repl-count % rg-count == 0 and repl-count > rg-count
+            # p1: replicas: ('T1',1): [0,1,2,4]
+            p1 = ct.partitions[('T1', 1)]
+            opt_cnt = 2    # 4/2
+            # Verify imbalanced p1
+            self.assert_rg_imbalanced_partition(ct, p1, opt_cnt)
+            # Assert no change in replicas after rebalancing
+            ct._rebalance_partition(p1)
+            self.assert_rg_balanced_partition(ct, p1, opt_cnt)
 
-    def assert_balanced_partition(self, ct, p1, opt_cnt, extra_cnt=0):
+            # CASE 2: repl-factor % rg-count > 0
+            # p1: replicas ('T3', 1): [0,1,4]
+            p1 = ct.partitions[('T3', 1)]
+            opt_cnt = 1    # 3/2
+            extra_cnt = 1  # 3%2
+            # Verify imbalanced p1
+            self.assert_rg_imbalanced_partition(ct, p1, opt_cnt)
+            # Assert no change in replicas after rebalancing
+            ct._rebalance_partition(p1)
+            self.assert_rg_balanced_partition(ct, p1, opt_cnt, extra_cnt)
+
+    def test_rebalance_partition_balanced(self):
+        # Test already balanced partitions in given
+        # example for different cases
+        with self.build_cluster_topology() as ct:
+            # CASE 1: repl-factor % rg-count == 0
+            # 1a: repl-factor == rg-count
+            # p1: replicas: ('T0', 0): [1,2]
+            p1 = ct.partitions[('T0', 0)]
+            opt_cnt = 1    # 2/2
+            extra_cnt = 0  # 2%2
+            # Verify already balanced
+            self.assert_rg_balanced_partition(ct, p1, opt_cnt)
+            # Assert no change in replicas after rebalancing
+            self.rg_rebalance_assert_no_change(ct, p1)
+
+            # 1b:  repl-count % rg-count == 0 and repl-count > rg-count
+            # p1: replicas: ('T1',0): [0,1,2,3]
+            p1 = ct.partitions[('T1', 0)]
+            opt_cnt = 2    # 4/2
+            extra_cnt = 0  # 4%2
+            # Assert no change in replicas after rebalancing
+            self.rg_rebalance_assert_no_change(ct, p1)
+
+            # CASE 2: repl-factor % rg-count > 0
+            # 2a: repl-factor < rg-count
+            # p1: replicas ('T2', 0): [2]
+            p1 = ct.partitions[('T2', 0)]
+            opt_cnt = 0    # 1/2
+            extra_cnt = 1  # 1%2
+            # Verify already-balanced
+            self.assert_rg_balanced_partition(ct, p1, opt_cnt, extra_cnt)
+            # Assert no change in replicas after rebalancing
+            self.rg_rebalance_assert_no_change(ct, p1)
+
+            # 2b: repl-factor > rg-count
+            # p1: replicas: ('T3', 0), [0,1,2]): ['rg1', 'rg1', 'rg2']
+            p1 = ct.partitions[('T3', 0)]
+            opt_cnt = 1    # 3/2
+            extra_cnt = 1  # 3%2
+            # Verify already-balanced
+            self.assert_rg_balanced_partition(ct, p1, opt_cnt, extra_cnt)
+            # Assert no change in replicas after rebalancing
+            self.rg_rebalance_assert_no_change(ct, p1)
+
+    def rg_rebalance_assert_no_change(self, ct, p1):
+        """Verifies that there are no replica change after rebalancing."""
+        old_replicas = p1.replicas
+        ct._rebalance_partition(p1)
+        new_replicas = p1.replicas
+        # Verify no replica change for partition
+        assert old_replicas == new_replicas
+
+    def assert_rg_balanced_partition(self, ct, p1, opt_cnt, extra_cnt=0):
         for rg in ct.rgs.itervalues():
             replica_cnt_rg = rg.count_replica(p1)
             # Verify for evenly-balanced partition p1
