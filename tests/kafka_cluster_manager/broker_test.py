@@ -71,3 +71,12 @@ class TestBroker(object):
         b1.add_partition(p2)
         assert b1.count_partitions(sentinel.t1) == 2
         assert b1.count_partitions(sentinel.t2) == 0
+
+    def test_count_preferred_replica(self):
+        p1 = Partition(('p1', 0), topic=sentinel.t1)
+        b1 = Broker('test-broker', set([p1]))
+        p1.add_replica(b1)
+        p2 = Mock(spec=Partition, topic=sentinel.t1, replicas=[])
+        b1.add_partition(p2)
+
+        assert b1.count_preferred_replica() == 1
