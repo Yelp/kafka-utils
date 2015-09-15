@@ -39,10 +39,7 @@ class TestReplicationGroup(object):
             ),
             Mock(spec=Broker, partitions=[sentinel.partition3]),
         ]
-        rg = ReplicationGroup(
-            'test_rg',
-            mock_brokers,
-        )
+        rg = ReplicationGroup('test_rg', mock_brokers)
         expected = [
             sentinel.partition1,
             sentinel.partition2,
@@ -83,10 +80,7 @@ class TestReplicationGroup(object):
         b2 = Broker('b2', set([p4, p5]))
 
         # Creating replication-group with above brokers
-        rg = ReplicationGroup(
-            'test_rg',
-            set([b1, b2, sentinel.b3]),
-        )
+        rg = ReplicationGroup('test_rg', set([b1, b2, sentinel.b3]))
 
         under_loaded_brokers = [b1, b2]
         # Since p5.topic is t3 and b1 doesn't have any partition with
@@ -101,10 +95,9 @@ class TestReplicationGroup(object):
         # preferred destination should be 'b2'
         victim_partition = p1
         actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition)
-        expected = b2
-        assert expected == actual
+        assert actual == b2
 
-    def test_select_underl_oaded_brokers(self):
+    def test_select_under_loaded_brokers(self):
         # Create broker with 3 partitions
         b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
 
@@ -115,10 +108,7 @@ class TestReplicationGroup(object):
         b3 = Broker('b3', set([sentinel.p5]))
 
         # Creating replication-group with above brokers
-        rg = ReplicationGroup(
-            'test_rg',
-            set([b1, b2, b3]),
-        )
+        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         # under-loaded-brokers SHOULD NOT contain victim-partition p7
         # Remaining brokers are returned in sorted-order
@@ -186,9 +176,9 @@ class TestReplicationGroup(object):
         p2.add_replica(b1)
         p2.add_replica(b2)
 
-        # Create source-replication-group with brokers b1, b2
+        # Create source-replication-group with brokers b0, b1
         rg_source = ReplicationGroup('rg1', set([b1, b2]))
-        # Create dest-replication-group with brokers b3
+        # Create dest-replication-group with brokers b3, b4
         rg_dest = ReplicationGroup('rg2', set([b3, b4]))
 
         old_p1_count_rg_source = rg_source.partitions.count(p1)
@@ -226,15 +216,15 @@ class TestReplicationGroup(object):
         b1 = Broker('b1', set([p1, p2]))
         b2 = Broker('b2', set([p2, p3]))
         b7 = Broker('b2', set([p1, p2, p3]))
-        # Create source-replication-group with brokers b1, b2
-        rg_source = ReplicationGroup('rg1', set([b0, b1, b2]))
+        # Create source-replication-group with brokers b1, b2, b0, b7
+        rg_source = ReplicationGroup('rg1', set([b0, b1, b2, b7]))
 
         # Create brokers for rg-dest
         b3 = Broker('b3', set([p2, p3]))
         b4 = Broker('b4', set([p2]))
         b5 = Broker('b5', set([p1]))
         b6 = Broker('b6', set([p3]))
-        # Create dest-replication-group with brokers b3
+        # Create dest-replication-group with brokers b3, b4, b5, b6
         rg_dest = ReplicationGroup('rg2', set([b3, b4, b5, b6]))
 
         # Select best-suitable brokers for moving partition 'p1'
@@ -249,38 +239,3 @@ class TestReplicationGroup(object):
         # dest-broker shouldn't be b3 since it has more partitions than b4
         # dest-broker can't be b5 since it has victim-partition p1
         assert broker_dest in [b4, b6]
-
-    def create_rg_source(self):
-        p1 = Partition(('(t1,0)', 0), topic=sentinel.t1)
-        p2 = Partition(('(t2, 0)', 0), topic=sentinel.t2)
-        p3 = Partition(('(t1, 1)', 0), topic=sentinel.t1)
-        b1 = Broker('b1', set([p1, p2, p3]))
-
-        # Creating 1 partition with topic:t2 for broker: b2
-        # and 1 partition with topic:t3 for broker:b2
-        p4 = Partition(('(t1, 0)', 0), topic=sentinel.t1)
-        p5 = Partition(('(t3, 1)', 0), topic=sentinel.t3)
-        b2 = Broker('b2', set([p4, p5]))
-
-        # Creating replication-group with above brokers
-        rg = ReplicationGroup('test_rg', set([b1, b2, sentinel.b3]))
-        return rg
-
-    def create_rg_dest(self):
-        p1 = Partition(('(t1,0)', 0), topic=sentinel.t1)
-        p2 = Partition(('(t2, 0)', 0), topic=sentinel.t2)
-        p3 = Partition(('(t1, 1)', 0), topic=sentinel.t1)
-        b1 = Broker('b1', set([p1, p2, p3]))
-
-        # Creating 1 partition with topic:t2 for broker: b2
-        # and 1 partition with topic:t3 for broker:b2
-        p4 = Partition(('(t1, 0)', 0), topic=sentinel.t1)
-        p5 = Partition(('(t3, 1)', 0), topic=sentinel.t3)
-        b2 = Broker('b2', set([p4, p5]))
-
-        # Creating replication-group with above brokers
-        rg = ReplicationGroup(
-            'test_rg',
-            set([b1, b2, sentinel.b3]),
-        )
-        return rg
