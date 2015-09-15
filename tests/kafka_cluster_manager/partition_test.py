@@ -8,17 +8,20 @@ class TestPartition(object):
 
     @pytest.fixture
     def partition(self):
+        mock_topic = sentinel.t1
+        mock_topic.id = 't1'
+        p_id = 0
         return Partition(
-            ('p1', 0),
-            sentinel.topic1,
+            mock_topic,
+            p_id,
             [sentinel.r1, sentinel.r2],
         )
 
     def test_name(self, partition):
-        assert partition.name == ('p1', 0)
+        assert partition.name == ('t1', 0)
 
     def test_topic(self, partition):
-        assert partition.topic == sentinel.topic1
+        assert partition.topic == sentinel.t1
 
     def test_replicas(self, partition):
         assert partition.replicas == [sentinel.r1, sentinel.r2]

@@ -1,10 +1,19 @@
+from pytest import fixture
 from mock import Mock, sentinel
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
 
 
 class TestBroker(object):
+
+    @fixture
+    def p1(self):
+        mock_topic = Mock(spec=Topic, id='t1')
+        p_id = 0
+        return Partition(mock_topic, p_id)
+
     # Initial broker-set empty
     def test_partitions_empty(self):
         broker = Broker('test-broker')
@@ -14,8 +23,7 @@ class TestBroker(object):
         broker = Broker('test-broker', set([sentinel.p1, sentinel.p2]))
         assert broker.partitions == set([sentinel.p1, sentinel.p2])
 
-    def test_remove_partition(self):
-        p1 = Partition(('p1', 0), topic=sentinel.t1)
+    def test_remove_partition(self, p1):
         b1 = Broker('test-broker', set([p1]))
         p1.add_replica(b1)
 
@@ -51,8 +59,8 @@ class TestBroker(object):
         assert broker.count_partitions(topic) == 2
         assert broker.count_partitions(sentinel.t3) == 0
 
-    def test_move_partition(self):
-        victim_partition = Partition(('p1', 0), topic=sentinel.t1)
+    def test_move_partition(self, p1):
+        victim_partition = p1
         source_broker = Broker('b1', set([victim_partition]))
         victim_partition.add_replica(source_broker)
         dest_broker = Broker('b2')
@@ -63,7 +71,7 @@ class TestBroker(object):
 
     def test_count_partitions(self):
         # Prepare broker
-        p1 = Partition(('p1', 0), topic=sentinel.t1)
+        p1 = Mock(spec=Partition, topic=sentinel.t1, replicas=[])
         b1 = Broker('test-broker', set([p1]))
         p1.add_replica(b1)
 
@@ -72,8 +80,7 @@ class TestBroker(object):
         assert b1.count_partitions(sentinel.t1) == 2
         assert b1.count_partitions(sentinel.t2) == 0
 
-    def test_count_preferred_replica(self):
-        p1 = Partition(('p1', 0), topic=sentinel.t1)
+    def test_count_preferred_replica(self, p1):
         b1 = Broker('test-broker', set([p1]))
         p1.add_replica(b1)
         p2 = Mock(spec=Partition, topic=sentinel.t1, replicas=[])

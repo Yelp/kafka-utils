@@ -3,9 +3,14 @@ from mock import Mock, sentinel
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
 
 
 class TestReplicationGroup(object):
+
+    def create_partition(self, t_id='t1', p_id=0):
+        mock_topic = Mock(spec=Topic, id=t_id)
+        return Partition(mock_topic, p_id)
 
     # Initial broker-set empty
     def test_add_broker_empty(self):
@@ -66,15 +71,15 @@ class TestReplicationGroup(object):
 
     def test_elect_dest_broker(self):
         # Creating 2 partitions with topic:t1 for broker: b1
-        p1 = Partition(('t1', 0), topic=sentinel.t1)
-        p2 = Partition(('t2', 0), topic=sentinel.t2)
-        p3 = Partition(('t1', 1), topic=sentinel.t1)
+        p1 = self.create_partition('t1', 0)
+        p2 = self.create_partition('t2', 0)
+        p3 = self.create_partition('t1', 1)
         b1 = Broker('b1', set([p1, p2, p3]))
 
         # Creating 1 partition with topic:t2 for broker: b2
         # and 1 partition with topic:t3 for broker:b2
-        p4 = Partition(('t1', 0), topic=sentinel.t1)
-        p5 = Partition(('t3', 0), topic=sentinel.t3)
+        p4 = self.create_partition('t1', 0)
+        p5 = self.create_partition('t3', 0)
         b2 = Broker('b2', set([p4, p5]))
 
         # Creating replication-group with above brokers
@@ -82,7 +87,7 @@ class TestReplicationGroup(object):
 
         under_loaded_brokers = [b1, b2]
         # Since p5.topic is t3 and b1 doesn't have any partition with
-        # topic: t3, preferred destination should be 'b1'
+        # topic: t3 but b2 has it, preferred destination should be 'b1'
         victim_partition = p5
         actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition)
         assert actual == b1
@@ -144,11 +149,11 @@ class TestReplicationGroup(object):
         assert rg.count_replica(sentinel.p5) == 1
         assert rg.count_replica(sentinel.p6) == 0
 
-    def test_move_partition_to(self):
+    def test_move_partition(self):
         # Create sample partitions
-        p1 = Partition(('t1', 0), topic=sentinel.t1)
-        p2 = Partition(('t2', 0), topic=sentinel.t2)
-        p3 = Partition(('t1', 1), topic=sentinel.t1)
+        p1 = self.create_partition('t1', 0)
+        p2 = self.create_partition('t2', 0)
+        p3 = self.create_partition('t1', 1)
 
         # Create 4 brokers
         b1 = Broker('b1', set([p1, p2, p3]))
@@ -191,9 +196,9 @@ class TestReplicationGroup(object):
     def test_select_broker(self):
         # Tests whether source and destination broker are best match
         # Create sample partitions
-        p1 = Partition(('t1', 0), topic=sentinel.t1)
-        p2 = Partition(('t2', 0), topic=sentinel.t2)
-        p3 = Partition(('t1', 0), topic=sentinel.t1)
+        p1 = self.create_partition('t1', 0)
+        p2 = self.create_partition('t2', 0)
+        p3 = self.create_partition('t1', 1)
 
         # Create brokers for rg-source
         b0 = Broker('b0', set([p1, p2, p3]))
