@@ -127,12 +127,12 @@ class ClusterTopology(object):
             raise ValueError(errorMsg)
         return rg_name
 
-    def reassign_partitions(self, rebalance_options):
+    def reassign_partitions(self, replication_groups=False):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
         """
         # Rebalance replication-groups
-        if rebalance_options == 'replication-groups':
+        if replication_groups:
             self.rebalance_replication_groups()
 
     def get_assignment_json(self):

@@ -54,7 +54,7 @@ def reassign_partitions(cluster_config, args):
     with ZK(cluster_config) as zk:
         ct = ClusterTopology(zk)
         if args.replication_groups:
-            ct.reassign_partitions('replication-groups')
+            ct.reassign_partitions(replication_groups=True)
         # Execute or displan plan
         execute_plan(
             ct.initial_assignment,
