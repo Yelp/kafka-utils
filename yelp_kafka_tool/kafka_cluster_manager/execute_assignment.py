@@ -21,10 +21,16 @@ def execute_plan(
 ):
     result = "executed"
     # Get final-proposed-plan
+    if apply and not no_confirm:
+        log_plan = None
+    else:
+        log_plan = log
+
     proposed_plan = get_reduced_proposed_plan(
         initial_assignment,
         curr_assignment,
         max_changes,
+        log_plan,
     )
     # Execute or display the plan
     if proposed_plan:

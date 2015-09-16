@@ -52,7 +52,7 @@ def get_assignment_map(assignment_json):
     return assignment
 
 
-def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
+def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes, log=None):
     """Return new plan with upper limit on total actions.
 
     These actions involve actual partition movement
@@ -66,7 +66,8 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
     new_assignment:     New proposed-assignment of cluster
     max_changes:        Maximum number of actions allowed
     """
-    if original_assignment == new_assignment:
+    if original_assignment == new_assignment or \
+            max_changes < 1 or not original_assignment or not new_assignment:
         return {}
     assert(
         set(original_assignment.keys()) == set(new_assignment.keys())
@@ -85,6 +86,7 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
         red_curr_plan_list,
         red_proposed_plan_list,
         total_changes,
+        log,
     )
     red_proposed_assignment = dict(
         (ele[0], ele[1])

@@ -119,34 +119,39 @@ def display_leader_count_per_broker(
     print('{ratio}\n'.format(ratio=ratio))
 
 
-def display_assignment_changes(curr_plan_list, new_plan_list, total_changes):
+def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log=None):
     """Display current and proposed changes in
     topic-partition to replica layout over brokers.
     """
-    print('\n[INFO] Total actions required {0}'.format(total_changes))
-    print(
+    action_cnt = '\n[INFO] Total actions required {0}'.format(total_changes)
+    log.info(action_cnt) if log else print(action_cnt)
+    actin_cnt = (
         '[INFO] Total actions that will be executed {0}'
         .format(len(new_plan_list))
     )
-    print(
+    log.info(action_cnt) if log else print(action_cnt)
+    changes = (
         '[INFO] Proposed Changes in current '
         'topic-partition to replica layout:\n'
     )
+    log.info(changes) if log else print(changes)
+
     tp_str = 'Topic-Partition'
     curr_repl_str = 'Previous-Assignment'
     new_rep_str = 'Proposed-Assignment'
     tp_list = [tp_repl[0] for tp_repl in curr_plan_list]
 
     # Display heading
-    print('=' * 80)
-    print(
+    log.info('=' * 80) if log else print('=' * 80)
+    row = (
         '{tp:^30s}: {curr_rep_str:^20s} ==> {new_rep_str:^20s}' .format(
             tp=tp_str,
             curr_rep_str=curr_repl_str,
             new_rep_str=new_rep_str,
         )
     )
-    print('=' * 80)
+    log.info(row) if log else print(row)
+    log.info('=' * 80) if log else print('=' * 80)
 
     # Display each topic-partition list with changes
     tp_list_sorted = sorted(tp_list, key=lambda tp: (tp[0], tp[1]))
@@ -158,10 +163,11 @@ def display_assignment_changes(curr_plan_list, new_plan_list, total_changes):
             tp_repl[1] for tp_repl in new_plan_list if tp_repl[0] == tp
         ][0]
         tp_str = '{topic}-{partition:<2d}'.format(topic=tp[0], partition=tp[1])
-        print(
+        row = (
             '{tp:<30s}: {curr_repl:<20s} ==> {proposed_repl:<20s}'.format(
                 tp=tp_str,
                 curr_repl=curr_repl,
                 proposed_repl=proposed_repl,
             )
         )
+        log.info(row) if log else print(row)
