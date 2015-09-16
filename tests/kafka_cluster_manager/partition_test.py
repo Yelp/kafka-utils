@@ -34,3 +34,8 @@ class TestPartition(object):
 
     def test_partition_id(self, partition):
         assert partition.partition_id == 0
+
+    def test_add_replica(self, partition):
+        new_broker = sentinel.new_r
+        partition.add_replica(new_broker)
+        assert partition.replicas == [sentinel.r1, sentinel.r2, sentinel.new_r]

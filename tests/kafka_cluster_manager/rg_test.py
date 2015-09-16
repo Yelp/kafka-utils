@@ -35,10 +35,7 @@ class TestReplicationGroup(object):
 
     def test_partitions(self):
         mock_brokers = [
-            Mock(
-                spec=Broker,
-                partitions=set([sentinel.p1, sentinel.p2]),
-            ),
+            Mock(spec=Broker, partitions=set([sentinel.p1, sentinel.p2])),
             Mock(spec=Broker, partitions=set([sentinel.p3, sentinel.p1])),
         ]
         rg = ReplicationGroup('test_rg', mock_brokers)
@@ -108,10 +105,10 @@ class TestReplicationGroup(object):
         # Creating replication-group with above brokers
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
-        # under-loaded-brokers SHOULD NOT contain victim-partition p7
-        # Remaining brokers are returned in sorted-order
         victim_partition = sentinel.p7
         actual = rg._select_under_loaded_brokers(victim_partition)
+        # Since sentinel.p7 is not present in b1, b2 and b3, they should be
+        # returned in increasing order of partition-count
         assert actual == [b3, b2, b1]
 
         # under-loaded-brokers SHOULD NOT contain victim-partition sentinel.p4
@@ -164,34 +161,30 @@ class TestReplicationGroup(object):
         # Update partition-replicas
         p1.add_replica(b1)
         p1.add_replica(b2)
+        p1.add_replica(b3)
         p2.add_replica(b1)
         p2.add_replica(b2)
+        p3.add_replica(b1)
+        p3.add_replica(b2)
+        p3.add_replica(b3)
 
         rg_source = ReplicationGroup('rg1', set([b1, b2]))
         rg_dest = ReplicationGroup('rg2', set([b3, b4]))
 
-        old_p1_count_rg_source = rg_source.partitions.count(p1)
-        old_p1_count_rg_dest = rg_dest.partitions.count(p1)
-        old_p2_count_rg_source = rg_source.partitions.count(p2)
-        old_p2_count_rg_dest = rg_dest.partitions.count(p2)
-        old_p3_count_rg_source = rg_source.partitions.count(p3)
-        old_p3_count_rg_dest = rg_dest.partitions.count(p3)
         # Move partition p1 from rg1 to rg2
         rg_source.move_partition(rg_dest, p1)
-        new_p1_count_rg_source = rg_source.partitions.count(p1)
-        new_p1_count_rg_dest = rg_dest.partitions.count(p1)
 
         # partition-count of p1 for rg1 should reduce by 1
-        assert new_p1_count_rg_source == old_p1_count_rg_source - 1
+        assert rg_source.partitions.count(p1) == 1
 
         # partition-count of p1 for rg2 should increase by 1
-        assert new_p1_count_rg_dest == old_p1_count_rg_dest + 1
+        assert rg_dest.partitions.count(p1) == 2
 
         # Rest of the partitions are untouched
-        assert old_p2_count_rg_source == rg_source.partitions.count(p2)
-        assert old_p2_count_rg_dest == rg_dest.partitions.count(p2)
-        assert old_p3_count_rg_source == rg_source.partitions.count(p3)
-        assert old_p3_count_rg_dest == rg_dest.partitions.count(p3)
+        assert rg_source.partitions.count(p2) == 1
+        assert rg_dest.partitions.count(p2) == 1
+        assert rg_source.partitions.count(p3) == 2
+        assert rg_dest.partitions.count(p3) == 1
 
     def test_select_broker(self):
         # Tests whether source and destination broker are best match
