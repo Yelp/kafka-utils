@@ -90,7 +90,7 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
         2,
     )
 
-    # Verify lenght of proposed-plan actions as 1
+    # Verify lenght of proposed-plan actions as 2
     assert len(proposed_assignment['partitions']) == 2
 
     proposed_assignment = get_reduced_proposed_plan(
@@ -99,7 +99,7 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
         5,
     )
 
-    # Verify no proposed plan are less than max-changes
+    # Verify no proposed plan less than max-changes
     assert len(proposed_assignment['partitions']) == 4
 
     # Verify that proposed-plan is first change in sorted order of
