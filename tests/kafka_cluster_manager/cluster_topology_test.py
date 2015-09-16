@@ -124,7 +124,7 @@ class TestClusterToplogy(object):
             # Assert that replication-factor remains same
             assert(len(new_replicas) == len(orig_replicas))
 
-    def get_partition_data(self, ct, p_name):
+    def partition_data(self, ct, p_name):
         partition = ct.partitions[p_name]
         opt_cnt, extra_cnt = \
             compute_optimal_count(
@@ -182,34 +182,22 @@ class TestClusterToplogy(object):
         """
         with self.build_cluster_topology() as ct:
             # Partition: T0-0
-            partition, opt_cnt, evenly_distribute = self.get_partition_data(
-                ct, ('T0', 0),
-            )
+            partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T0', 0))
             under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(
-                    partition,
-                    opt_cnt,
-                    evenly_distribute,
-                )
+                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
 
             # Tests compute-optimal-count
-            assert opt_cnt == 1 and evenly_distribute is True
+            assert opt_cnt == 1 and evenly_dist is True
             # Tests segregation of rg's
             assert not (over_replicated_rgs or under_replicated_rgs)
 
             # Partition T0-1: # Already-balanced
             # opt-count == 1
-            partition, opt_cnt, evenly_distribute = self.get_partition_data(
-                ct, ('T0', 1),
-            )
+            partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T0', 1))
             under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(
-                    partition,
-                    opt_cnt,
-                    evenly_distribute,
-                )
+                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
 
-            assert opt_cnt == 1 and evenly_distribute is True
+            assert opt_cnt == 1 and evenly_dist is True
             under_rg_ids = [rg.id for rg in under_replicated_rgs]
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
 
@@ -218,18 +206,12 @@ class TestClusterToplogy(object):
 
             # Partition: T1-0 # Already-balanced: repl-factor > rg-count
             # opt-count > 1
-            partition, opt_cnt, evenly_distribute = self.get_partition_data(
-                ct, ('T1', 0),
-            )
+            partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T1', 0))
             under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(
-                    partition,
-                    opt_cnt,
-                    evenly_distribute,
-                )
+                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
 
             # Verify for segregation of rg-groups
-            assert opt_cnt == 2 and evenly_distribute is True
+            assert opt_cnt == 2 and evenly_dist is True
             assert not (over_replicated_rgs or under_replicated_rgs)
 
     def test_segregate_replication_groups_case_2(self):
@@ -242,53 +224,41 @@ class TestClusterToplogy(object):
         with self.build_cluster_topology() as ct:
             # Partition: T2-0: repl-factor < rg-count
             # opt-count:  0
-            partition, opt_cnt, evenly_distribute = self.get_partition_data(
-                ct, ('T2', 0),
-            )
+            partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T2', 0))
             under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(
-                    partition,
-                    opt_cnt,
-                    evenly_distribute,
-                )
+                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
             under_rg_ids = [rg.id for rg in under_replicated_rgs]
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
 
             # Tests compute-optimal-count
-            assert opt_cnt == 0 and evenly_distribute is False
+            assert opt_cnt == 0 and evenly_dist is False
             # Tests segregation of rg's
             assert (over_rg_ids == ['rg2']) and (under_rg_ids == ['rg1'])
 
             # Partition T3-0: # Already-balanced
             # opt-count: 1
-            partition, opt_cnt, evenly_distribute = self.get_partition_data(
-                ct, ('T3', 0),
-            )
+            partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T3', 0))
             under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(
-                    partition,
-                    opt_cnt,
-                    evenly_distribute,
-                )
+                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
             under_rg_ids = [rg.id for rg in under_replicated_rgs]
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
 
-            assert opt_cnt == 1 and evenly_distribute is False
+            assert opt_cnt == 1 and evenly_dist is False
             assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
 
             # Partition: T3-1 # not-balanced: repl-factor > rg-count
             # opt-count > 1
-            partition, opt_cnt, evenly_distribute = self.get_partition_data(
+            partition, opt_cnt, evenly_dist = self.partition_data(
                 ct, ('T3', 1),
             )
             under_replicated_rgs, over_replicated_rgs = \
                 ct._segregate_replication_groups(
                     partition,
                     opt_cnt,
-                    evenly_distribute,
+                    evenly_dist,
                 )
             under_rg_ids = [rg.id for rg in under_replicated_rgs]
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
 
-            assert opt_cnt == 1 and evenly_distribute is False
+            assert opt_cnt == 1 and evenly_dist is False
             assert (under_rg_ids == ['rg2'])and over_rg_ids == ['rg1']
