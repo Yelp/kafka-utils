@@ -2,6 +2,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import logging
+_log = logging.getLogger('kafka-cluster-manager')
+
 
 def display_cluster_topology(cluster_topology):
     print(cluster_topology.get_assignment_json())
@@ -119,22 +122,22 @@ def display_leader_count_per_broker(
     print('{ratio}\n'.format(ratio=ratio))
 
 
-def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log=None):
+def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log_only=True):
     """Display current and proposed changes in
     topic-partition to replica layout over brokers.
     """
     action_cnt = '\n[INFO] Total actions required {0}'.format(total_changes)
-    log.info(action_cnt) if log else print(action_cnt)
+    _log.info(action_cnt) if log_only else print(action_cnt)
     actin_cnt = (
         '[INFO] Total actions that will be executed {0}'
         .format(len(new_plan_list))
     )
-    log.info(action_cnt) if log else print(action_cnt)
+    _log.info(action_cnt) if log_only else print(action_cnt)
     changes = (
         '[INFO] Proposed Changes in current '
         'topic-partition to replica layout:\n'
     )
-    log.info(changes) if log else print(changes)
+    _log.info(changes) if log_only else print(changes)
 
     tp_str = 'Topic-Partition'
     curr_repl_str = 'Previous-Assignment'
@@ -142,7 +145,7 @@ def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log
     tp_list = [tp_repl[0] for tp_repl in curr_plan_list]
 
     # Display heading
-    log.info('=' * 80) if log else print('=' * 80)
+    _log.info('=' * 80) if log_only else print('=' * 80)
     row = (
         '{tp:^30s}: {curr_rep_str:^20s} ==> {new_rep_str:^20s}' .format(
             tp=tp_str,
@@ -150,8 +153,8 @@ def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log
             new_rep_str=new_rep_str,
         )
     )
-    log.info(row) if log else print(row)
-    log.info('=' * 80) if log else print('=' * 80)
+    _log.info(row) if log_only else print(row)
+    _log.info('=' * 80) if log_only else print('=' * 80)
 
     # Display each topic-partition list with changes
     tp_list_sorted = sorted(tp_list, key=lambda tp: (tp[0], tp[1]))
@@ -170,4 +173,4 @@ def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log
                 proposed_repl=proposed_repl,
             )
         )
-        log.info(row) if log else print(row)
+        _log.info(row) if log_only else print(row)

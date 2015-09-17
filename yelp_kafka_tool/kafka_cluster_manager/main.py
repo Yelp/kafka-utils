@@ -66,7 +66,6 @@ def reassign_partitions(cluster_config, args):
             zk,
             ct.brokers.keys(),
             ct.topics.keys(),
-            _log,
         )
 
 
@@ -163,6 +162,7 @@ def validate_args(args):
         result = False
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
+        result = False
     return result
 
 

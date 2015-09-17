@@ -1,6 +1,5 @@
 import json
 from collections import Counter, OrderedDict
-from .display import display_assignment_changes
 
 
 def get_partitions_per_broker(brokers):
@@ -52,7 +51,7 @@ def get_assignment_map(assignment_json):
     return assignment
 
 
-def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes, log=None):
+def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
     """Return new plan with upper limit on total actions.
 
     These actions involve actual partition movement
@@ -78,21 +77,16 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes, 
         for t_p_key, replica in original_assignment.iteritems()
         if replica != new_assignment[t_p_key]
     ]
-    total_changes = len(proposed_assignment)
+    tot_actions = len(proposed_assignment)
     red_proposed_plan_list = proposed_assignment[:max_changes]
     red_curr_plan_list = [(tp_repl[0], original_assignment[tp_repl[0]])
                           for tp_repl in red_proposed_plan_list]
-    display_assignment_changes(
-        red_curr_plan_list,
-        red_proposed_plan_list,
-        total_changes,
-        log,
-    )
     red_proposed_assignment = dict(
         (ele[0], ele[1])
         for ele in red_proposed_plan_list
     )
-    return get_plan_str(red_proposed_assignment)
+    plan_str = get_plan_str(red_proposed_assignment)
+    return plan_str, red_curr_plan_list, red_proposed_plan_list, tot_actions
 
 
 def get_plan_str(proposed_assignment):

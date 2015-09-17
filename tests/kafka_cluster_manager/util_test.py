@@ -90,7 +90,7 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
         2,
     )
 
-    # Verify lenght of proposed-plan actions as 2
+    # Verify length of proposed-plan actions as 2
     assert len(proposed_assignment['partitions']) == 2
 
     proposed_assignment = get_reduced_proposed_plan(
