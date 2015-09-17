@@ -1,7 +1,7 @@
 """Contains information for partition layout on given cluster.
 
-Also contains api's dealing with dealing with changes in partition layout.
-The steps (1-6) and states S0 -- S2 and algorithm for re-assigning partitions
+Also contains api's dealing with changes in partition layout.
+The steps (1-6) and states S0 -- S2 and algorithm for re-assigning-partitions
 is per the design document at:-
 
 https://docs.google.com/document/d/1qloANcOHkzuu8wYVm0ZAMCGY5Mmb-tdcxUywNIXfQFI
@@ -13,7 +13,6 @@ from __future__ import unicode_literals
 import logging
 
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
-
 from .broker import Broker
 from .partition import Partition
 from .rg import ReplicationGroup
@@ -24,6 +23,7 @@ from .stats import (
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
 )
+from .util import compute_optimal_count, get_assignment_map
 
 
 class ClusterTopology(object):
@@ -76,15 +76,12 @@ class ClusterTopology(object):
         """
         self.partitions = {}
         for partition_name, replica_ids in self._initial_assignment.iteritems():
-            # Creating replica objects
-            replicas = [self.brokers[broker_id] for broker_id in replica_ids]
-
             # Get topic
             topic_id = partition_name[0]
             topic = self.topics[topic_id]
 
             # Creating partition object
-            partition = Partition(partition_name, topic, replicas)
+            partition = Partition(partition_name, topic)
             self.partitions[partition_name] = partition
 
             # Updating corresponding topic object
@@ -128,18 +125,14 @@ class ClusterTopology(object):
             raise ValueError(errorMsg)
         return rg_name
 
-    def reassign_partitions(
-        self,
-        rebalance_option,
-        max_changes,
-        to_execute,
-    ):
-        """Display or execute the final-state based on rebalancing option."""
-        pass
+    def reassign_partitions(self):
+        """Rebalance current cluster-state to get updated state based on
+        rebalancing option.
+        """
+        self.rebalance_replication_groups()
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
-        # TODO: Fix, version is hard-coded and rg missing
         assignment_json = {
             'version': 1,
             'partitions':
@@ -173,9 +166,20 @@ class ClusterTopology(object):
 
     @property
     def assignment(self):
-        kafka = KafkaInterface()
-        return kafka.get_assignment_map(self.get_assignment_json())[0]
+        return get_assignment_map(self.get_assignment_json())
 
+    @property
+    def partition_replicas(self):
+        """Return list of all partitions in the cluster.
+        Note: List contains all replicas as well.
+        """
+        return [
+            partition
+            for rg in self.rgs.values()
+            for partition in rg.partitions
+        ]
+
+    # Re-balancing analytical statistics
     def partition_imbalance(self):
         """Report partition count imbalance over brokers for given assignment
         or assignment in current state.
@@ -204,3 +208,114 @@ class ClusterTopology(object):
             self.rgs.values(),
             self.partitions.values(),
         )
+
+    # Balancing replication-groups: S0 --> S1
+    def rebalance_replication_groups(self):
+        """Rebalance partitions over replication groups (availability-zones)."""
+        # Balance replicas over replication-groups for each partition
+        for partition in self.partitions.itervalues():
+            self._rebalance_partition(partition)
+
+    def _rebalance_partition(self, partition):
+        """Rebalance replication group for given partition."""
+        # Get optimal replica count
+        opt_replica_count, extra_replicas_cnt = \
+            compute_optimal_count(
+                partition.replication_factor,
+                len(self.rgs.values()),
+            )
+
+        # Segregate replication-groups into under and over replicated
+        evenly_distribute_replicas = not extra_replicas_cnt
+        under_replicated_rgs, over_replicated_rgs = \
+            self._segregate_replication_groups(
+                partition,
+                opt_replica_count,
+                evenly_distribute_replicas,
+            )
+        # Move replicas from over-replicated to under-replicated groups
+        while under_replicated_rgs and over_replicated_rgs:
+            # Decide source and destination group
+            rg_source = self._elect_source_replication_group(
+                over_replicated_rgs,
+                partition,
+            )
+            rg_destination = self._elect_dest_replication_group(
+                rg_source.count_replica(partition),
+                under_replicated_rgs,
+                partition,
+            )
+            if rg_source and rg_destination:
+                # Actual movement of partition
+                rg_source.move_partition(
+                    rg_destination,
+                    partition,
+                )
+                # Update replication groups after movement of partition
+                source_replica_cnt = rg_source.count_replica(partition)
+                dest_replica_cnt = rg_destination.count_replica(partition)
+                # Remove group from list if balanced
+                if source_replica_cnt == opt_replica_count:
+                    over_replicated_rgs.remove(rg_source)
+                allowed_dest_cnt = dest_replica_cnt + 1 \
+                    if not evenly_distribute_replicas else dest_replica_cnt
+                if allowed_dest_cnt == opt_replica_count:
+                    under_replicated_rgs.remove(rg_destination)
+            else:
+                # Groups balanced or cannot be balanced further
+                break
+
+    def _segregate_replication_groups(
+        self,
+        partition,
+        opt_replica_count,
+        evenly_distribute_replicas,
+    ):
+        """Separate replication-groups into under-replicated, over-replicated
+        and optimally replicated groups.
+        """
+        under_replicated_rgs = []
+        over_replicated_rgs = []
+        for rg in self.rgs.itervalues():
+            replica_cnt = rg.count_replica(partition)
+            if replica_cnt < opt_replica_count:
+                under_replicated_rgs.append(rg)
+            elif replica_cnt > opt_replica_count:
+                over_replicated_rgs.append(rg)
+            else:
+                if not evenly_distribute_replicas:
+                    # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
+                    # Helps in adjusting one extra replica if required
+                    under_replicated_rgs.append(rg)
+        return under_replicated_rgs, over_replicated_rgs
+
+    def _elect_source_replication_group(
+        self,
+        over_replicated_rgs,
+        partition,
+    ):
+        """Decide source replication-group based as group with highest replica
+        count.
+        """
+        # TODO: optimization: decide based on partition-count
+        return max(
+            over_replicated_rgs,
+            key=lambda rg: rg.count_replica(partition),
+        )
+
+    def _elect_dest_replication_group(
+        self,
+        replica_count_source,
+        under_replicated_rgs,
+        partition,
+    ):
+        """Decide destination replication-group based on replica-count."""
+        min_replicated_rg = min(
+            under_replicated_rgs,
+            key=lambda rg: rg.count_replica(partition),
+        )
+        # Locate under-replicated replication-group with lesser
+        # replica count than source replication-group
+        if min_replicated_rg.count_replica(partition) < replica_count_source - 1:
+            return min_replicated_rg
+        return None

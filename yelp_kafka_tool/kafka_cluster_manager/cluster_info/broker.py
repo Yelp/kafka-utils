@@ -1,7 +1,5 @@
 import logging
 
-from collections import Counter
-
 
 class Broker(object):
     """Broker class object, consisting of following attributes
@@ -42,7 +40,10 @@ class Broker(object):
     def remove_partition(self, partition):
         """Remove partition from partition list."""
         if partition in self._partitions:
+            # Remove partition from set
             self._partitions.remove(partition)
+            # Remove broker from replica list of partition
+            partition.replicas.remove(self)
         else:
             raise ValueError(
                 'Partition: {topic_id}:{partition_id} not found in broker '
@@ -56,13 +57,17 @@ class Broker(object):
     def add_partition(self, partition):
         """Add partition to partition list."""
         assert(partition not in self._partitions)
+        # Add partition to existing set
         self._partitions.add(partition)
+        # Add broker to replica list
+        partition.replicas.append(self)
 
-    def partition_count(self):
-        """Total partitions in broker."""
-        return len(self._partitions)
+    def move_partition(self, partition, broker_destination):
+        """Move partition to destination broker and adjust replicas."""
+        self.remove_partition(partition)
+        broker_destination.add_partition(partition)
 
-    def count_topic_partitions(self, topic):
+    def count_partitions(self, topic):
         """Return count of partitions for given topic."""
         return sum([
             1

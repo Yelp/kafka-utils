@@ -59,54 +59,9 @@ def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
         ct = ClusterTopology(zk)
-        # Display cluster topology as fetched from zookeeper
-        print('Displaying current cluster topology')
-        display_cluster_topology(ct)
 
         # Display topology as built from objects
-        ct.reassign_partitions(
-            [args.partitions, args.leaders],
-            args.max_changes,
-            args.apply
-        )
-
-        print('Displaying cluster topology after reassignment')
-        display_cluster_topology(ct)
-        assert(ct.initial_assignment == ct.assignment)
-
-        # Get imbalance stats
-        # Partition-count imbalance
-        stdev_imbalance, net_imbalance, partitions_per_broker = \
-            ct.partition_imbalance()
-        display_partition_count_per_broker(
-            partitions_per_broker,
-            stdev_imbalance,
-            net_imbalance,
-        )
-        # Leader-count imbalance
-        stdev_imbalance, net_imbalance, leaders_per_broker = \
-            ct.leader_imbalance()
-        display_leader_count_per_broker(
-            leaders_per_broker,
-            stdev_imbalance,
-            net_imbalance,
-        )
-
-        # Duplicate-replica-count imbalance
-        net_imbalance, duplicate_replica_count_per_rg = \
-            ct.replication_group_imbalance()
-        display_same_replica_count_rg(
-            duplicate_replica_count_per_rg,
-            net_imbalance,
-        )
-
-        # Same topic-partition count
-        net_imbalance, same_topic_partition_count_per_broker = \
-            ct.topic_imbalance()
-        display_same_topic_partition_count_broker(
-            same_topic_partition_count_per_broker,
-            net_imbalance,
-        )
+        ct.reassign_partitions()
 
 
 def parse_args():

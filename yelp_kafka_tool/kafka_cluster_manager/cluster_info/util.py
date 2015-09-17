@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, OrderedDict
 
 
 def get_partitions_per_broker(brokers):
@@ -31,3 +31,20 @@ def compute_optimal_count(total_elements, total_groups):
     opt_element_cnt = total_elements // total_groups
     extra_elements_allowed_cnt = total_elements % total_groups
     return opt_element_cnt, extra_elements_allowed_cnt
+
+
+def get_assignment_map(assignment_json):
+    """Convert given assignment from json format to partition-replica map.
+
+    Arguments:
+    assignment_json: Given un-ordered assignment in json format
+    :return:         Return assignment ordered over topic, partition tuple
+    """
+    assignment = {}
+    for ele_curr in assignment_json['partitions']:
+        assignment[
+            (ele_curr['topic'], ele_curr['partition'])
+        ] = ele_curr['replicas']
+    # assignment map created in sorted order for deterministic solution
+    assignment = OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
+    return assignment
