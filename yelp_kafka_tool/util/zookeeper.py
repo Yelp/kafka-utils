@@ -95,7 +95,7 @@ class ZK:
         except NoNodeError:
             print(
                 "[ERROR] topic '{topic}' not found.".format(topic=topic_name),
-                file=sys.stderr
+                file=sys.stderr,
             )
             return {}
         result = {}
