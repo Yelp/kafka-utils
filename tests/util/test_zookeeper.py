@@ -11,6 +11,7 @@ from yelp_kafka_tool.util.zookeeper import ZK
 )
 class TestZK(object):
     cluster_config = ClusterConfig(
+        type='mytype',
         name='some_cluster',
         broker_list='some_list',
         zookeeper='some_ip'
