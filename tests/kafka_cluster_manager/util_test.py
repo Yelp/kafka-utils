@@ -91,7 +91,6 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
     )
 
     # Verify that result is not None
-    assert result
     proposed_assignment = result[0]
     # Verify length of proposed-plan actions as 2
     assert len(proposed_assignment['partitions']) == 2
@@ -102,7 +101,6 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
         5,
     )
 
-    assert result
     proposed_assignment = result[0]
     # Verify no proposed plan less than max-changes
     assert len(proposed_assignment['partitions']) == 4
