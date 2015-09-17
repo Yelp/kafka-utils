@@ -23,26 +23,21 @@ def execute_plan(
     brokers,
     topics,
 ):
-    result = "executed"
     # Get final-proposed-plan
-
-    proposed_plan, red_curr_plan_list, red_proposed_plan_list, total_actions = \
-        get_reduced_proposed_plan(
-            initial_assignment,
-            curr_assignment,
-            max_changes,
-        )
-
-    log_only = False if apply and not no_confirm or not apply else True
-    display_assignment_changes(
-        red_curr_plan_list,
-        red_proposed_plan_list,
-        total_actions,
-        log_only,
+    result = get_reduced_proposed_plan(
+        initial_assignment,
+        curr_assignment,
+        max_changes,
     )
-    # Execute or display the plan
-    if proposed_plan:
+    # Valid plan found, Execute or display the plan
+    if result:
+        print('in result')
+        # Display plan only if user-confirmation is required
+        log_only = False if apply and not no_confirm or not apply else True
+        display_assignment_changes(result[1], result[2], result[3], log_only)
+
         to_execute = False
+        proposed_plan = result[0]
         if apply:
             if no_confirm:
                 to_execute = True
@@ -64,5 +59,6 @@ def execute_plan(
         if proposed_plan_file:
             proposed_plan_json(proposed_plan, proposed_plan_file)
     else:
+        # No new-plan
         _log.info('No topic-partition layout changes proposed.')
-    return result
+    return

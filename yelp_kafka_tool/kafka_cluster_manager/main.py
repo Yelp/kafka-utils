@@ -3,8 +3,7 @@ Generate and/or execute the reassignment plan with minimal
 movements having optimally balanced replication-groups.
 
 Example:
-    kafka-cluster-manager --cluster-type scribe rebalance --broker-list '0,1,2'
-        --replication-groups
+    kafka-cluster-manager --cluster-type scribe rebalance --replication-groups
 
     The above command first applies the re-balancing algorithm
     over given broker-id's '0,1,2' over default cluster
@@ -24,7 +23,6 @@ Attributes:
     rebalance:          Indicates that given request is for partition
                         reassignment
     --cluster-type:     Type of cluster for example 'scribe', 'spam'
-    --broker-list:      Broker-list over which the assignment will be generated
     --max-changes:      Maximum number of actions as part of single execution
                         of the tool
     --apply:            On True execute proposed assignment after execution,
@@ -38,10 +36,9 @@ import logging
 import sys
 
 from yelp_kafka.config import ClusterConfig
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology \
-    import ClusterTopology
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
+from .cluster_info.cluster_topology import ClusterTopology
 from .execute_assignment import execute_plan
 
 
@@ -55,7 +52,7 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk)
         if args.replication_groups:
             ct.reassign_partitions(replication_groups=True)
-        # Execute or displan plan
+        # Execute or display plan
         execute_plan(
             ct.initial_assignment,
             ct.assignment,

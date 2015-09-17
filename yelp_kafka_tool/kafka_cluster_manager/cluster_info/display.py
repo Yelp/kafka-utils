@@ -122,21 +122,23 @@ def display_leader_count_per_broker(
     print('{ratio}\n'.format(ratio=ratio))
 
 
-def display_assignment_changes(curr_plan_list, new_plan_list, total_changes, log_only=True):
+def display_assignment_changes(
+    curr_plan_list,
+    new_plan_list,
+    total_changes,
+    log_only=True,
+):
     """Display current and proposed changes in
     topic-partition to replica layout over brokers.
     """
     action_cnt = '\n[INFO] Total actions required {0}'.format(total_changes)
     _log.info(action_cnt) if log_only else print(action_cnt)
-    actin_cnt = (
+    action_cnt = (
         '[INFO] Total actions that will be executed {0}'
         .format(len(new_plan_list))
     )
     _log.info(action_cnt) if log_only else print(action_cnt)
-    changes = (
-        '[INFO] Proposed Changes in current '
-        'topic-partition to replica layout:\n'
-    )
+    changes = ('[INFO] Proposed Changes in current cluster-layout:\n')
     _log.info(changes) if log_only else print(changes)
 
     tp_str = 'Topic-Partition'

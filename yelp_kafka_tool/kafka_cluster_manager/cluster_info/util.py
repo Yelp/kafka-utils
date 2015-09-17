@@ -38,7 +38,7 @@ def get_assignment_map(assignment_json):
     """Convert given assignment from json format to partition-replica map.
 
     Arguments:
-    assignment_json: Given un-ordered assignment in json format
+    assignment_json: Given unordered assignment in json format
     :return:         Return assignment ordered over topic, partition tuple
     """
     assignment = {}
