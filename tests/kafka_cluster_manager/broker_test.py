@@ -77,6 +77,10 @@ class TestBroker(object):
         # Verify partition moved from source to destination broker
         assert victim_partition not in source_broker.partitions
         assert victim_partition in dest_broker.partitions
+        # Verify that victim-partition-replicas has replaced
+        # source-broker to dest-broker
+        assert source_broker not in victim_partition.replicas
+        assert dest_broker in victim_partition.replicas
 
     def test_count_preferred_replica(self, partition):
         p1 = partition
