@@ -60,10 +60,8 @@ class KafkaInterface(object):
             '--broker-list',
             brokers_str
         ]
-        return subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
-
         """Run reassignment kafka command based on given parameters."""
-        return
+        return subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
 
     def get_cluster_assignment(self, zookeeper, brokers, topic_ids):
         """Generate the reassignment plan for given zookeeper

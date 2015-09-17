@@ -97,13 +97,13 @@ def parse_args():
     # re-assign partitions
     parser_rebalance = subparsers.add_parser(
         'rebalance',
-        description='Re-balance the replication-groups',
+        description='Re-assign partitions over brokers.',
     )
     parser_rebalance.add_argument(
         '--replication-groups',
         dest='replication_groups',
         action='store_true',
-        help='Evenly distributes replicas over replication-groups',
+        help='Evenly distributes replicas over replication-groups.',
     )
     parser_rebalance.add_argument(
         '--max-changes',
@@ -111,23 +111,25 @@ def parse_args():
         type=int,
         default=DEFAULT_MAX_CHANGES,
         help='Maximum number of actions executed from proposed assignment'
-             '%(default)s'
+             ' DEFAULT: %(default)s'
     )
     parser_rebalance.add_argument(
         '--apply',
         dest='apply',
         action='store_true',
-        help='Proposed-plan will be executed on confirmation'
+        help='Proposed-plan will be executed on confirmation.'
     )
     parser_rebalance.add_argument(
         '--no-confirm',
         dest='no_confirm',
         action='store_true',
-        help='Proposed-plan will be executed without confirmation',
+        help='Proposed-plan will be executed without confirmation.'
+             ' --apply flag also required.'
     )
     parser_rebalance.add_argument(
         '--json',
         dest='proposed_plan_file',
+        metavar='<reassignment-plan-file-path>',
         type=str,
         help='Export candidate partition reassignment configuration '
              'to given json file.',
@@ -171,9 +173,10 @@ def run():
         sys.exit(1)
     if args.zookeeper:
         cluster_config = ClusterConfig(
+            type=None,
             name=args.cluster_name,
             broker_list=[],
-            zookeeper=args.zookeeper
+            zookeeper=args.zookeeper,
         )
     else:
         cluster_config = config.get_cluster_config(

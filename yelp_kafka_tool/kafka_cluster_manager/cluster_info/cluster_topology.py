@@ -134,6 +134,10 @@ class ClusterTopology(object):
         """
         # Rebalance replication-groups
         if replication_groups:
+            self.log.info(
+                'Re-balancing replication groups: {groups}...'
+                .format(groups=', '.join(self.rgs.keys())),
+            )
             self.rebalance_replication_groups()
 
     def get_assignment_json(self):
