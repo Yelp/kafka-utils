@@ -23,7 +23,10 @@ from .stats import (
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
 )
-from .util import compute_optimal_count, get_assignment_map
+from .util import (
+    compute_optimal_count,
+    get_assignment_map,
+)
 
 
 class ClusterTopology(object):
@@ -99,8 +102,7 @@ class ClusterTopology(object):
         Assignment is ordered by partition name tuple.
         """
         # Requires running kafka-scripts
-        kafka = KafkaInterface()
-        self._initial_assignment = kafka.get_cluster_assignment(
+        self._initial_assignment = KafkaInterface().get_cluster_assignment(
             self._zk.cluster_config.zookeeper,
             broker_ids,
             topic_ids
@@ -126,11 +128,13 @@ class ClusterTopology(object):
             raise ValueError(errorMsg)
         return rg_name
 
-    def reassign_partitions(self):
+    def reassign_partitions(self, replication_groups=False):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
         """
-        self.rebalance_replication_groups()
+        # Rebalance replication-groups
+        if replication_groups:
+            self.rebalance_replication_groups()
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""

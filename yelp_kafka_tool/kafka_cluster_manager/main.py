@@ -1,10 +1,9 @@
 """
 Generate and/or execute the reassignment plan with minimal
-movements having optimally balanced partitions or leaders or both.
+movements having optimally balanced replication-groups.
 
 Example:
-    kafka-cluster-manager --cluster-type scribe rebalance --broker-list '0,1,2'
-        --partitions
+    kafka-cluster-manager --cluster-type scribe rebalance --replication-groups
 
     The above command first applies the re-balancing algorithm
     over given broker-id's '0,1,2' over default cluster
@@ -24,44 +23,47 @@ Attributes:
     rebalance:          Indicates that given request is for partition
                         reassignment
     --cluster-type:     Type of cluster for example 'scribe', 'spam'
-    --broker-list:      Broker-list over which the assignment will be generated
     --max-changes:      Maximum number of actions as part of single execution
                         of the tool
     --apply:            On True execute proposed assignment after execution,
                         display proposed-plan otherwise
-    --partitions:       Optimally balance partitions over brokers
-    --leaders:          Optimally balance preferred-leaders over brokers
 """
 from __future__ import absolute_import
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
+import logging
 import sys
 
 from yelp_kafka.config import ClusterConfig
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology \
-    import ClusterTopology
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.display import (
-    display_cluster_topology,
-    display_same_replica_count_rg,
-    display_same_topic_partition_count_broker,
-    display_partition_count_per_broker,
-    display_leader_count_per_broker,
-)
+from .cluster_info.cluster_topology import ClusterTopology
+from .execute_assignment import execute_plan
+
 
 DEFAULT_MAX_CHANGES = 5
+_log = logging.getLogger('kafka-cluster-manager')
 
 
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
         ct = ClusterTopology(zk)
-
-        # Display topology as built from objects
-        ct.reassign_partitions()
+        if args.replication_groups:
+            ct.reassign_partitions(replication_groups=True)
+        # Execute or display plan
+        execute_plan(
+            ct.initial_assignment,
+            ct.assignment,
+            args.max_changes,
+            args.apply,
+            args.no_confirm,
+            args.proposed_plan_file,
+            zk,
+            ct.brokers.keys(),
+            ct.topics.keys(),
+        )
 
 
 def parse_args():
@@ -92,24 +94,16 @@ def parse_args():
     )
     subparsers = parser.add_subparsers()
 
-    # re-balance partitions
+    # re-assign partitions
     parser_rebalance = subparsers.add_parser(
         'rebalance',
-        description='Re-balance the partitions or leaders '
-        'or both optimally over brokers.'
-        'At least one of \'--partitions\' or \'--leaders\' option required.'
+        description='Re-balance the replication-groups',
     )
     parser_rebalance.add_argument(
-        '--partitions',
-        dest='partitions',
+        '--replication-groups',
+        dest='replication_groups',
         action='store_true',
-        help='Evenly distributes partitions optimally over given brokers'
-    )
-    parser_rebalance.add_argument(
-        '--leaders',
-        dest='leaders',
-        action='store_true',
-        help='Evenly distributes leaders optimally over brokers'
+        help='Evenly distributes replicas over replication-groups',
     )
     parser_rebalance.add_argument(
         '--max-changes',
@@ -125,6 +119,19 @@ def parse_args():
         action='store_true',
         help='Proposed-plan will be executed on confirmation'
     )
+    parser_rebalance.add_argument(
+        '--no-confirm',
+        dest='no_confirm',
+        action='store_true',
+        help='Proposed-plan will be executed without confirmation',
+    )
+    parser_rebalance.add_argument(
+        '--json',
+        dest='proposed_plan_file',
+        type=str,
+        help='Export candidate partition reassignment configuration '
+             'to given json file.',
+    )
     parser_rebalance.set_defaults(command=reassign_partitions)
     return parser.parse_args()
 
@@ -134,30 +141,31 @@ def validate_args(args):
     result = True
     params = [args.zookeeper, args.cluster_type]
     if all(params) or not any(params):
-        print(
+        _log.error(
             'Command must include exactly one '
             'of zookeeper or cluster-type argument',
         )
         result = False
     if args.max_changes <= 0:
-        print(
+        _log.error(
             'max-changes should be greater than 0: '
             '{max_changes} found. Aborting...'
             .format(max_changes=args.max_changes)
         )
         result = False
-    rebalance_options = [args.leaders, args.partitions]
+    rebalance_options = [args.replication_groups]
     if not any(rebalance_options):
-        print(
-            'At least one of \'--partitions\' or '
-            '\'--leaders\' flag required.'
-        )
+        _log.error('\'--replication-groups\' flag required.')
+        result = False
+    if args.no_confirm and not args.apply:
+        _log.error('--apply required with --no-confirm flag.')
         result = False
     return result
 
 
 def run():
     """Verify command-line arguments and run reassignment functionalities."""
+    logging.basicConfig(level=logging.ERROR)
     args = parse_args()
     if not validate_args(args):
         sys.exit(1)
