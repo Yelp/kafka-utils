@@ -98,3 +98,28 @@ class KafkaInterface(object):
                     'Could not parse output of kafka-executable script %s',
                     result,
                 )
+
+    def execute_plan(
+        self,
+        proposed_layout,
+        zookeeper,
+        brokers,
+        topics,
+    ):
+        """Execute the proposed plan.
+
+        Execute the given proposed plan over given
+        brokers and zookeeper configuration
+
+        Arguments:
+        proposed_plan:   Proposed plan in json format
+        """
+        with tempfile.NamedTemporaryFile() as temp_reassignment_file:
+            json.dump(proposed_layout, temp_reassignment_file)
+            temp_reassignment_file.flush()
+            self.run_repartition_cmd(
+                zookeeper,
+                brokers,
+                temp_reassignment_file.name,
+                True,
+            )
