@@ -81,10 +81,11 @@ class ClusterTopology(object):
         for partition_name, replica_ids in self._initial_assignment.iteritems():
             # Get topic
             topic_id = partition_name[0]
+            partition_id = partition_name[1]
             topic = self.topics[topic_id]
 
             # Creating partition object
-            partition = Partition(partition_name, topic)
+            partition = Partition(topic, partition_id)
             self.partitions[partition_name] = partition
 
             # Updating corresponding topic object
