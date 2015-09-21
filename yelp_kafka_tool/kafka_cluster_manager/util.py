@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
@@ -7,17 +6,22 @@ import json
 import os
 import subprocess
 import tempfile
+
+from kazoo.exceptions import NodeExistsError, NoNodeError
 from .cluster_info.util import get_assignment_map
 
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
+REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
 
 
 class KafkaInterface(object):
     """This class acts as an interface to interact with kafka-scripts."""
 
-    def __init__(self, kafka_script_path=KAFKA_SCRIPT_PATH):
-        self._kafka_script_path = KAFKA_SCRIPT_PATH
+    def __init__(self, kafka_script_path=KAFKA_SCRIPT_PATH, no_kafka_script=False):
+        self._kafka_script_path = kafka_script_path or KAFKA_SCRIPT_PATH
         self.log = logging.getLogger(self.__class__.__name__)
+        self.reassignment_zookeeper_path = REASSIGNMENT_ZOOKEEPER_PATH
+        self._no_kafka_script = no_kafka_script
 
     def run_repartition_cmd(
         self,
@@ -63,7 +67,7 @@ class KafkaInterface(object):
         """Run reassignment kafka command based on given parameters."""
         return subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
 
-    def get_cluster_assignment(self, zookeeper, brokers, topic_ids):
+    def get_cluster_assignment(self, zk, brokers, topic_ids):
         """Generate the reassignment plan for given zookeeper
         configuration, brokers and topics.
         """
@@ -71,36 +75,40 @@ class KafkaInterface(object):
             'topics': [{'topic': topic_id} for topic_id in topic_ids],
             'version': 1
         }
-        with tempfile.NamedTemporaryFile() as temp_topic_file:
-            temp_topic_file.write(json.dumps(topic_data))
-            temp_topic_file.flush()
-            result = self.run_repartition_cmd(
-                zookeeper,
-                brokers,
-                temp_topic_file.name
-            )
-            try:
-                json_result_list = result[0].split('\n')
-                curr_layout = json.loads(json_result_list[-5])
-                if curr_layout:
-                    assignment = get_assignment_map(curr_layout)
-                    return assignment
-                else:
-                    raise ValueError(
-                        'Output: {output} Plan Generation Error: {error}'
-                        .format(output=result[0], error=result[1])
-                    )
-            except ValueError as error:
-                self.log.error('%s', error)
-                raise ValueError(
-                    'Could not parse output of kafka-executable script %s',
-                    result,
+        if self._no_kafka_script:
+            assignment = self.get_cluster_assignment_zk(zk)
+            return get_assignment_map(assignment)
+        else:
+            zookeeper = zk.cluster_config.zookeeper
+            with tempfile.NamedTemporaryFile() as temp_topic_file:
+                temp_topic_file.write(json.dumps(topic_data))
+                temp_topic_file.flush()
+                result = self.run_repartition_cmd(
+                    zookeeper,
+                    brokers,
+                    temp_topic_file.name
                 )
+                try:
+                    json_result_list = result[0].split('\n')
+                    curr_layout = json.loads(json_result_list[-5])
+                    if curr_layout:
+                        return get_assignment_map(curr_layout)
+                    else:
+                        raise ValueError(
+                            'Output: {output} Plan Generation Error: {error}'
+                            .format(output=result[0], error=result[1])
+                        )
+                except ValueError as error:
+                    self.log.error('%s', error)
+                    raise ValueError(
+                        'Could not parse output of kafka-executable script %s',
+                        result,
+                    )
 
     def execute_plan(
         self,
         proposed_layout,
-        zookeeper,
+        zk,
         brokers,
         topics,
     ):
@@ -112,12 +120,51 @@ class KafkaInterface(object):
         Arguments:
         proposed_plan:   Proposed plan in json format
         """
-        with tempfile.NamedTemporaryFile() as temp_reassignment_file:
-            json.dump(proposed_layout, temp_reassignment_file)
-            temp_reassignment_file.flush()
-            self.run_repartition_cmd(
-                zookeeper,
-                brokers,
-                temp_reassignment_file.name,
-                True,
+
+        if self._no_kafka_script:
+            self.execute_assignment_zk(zk, proposed_layout)
+        else:
+            with tempfile.NamedTemporaryFile() as temp_reassignment_file:
+                json.dump(proposed_layout, temp_reassignment_file)
+                temp_reassignment_file.flush()
+                zookeeper = zk.cluster_config.zookeeper
+                self.run_repartition_cmd(
+                    zookeeper,
+                    brokers,
+                    temp_reassignment_file.name,
+                    True,
+                )
+
+    def execute_assignment_zk(self, zk, data):
+        """Executing plan directly sending it to zookeeper nodes."""
+        path = self.reassignment_zookeeper_path
+        plan = json.dumps(data)
+        try:
+            zk.create(path, plan)
+        except NodeExistsError:
+            # If reassign_partitions node already exists
+            # delete and re-try
+            zk.delete(path)
+            zk.create(path, value=plan)
+        except NoNodeError:
+            self.log.error(
+                "Could not re-assign partitions {plan}".format(plan=plan),
             )
+
+    def get_cluster_assignment_zk(self, zk):
+        """Fetch cluster assignment directly from zookeeper."""
+        cluster_layout = zk.get_partitions()
+        # Re-format cluster-layout
+        partitions = [
+            {
+                'topic': topic_id,
+                'partition': int(p_id),
+                'replicas': replicas
+            }
+            for topic_id, topic_info in cluster_layout.iteritems()
+            for p_id, replicas in topic_info['partitions'].iteritems()
+        ]
+        return {
+            'version': 1,
+            'partitions': partitions
+        }
