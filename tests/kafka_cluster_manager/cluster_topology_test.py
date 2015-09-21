@@ -212,11 +212,11 @@ class TestClusterToplogy(object):
             under_replicated_rgs, over_replicated_rgs = \
                 ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
 
-            assert evenly_dist is False
             # Verify segregation of rg's
             # Since, evenly_dist is False, therefore some rg-groups can have
             # opt-cnt+1 replicas, so we categorize every replication-group into
             # under or over-replicated
+            assert evenly_dist is False
             under_rg_ids = [rg.id for rg in under_replicated_rgs]
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
             assert opt_cnt == 1 and evenly_dist is False
@@ -252,7 +252,6 @@ class TestClusterToplogy(object):
 
     def test_assignment(self):
         with self.build_cluster_topology() as ct:
-
             # Verify if the returned assignment is valid
             assert ct.assignment == self._initial_assignment
             # Assert initial-assignment
@@ -261,11 +260,19 @@ class TestClusterToplogy(object):
     def test_get_assignment_json(self):
         with self.build_cluster_topology() as ct:
             assignment_json = {'version': 1, 'partitions': []}
-            for part, replicas in self._initial_assignment.iteritems():
-                p_info = {'topic': part[0], 'partition': part[1], 'replicas': replicas}
-                assignment_json['partitions'].append(p_info)
-
-            # Verify newly created .json file
+            assignment_json = {
+                'version': 1,
+                'partitions':
+                [
+                    {
+                        'topic': partition[0],
+                        'partition': partition[1],
+                        'replicas': replicas
+                    }
+                    for partition, replicas in self._initial_assignment.iteritems()
+                ]
+            }
+            # Verify json formatted assignment
             assert sorted(ct.get_assignment_json()) == sorted(assignment_json)
 
     def test_elect_source_replication_group(self):
@@ -276,7 +283,6 @@ class TestClusterToplogy(object):
         # rg1:      (0, 2, 4) = 3
         # rg2:      (1, 3) = 2
         # rg3:      (5) = 1
-
         # rg1 and rg2 are over-replicated and rg3 being under-replicated
         # source-replication-group should be rg1 having the highest replicas
         p1 = ((u'T0', 0), [0, 1, 2, 3, 4, 5, 6])
@@ -373,7 +379,7 @@ class TestClusterToplogy(object):
             # No eligible dest-group is there where partition-can be sent to
             assert rg_dest is None
 
-    def test_rebalance_partition_imbalanced(self):
+    def test_rebalance_partition_imbalanced_case1(self):
         # Test imbalanced partitions for below cases
         # Note: In initial-assignment, all partitions with id-1 are 'imbalanced'
         with self.build_cluster_topology() as ct:
@@ -400,6 +406,8 @@ class TestClusterToplogy(object):
             # Verify partition is rg-balanced
             self.assert_rg_balanced_partition(ct, p1, opt_cnt)
 
+    def test_rebalance_partition_imbalanced_case2(self):
+        with self.build_cluster_topology() as ct:
             # CASE 2: repl-factor % rg-count > 0
             # p1: replicas ('T3', 1): [0,1,4]
             p1 = ct.partitions[('T3', 1)]
@@ -414,7 +422,7 @@ class TestClusterToplogy(object):
 
     def test_rebalance_partition_balanced(self):
         # Test already balanced partitions in given example for different cases
-        # Analyze Cases 1a, 1b, 2a, 2b
+        # Analyze Cases 1a, 1b
         with self.build_cluster_topology() as ct:
             # CASE 1: repl-factor % rg-count == 0
             # (1a): repl-factor == rg-count
@@ -436,6 +444,10 @@ class TestClusterToplogy(object):
             # Verify no change in replicas after rebalancing
             self.rg_rebalance_assert_no_change(ct, p1)
 
+    def test_rebalance_partition_balanced_case2(self):
+        # Test already balanced partitions in given example for different cases
+        # Analyze Cases 2a, 2b
+        with self.build_cluster_topology() as ct:
             # CASE 2: repl-factor % rg-count > 0
             # (2a): repl-factor < rg-count
             # p1: replicas ('T2', 0): [2]
