@@ -306,7 +306,8 @@ class ClusterTopology(object):
         """Decide source replication-group based as group with highest replica
         count.
         """
-        # TODO: optimization: decide based on partition-count
+        # TODO: optimization: decide based on partition-count and
+        # same-topic-partition count
         return max(
             over_replicated_rgs,
             key=lambda rg: rg.count_replica(partition),

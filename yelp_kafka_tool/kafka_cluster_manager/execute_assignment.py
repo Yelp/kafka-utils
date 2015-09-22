@@ -30,7 +30,8 @@ def execute_plan(
         max_changes,
     )
     # Valid plan found, Execute or display the plan
-    log_only = False if apply and not no_confirm or not apply else True
+    log_only = apply and no_confirm
+
     if result:
         print('in result')
         # Display plan only if user-confirmation is required
@@ -60,10 +61,10 @@ def execute_plan(
             proposed_plan_json(proposed_plan, proposed_plan_file)
     else:
         # No new-plan
-        msgStr = 'No topic-partition layout changes proposed.'
+        msg_str = 'No topic-partition layout changes proposed.'
         if log_only:
-            _log.info(msgStr)
+            _log.info(msg_str)
         else:
-            print(msgStr)
+            print(msg_str)
 
     return
