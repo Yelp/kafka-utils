@@ -33,7 +33,6 @@ def execute_plan(
     log_only = apply and no_confirm
 
     if result:
-        print('in result')
         # Display plan only if user-confirmation is required
         display_assignment_changes(result[1], result[2], result[3], log_only)
 

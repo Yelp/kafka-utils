@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
@@ -60,7 +59,6 @@ class KafkaInterface(object):
             '--broker-list',
             brokers_str
         ]
-        """Run reassignment kafka command based on given parameters."""
         return subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
 
     def get_cluster_assignment(self, zookeeper, brokers, topic_ids):

@@ -259,7 +259,6 @@ class TestClusterToplogy(object):
 
     def test_get_assignment_json(self):
         with self.build_cluster_topology() as ct:
-            assignment_json = {'version': 1, 'partitions': []}
             assignment_json = {
                 'version': 1,
                 'partitions':
