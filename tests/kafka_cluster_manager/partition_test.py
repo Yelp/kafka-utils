@@ -5,7 +5,6 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partiti
 
 
 class TestPartition(object):
-
     @pytest.fixture
     def partition(self):
         mock_topic = sentinel.t1
@@ -39,3 +38,15 @@ class TestPartition(object):
         new_broker = sentinel.new_r
         partition.add_replica(new_broker)
         assert partition.replicas == [sentinel.r1, sentinel.r2, sentinel.new_r]
+
+    def test_swap_leader(self, partition):
+        b = sentinel.r2
+        old_replicas = partition.replicas
+        partition.swap_leader(b)
+
+        # Verify leader changed to b
+        assert partition.leader == b
+        # Verify that replica set remains same
+        assert sorted(old_replicas) == sorted(partition.replicas)
+        # Verify that old-leader takes old-position of new-leader
+        assert partition.replicas[old_replicas.index(b)] == old_replicas.leader

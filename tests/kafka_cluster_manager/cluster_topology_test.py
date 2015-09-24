@@ -486,16 +486,13 @@ class TestClusterToplogy(object):
                 ((u'T1', 0), [0, 2]),
             ]
         )
-        with self.build_cluster_topology(assignment, ) as ct:
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
             orig_assignment = ct.assignment
             ct.rebalance_leaders()
-            updated_assignment = ct.assignment
-            std_imbal, net_imbal, leaders_per_broker = get_leader_imbalance_stats(
-                ct.brokers.values(),
-            )
+            _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
 
             # No changed in already-balanced assignment
-            assert orig_assignment == updated_assignment
+            assert orig_assignment == ct.assignment
             # Assert leader-balanced
             assert net_imbal == 0
 
@@ -509,16 +506,13 @@ class TestClusterToplogy(object):
                 ((u'T0', 1), [2, 0]),
             ]
         )
-        with self.build_cluster_topology(assignment, ) as ct:
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
             orig_assignment = ct.assignment
             ct.rebalance_leaders()
-            updated_assignment = ct.assignment
-            std_imbal, net_imbal, leaders_per_broker = get_leader_imbalance_stats(
-                ct.brokers.values(),
-            )
+            _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
 
             # No changed in already-balanced assignment
-            assert orig_assignment == updated_assignment
+            assert orig_assignment == ct.assignment
             # Assert leader-balanced
             assert net_imbal == 0
 
@@ -534,16 +528,14 @@ class TestClusterToplogy(object):
                 ((u'T1', 0), [1, 0]),
             ]
         )
-        with self.build_cluster_topology(assignment, [0, 1, 2]) as ct:
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
             orig_assignment = ct.assignment
             ct.rebalance_leaders()
 
             # Verify if valid-leader assignment
-            new_assignment = ct.assignment
-            self.assert_leader_valid(orig_assignment, new_assignment)
-
+            self.assert_leader_valid(orig_assignment, ct.assignment)
             # New-leader imbalance-count be less than previous imbal count
-            new_std_imbal, new_leader_imbal, new_leaders_per_broker = \
+            _, new_leader_imbal, new_leaders_per_broker = \
                 get_leader_imbalance_stats(ct.brokers.values())
             # Verify leader-balanced
             assert new_leader_imbal == 0
@@ -554,10 +546,9 @@ class TestClusterToplogy(object):
 
     def test_rebalance_leaders_unbalanced_case2(self):
         # No leader-imbalance possible
-        # Un-balanced assignment
         # (Broker: leader-count): {0: 2, 1: 1, 2:0}
         # opt-count: 3/3 = 1, extra-count = 0
-        # Leader-imbalance: 1
+        # Leader-imbalance-value: 1
         assignment = OrderedDict(
             [
                 ((u'T0', 0), [1, 2]),
@@ -565,21 +556,20 @@ class TestClusterToplogy(object):
                 ((u'T1', 0), [0]),
             ]
         )
-        with self.build_cluster_topology(assignment, [0, 1, 2]) as ct:
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
             orig_assignment = ct.assignment
             ct.rebalance_leaders()
 
-            # Verify no assignment change
+            # Verify no assignment change, since nothing could be balanced
             assert orig_assignment == ct.assignment
-
             # Verify still leader-imbalanced
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             # TODO: fix this, this should be balanced
             assert leader_imbal > 0
 
     def test_rebalance_leaders_unbalanced_case3(self):
+        # Imbalanced assignment
         # Partial leader-imbalance possible
-        # Un-balanced assignment
         # (Broker: leader-count): {0: 3, 1: 1, 2:0}
         # opt-count: 5/3 = 1, extra-count = 2
         assignment = OrderedDict(
@@ -592,15 +582,14 @@ class TestClusterToplogy(object):
             ]
         )
 
-        with self.build_cluster_topology(assignment, [0, 1, 2]) as ct:
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
             _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             ct.rebalance_leaders()
             _, new_net_imbal, new_leaders_per_broker = get_leader_imbalance_stats(
                 ct.brokers.values(),
             )
             # Verify that net-imbalance has reduced but not zero
-            assert new_net_imbal < net_imbal
-            assert new_net_imbal > 0
+            assert new_net_imbal > 0 and new_net_imbal < net_imbal
             # Verify the changes in leaders-per-broker count
             assert new_leaders_per_broker[2] == 1
             assert new_leaders_per_broker[1] == 1
@@ -618,3 +607,16 @@ class TestClusterToplogy(object):
         # Replica-set remains same
         for partition, orig_replicas in orig_assignment.iteritems():
             set(orig_replicas) == set(new_assignment[partition])
+
+    def test_get_non_leader_brokers(self):
+        with self.build_cluster_topology() as ct:
+            # partition (T1, 0): [0, 1, 2, 3]
+            non_leaders = ct._get_non_leader_brokers(ct.partitions[('T1', 0)])
+
+            # Verify non-leaders are set of 1 to 3
+            non_leader_ids = set([b.id for b in non_leaders])
+            assert non_leader_ids == set([1, 2, 3])
+            # Case:2 no-non-leaders
+            # partition (T2, 0): [2]
+            non_leader = ct._get_non_leader_brokers(ct.partitions[('T2', 0)])
+            assert not non_leader

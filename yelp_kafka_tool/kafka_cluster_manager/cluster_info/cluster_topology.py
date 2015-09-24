@@ -123,10 +123,10 @@ class ClusterTopology(object):
                 habitat = hostname.rsplit('-', 1)[1]
                 rg_name = habitat.split('.', 1)[0]
         except IndexError:
-            errorMsg = "Could not parse replication group for broker {id} with"\
+            error_msg = "Could not parse replication group for broker {id} with"\
                 " hostname:{hostname}".format(id=broker.id, hostname=hostname)
-            self.log.exception(errorMsg)
-            raise ValueError(errorMsg)
+            self.log.exception(error_msg)
+            raise ValueError(error_msg)
         return rg_name
 
     def reassign_partitions(self, replication_groups=False, leaders=False):
@@ -141,6 +141,11 @@ class ClusterTopology(object):
             )
             self.rebalance_replication_groups()
         if leaders:
+            self.log.info(
+                'Re-balancing leader-count across brokers: {brokers}...'
+                .format(brokers=', '.join(str(self.brokers.keys()))),
+            )
+
             self.rebalance_leaders()
 
     def get_assignment_json(self):
@@ -378,12 +383,5 @@ class ClusterTopology(object):
         """Return list of brokers not as preferred leader
         for a particular partition.
         """
-        try:
-            result = partition.replicas[1:]
-        except IndexError:
-            errorMsg = "No non-leaders for partition {p}".format(
-                p=partition.name,
-            )
-            self.log.exception(errorMsg)
-            raise IndexError(errorMsg)
-        return result
+        # Empty list is returned in case no non-leaders found
+        return partition.replicas[1:]

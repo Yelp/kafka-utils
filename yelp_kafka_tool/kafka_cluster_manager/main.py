@@ -52,7 +52,6 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk)
         if args.replication_groups:
             ct.reassign_partitions(replication_groups=True)
-        prev_imbal = imbalance_value_all(ct, True)
         if args.leaders:
             ct.reassign_partitions(leaders=True)
 
