@@ -8,6 +8,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import 
 )
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
     get_replication_group_imbalance_stats,
+    get_leader_imbalance_stats,
 )
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     compute_optimal_count,
@@ -472,3 +473,148 @@ class TestClusterToplogy(object):
             assert all([broker in orig_brokers for broker in new_replicas])
             # Verify that replication-factor remains same
             assert len(new_replicas) == len(orig_replicas)
+
+    # Tests for leader-balancing
+    def test_rebalance_leaders_balanced_case1(self):
+        # Already balanced-assignment with evenly-distributed
+        # (broker-id: leader-count): {0: 1, 1:1, 2:1}
+        # opt-count: 3/3 = 1, extra-count: 3%3 = 0
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [1, 2]),
+                ((u'T0', 1), [2, 0]),
+                ((u'T1', 0), [0, 2]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, ) as ct:
+            orig_assignment = ct.assignment
+            ct.rebalance_leaders()
+            updated_assignment = ct.assignment
+            std_imbal, net_imbal, leaders_per_broker = get_leader_imbalance_stats(
+                ct.brokers.values(),
+            )
+
+            # No changed in already-balanced assignment
+            assert orig_assignment == updated_assignment
+            # Assert leader-balanced
+            assert net_imbal == 0
+
+    def test_rebalance_leaders_balanced_case2(self):
+        # Already balanced-assignment NOT evenly-distributed
+        # (broker-id: leader-count): {0: 1, 1:1, 2:1}
+        # opt-count: 2/3 = 0, extra-count: 2%3 = 2
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [1, 2]),
+                ((u'T0', 1), [2, 0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, ) as ct:
+            orig_assignment = ct.assignment
+            ct.rebalance_leaders()
+            updated_assignment = ct.assignment
+            std_imbal, net_imbal, leaders_per_broker = get_leader_imbalance_stats(
+                ct.brokers.values(),
+            )
+
+            # No changed in already-balanced assignment
+            assert orig_assignment == updated_assignment
+            # Assert leader-balanced
+            assert net_imbal == 0
+
+    def test_rebalance_leaders_unbalanced_case1(self):
+        # Balance leader-imbalance successfully
+        # (broker-id: leader-count): {0: 0, 1:2, 2:1}
+        # Net-leader-imbalance: 1
+        # opt-count: 3/3 = 1, extra-count: 3%3 = 0
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [1, 2]),
+                ((u'T0', 1), [2, 0]),
+                ((u'T1', 0), [1, 0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, [0, 1, 2]) as ct:
+            orig_assignment = ct.assignment
+            ct.rebalance_leaders()
+
+            # Verify if valid-leader assignment
+            new_assignment = ct.assignment
+            self.assert_leader_valid(orig_assignment, new_assignment)
+
+            # New-leader imbalance-count be less than previous imbal count
+            new_std_imbal, new_leader_imbal, new_leaders_per_broker = \
+                get_leader_imbalance_stats(ct.brokers.values())
+            # Verify leader-balanced
+            assert new_leader_imbal == 0
+            # Verify partitions-changed assignment
+            assert new_leaders_per_broker[0] == 1
+            assert new_leaders_per_broker[1] == 1
+            assert new_leaders_per_broker[2] == 1
+
+    def test_rebalance_leaders_unbalanced_case2(self):
+        # No leader-imbalance possible
+        # Un-balanced assignment
+        # (Broker: leader-count): {0: 2, 1: 1, 2:0}
+        # opt-count: 3/3 = 1, extra-count = 0
+        # Leader-imbalance: 1
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [1, 2]),
+                ((u'T0', 1), [0, 1]),
+                ((u'T1', 0), [0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, [0, 1, 2]) as ct:
+            orig_assignment = ct.assignment
+            ct.rebalance_leaders()
+
+            # Verify no assignment change
+            assert orig_assignment == ct.assignment
+
+            # Verify still leader-imbalanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            # TODO: fix this, this should be balanced
+            assert leader_imbal > 0
+
+    def test_rebalance_leaders_unbalanced_case3(self):
+        # Partial leader-imbalance possible
+        # Un-balanced assignment
+        # (Broker: leader-count): {0: 3, 1: 1, 2:0}
+        # opt-count: 5/3 = 1, extra-count = 2
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [1, 2]),
+                ((u'T0', 1), [0, 2]),
+                ((u'T1', 0), [0]),
+                ((u'T1', 1), [0]),
+                ((u'T1', 2), [0]),
+            ]
+        )
+
+        with self.build_cluster_topology(assignment, [0, 1, 2]) as ct:
+            _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            ct.rebalance_leaders()
+            _, new_net_imbal, new_leaders_per_broker = get_leader_imbalance_stats(
+                ct.brokers.values(),
+            )
+            # Verify that net-imbalance has reduced but not zero
+            assert new_net_imbal < net_imbal
+            assert new_net_imbal > 0
+            # Verify the changes in leaders-per-broker count
+            assert new_leaders_per_broker[2] == 1
+            assert new_leaders_per_broker[1] == 1
+            assert new_leaders_per_broker[0] == 3
+
+    def assert_leader_valid(self, orig_assignment, new_assignment):
+        """Verify that new-assignment complies with just leader changes.
+
+        Following characteristics are verified for just leader-changes.
+        a) partitions remain same
+        b) replica set remains same
+        """
+        # Partition-list remains un-changed
+        assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
+        # Replica-set remains same
+        for partition, orig_replicas in orig_assignment.iteritems():
+            set(orig_replicas) == set(new_assignment[partition])

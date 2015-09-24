@@ -40,3 +40,19 @@ class Partition(object):
     def add_replica(self, broker):
         """Add broker to existing set of replicas."""
         self._replicas.append(broker)
+
+    def swap_leader(self, new_leader):
+        """Change the preferred leader with one of
+        given replicas.
+
+        Note: Leaders for all the replicas of current
+        partition needs to be changed.
+        """
+        # Replica set cannot be changed
+        assert(new_leader in self._replicas)
+        idx = self._replicas.index(new_leader)
+        new_replicas = self._replicas[:]
+        new_replicas[0] = self._replicas[idx]
+        new_replicas[idx] = self._replicas[0]
+        self._replicas = new_replicas
+        return

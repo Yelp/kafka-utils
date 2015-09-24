@@ -22,6 +22,7 @@ from .stats import (
     get_leader_imbalance_stats,
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
+    get_leaders_per_broker,
 )
 from .util import (
     compute_optimal_count,
@@ -128,7 +129,7 @@ class ClusterTopology(object):
             raise ValueError(errorMsg)
         return rg_name
 
-    def reassign_partitions(self, replication_groups=False):
+    def reassign_partitions(self, replication_groups=False, leaders=False):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
         """
@@ -139,6 +140,8 @@ class ClusterTopology(object):
                 .format(groups=', '.join(self.rgs.keys())),
             )
             self.rebalance_replication_groups()
+        if leaders:
+            self.rebalance_leaders()
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
@@ -197,10 +200,7 @@ class ClusterTopology(object):
 
     def leader_imbalance(self):
         """Report leader imbalance count over each broker."""
-        return get_leader_imbalance_stats(
-            self.brokers.values(),
-            self.partitions.values(),
-        )
+        return get_leader_imbalance_stats(self.brokers.values())
 
     def topic_imbalance(self):
         """Return count of topics and partitions on each broker having multiple
@@ -329,3 +329,61 @@ class ClusterTopology(object):
         if min_replicated_rg.count_replica(partition) < replica_count_source - 1:
             return min_replicated_rg
         return None
+
+    # Re-balancing leaders
+    def rebalance_leaders(self):
+        """Re-order brokers in replicas such that, every broker is assigned as
+        preferred leader evenly.
+        """
+        leaders_per_broker = get_leaders_per_broker(self.brokers.values())
+        opt_leader_cnt = len(self.partitions) // len(self.brokers)
+        for broker, count in leaders_per_broker.iteritems():
+            if count > opt_leader_cnt:
+                self._decrease_leader_count(
+                    broker,
+                    leaders_per_broker,
+                    opt_leader_cnt,
+                )
+
+    def _decrease_leader_count(
+        self,
+        curr_leader,
+        leaders_per_broker,
+        opt_count,
+    ):
+        """Re-order eligible replicas to balance preferred leader assignment."""
+        # Generate a list of partitions for which we can change the leader.
+        # Filter out partitions with only one replica (Replicas cannot be changed).
+        possible_partitions = [
+            partition
+            for partition in self.partitions.values()
+            if curr_leader == partition.leader and len(partition.replicas) > 1
+        ]
+        for possible_victim_partition in possible_partitions:
+            brokers = self._get_non_leader_brokers(possible_victim_partition)
+            for possible_new_leader in brokers:
+                if (leaders_per_broker[possible_new_leader] <= opt_count and
+                        leaders_per_broker[curr_leader] -
+                        leaders_per_broker[possible_new_leader] > 1):
+                    victim_partition = possible_victim_partition
+                    new_leader = possible_new_leader
+                    victim_partition.swap_leader(new_leader)
+                    leaders_per_broker[new_leader] += 1
+                    leaders_per_broker[curr_leader] -= 1
+                    break
+            if leaders_per_broker[curr_leader] == opt_count:
+                return
+
+    def _get_non_leader_brokers(self, partition):
+        """Return list of brokers not as preferred leader
+        for a particular partition.
+        """
+        try:
+            result = partition.replicas[1:]
+        except IndexError:
+            errorMsg = "No non-leaders for partition {p}".format(
+                p=partition.name,
+            )
+            self.log.exception(errorMsg)
+            raise IndexError(errorMsg)
+        return result
