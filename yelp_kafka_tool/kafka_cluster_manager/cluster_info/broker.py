@@ -87,26 +87,33 @@ class Broker(object):
         leaders_per_broker,
         opt_count,
     ):
-        """Re-order eligible replicas to balance preferred leader assignment."""
+        """Re-order eligible replicas to balance preferred leader assignment.
+
+        @params:
+        self:               Current object is leader-broker with > opt_count as
+                            leaders and will be tried to reduce the same.
+        partitions:         Set of all partitions in the cluster.
+        leaders_per_broker: Broker-as-leader-count per broker.
+        opt_count:          Optimal value for each broker to act as leader.
+        """
         # Generate a list of partitions for which we can change the leader.
-        # Filter out partitions with only one replica (Replicas cannot be changed).
-        curr_leader = self
+        # Filter out partitions with one replica (Replicas cannot be changed).
+        # self is current-leader
         possible_partitions = [
             partition
             for partition in partitions
-            if curr_leader == partition.leader and len(partition.replicas) > 1
+            if self == partition.leader and len(partition.replicas) > 1
         ]
         for possible_victim_partition in possible_partitions:
-            brokers = possible_victim_partition.non_leaders
-            for possible_new_leader in brokers:
+            for possible_new_leader in possible_victim_partition.followers:
                 if (leaders_per_broker[possible_new_leader] <= opt_count and
-                        leaders_per_broker[curr_leader] -
+                        leaders_per_broker[self] -
                         leaders_per_broker[possible_new_leader] > 1):
                     victim_partition = possible_victim_partition
                     new_leader = possible_new_leader
                     victim_partition.swap_leader(new_leader)
                     leaders_per_broker[new_leader] += 1
-                    leaders_per_broker[curr_leader] -= 1
+                    leaders_per_broker[self] -= 1
                     break
-            if leaders_per_broker[curr_leader] == opt_count:
+            if leaders_per_broker[self] == opt_count:
                 return

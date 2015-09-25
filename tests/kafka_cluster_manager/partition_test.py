@@ -9,10 +9,9 @@ class TestPartition(object):
     def partition(self):
         mock_topic = sentinel.t1
         mock_topic.id = 't1'
-        p_id = 0
         return Partition(
             mock_topic,
-            p_id,
+            0,
             [sentinel.r1, sentinel.r2],
         )
 
@@ -49,7 +48,13 @@ class TestPartition(object):
         # Verify that replica set remains same
         assert sorted(old_replicas) == sorted(partition.replicas)
 
-    def test_non_leaders(self, partition):
-        non_leaders = partition.non_leaders
+    def test_followers(self, partition):
 
-        assert non_leaders == [sentinel.r2]
+        assert partition.followers == [sentinel.r2]
+
+        # Case:2 No-followers
+        mock_topic = sentinel.t1
+        mock_topic.id = 't1'
+        p2 = Partition(mock_topic, 0, [sentinel.r1])
+
+        assert p2.followers == []

@@ -145,7 +145,6 @@ class ClusterTopology(object):
                 'Re-balancing leader-count across brokers: {brokers}...'
                 .format(brokers=', '.join(str(self.brokers.keys()))),
             )
-
             self.rebalance_leaders()
 
     def get_assignment_json(self):

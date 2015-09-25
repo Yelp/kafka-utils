@@ -58,7 +58,7 @@ class Partition(object):
         return
 
     @property
-    def non_leaders(self):
+    def followers(self):
         """Return list of brokers not as preferred leader
         for a particular partition.
         """
