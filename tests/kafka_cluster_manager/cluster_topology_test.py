@@ -607,16 +607,3 @@ class TestClusterToplogy(object):
         # Replica-set remains same
         for partition, orig_replicas in orig_assignment.iteritems():
             set(orig_replicas) == set(new_assignment[partition])
-
-    def test_get_non_leader_brokers(self):
-        with self.build_cluster_topology() as ct:
-            # partition (T1, 0): [0, 1, 2, 3]
-            non_leaders = ct._get_non_leader_brokers(ct.partitions[('T1', 0)])
-
-            # Verify non-leaders are set of 1 to 3
-            non_leader_ids = set([b.id for b in non_leaders])
-            assert non_leader_ids == set([1, 2, 3])
-            # Case:2 no-non-leaders
-            # partition (T2, 0): [2]
-            non_leader = ct._get_non_leader_brokers(ct.partitions[('T2', 0)])
-            assert not non_leader

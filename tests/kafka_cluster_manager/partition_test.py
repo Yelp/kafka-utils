@@ -48,5 +48,8 @@ class TestPartition(object):
         assert partition.leader == b
         # Verify that replica set remains same
         assert sorted(old_replicas) == sorted(partition.replicas)
-        # Verify that old-leader takes old-position of new-leader
-        assert partition.replicas[old_replicas.index(b)] == old_replicas.leader
+
+    def test_non_leaders(self, partition):
+        non_leaders = partition.non_leaders
+
+        assert non_leaders == [sentinel.r2]

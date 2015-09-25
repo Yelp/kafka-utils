@@ -56,3 +56,11 @@ class Partition(object):
         new_replicas[idx] = self._replicas[0]
         self._replicas = new_replicas
         return
+
+    @property
+    def non_leaders(self):
+        """Return list of brokers not as preferred leader
+        for a particular partition.
+        """
+        # Empty list is returned in case no non-leaders found
+        return self._replicas[1:]

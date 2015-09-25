@@ -344,44 +344,8 @@ class ClusterTopology(object):
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
         for broker, count in leaders_per_broker.iteritems():
             if count > opt_leader_cnt:
-                self._decrease_leader_count(
-                    broker,
+                broker.decrease_leader_count(
+                    self.partitions.values(),
                     leaders_per_broker,
                     opt_leader_cnt,
                 )
-
-    def _decrease_leader_count(
-        self,
-        curr_leader,
-        leaders_per_broker,
-        opt_count,
-    ):
-        """Re-order eligible replicas to balance preferred leader assignment."""
-        # Generate a list of partitions for which we can change the leader.
-        # Filter out partitions with only one replica (Replicas cannot be changed).
-        possible_partitions = [
-            partition
-            for partition in self.partitions.values()
-            if curr_leader == partition.leader and len(partition.replicas) > 1
-        ]
-        for possible_victim_partition in possible_partitions:
-            brokers = self._get_non_leader_brokers(possible_victim_partition)
-            for possible_new_leader in brokers:
-                if (leaders_per_broker[possible_new_leader] <= opt_count and
-                        leaders_per_broker[curr_leader] -
-                        leaders_per_broker[possible_new_leader] > 1):
-                    victim_partition = possible_victim_partition
-                    new_leader = possible_new_leader
-                    victim_partition.swap_leader(new_leader)
-                    leaders_per_broker[new_leader] += 1
-                    leaders_per_broker[curr_leader] -= 1
-                    break
-            if leaders_per_broker[curr_leader] == opt_count:
-                return
-
-    def _get_non_leader_brokers(self, partition):
-        """Return list of brokers not as preferred leader
-        for a particular partition.
-        """
-        # Empty list is returned in case no non-leaders found
-        return partition.replicas[1:]
