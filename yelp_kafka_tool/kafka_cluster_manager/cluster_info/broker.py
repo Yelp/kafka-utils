@@ -124,7 +124,7 @@ class Broker(object):
         return (len(self.partitions) - len(broker_dest.partitions) >
                 extra_partition_per_broker + 1)
 
-    def get_eligible_partition(self, broker_destination):
+    def get_preferred_partition(self, broker_destination):
         """Get partition from given source-partitions with least siblings in
         given destination partitions and sibling count.
 

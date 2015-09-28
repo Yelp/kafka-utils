@@ -250,7 +250,7 @@ class ReplicationGroup(object):
                     extra_partition_per_broker,
                 ):
                     best_fit_partition, sibling_partition_cnt = \
-                        b_source.get_eligible_partition(b_dest)
+                        b_source.get_preferred_partition(b_dest)
                     if sibling_partition_cnt < min_sibling_partition_cnt \
                             or min_sibling_partition_cnt == -1:
                         min_sibling_partition_cnt = sibling_partition_cnt
