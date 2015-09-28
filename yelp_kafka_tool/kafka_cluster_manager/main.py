@@ -50,13 +50,11 @@ def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
         ct = ClusterTopology(zk)
-        if args.replication_groups:
-            ct.reassign_partitions(replication_groups=True)
-        if args.leaders:
-            ct.reassign_partitions(leaders=True)
-        if args.brokers:
-            ct.reassign_partitions(brokers=True)
-
+        ct.reassign_partitions(
+            replication_groups=args.replication_groups,
+            brokers=args.brokers,
+            leaders=args.leaders,
+        )
         # Execute or display plan
         execute_plan(
             ct.initial_assignment,

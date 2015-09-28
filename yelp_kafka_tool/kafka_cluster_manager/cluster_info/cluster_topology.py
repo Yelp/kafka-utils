@@ -137,9 +137,8 @@ class ClusterTopology(object):
     ):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
-
-        Balancing to be done in the given order only.
         """
+        # Balancing to be done in the given order only
         # Rebalance replication-groups
         if replication_groups:
             self.log.info(
@@ -147,12 +146,14 @@ class ClusterTopology(object):
                 .format(groups=', '.join(self.rgs.keys())),
             )
             self.rebalance_replication_groups()
+        # Rebalance broker-partition count per replication-groups
         if brokers:
             self.log.info(
                 'Re-balancing partition-count across brokers: {brokers}...'
                 .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
             )
             self.rebalance_brokers()
+        # Rebalance broker as leader count per broker
         if leaders:
             self.log.info(
                 'Re-balancing leader-count across brokers: {brokers}...'
@@ -259,10 +260,10 @@ class ClusterTopology(object):
                 len(self.rgs.values()),
             )
 
-        # Segregate replication-groups into under and over replicated
+        # Bipartite replication-groups into under and over replicated
         evenly_distribute_replicas = not extra_replicas_cnt
         under_replicated_rgs, over_replicated_rgs = \
-            self._segregate_replication_groups(
+            self._bipartite_replication_groups(
                 partition,
                 opt_replica_count,
                 evenly_distribute_replicas,
@@ -299,7 +300,7 @@ class ClusterTopology(object):
                 # Groups balanced or cannot be balanced further
                 break
 
-    def _segregate_replication_groups(
+    def _bipartite_replication_groups(
         self,
         partition,
         opt_replica_count,

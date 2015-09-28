@@ -121,8 +121,9 @@ class Broker(object):
         difference b/w their partition-count is > allowed-max difference
         governed by 'extra_partition_per_broker' variable.
         """
+        # DOUBT: TODO: > extra-partition or extra-partition + 1
         return (len(self.partitions) - len(broker_dest.partitions) >
-                extra_partition_per_broker + 1)
+                bool(extra_partition_per_broker) + 1)
 
     def get_preferred_partition(self, broker_destination):
         """Get partition from given source-partitions with least siblings in
@@ -138,17 +139,11 @@ class Broker(object):
         broker_destination: Destination broker where siblings for given source
                             partitions are monitored.
         """
-        # Based on partition present in broker but not in broker_destination
         # Only partitions not having replica in broker_destination are valid
-        valid_source_partitions = [
-            partition
-            for partition in self.partitions
-            if partition not in [p for p in broker_destination.partitions]
-        ]
         # Get best fit partition, based on avoiding partition from same topic
         # and partition with least siblings in destination-broker.
         pref_partition = min(
-            valid_source_partitions,
+            self.partitions - broker_destination.partitions,
             key=lambda source_partition:
                 source_partition.count_siblings(broker_destination.partitions),
         )

@@ -162,26 +162,18 @@ class ReplicationGroup(object):
 
     # Re-balancing brokers
     def rebalance_brokers(self):
-        """Rebalance partition-count across brokers on given replication-group.
-
-        If no replication-group is given, brokers are balanced across all
-        brokers of the cluster as a whole.
-        """
+        """Rebalance partition-count across brokers."""
         # Get optimal value
-        opt_partition_count, extra_partition_cnt = \
+        opt_partition_count, extra_partition_per_broker = \
             compute_optimal_count(len(self.partitions), len(self.brokers))
-        # Count of brokers which shall have 1 more partition than optimal-count
-        extra_partition_per_broker = int(extra_partition_cnt > 0)
-
-        # Segregate partitions
-        over_loaded_brokers, under_loaded_brokers = self._segregate_brokers(
+        # Bipartite brokers based on partition count
+        over_loaded_brokers, under_loaded_brokers = self._bipartite_brokers(
             opt_partition_count,
             extra_partition_per_broker,
         )
-
         while under_loaded_brokers and over_loaded_brokers:
-            # Get best-fit source broker, destination-broker and partition to be moved
-            broker_source, broker_dest, victim_partition = self.get_target_brokers(
+            # Get best-fit source-broker, destination-broker and partition
+            broker_source, broker_dest, victim_partition = self._get_target_brokers(
                 over_loaded_brokers,
                 under_loaded_brokers,
                 extra_partition_per_broker,
@@ -194,12 +186,13 @@ class ReplicationGroup(object):
             # Remove newly balanced-brokers if any
             if len(broker_source.partitions) == opt_partition_count:
                 over_loaded_brokers.remove(broker_source)
-            if len(broker_dest.partitions) == opt_partition_count + extra_partition_per_broker:
+            if len(broker_dest.partitions) == opt_partition_count + \
+                    bool(extra_partition_per_broker):
                 under_loaded_brokers.remove(broker_dest)
 
-    def _segregate_brokers(self, opt_partition_count, extra_partition_per_broker):
-        """Segregate brokers in terms of partition count into over-loaded
-        or under-loaded partitions.
+    def _bipartite_brokers(self, opt_partition_count, extra_partition_per_broker):
+        """Divide brokers into 2 sets in terms of partition count into
+        over-loaded or under-loaded partitions.
         """
         over_loaded_brokers = []
         under_loaded_brokers = []
@@ -212,12 +205,9 @@ class ReplicationGroup(object):
             else:
                 if extra_partition_per_broker:
                     under_loaded_brokers.append(broker)
-        return (
-            sorted(over_loaded_brokers, key=lambda b: len(b.partitions), reverse=True),
-            sorted(under_loaded_brokers, key=lambda b: len(b.partitions)),
-        )
+        return (over_loaded_brokers, under_loaded_brokers)
 
-    def get_target_brokers(
+    def _get_target_brokers(
         self,
         over_loaded_brokers,
         under_loaded_brokers,
