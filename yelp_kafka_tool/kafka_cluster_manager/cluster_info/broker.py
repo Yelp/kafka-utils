@@ -122,14 +122,21 @@ class Broker(object):
         governed by 'extra_partition_per_broker' variable.
         """
         return (len(self.partitions) - len(broker_dest.partitions) >
-                extra_partition_per_broker)
+                extra_partition_per_broker + 1)
 
     def get_eligible_partition(self, broker_destination):
-        """Return best eligible partition in broker to be transferred to
-        destination-broker.
+        """Get partition from given source-partitions with least siblings in
+        given destination partitions and sibling count.
 
         Conditions:
-        @ partition in source should not be present in destination broker
+        Partition in source should not be present in destination broker
+
+        @key_term:
+        siblings: Partitions belonging to same topic
+
+        @params:
+        broker_destination: Destination broker where siblings for given source
+                            partitions are monitored.
         """
         # Based on partition present in broker but not in broker_destination
         # Only partitions not having replica in broker_destination are valid
@@ -138,34 +145,12 @@ class Broker(object):
             for partition in self.partitions
             if partition not in [p for p in broker_destination.partitions]
         ]
-        valid_dest_partitions = [
-            partition
-            for partition in broker_destination.partitions
-            if partition not in [p for p in self.partitions]
-        ]
         # Get best fit partition, based on avoiding partition from same topic
         # and partition with least siblings in destination-broker.
-        return self._get_preffered_partition(
+        pref_partition = min(
             valid_source_partitions,
-            valid_dest_partitions,
-        )
-
-    def _get_preffered_partition(self, source_partitions, dest_partitions):
-        """Get partition from given source-partitions with least siblings in
-        given destination partitions and sibling count.
-
-        @key_term:
-        siblings: Partitions belonging to same topic
-
-        @params:
-        source_partitions: Partitions whose siblings are counted.
-        dest_partitions:   Partitions where siblings for given source
-                                partitions are monitored.
-        """
-        preffered_partition = min(
-            source_partitions,
             key=lambda source_partition:
-                source_partition.count_siblings(dest_partitions),
+                source_partition.count_siblings(broker_destination.partitions),
         )
-        sibling_cnt = preffered_partition.count_siblings(dest_partitions)
-        return preffered_partition, sibling_cnt
+        sib_cnt = pref_partition.count_siblings(broker_destination.partitions)
+        return pref_partition, sib_cnt
