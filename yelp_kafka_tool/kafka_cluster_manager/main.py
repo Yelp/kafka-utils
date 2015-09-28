@@ -54,6 +54,8 @@ def reassign_partitions(cluster_config, args):
             ct.reassign_partitions(replication_groups=True)
         if args.leaders:
             ct.reassign_partitions(leaders=True)
+        if args.brokers:
+            ct.reassign_partitions(brokers=True)
 
         # Execute or display plan
         execute_plan(
@@ -112,9 +114,15 @@ def parse_args():
         '--leaders',
         dest='leaders',
         action='store_true',
-        help='Evenly distributes leaders optimally over brokers',
+        help='Evenly distributes leaders optimally over brokers.',
     )
-
+    parser_rebalance.add_argument(
+        '--brokers',
+        dest='brokers',
+        action='store_true',
+        help='Evenly distributes partitions optimally over brokers'
+        ' with minimal movements for each replication-group.',
+    )
     parser_rebalance.add_argument(
         '--max-changes',
         dest='max_changes',
@@ -165,9 +173,11 @@ def validate_args(args):
             .format(max_changes=args.max_changes)
         )
         result = False
-    rebalance_options = [args.replication_groups, args.leaders]
+    rebalance_options = [args.replication_groups, args.leaders, args.brokers]
     if not any(rebalance_options):
-        _log.error('\'--replication-groups\' and/or \'--leaders\' flag required.')
+        _log.error(
+            'At least one of --replication-groups, --leaders, --brokers flag required.',
+        )
         result = False
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')

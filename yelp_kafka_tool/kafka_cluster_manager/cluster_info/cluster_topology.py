@@ -129,9 +129,16 @@ class ClusterTopology(object):
             raise ValueError(error_msg)
         return rg_name
 
-    def reassign_partitions(self, replication_groups=False, leaders=False):
+    def reassign_partitions(
+        self,
+        replication_groups=False,
+        leaders=False,
+        brokers=False,
+    ):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
+
+        Balancing to be done in the given order only.
         """
         # Rebalance replication-groups
         if replication_groups:
@@ -140,10 +147,16 @@ class ClusterTopology(object):
                 .format(groups=', '.join(self.rgs.keys())),
             )
             self.rebalance_replication_groups()
+        if brokers:
+            self.log.info(
+                'Re-balancing partition-count across brokers: {brokers}...'
+                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
+            )
+            self.rebalance_brokers()
         if leaders:
             self.log.info(
                 'Re-balancing leader-count across brokers: {brokers}...'
-                .format(brokers=', '.join(str(self.brokers.keys()))),
+                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
             )
             self.rebalance_leaders()
 
@@ -196,11 +209,19 @@ class ClusterTopology(object):
         ]
 
     # Re-balancing analytical statistics
-    def partition_imbalance(self):
-        """Report partition count imbalance over brokers for given assignment
-        or assignment in current state.
+    def partition_imbalance(self, cluster_wide=False):
+        """Report partition count imbalance over brokers in current cluster
+        state for each replication-group.
+
         """
-        return get_partition_imbalance_stats(self.brokers.values())
+        # Get broker-imbalance stats cluster-wide or for each replication-group
+        if cluster_wide:
+            return [(get_partition_imbalance_stats(self.brokers.values()))]
+        else:
+            return [
+                (get_partition_imbalance_stats(rg.brokers))
+                for rg in self.rgs.values()
+            ]
 
     def leader_imbalance(self):
         """Report leader imbalance count over each broker."""
@@ -348,3 +369,11 @@ class ClusterTopology(object):
                     leaders_per_broker,
                     opt_leader_cnt,
                 )
+
+    # Re-balancing partition count across brokers
+    def rebalance_brokers(self):
+        """Rebalance partition-count across brokers across all replication
+        groups.
+        """
+        for rg in self.rgs.values():
+            rg.rebalance_brokers()

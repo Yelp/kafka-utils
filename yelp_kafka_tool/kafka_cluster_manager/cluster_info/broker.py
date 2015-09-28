@@ -81,12 +81,7 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
-    def decrease_leader_count(
-        self,
-        partitions,
-        leaders_per_broker,
-        opt_count,
-    ):
+    def decrease_leader_count(self, partitions, leaders_per_broker, opt_count):
         """Re-order eligible replicas to balance preferred leader assignment.
 
         @params:
@@ -117,3 +112,60 @@ class Broker(object):
                     break
             if leaders_per_broker[self] == opt_count:
                 return
+
+    def is_relatively_unbalanced(self, broker_dest, extra_partition_per_broker):
+        """Return true if brokers are relatively unbalanced based on partition
+        count.
+
+        Brokers are relatively unbalanced in terms of partition count if the
+        difference b/w their partition-count is > allowed-max difference
+        governed by 'extra_partition_per_broker' variable.
+        """
+        return (len(self.partitions) - len(broker_dest.partitions) >
+                extra_partition_per_broker)
+
+    def get_eligible_partition(self, broker_destination):
+        """Return best eligible partition in broker to be transferred to
+        destination-broker.
+
+        Conditions:
+        @ partition in source should not be present in destination broker
+        """
+        # Based on partition present in broker but not in broker_destination
+        # Only partitions not having replica in broker_destination are valid
+        valid_source_partitions = [
+            partition
+            for partition in self.partitions
+            if partition not in [p for p in broker_destination.partitions]
+        ]
+        valid_dest_partitions = [
+            partition
+            for partition in broker_destination.partitions
+            if partition not in [p for p in self.partitions]
+        ]
+        # Get best fit partition, based on avoiding partition from same topic
+        # and partition with least siblings in destination-broker.
+        return self._get_preffered_partition(
+            valid_source_partitions,
+            valid_dest_partitions,
+        )
+
+    def _get_preffered_partition(self, source_partitions, dest_partitions):
+        """Get partition from given source-partitions with least siblings in
+        given destination partitions and sibling count.
+
+        @key_term:
+        siblings: Partitions belonging to same topic
+
+        @params:
+        source_partitions: Partitions whose siblings are counted.
+        dest_partitions:   Partitions where siblings for given source
+                                partitions are monitored.
+        """
+        preffered_partition = min(
+            source_partitions,
+            key=lambda source_partition:
+                source_partition.count_siblings(dest_partitions),
+        )
+        sibling_cnt = preffered_partition.count_siblings(dest_partitions)
+        return preffered_partition, sibling_cnt

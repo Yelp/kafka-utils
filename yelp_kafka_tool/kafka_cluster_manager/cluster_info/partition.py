@@ -64,3 +64,15 @@ class Partition(object):
         """
         # Empty list is returned in case no non-leaders found
         return self._replicas[1:]
+
+    def count_siblings(self, partitions):
+        """Count siblings of partition in given partition-list.
+
+        @key term
+        sibling:    partitions with same topic
+        """
+        count = sum(
+            int(self.topic == partition.topic)
+            for partition in partitions
+        )
+        return count
