@@ -191,20 +191,11 @@ class ReplicationGroup(object):
                 break
             # Move partition
             broker_source.move_partition(victim_partition, broker_dest)
-            # Remove brokers on unbalanced-list if they have been balanced
+            # Remove newly balanced-brokers if any
             if len(broker_source.partitions) == opt_partition_count:
                 over_loaded_brokers.remove(broker_source)
             if len(broker_dest.partitions) == opt_partition_count + extra_partition_per_broker:
                 under_loaded_brokers.remove(broker_dest)
-            over_loaded_brokers = sorted(
-                over_loaded_brokers,
-                key=lambda b: len(b.partitions),
-                reverse=True,
-            )
-            under_loaded_brokers = sorted(
-                under_loaded_brokers,
-                key=lambda b: len(b.partitions),
-            )
 
     def _segregate_brokers(self, opt_partition_count, extra_partition_per_broker):
         """Segregate brokers in terms of partition count into over-loaded
@@ -235,6 +226,16 @@ class ReplicationGroup(object):
         """Pick best-suitable source-broker, destination-broker and partition to
         balance partition-count over brokers in given replication-group.
         """
+        # Sort given brokers to ensure determinism
+        over_loaded_brokers = sorted(
+            over_loaded_brokers,
+            key=lambda b: len(b.partitions),
+            reverse=True,
+        )
+        under_loaded_brokers = sorted(
+            under_loaded_brokers,
+            key=lambda b: len(b.partitions),
+        )
         # pick pair of brokers from source and destination brokers with
         # minimum same-partition-count
         # pick source-broker from over-loaded
