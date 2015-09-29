@@ -40,10 +40,10 @@ from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 from .cluster_info.cluster_topology import ClusterTopology
 from .execute_assignment import execute_plan
-from .util import KAFKA_SCRIPT_PATH
 
 
 DEFAULT_MAX_CHANGES = 5
+KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 _log = logging.getLogger('kafka-cluster-manager')
 
 

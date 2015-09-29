@@ -10,7 +10,6 @@ import tempfile
 from kazoo.exceptions import NodeExistsError, NoNodeError
 from .cluster_info.util import get_assignment_map
 
-KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
 REASSIGNMENT_PARENT_PATH = "/admin"
 
@@ -155,23 +154,26 @@ class KafkaInterface(object):
         path = self.reassignment_zookeeper_path
         plan = json.dumps(data)
         try:
-            self.log.info("Sending assignment to Zookeeper...")
+            self.log.info('Sending assignment to Zookeeper...')
             zk.create(path, plan)
-            self.log.info("Assignment sent to Zookeeper successfully.")
+            self.log.info('Assignment sent to Zookeeper successfully.')
         except NodeExistsError:
             # If reassign_partitions node already exists, report
-            self.log.error("Assignment currently in progress...")
+            self.log.error(
+                'Sending assignment to zookeeper Failed. Previous_assignment'
+                ' currently in progress...',
+            )
             # TODO: Read node to list data of currently running??
         except NoNodeError:
             parent = REASSIGNMENT_PARENT_PATH
-            self.log.warning("Admin node missing in zookeeper, creating admin path... ")
+            self.log.warning('Admin node missing in zookeeper, creating admin path... ')
             zk.create(parent, makepath=True)
-            self.log.info("Second attempt: Sending assignment to Zookeeper...")
+            self.log.info('Second attempt: Sending assignment to Zookeeper...')
             zk.create(path, plan)
-            self.log.info("Assignment sent to Zookeeper successfully.")
+            self.log.info('Assignment sent to Zookeeper successfully.')
         except exception as e:
             self.log.error(
-                "Could not re-assign partitions {plan}. Error: {e}"
+                'Could not re-assign partitions {plan}. Error: {e}'
                 .format(plan=plan, e=e),
             )
             raise
