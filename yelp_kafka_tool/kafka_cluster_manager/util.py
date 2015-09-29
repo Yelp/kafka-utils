@@ -12,16 +12,16 @@ from .cluster_info.util import get_assignment_map
 
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+REASSIGNMENT_PARENT_PATH = "/admin"
 
 
 class KafkaInterface(object):
     """This class acts as an interface to interact with kafka-scripts."""
 
-    def __init__(self, kafka_script_path=KAFKA_SCRIPT_PATH, no_kafka_script=False):
-        self._kafka_script_path = kafka_script_path or KAFKA_SCRIPT_PATH
+    def __init__(self, script_path=None):
+        self._kafka_script_path = script_path
         self.log = logging.getLogger(self.__class__.__name__)
         self.reassignment_zookeeper_path = REASSIGNMENT_ZOOKEEPER_PATH
-        self._no_kafka_script = no_kafka_script
 
     def run_repartition_cmd(
         self,
@@ -75,7 +75,7 @@ class KafkaInterface(object):
             'topics': [{'topic': topic_id} for topic_id in topic_ids],
             'version': 1
         }
-        if self._no_kafka_script:
+        if not self._kafka_script_path:
             assignment = self.get_cluster_assignment_zk(zk)
             return get_assignment_map(assignment)
         else:
@@ -121,7 +121,7 @@ class KafkaInterface(object):
         proposed_plan:   Proposed plan in json format
         """
 
-        if self._no_kafka_script:
+        if not self._kafka_script_path:
             self.execute_assignment_zk(zk, proposed_layout)
         else:
             with tempfile.NamedTemporaryFile() as temp_reassignment_file:
@@ -136,20 +136,45 @@ class KafkaInterface(object):
                 )
 
     def execute_assignment_zk(self, zk, data):
-        """Executing plan directly sending it to zookeeper nodes."""
+        """Executing plan directly sending it to zookeeper nodes.
+        Algorithm:
+        1. Verification:
+         a) Verify that data is not empty
+         b) Verify no duplicate partitions
+        2. Save current assignment for future (save, skipping)
+        3. Verify if partitions exist  (skipping)
+            Throw partition-topic not exist error
+        4. Re-assign:
+            Exceptions:
+            * NodeExists error: Assignment already in progress
+                -- Get partitions which are in progress
+            * NoNode error: create parent node
+            * Raise any other exception throw
+
+        """
         path = self.reassignment_zookeeper_path
         plan = json.dumps(data)
         try:
+            self.log.info("Sending assignment to Zookeeper...")
             zk.create(path, plan)
+            self.log.info("Assignment sent to Zookeeper successfully.")
         except NodeExistsError:
-            # If reassign_partitions node already exists
-            # delete and re-try
-            zk.delete(path)
-            zk.create(path, value=plan)
+            # If reassign_partitions node already exists, report
+            self.log.error("Assignment currently in progress...")
+            # TODO: Read node to list data of currently running??
         except NoNodeError:
+            parent = REASSIGNMENT_PARENT_PATH
+            self.log.warning("Admin node missing in zookeeper, creating admin path... ")
+            zk.create(parent, makepath=True)
+            self.log.info("Second attempt: Sending assignment to Zookeeper...")
+            zk.create(path, plan)
+            self.log.info("Assignment sent to Zookeeper successfully.")
+        except exception as e:
             self.log.error(
-                "Could not re-assign partitions {plan}".format(plan=plan),
+                "Could not re-assign partitions {plan}. Error: {e}"
+                .format(plan=plan, e=e),
             )
+            raise
 
     def get_cluster_assignment_zk(self, zk):
         """Fetch cluster assignment directly from zookeeper."""

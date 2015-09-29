@@ -38,7 +38,7 @@ def execute_plan(params):
         # Execute proposed-plan
         if to_execute:
             _log.info('Executing Proposed Plan')
-            kafka = KafkaInterface(params['script_path'], params['no_script'])
+            kafka = KafkaInterface(params['script_path'])
             kafka.execute_plan(
                 proposed_plan,
                 params['zk'],

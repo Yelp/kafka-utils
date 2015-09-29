@@ -50,14 +50,10 @@ _log = logging.getLogger('kafka-cluster-manager')
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
-        if args.no_kafka_script:
-            ct = ClusterTopology(zk, no_kafka_script=args.no_kafka_script)
-        else:
-            if args.kafka_script_path:
-                path = args.kafka_script_path
-            else:
-                path = KAFKA_SCRIPT_PATH
-            ct = ClusterTopology(zk, path)
+        script_path = args.use_kafka_script
+        if script_path == 'default':
+            script_path = KAFKA_SCRIPT_PATH
+        ct = ClusterTopology(zk=zk, script_path=script_path)
 
         # Re-balance replication-groups
         if args.replication_groups:
@@ -74,8 +70,7 @@ def reassign_partitions(cluster_config, args):
             'proposed_plan_file': args.proposed_plan_file,
             'brokers': ct.brokers.keys(),
             'topics': ct.topics.keys(),
-            'script_path': args.kafka_script_path,
-            'no_script': args.no_kafka_script,
+            'script_path': script_path,
         }
         execute_plan(params)
 
@@ -114,17 +109,13 @@ def parse_args():
         description='Re-assign partitions over brokers.',
     )
     parser_rebalance.add_argument(
-        '--no-kafka-script',
-        dest='no_kafka_script',
-        action='store_true',
-        help='Kafka-scripts will not be used for reassignment.',
-    )
-    parser_rebalance.add_argument(
-        '--kafka-script-path',
-        dest='kafka_script_path',
+        '--use-kafka-script-path',
+        dest='use_kafka_script',
         type=str,
-        help='Path of kafka-cli scripts. Default: {path}'
-        .format(path=KAFKA_SCRIPT_PATH),
+        default=None,
+        help='Path of kafka-cli scripts to be used to access zookeeper.'
+        ' Use \'default\' to use default path: {default}'
+        .format(default=KAFKA_SCRIPT_PATH),
     )
     parser_rebalance.add_argument(
         '--replication-groups',
@@ -183,17 +174,14 @@ def validate_args(args):
         )
         result = False
     rebalance_options = [args.replication_groups]
+
+    # At-least one of rebalancing options required
     if not any(rebalance_options):
         _log.error('\'--replication-groups\' flag required.')
         result = False
+
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
-        result = False
-
-    if args.kafka_script_path and args.no_kafka_script:
-        _log.error(
-            'Only one of --kafka-script-path or --no-kafka-script can be used',
-        )
         result = False
     return result
 
