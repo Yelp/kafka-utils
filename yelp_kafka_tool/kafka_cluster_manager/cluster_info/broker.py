@@ -113,7 +113,7 @@ class Broker(object):
             if leaders_per_broker[self] == opt_count:
                 return
 
-    def is_relatively_unbalanced(self, broker_dest, extra_partition_per_broker):
+    def is_relatively_unbalanced(self, broker_dest):
         """Return true if brokers are relatively unbalanced based on partition
         count.
 
@@ -121,9 +121,7 @@ class Broker(object):
         difference b/w their partition-count is > allowed-max difference
         governed by 'extra_partition_per_broker' variable.
         """
-        # DOUBT: TODO: > extra-partition or extra-partition + 1
-        return (len(self.partitions) - len(broker_dest.partitions) >
-                bool(extra_partition_per_broker) + 1)
+        return len(self.partitions) - len(broker_dest.partitions) > 1
 
     def get_preferred_partition(self, broker_destination):
         """Get partition from given source-partitions with least siblings in

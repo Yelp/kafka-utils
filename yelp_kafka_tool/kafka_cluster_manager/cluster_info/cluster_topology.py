@@ -24,10 +24,7 @@ from .stats import (
     get_replication_group_imbalance_stats,
     get_leaders_per_broker,
 )
-from .util import (
-    compute_optimal_count,
-    get_assignment_map,
-)
+from .util import separate_groups, get_assignment_map
 
 
 class ClusterTopology(object):
@@ -253,21 +250,9 @@ class ClusterTopology(object):
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
-        # Get optimal replica count
-        opt_replica_count, extra_replicas_cnt = \
-            compute_optimal_count(
-                partition.replication_factor,
-                len(self.rgs.values()),
-            )
-
-        # Bipartite replication-groups into under and over replicated
-        evenly_distribute_replicas = not extra_replicas_cnt
-        under_replicated_rgs, over_replicated_rgs = \
-            self._bipartite_replication_groups(
-                partition,
-                opt_replica_count,
-                evenly_distribute_replicas,
-            )
+        # Separate replication-groups into under and over replicated
+        over_replicated_rgs, under_replicated_rgs, _ = \
+            separate_groups(self.rgs.values(), lambda g: g.count_replica(partition))
         # Move replicas from over-replicated to under-replicated groups
         while under_replicated_rgs and over_replicated_rgs:
             # Decide source and destination group
@@ -286,43 +271,15 @@ class ClusterTopology(object):
                     rg_destination,
                     partition,
                 )
-                # Update replication groups after movement of partition
-                source_replica_cnt = rg_source.count_replica(partition)
-                dest_replica_cnt = rg_destination.count_replica(partition)
-                # Remove group from list if balanced
-                if source_replica_cnt == opt_replica_count:
-                    over_replicated_rgs.remove(rg_source)
-                allowed_dest_cnt = dest_replica_cnt + 1 \
-                    if not evenly_distribute_replicas else dest_replica_cnt
-                if allowed_dest_cnt == opt_replica_count:
-                    under_replicated_rgs.remove(rg_destination)
+                # Re-compute under and over-replicated replication-groups
+                over_replicated_rgs, under_replicated_rgs, _ = \
+                    separate_groups(
+                        self.rgs.values(),
+                        lambda g: g.count_replica(partition),
+                    )
             else:
                 # Groups balanced or cannot be balanced further
                 break
-
-    def _bipartite_replication_groups(
-        self,
-        partition,
-        opt_replica_count,
-        evenly_distribute_replicas,
-    ):
-        """Separate replication-groups into under-replicated, over-replicated
-        and optimally replicated groups.
-        """
-        under_replicated_rgs = []
-        over_replicated_rgs = []
-        for rg in self.rgs.itervalues():
-            replica_cnt = rg.count_replica(partition)
-            if replica_cnt < opt_replica_count:
-                under_replicated_rgs.append(rg)
-            elif replica_cnt > opt_replica_count:
-                over_replicated_rgs.append(rg)
-            else:
-                if not evenly_distribute_replicas:
-                    # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
-                    # Helps in adjusting one extra replica if required
-                    under_replicated_rgs.append(rg)
-        return under_replicated_rgs, over_replicated_rgs
 
     def _elect_source_replication_group(
         self,

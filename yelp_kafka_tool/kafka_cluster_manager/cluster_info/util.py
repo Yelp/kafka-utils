@@ -115,3 +115,36 @@ def proposed_plan_json(proposed_layout, proposed_plan_file):
     """Dump proposed json plan to given output file for future usage."""
     with open(proposed_plan_file, 'w') as output:
         json.dump(proposed_layout, output)
+
+
+def compute_group_optimum(groups, key):
+    total = sum(key(g) for g in groups)
+    return total // len(groups), total % len(groups)
+
+
+def separate_groups(groups, key):
+    """Given a list of group objects, and a function to extract the number of
+    elements for each of them, return the list of groups that have an excessive
+    number of elements (when compared to a uniform distribution), a list of
+    groups with insufficient elements, and a list of groups that already have
+    the optimal number of elements.
+
+    Examples:
+        separate_groups([12, 10, 10, 11], lambda g: g) => ([12], [10], [11, 10])
+        separate_groups([12,  8, 12, 11], lambda g: g) => ([12, 12], [8], [11])
+        separate_groups([14,  9,  6, 14], lambda g: g) => ([14, 14], [9, 6], [])
+        separate_groups([11,  9, 10, 14], lambda g: g) => ([14], [10, 9], [11])
+    """
+    optimum, extra = compute_group_optimum(groups, key)
+    over_loaded, under_loaded, optimal = [], [], []
+    additional_element = bool(extra)
+
+    for group in sorted(groups, key=key, reverse=True):
+        n_elements = key(group)
+        if n_elements > optimum:
+            over_loaded.append(group)
+        elif n_elements < optimum + additional_element:
+            under_loaded.append(group)
+        else:
+            optimal.append(group)
+    return over_loaded, under_loaded, optimal

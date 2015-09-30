@@ -3,7 +3,7 @@
 """
 import logging
 
-from .util import compute_optimal_count
+from .util import separate_groups
 
 
 class ReplicationGroup(object):
@@ -53,11 +53,7 @@ class ReplicationGroup(object):
         """Return count of replicas of given partition."""
         return self.partitions.count(partition)
 
-    def move_partition(
-            self,
-            rg_destination,
-            victim_partition,
-    ):
+    def move_partition(self, rg_destination, victim_partition):
         """Move partition(victim) from current replication-group to destination
         replication-group.
 
@@ -75,11 +71,7 @@ class ReplicationGroup(object):
         # Actual-movement of victim-partition
         broker_source.move_partition(victim_partition, broker_destination)
 
-    def _select_broker_pair(
-        self,
-        rg_destination,
-        victim_partition,
-    ):
+    def _select_broker_pair(self, rg_destination, victim_partition):
         """Select best-fit source and destination brokers based on partition
         count and presence of partition over the broker.
 
@@ -109,10 +101,7 @@ class ReplicationGroup(object):
         )
         return broker_source, broker_destination
 
-    def _select_over_loaded_brokers(
-        self,
-        victim_partition,
-    ):
+    def _select_over_loaded_brokers(self, victim_partition):
         """Get over-loaded brokers as sorted broker in partition-count and
         containing victim-partition.
         """
@@ -127,10 +116,7 @@ class ReplicationGroup(object):
             reverse=True,
         )
 
-    def _select_under_loaded_brokers(
-        self,
-        victim_partition,
-    ):
+    def _select_under_loaded_brokers(self, victim_partition):
         """Get brokers in ascending sorted order of partition-count
         not containing victim-partition.
         """
@@ -163,56 +149,27 @@ class ReplicationGroup(object):
     # Re-balancing brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers."""
-        # Get optimal value
-        opt_partition_count, extra_partition_per_broker = \
-            compute_optimal_count(len(self.partitions), len(self.brokers))
-        # Bipartite brokers based on partition count
-        over_loaded_brokers, under_loaded_brokers = self._bipartite_brokers(
-            opt_partition_count,
-            extra_partition_per_broker,
+        # Separate brokers based on partition count
+        over_loaded_brokers, under_loaded_brokers, _ = separate_groups(
+            self.brokers,
+            lambda b: len(b.partitions),
         )
         while under_loaded_brokers and over_loaded_brokers:
             # Get best-fit source-broker, destination-broker and partition
-            broker_source, broker_dest, victim_partition = self._get_target_brokers(
-                over_loaded_brokers,
-                under_loaded_brokers,
-                extra_partition_per_broker,
-            )
+            broker_source, broker_destination, victim_partition = \
+                self._get_target_brokers(over_loaded_brokers, under_loaded_brokers)
             # No valid source or target brokers found
-            if not broker_source or not broker_dest:
+            if not broker_source or not broker_destination:
                 break
             # Move partition
-            broker_source.move_partition(victim_partition, broker_dest)
-            # Remove newly balanced-brokers if any
-            if len(broker_source.partitions) == opt_partition_count:
-                over_loaded_brokers.remove(broker_source)
-            if len(broker_dest.partitions) == opt_partition_count + \
-                    bool(extra_partition_per_broker):
-                under_loaded_brokers.remove(broker_dest)
+            broker_source.move_partition(victim_partition, broker_destination)
+            # Re-evaluate under and over-loaded brokers
+            over_loaded_brokers, under_loaded_brokers, _ = separate_groups(
+                self.brokers,
+                lambda b: len(b.partitions),
+            )
 
-    def _bipartite_brokers(self, opt_partition_count, extra_partition_per_broker):
-        """Divide brokers into 2 sets in terms of partition count into
-        over-loaded or under-loaded partitions.
-        """
-        over_loaded_brokers = []
-        under_loaded_brokers = []
-        for broker in self.brokers:
-            partition_cnt = len(broker.partitions)
-            if partition_cnt > opt_partition_count:
-                over_loaded_brokers.append(broker)
-            elif partition_cnt < opt_partition_count:
-                under_loaded_brokers.append(broker)
-            else:
-                if extra_partition_per_broker:
-                    under_loaded_brokers.append(broker)
-        return (over_loaded_brokers, under_loaded_brokers)
-
-    def _get_target_brokers(
-        self,
-        over_loaded_brokers,
-        under_loaded_brokers,
-        extra_partition_per_broker,
-    ):
+    def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers):
         """Pick best-suitable source-broker, destination-broker and partition to
         balance partition-count over brokers in given replication-group.
         """
@@ -233,18 +190,19 @@ class ReplicationGroup(object):
         preferred_dest = None
         preferred_partition = None
         min_sibling_partition_cnt = -1
-        for b_source in over_loaded_brokers:
-            for b_dest in under_loaded_brokers:
-                if b_source.is_relatively_unbalanced(
-                    b_dest,
-                    extra_partition_per_broker,
-                ):
+        for source in over_loaded_brokers:
+            for dest in under_loaded_brokers:
+                if source.is_relatively_unbalanced(dest):
                     best_fit_partition, sibling_partition_cnt = \
-                        b_source.get_preferred_partition(b_dest)
+                        source.get_preferred_partition(dest)
                     if sibling_partition_cnt < min_sibling_partition_cnt \
                             or min_sibling_partition_cnt == -1:
                         min_sibling_partition_cnt = sibling_partition_cnt
-                        preferred_source = b_source
-                        preferred_dest = b_dest
+                        preferred_source = source
+                        preferred_dest = dest
                         preferred_partition = best_fit_partition
+                else:
+                    # if relatively-unbalanced then all brokers in destination
+                    # will be thereafter, return from here
+                    break
         return preferred_source, preferred_dest, preferred_partition
