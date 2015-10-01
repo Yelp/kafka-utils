@@ -545,29 +545,144 @@ class TestClusterToplogy(object):
             assert new_leaders_per_broker[2] == 1
 
     def test_rebalance_leaders_unbalanced_case2(self):
-        # No leader-imbalance possible
         # (Broker: leader-count): {0: 2, 1: 1, 2:0}
         # opt-count: 3/3 = 1, extra-count = 0
         # Leader-imbalance-value: 1
         assignment = OrderedDict(
             [
                 ((u'T0', 0), [1, 2]),
-                ((u'T0', 1), [0, 1]),
+                ((u'T1', 1), [0, 1]),
                 ((u'T1', 0), [0]),
             ]
         )
         with self.build_cluster_topology(assignment, self.srange(3)) as ct:
-            orig_assignment = ct.assignment
             ct.rebalance_leaders()
 
-            # Verify no assignment change, since nothing could be balanced
-            assert orig_assignment == ct.assignment
-            # Verify still leader-imbalanced
+            # Verify leader-balanced
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
-            # TODO: fix this, this should be balanced
-            assert leader_imbal > 0
+            assert leader_imbal == 0
+
+    def test_rebalance_leaders_unbalanced_case2a(self):
+        # (Broker: leader-count): {0: 2, 1: 1, 2:0, 3:1}
+        # opt-count: 3/4 = 1, extra-count = 3
+        # Leader-imbalance-value: 1
+        # imbalanced-broker: 0,2; balanced-brokers: 1,3
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [3, 2]),
+                ((u'T0', 1), [1, 3]),
+                ((u'T1', 1), [0, 1]),
+                ((u'T1', 0), [0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(4)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
+            # Verify that (T0, 1) also swapped even if 1 and 3 were balanced
+            # hard-rebalancing
+            replica_ids = [b.id for b in ct.partitions[('T0', 1)].replicas]
+            assert replica_ids == [3, 1]
+
+    def test_rebalance_leaders_unbalanced_case2b(self):
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [3, 2]),
+                ((u'T1', 0), [1, 2]),
+                ((u'T1', 1), [0, 1]),
+                ((u'T2', 0), [0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(4)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify leader-balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
+
+    def test_rebalance_leaders_unbalanced_case2c(self):
+        # Broker-2 imbalance value: 2 with different brokers
+        # Broker-2 requests leadership from multiple brokers (0, 1) once
+        assignment = OrderedDict(
+            [
+                ((u'T1', 0), [1, 2]),
+                ((u'T1', 1), [0, 1]),
+                ((u'T2', 0), [0]),
+                ((u'T2', 1), [0]),
+                ((u'T3', 0), [3, 2]),
+                ((u'T3', 1), [1, 3]),
+                ((u'T4', 0), [1]),
+                ((u'T4', 2), [3]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(4)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify leader-balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
+
+    def test_rebalance_leaders_unbalanced_case2d(self):
+        # Broker-2 imbalanced with same brokers
+        # Broker-2 requests leadership from same broker-1 twice
+        assignment = OrderedDict(
+            [
+                ((u'T1', 0), [1, 2]),
+                ((u'T1', 1), [0, 1]),
+                ((u'T1', 2), [0]),
+                ((u'T1', 3), [1, 2]),
+                ((u'T1', 4), [0, 1]),
+                ((u'T1', 5), [0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify leader-balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
+
+    def test_rebalance_leaders_unbalanced_case2e(self):
+        # Imbalance-val 2:
+        # Multible brokers (2, 5) gets hard-balanced from multiple brokers (1,4)
+        assignment = OrderedDict(
+            [
+                ((u'T1', 0), [1, 2]),
+                ((u'T1', 1), [0, 1]),
+                ((u'T2', 0), [0]),
+                ((u'T3', 0), [4, 5]),
+                ((u'T3', 1), [3, 4]),
+                ((u'T4', 0), [3]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(6)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify leader-balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case3(self):
+        # Unbalanced 2 and could not be resolved
+        assignment = OrderedDict(
+            [
+                ((u'T1', 0), [1, 2]),
+                ((u'T1', 1), [0]),
+                ((u'T2', 0), [0]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify still leader-imbalanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 1
+            # No change in assignment
+            assert sorted(ct.assignment) == sorted(assignment)
+
+    def test_rebalance_leaders_unbalanced_case4(self):
         # Imbalanced assignment
         # Partial leader-imbalance possible
         # (Broker: leader-count): {0: 3, 1: 1, 2:0}

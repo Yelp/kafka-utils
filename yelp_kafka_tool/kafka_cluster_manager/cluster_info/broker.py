@@ -81,12 +81,7 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
-    def decrease_leader_count(
-        self,
-        partitions,
-        leaders_per_broker,
-        opt_count,
-    ):
+    def decrease_leader_count(self, partitions, leaders_per_broker, opt_count):
         """Re-order eligible replicas to balance preferred leader assignment.
 
         @params:
@@ -104,16 +99,93 @@ class Broker(object):
             for partition in partitions
             if self == partition.leader and len(partition.replicas) > 1
         ]
-        for possible_victim_partition in possible_partitions:
-            for possible_new_leader in possible_victim_partition.followers:
-                if (leaders_per_broker[possible_new_leader] <= opt_count and
+        for partition in possible_partitions:
+            for broker in partition.followers:
+                if (leaders_per_broker[broker] < opt_count and
                         leaders_per_broker[self] -
-                        leaders_per_broker[possible_new_leader] > 1):
-                    victim_partition = possible_victim_partition
-                    new_leader = possible_new_leader
-                    victim_partition.swap_leader(new_leader)
-                    leaders_per_broker[new_leader] += 1
-                    leaders_per_broker[self] -= 1
+                        leaders_per_broker[broker] > 1):
+                    # Assign 'broker' as new leader for 'partition'
+                    broker.grant_leadership(partition, leaders_per_broker)
                     break
             if leaders_per_broker[self] == opt_count:
                 return
+
+    def grant_leadership(self, partition, leaders_per_broker):
+        """Assign broker as new leader of given partition and return previous
+        leader.
+
+        Also, update the leaders-per-broker map.
+        """
+        curr_leader = partition.swap_leader(self)
+        leaders_per_broker[self] += 1
+        leaders_per_broker[curr_leader] -= 1
+        return curr_leader
+
+    def request_leadership(self, curr_leaders_cnt, opt_count, skip_brokers, skip_partitions):
+        """
+        @key_terms:
+        leader-balanced: Count of brokers as leader is atleast opt-count
+        grant-leadership: Swap current leader with some of its follower
+
+        Algorithm:
+        =========
+        Step1: Current broker is will request leadership from current-leaders
+        Step2: Current-leaders will grant their leadership if one of these happens:-
+            a) Either they remain leader-balanced
+            b) Or they will recursively request leadership from other partitions
+               untill they are become leader-balanced
+            If both of these conditions fail, they will revoke their leadership-grant
+        Step 3: If current-broker becomes leader-balanced it will return otherwise
+                it moves ahead with next partition
+        """
+        # Possible partitions which can grant leadership to broker
+        eligible_partitions = [
+            p for p in self.partitions
+            if len(p.replicas) > 1 and self is not p.leader
+        ]
+        for partition in eligible_partitions:
+            # Partition not available to grant leadership when:-
+            # 1. Broker is already under leadership change or
+            # 2. Partition has already granted leadership before
+            if partition.leader in skip_brokers or partition in skip_partitions:
+                continue
+            # Current broker is granted leadership temporarily
+            prev_leader = self.grant_leadership(partition, curr_leaders_cnt)
+            # Continue if prev-leader remains balanced
+            if curr_leaders_cnt[prev_leader] >= opt_count:
+                # If current broker is leader-balanced return else
+                # request next-partition
+                skip_partitions.append(partition)
+                if curr_leaders_cnt[self] >= opt_count:
+                    return curr_leaders_cnt
+                else:
+                    continue
+            else:  # prev-leader (broker) became unbalanced
+                # Append skip-brokers list so that it is not unbalanced further
+                skip_brokers.append(prev_leader)
+                # Try recursively arrange leadership for prev-leader
+                new_leaders_cnt = prev_leader.request_leadership(
+                    dict(curr_leaders_cnt),
+                    opt_count,
+                    skip_brokers,
+                    skip_partitions,
+                )
+                # If prev-leader couldn't be leader-balanced
+                # revert its previous grant to current-broker
+                if new_leaders_cnt[prev_leader] < opt_count:
+                    prev_leader.grant_leadership(partition, curr_leaders_cnt)
+                    # Trying requestng leadership from next partition
+                    continue
+                else:
+                    # If prev-leader successfully balanced
+                    skip_partitions.append(partition)
+                    # Removing from skip-broker list, since it can now again be
+                    # used for granting leadership for some other partition
+                    skip_brokers.remove(prev_leader)
+                    if new_leaders_cnt[self] >= opt_count:
+                        # Return if curren-broker is leader-balaned
+                        return new_leaders_cnt
+                    else:
+                        curr_leaders_cnt = new_leaders_cnt
+                        continue
+        return curr_leaders_cnt

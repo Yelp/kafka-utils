@@ -48,10 +48,12 @@ class TestPartition(object):
         # Verify that replica set remains same
         assert sorted(old_replicas) == sorted(partition.replicas)
 
-    def test_followers(self, partition):
+    def test_followers_1(self, partition):
 
+        # Case:1 With followers
         assert partition.followers == [sentinel.r2]
 
+    def test_followers_2(self):
         # Case:2 No-followers
         mock_topic = sentinel.t1
         mock_topic.id = 't1'

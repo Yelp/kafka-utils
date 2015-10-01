@@ -341,6 +341,20 @@ class ClusterTopology(object):
         """
         leaders_per_broker = get_leaders_per_broker(self.brokers.values())
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
+        # Soft rebalance is over-balanced brokers grant their leadership to
+        # one of their under-balanced followers
+        # self.soft_rebalancing(leaders_per_broker, opt_leader_cnt)
+        # Hard rebalance: If any of the brokers are still under-balanced
+        self.hard_rebalancing(dict(leaders_per_broker), opt_leader_cnt)
+
+    def soft_rebalancing(self, leaders_per_broker, opt_leader_cnt):
+        """Transfer leadership from current over-balanced leaders to their
+        under-balanced followers.
+
+        @key-term:
+        over-balanced brokers:  Brokers with leadership count > opt-count
+        under-balanced brokers: Brokers with leadership count < opt-count
+        """
         for broker, count in leaders_per_broker.iteritems():
             if count > opt_leader_cnt:
                 broker.decrease_leader_count(
@@ -348,3 +362,39 @@ class ClusterTopology(object):
                     leaders_per_broker,
                     opt_leader_cnt,
                 )
+
+    def hard_rebalancing(self, leaders_per_broker, opt_cnt):
+        """Transfer leadership to any under-balanced followers on the pretext
+        that they remain leader-balanced or can be recursively hard-balanced.
+
+        Context:
+        Consider a graph G:
+        Nodes: Brokers (e.g. b1, b2, b3)
+        Edges: From bi to bj s.t. bi is a leader and bj is its follower
+        State of nodes:
+            1. Over-balanced (OB) if leadership-count(broker) > opt-count
+            2. Under-balanced (UB) if leadership-count(broker) < opt-count
+
+        Algorithm:
+            1. Use Depth-first-search algorithm to find path betweedn
+            between some UB-broker to some OB-broker.
+            2. If path found delete the edges (skip-partitions)
+            3. Continue with step-1 untill all possible paths explored
+        """
+        under_brokers = [
+            broker
+            for broker, count in leaders_per_broker.iteritems()
+            if count < opt_cnt
+        ]
+        if not under_brokers:
+            return
+        skip_brokers, skip_partitions = [], []
+        for broker in under_brokers:
+            skip_brokers.append(broker)
+            # Updating leaders-per-broker
+            leaders_per_broker = broker.request_leadership(
+                dict(leaders_per_broker),
+                opt_cnt,
+                skip_brokers,
+                skip_partitions,
+            )
