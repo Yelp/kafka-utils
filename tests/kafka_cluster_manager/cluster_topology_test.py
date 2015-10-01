@@ -582,7 +582,7 @@ class TestClusterToplogy(object):
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             assert leader_imbal == 0
             # Verify that (T0, 1) also swapped even if 1 and 3 were balanced
-            # hard-rebalancing
+            # Rebalancing through non-followers
             replica_ids = [b.id for b in ct.partitions[('T0', 1)].replicas]
             assert replica_ids == [3, 1]
 
@@ -645,8 +645,9 @@ class TestClusterToplogy(object):
             assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case2e(self):
-        # Imbalance-val 2:
-        # Multible brokers (2, 5) gets hard-balanced from multiple brokers (1,4)
+        # Imbalance-val 2
+        # Multiple imbalanced brokers (2, 5) gets non-follower balanced
+        # from multiple brokers (1,4)
         assignment = OrderedDict(
             [
                 ((u'T1', 0), [1, 2]),
@@ -665,7 +666,7 @@ class TestClusterToplogy(object):
             assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case3(self):
-        # Unbalanced 2 and could not be resolved
+        # Imbalanced 0 and 2. No re-balance possible.
         assignment = OrderedDict(
             [
                 ((u'T1', 0), [1, 2]),
@@ -717,7 +718,7 @@ class TestClusterToplogy(object):
         a) partitions remain same
         b) replica set remains same
         """
-        # Partition-list remains un-changed
+        # Partition-list remains unchanged
         assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
         # Replica-set remains same
         for partition, orig_replicas in orig_assignment.iteritems():

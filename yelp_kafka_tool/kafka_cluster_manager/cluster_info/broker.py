@@ -94,12 +94,12 @@ class Broker(object):
         # Generate a list of partitions for which we can change the leader.
         # Filter out partitions with one replica (Replicas cannot be changed).
         # self is current-leader
-        possible_partitions = [
+        owned_partitions = [
             partition
             for partition in partitions
             if self == partition.leader and len(partition.replicas) > 1
         ]
-        for partition in possible_partitions:
+        for partition in owned_partitions:
             for broker in partition.followers:
                 if (leaders_per_broker[broker] < opt_count and
                         leaders_per_broker[self] -
@@ -116,34 +116,41 @@ class Broker(object):
 
         Also, update the leaders-per-broker map.
         """
+        # Transfer leadership to self (follower)
         curr_leader = partition.swap_leader(self)
         leaders_per_broker[self] += 1
         leaders_per_broker[curr_leader] -= 1
         return curr_leader
 
-    def request_leadership(self, curr_leaders_cnt, opt_count, skip_brokers, skip_partitions):
+    def request_leadership(
+        self,
+        curr_leaders_cnt,
+        opt_count,
+        skip_brokers,
+        skip_partitions,
+    ):
         """
         @key_terms:
-        leader-balanced: Count of brokers as leader is atleast opt-count
+        leader-balanced: Count of brokers as leader is at least opt-count
         grant-leadership: Swap current leader with some of its follower
 
         Algorithm:
         =========
-        Step1: Current broker is will request leadership from current-leaders
-        Step2: Current-leaders will grant their leadership if one of these happens:-
-            a) Either they remain leader-balanced
+        Step-1: Current broker is will request leadership from current-leaders
+        Step-2: Current-leaders will grant their leadership if one of these happens:-
+            a) Either they remain leader-balanced.
             b) Or they will recursively request leadership from other partitions
-               untill they are become leader-balanced
+               until they are become leader-balanced.
             If both of these conditions fail, they will revoke their leadership-grant
-        Step 3: If current-broker becomes leader-balanced it will return otherwise
-                it moves ahead with next partition
+        Step-3: If current-broker becomes leader-balanced it will return
+                otherwise it moves ahead with next partition.
         """
         # Possible partitions which can grant leadership to broker
-        eligible_partitions = [
+        owned_partitions = [
             p for p in self.partitions
             if len(p.replicas) > 1 and self is not p.leader
         ]
-        for partition in eligible_partitions:
+        for partition in owned_partitions:
             # Partition not available to grant leadership when:-
             # 1. Broker is already under leadership change or
             # 2. Partition has already granted leadership before
@@ -174,7 +181,7 @@ class Broker(object):
                 # revert its previous grant to current-broker
                 if new_leaders_cnt[prev_leader] < opt_count:
                     prev_leader.grant_leadership(partition, curr_leaders_cnt)
-                    # Trying requestng leadership from next partition
+                    # Trying requesting leadership from next partition
                     continue
                 else:
                     # If prev-leader successfully balanced
@@ -183,7 +190,7 @@ class Broker(object):
                     # used for granting leadership for some other partition
                     skip_brokers.remove(prev_leader)
                     if new_leaders_cnt[self] >= opt_count:
-                        # Return if curren-broker is leader-balaned
+                        # Return if current-broker is leader-balanced
                         return new_leaders_cnt
                     else:
                         curr_leaders_cnt = new_leaders_cnt

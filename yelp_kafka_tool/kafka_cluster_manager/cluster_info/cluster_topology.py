@@ -22,11 +22,11 @@ from .stats import (
     get_leader_imbalance_stats,
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
-    get_leaders_per_broker,
 )
 from .util import (
     compute_optimal_count,
     get_assignment_map,
+    get_leaders_per_broker,
 )
 
 
@@ -341,19 +341,20 @@ class ClusterTopology(object):
         """
         leaders_per_broker = get_leaders_per_broker(self.brokers.values())
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
-        # Soft rebalance is over-balanced brokers grant their leadership to
-        # one of their under-balanced followers
-        # self.soft_rebalancing(leaders_per_broker, opt_leader_cnt)
-        # Hard rebalance: If any of the brokers are still under-balanced
-        self.hard_rebalancing(dict(leaders_per_broker), opt_leader_cnt)
+        # Over-balanced brokers transfer leadership to their under-balanced followers
+        self.rebalancing_followers(leaders_per_broker, opt_leader_cnt)
+        # Balanced brokers transfer leadership to their under-balanced followers
+        self.rebalancing_non_followers(dict(leaders_per_broker), opt_leader_cnt)
 
-    def soft_rebalancing(self, leaders_per_broker, opt_leader_cnt):
+    def rebalancing_followers(self, leaders_per_broker, opt_leader_cnt):
         """Transfer leadership from current over-balanced leaders to their
         under-balanced followers.
 
         @key-term:
-        over-balanced brokers:  Brokers with leadership count > opt-count
-        under-balanced brokers: Brokers with leadership count < opt-count
+        over-balanced brokers:  Brokers with leadership-count > opt-count
+                                Note: Even brokers with leadership-count
+                                == opt-count are assumed as over-balanced.
+        under-balanced brokers: Brokers with leadership-count < opt-count
         """
         for broker, count in leaders_per_broker.iteritems():
             if count > opt_leader_cnt:
@@ -363,23 +364,26 @@ class ClusterTopology(object):
                     opt_leader_cnt,
                 )
 
-    def hard_rebalancing(self, leaders_per_broker, opt_cnt):
+    def rebalancing_non_followers(self, leaders_per_broker, opt_cnt):
         """Transfer leadership to any under-balanced followers on the pretext
-        that they remain leader-balanced or can be recursively hard-balanced.
+        that they remain leader-balanced or can be recursively balanced through
+        non-followers (followers of other leaders).
 
         Context:
         Consider a graph G:
         Nodes: Brokers (e.g. b1, b2, b3)
-        Edges: From bi to bj s.t. bi is a leader and bj is its follower
+        Edges: From b1 to b2 s.t. b1 is a leader and b2 is its follower
         State of nodes:
-            1. Over-balanced (OB) if leadership-count(broker) > opt-count
+            1. Over-balanced/Optimally-balanced: (OB)
+                if leadership-count(broker) >= opt-count
             2. Under-balanced (UB) if leadership-count(broker) < opt-count
+            leader-balanced: leadership-count(broker) is in [opt-count, opt-count+1]
 
         Algorithm:
-            1. Use Depth-first-search algorithm to find path betweedn
+            1. Use Depth-first-search algorithm to find path between
             between some UB-broker to some OB-broker.
-            2. If path found delete the edges (skip-partitions)
-            3. Continue with step-1 untill all possible paths explored
+            2. If path found, update UB-broker and delete path-edges (skip-partitions).
+            3. Continue with step-1 until all possible paths explored.
         """
         under_brokers = [
             broker
