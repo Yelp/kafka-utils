@@ -92,9 +92,8 @@ class TestBroker(object):
         assert b1.count_preferred_replica() == 1
 
     def test_get_preferred_partition(self):
-        # Mock topics
+        # Create topics, partitions, brokers
         t1, t1.id, t2, t2.id = sentinel.t1, 't1', sentinel.t2, 't2'
-        # Assigning partitions to topics
         p1, p2 = Partition(t1, 0), Partition(t1, 0)
         p3, p4 = Partition(t2, 0), Partition(t2, 0)
         # Brokers

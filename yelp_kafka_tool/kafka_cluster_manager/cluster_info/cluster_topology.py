@@ -271,15 +271,15 @@ class ClusterTopology(object):
                     rg_destination,
                     partition,
                 )
-                # Re-compute under and over-replicated replication-groups
-                over_replicated_rgs, under_replicated_rgs, _ = \
-                    separate_groups(
-                        self.rgs.values(),
-                        lambda g: g.count_replica(partition),
-                    )
             else:
                 # Groups balanced or cannot be balanced further
                 break
+            # Re-compute under and over-replicated replication-groups
+            over_replicated_rgs, under_replicated_rgs, _ = \
+                separate_groups(
+                    self.rgs.values(),
+                    lambda g: g.count_replica(partition),
+                )
 
     def _elect_source_replication_group(
         self,
