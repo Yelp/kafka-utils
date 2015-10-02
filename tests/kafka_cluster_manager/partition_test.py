@@ -60,15 +60,11 @@ class TestPartition(object):
         assert p2.followers == []
 
     def test_count_siblings(self):
-        mock_t1 = sentinel.t1
-        mock_t1.id = 't1'
-        mock_t2 = sentinel.t2
-        mock_t2.id = 't2'
-        p1 = Partition(mock_t1, 0)
-        p3 = Partition(mock_t1, 2)
-        p4 = Partition(mock_t2, 0)
+        t1, t1.id = sentinel.t1, 't1'
+        t2, t2.id = sentinel.t2, 't2'
+        p1, p3, p4 = Partition(t1, 0), Partition(t1, 1), Partition(t2, 0),
 
-        # verify p3 has 1 sibling (p2) in partition-list below
+        # verify sibling count
         p_group = [p1, p4, p3]
         assert p3.count_siblings(p_group) == 2
         assert p4.count_siblings(p_group) == 1
