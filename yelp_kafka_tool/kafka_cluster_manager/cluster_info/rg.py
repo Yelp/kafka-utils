@@ -192,12 +192,16 @@ class ReplicationGroup(object):
         min_sibling_partition_cnt = -1
         for source in over_loaded_brokers:
             for dest in under_loaded_brokers:
-                if source.is_relatively_unbalanced(dest):
-                    best_fit_partition, sibling_partition_cnt = \
-                        source.get_preferred_partition(dest)
-                    if sibling_partition_cnt < min_sibling_partition_cnt \
+                # Difference of partition-count should be greater than 1
+                if len(source.partitions) - len(dest.partitions) > 1:
+                    best_fit_partition = source.get_preferred_partition(dest)
+                    # If no eligible partition continue with next broker
+                    if best_fit_partition is None:
+                        continue
+                    sibling_cnt = best_fit_partition.count_siblings(dest.partitions)
+                    if sibling_cnt < min_sibling_partition_cnt \
                             or min_sibling_partition_cnt == -1:
-                        min_sibling_partition_cnt = sibling_partition_cnt
+                        min_sibling_partition_cnt = sibling_cnt
                         preferred_source = source
                         preferred_dest = dest
                         preferred_partition = best_fit_partition

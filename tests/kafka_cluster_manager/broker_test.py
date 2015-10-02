@@ -90,3 +90,38 @@ class TestBroker(object):
         b1.add_partition(p2)
 
         assert b1.count_preferred_replica() == 1
+
+    def test_get_preferred_partition(self):
+        # Mock topics
+        t1, t1.id, t2, t2.id = sentinel.t1, 't1', sentinel.t2, 't2'
+        # Assigning partitions to topics
+        p1, p2 = Partition(t1, 0), Partition(t1, 0)
+        p3, p4 = Partition(t2, 0), Partition(t2, 0)
+        # Brokers
+        b1, b2 = Broker('b1', set([p1, p2, p3])), Broker('b2', set([p2]))
+
+        # Case:1  No such partition due to presence of all replicas
+        b3 = Broker('b3', set([p2, p4]))
+        pref_partition = b2.get_preferred_partition(b3)
+
+        # Verify that pref-partition is None since b3 has only p2
+        # and has its replica in b2
+        assert pref_partition is None
+
+        # Case:2 Multiple solutions
+        pref_partition = b1.get_preferred_partition(b3)
+
+        # Verify preferred partition for source-broker b1 to be sent to
+        # destination broker-b3
+        # Cannot be p2 since b3 has replica
+        # Both p1 and p3 has 1 sibling p2, p4 respectively from topic t1, t2.
+        assert pref_partition in [p1, p3]
+
+        # Case:3: Unique solution
+        pref_partition = b1.get_preferred_partition(b2)
+
+        # Verify preferred-partition from source-broker b1
+        # p2: not possible since its replica is in destination broker b2
+        # Between p1 and p3: p1 has 1 sibling (p2) in b2 and p3 has 1 sibling
+        # So preferred partition should be p3
+        assert pref_partition == p3

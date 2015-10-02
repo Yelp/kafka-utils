@@ -12,6 +12,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
 )
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     compute_optimal_count,
+    separate_groups,
 )
 from yelp_kafka_tool.kafka_cluster_manager.main import ZK
 from yelp_kafka.config import ClusterConfig
@@ -152,19 +153,22 @@ class TestClusterToplogy(object):
         with self.build_cluster_topology() as ct:
             # Partition: T0-0 # Already-balanced
             partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T0', 0))
-            under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
+            over_replicated_rgs, under_replicated_rgs, opt_replicated_rgs = \
+                separate_groups(ct.rgs.values(), lambda g: g.count_replica(partition))
 
             # Verify compute-optimal-count
             assert opt_cnt == 1 and evenly_dist is True
             # Verify segregation of rg's
             assert not over_replicated_rgs and not under_replicated_rgs
+            # Verify all groups are optimalled balanced
+            opt_rg_ids = [rg.id for rg in opt_replicated_rgs]
+            assert set(opt_rg_ids) == set(['rg1', 'rg2'])
 
             # Partition T0-1: # imbalanced
             # opt-count == 1
             partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T0', 1))
-            under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
+            over_replicated_rgs, under_replicated_rgs, _ = \
+                separate_groups(ct.rgs.values(), lambda g: g.count_replica(partition))
 
             # Verify for segregation of rg-groups
             assert opt_cnt == 1 and evenly_dist is True
@@ -175,12 +179,15 @@ class TestClusterToplogy(object):
             # Partition: T1-0 # Already-balanced: replication-factor > rg-count
             # opt-count > 1
             partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T1', 0))
-            under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
+            over_replicated_rgs, under_replicated_rgs, opt_replicated_rgs = \
+                separate_groups(ct.rgs.values(), lambda g: g.count_replica(partition))
 
             # Verify for segregation of rg-groups
             assert opt_cnt == 2 and evenly_dist is True
             assert not over_replicated_rgs or under_replicated_rgs
+            # Verify all groups are optimalled balanced
+            opt_rg_ids = [rg.id for rg in opt_replicated_rgs]
+            assert set(opt_rg_ids) == set(['rg1', 'rg2'])
 
     def test_segregate_replication_groups_case_2(self):
         """Test segregation of replication-groups based on under
@@ -194,8 +201,8 @@ class TestClusterToplogy(object):
         with self.build_cluster_topology() as ct:
             # Partition: T2-0: Already balanced, replication-factor < rg-count
             partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T2', 0))
-            under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
+            over_replicated_rgs, under_replicated_rgs, _ = \
+                separate_groups(ct.rgs.values(), lambda g: g.count_replica(partition))
             under_rg_ids = [rg.id for rg in under_replicated_rgs]
             over_rg_ids = [rg.id for rg in over_replicated_rgs]
 
@@ -210,8 +217,9 @@ class TestClusterToplogy(object):
             # Partition T3-0: # Already-balanced
             # opt-count: 1
             partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T3', 0))
-            under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
+
+            over_replicated_rgs, under_replicated_rgs, _ = \
+                separate_groups(ct.rgs.values(), lambda g: g.count_replica(partition))
 
             # Verify segregation of rg's
             # Since, evenly_dist is False, therefore some rg-groups can have
@@ -226,8 +234,8 @@ class TestClusterToplogy(object):
             # Partition: T3-1 # imbalanced: replication-factor > rg-count
             # opt-count > 1
             partition, opt_cnt, evenly_dist = self.partition_data(ct, ('T3', 1))
-            under_replicated_rgs, over_replicated_rgs = \
-                ct._segregate_replication_groups(partition, opt_cnt, evenly_dist)
+            over_replicated_rgs, under_replicated_rgs, _ = \
+                separate_groups(ct.rgs.values(), lambda g: g.count_replica(partition))
 
             # Verify compute-optimal-count
             assert opt_cnt == 1 and evenly_dist is False

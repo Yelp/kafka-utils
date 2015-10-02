@@ -113,37 +113,32 @@ class Broker(object):
             if leaders_per_broker[self] == opt_count:
                 return
 
-    def is_relatively_unbalanced(self, broker_dest):
-        """Return true if brokers are relatively unbalanced based on partition
-        count.
-
-        Brokers are relatively unbalanced in terms of partition count if the
-        difference b/w their partition-count is > allowed-max difference
-        governed by 'extra_partition_per_broker' variable.
-        """
-        return len(self.partitions) - len(broker_dest.partitions) > 1
-
-    def get_preferred_partition(self, broker_destination):
+    def get_preferred_partition(self, broker):
         """Get partition from given source-partitions with least siblings in
-        given destination partitions and sibling count.
+        given destination broker-partitions and sibling count.
 
         Conditions:
         Partition in source should not be present in destination broker
 
         @key_term:
         siblings: Partitions belonging to same topic
+        source-partitions: Partitions of current object
 
         @params:
-        broker_destination: Destination broker where siblings for given source
-                            partitions are monitored.
+        broker:   Destination broker where siblings for given source
+                  partitions are analysed
         """
-        # Only partitions not having replica in broker_destination are valid
+        # Only partitions not having replica in broker are valid
         # Get best fit partition, based on avoiding partition from same topic
         # and partition with least siblings in destination-broker.
-        pref_partition = min(
-            self.partitions - broker_destination.partitions,
-            key=lambda source_partition:
-                source_partition.count_siblings(broker_destination.partitions),
-        )
-        sib_cnt = pref_partition.count_siblings(broker_destination.partitions)
-        return pref_partition, sib_cnt
+        # TODO: will multiple partition with minimum value lead to non-determinism?
+        eligible_partitions = self.partitions - broker.partitions
+        if eligible_partitions:
+            pref_partition = min(
+                eligible_partitions,
+                key=lambda source_partition:
+                    source_partition.count_siblings(broker.partitions),
+            )
+            return pref_partition
+        else:
+            return None
