@@ -159,10 +159,12 @@ class ReplicationGroup(object):
             broker_source, broker_destination, victim_partition = \
                 self._get_target_brokers(over_loaded_brokers, under_loaded_brokers)
             # No valid source or target brokers found
-            if not broker_source or not broker_destination:
+            if broker_source and broker_destination:
+                # Move partition
+                broker_source.move_partition(victim_partition, broker_destination)
+            else:
+                # Brokers are balanced or could not be
                 break
-            # Move partition
-            broker_source.move_partition(victim_partition, broker_destination)
             # Re-evaluate under and over-loaded brokers
             over_loaded_brokers, under_loaded_brokers, _ = separate_groups(
                 self.brokers,

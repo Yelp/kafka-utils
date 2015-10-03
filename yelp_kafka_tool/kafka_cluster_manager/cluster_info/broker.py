@@ -84,7 +84,7 @@ class Broker(object):
     def decrease_leader_count(self, partitions, leaders_per_broker, opt_count):
         """Re-order eligible replicas to balance preferred leader assignment.
 
-        @params:
+        :params:
         self:               Current object is leader-broker with > opt_count as
                             leaders and will be tried to reduce the same.
         partitions:         Set of all partitions in the cluster.
@@ -117,14 +117,11 @@ class Broker(object):
         """Get partition from given source-partitions with least siblings in
         given destination broker-partitions and sibling count.
 
-        Conditions:
-        Partition in source should not be present in destination broker
-
-        @key_term:
+        :key_term:
         siblings: Partitions belonging to same topic
         source-partitions: Partitions of current object
 
-        @params:
+        :params:
         broker:   Destination broker where siblings for given source
                   partitions are analysed
         """

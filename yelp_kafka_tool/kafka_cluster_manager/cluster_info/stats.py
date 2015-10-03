@@ -184,7 +184,7 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
         For each partition in initital assignment
             # If replica set different in current assignment:
                 # Get Difference in sets
-    @rtype: tuple
+    :rtype: tuple
     dict((partition,  (from_broker_set, to_broker_set)), total_movements
     """
     total_movements = 0

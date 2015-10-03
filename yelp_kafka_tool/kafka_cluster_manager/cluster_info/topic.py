@@ -9,7 +9,7 @@ import logging
 class Topic(object):
     """Information of a topic object.
 
-    @params
+    :params
         id:                 Name of the given topic
         replication_factor: replication factor of a given topic
         weight:             Relative load of topic compared to other topics
