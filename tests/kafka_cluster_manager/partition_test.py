@@ -49,7 +49,6 @@ class TestPartition(object):
         assert sorted(old_replicas) == sorted(partition.replicas)
 
     def test_followers_1(self, partition):
-
         # Case:1 With followers
         assert partition.followers == [sentinel.r2]
 

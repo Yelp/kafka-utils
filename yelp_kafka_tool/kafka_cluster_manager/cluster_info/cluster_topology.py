@@ -26,7 +26,6 @@ from .stats import (
 from .util import (
     compute_optimal_count,
     get_assignment_map,
-    get_leaders_per_broker,
 )
 
 
@@ -339,14 +338,13 @@ class ClusterTopology(object):
         """Re-order brokers in replicas such that, every broker is assigned as
         preferred leader evenly.
         """
-        leaders_per_broker = get_leaders_per_broker(self.brokers.values())
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
         # Over-balanced brokers transfer leadership to their under-balanced followers
-        self.rebalancing_followers(leaders_per_broker, opt_leader_cnt)
+        self.rebalancing_followers(opt_leader_cnt)
         # Balanced brokers transfer leadership to their under-balanced followers
-        self.rebalancing_non_followers(dict(leaders_per_broker), opt_leader_cnt)
+        self.rebalancing_non_followers(opt_leader_cnt)
 
-    def rebalancing_followers(self, leaders_per_broker, opt_leader_cnt):
+    def rebalancing_followers(self, opt_leader_cnt):
         """Transfer leadership from current over-balanced leaders to their
         under-balanced followers.
 
@@ -356,15 +354,14 @@ class ClusterTopology(object):
                                 == opt-count are assumed as over-balanced.
         under-balanced brokers: Brokers with leadership-count < opt-count
         """
-        for broker, count in leaders_per_broker.iteritems():
-            if count > opt_leader_cnt:
+        for broker in self.brokers.values():
+            if broker.count_preferred_replica() > opt_leader_cnt:
                 broker.decrease_leader_count(
                     self.partitions.values(),
-                    leaders_per_broker,
                     opt_leader_cnt,
                 )
 
-    def rebalancing_non_followers(self, leaders_per_broker, opt_cnt):
+    def rebalancing_non_followers(self, opt_cnt):
         """Transfer leadership to any under-balanced followers on the pretext
         that they remain leader-balanced or can be recursively balanced through
         non-followers (followers of other leaders).
@@ -385,20 +382,14 @@ class ClusterTopology(object):
             2. If path found, update UB-broker and delete path-edges (skip-partitions).
             3. Continue with step-1 until all possible paths explored.
         """
-        under_brokers = [
-            broker
-            for broker, count in leaders_per_broker.iteritems()
-            if count < opt_cnt
-        ]
+        under_brokers = filter(
+            lambda b: b.count_preferred_replica() < opt_cnt,
+            self.brokers.values(),
+        )
         if not under_brokers:
             return
         skip_brokers, skip_partitions = [], []
         for broker in under_brokers:
             skip_brokers.append(broker)
             # Updating leaders-per-broker
-            leaders_per_broker = broker.request_leadership(
-                dict(leaders_per_broker),
-                opt_cnt,
-                skip_brokers,
-                skip_partitions,
-            )
+            broker.request_leadership(opt_cnt, skip_brokers, skip_partitions)
