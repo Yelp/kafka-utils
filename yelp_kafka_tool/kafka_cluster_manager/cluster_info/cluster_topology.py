@@ -251,8 +251,10 @@ class ClusterTopology(object):
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
         # Separate replication-groups into under and over replicated
-        over_replicated_rgs, under_replicated_rgs, _ = \
-            separate_groups(self.rgs.values(), lambda g: g.count_replica(partition))
+        over_replicated_rgs, under_replicated_rgs = separate_groups(
+            self.rgs.values(),
+            lambda g: g.count_replica(partition),
+        )
         # Move replicas from over-replicated to under-replicated groups
         while under_replicated_rgs and over_replicated_rgs:
             # Decide source and destination group
@@ -275,11 +277,10 @@ class ClusterTopology(object):
                 # Groups balanced or cannot be balanced further
                 break
             # Re-compute under and over-replicated replication-groups
-            over_replicated_rgs, under_replicated_rgs, _ = \
-                separate_groups(
-                    self.rgs.values(),
-                    lambda g: g.count_replica(partition),
-                )
+            over_replicated_rgs, under_replicated_rgs = separate_groups(
+                self.rgs.values(),
+                lambda g: g.count_replica(partition),
+            )
 
     def _elect_source_replication_group(
         self,

@@ -85,8 +85,6 @@ class Broker(object):
         """Re-order eligible replicas to balance preferred leader assignment.
 
         :params:
-        self:               Current object is leader-broker with > opt_count as
-                            leaders and will be tried to reduce the same.
         partitions:         Set of all partitions in the cluster.
         leaders_per_broker: Broker-as-leader-count per broker.
         opt_count:          Optimal value for each broker to act as leader.

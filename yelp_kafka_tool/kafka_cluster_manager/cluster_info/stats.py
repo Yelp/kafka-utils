@@ -49,13 +49,13 @@ def get_extra_element_count(
 ):
     """Evaluate and return extra same element count based on given values.
 
-    @key-term:
+    :key-term:
     group:  In here group can be any base where elements are place
             i.e. replication-group while placing replicas (elements)
             or  brokers while placing partitions (elements).
     element:  Generic term for units which are optimally placed over group.
 
-    @params:
+    :params:
     curr_count: Given count
     opt_count:  Optimal count for each group.
     extra_allowed_cnt:  Count of groups which can have 1 extra element

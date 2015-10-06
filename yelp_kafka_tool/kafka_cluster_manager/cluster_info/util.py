@@ -130,14 +130,13 @@ def smart_separate_groups(groups, key):
     the optimal number of elements.
 
     Examples:
-        separate_groups([12, 10, 10, 11], lambda g: g) => ([12], [10], [11, 10])
-        separate_groups([12,  8, 12, 11], lambda g: g) => ([12, 12], [8], [11])
-        separate_groups([14,  9,  6, 14], lambda g: g) => ([14, 14], [9, 6], [])
-        separate_groups([11,  9, 10, 14], lambda g: g) => ([14], [10, 9], [11])
+        smart_separate_groups([12, 10, 10, 11], lambda g: g) => ([12], [10], [11, 10])
+        smart_separate_groups([12,  8, 12, 11], lambda g: g) => ([12, 12], [8], [11])
+        smart_separate_groups([14,  9,  6, 14], lambda g: g) => ([14, 14], [9, 6], [])
+        smart_separate_groups([11,  9, 10, 14], lambda g: g) => ([14], [10, 9], [11])
     """
     optimum, extra = compute_group_optimum(groups, key)
     over_loaded, under_loaded, optimal = [], [], []
-    additional_element = bool(extra)
     for group in sorted(groups, key=key, reverse=True):
         n_elements = key(group)
         additional_element = 1 if extra else 0
@@ -170,14 +169,11 @@ def separate_groups(groups, key):
     between these two groups (based on total-partition-count), to transfer the
     partition to 'd'.
     """
-
     optimum, _ = compute_group_optimum(groups, key)
-    over_loaded, under_loaded, optimal = \
-        smart_separate_groups(groups, key)
+    over_loaded, under_loaded, optimal = smart_separate_groups(groups, key)
     # If every group is optimal return
     if not over_loaded:
-        return over_loaded, under_loaded, optimal
-    # Pick groups from optimal-groups with count > opt-replica-count
+        return over_loaded, under_loaded
     # Potential-over-loaded groups also have potential to be categorised
     # into over-loaded groups
     potential_over_loaded = [
@@ -185,6 +181,4 @@ def separate_groups(groups, key):
         if key(group) > optimum
     ]
     revised_over_loaded = over_loaded + potential_over_loaded
-    # Re-calculate optimal groups to remove the one shifted to over-loaded
-    revised_optimal = list(set(optimal) - set(revised_over_loaded))
-    return revised_over_loaded, under_loaded, revised_optimal
+    return revised_over_loaded, under_loaded
