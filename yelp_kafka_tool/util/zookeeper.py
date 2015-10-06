@@ -16,7 +16,6 @@ class ZK:
 
     def __init__(self, cluster_config):
         self.cluster_config = cluster_config
-        self.reassignment_zookeeper_path = REASSIGNMENT_ZOOKEEPER_PATH
 
     def __enter__(self):
         self.zk = KazooClient(
@@ -224,7 +223,7 @@ class ZK:
             * Raise any other exception throw
 
         """
-        path = self.reassignment_zookeeper_path
+        path = REASSIGNMENT_ZOOKEEPER_PATH
         plan = json.dumps(data)
         try:
             print('[INFO] Sending assignment to Zookeeper...')
