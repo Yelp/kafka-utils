@@ -4,8 +4,10 @@ import json
 import sys
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NodeExistsError, NoNodeError
 from yelp_kafka_tool.util import config
+
+REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
 
 
 class ZK:
@@ -14,6 +16,7 @@ class ZK:
 
     def __init__(self, cluster_config):
         self.cluster_config = cluster_config
+        self.reassignment_zookeeper_path = REASSIGNMENT_ZOOKEEPER_PATH
 
     def __enter__(self):
         self.zk = KazooClient(
@@ -203,3 +206,54 @@ class ZK:
             topic=topic,
         )
         self.delete(path)
+
+    def execute_assignment(self, data):
+        """Executing plan directly sending it to zookeeper nodes.
+        Algorithm:
+        1. Verification:
+         a) Verify that data is not empty
+         b) Verify no duplicate partitions
+        2. Save current assignment for future (save, skipping)
+        3. Verify if partitions exist  (skipping)
+            Throw partition-topic not exist error
+        4. Re-assign:
+            Exceptions:
+            * NodeExists error: Assignment already in progress
+                -- Get partitions which are in progress
+            * NoNode error: create parent node
+            * Raise any other exception throw
+
+        """
+        path = self.reassignment_zookeeper_path
+        plan = json.dumps(data)
+        try:
+            print('[INFO] Sending assignment to Zookeeper...')
+            self.create(path, plan, makepath=True)
+            print('[INFO] Assignment sent to Zookeeper successfully.')
+            # TODO: Read node to list data of currently running??
+        except NodeExistsError:
+            print('[ERROR] Previous assignment in progress. Exiting..')
+        except Exception as e:
+            print(
+                '[ERROR] Could not re-assign partitions {plan}. Error: {e}'
+                .format(plan=plan, e=e),
+            )
+            raise
+
+    def get_cluster_assignment(self):
+        """Fetch cluster assignment directly from zookeeper."""
+        cluster_layout = self.get_partitions()
+        # Re-format cluster-layout
+        partitions = [
+            {
+                'topic': topic_id,
+                'partition': int(p_id),
+                'replicas': replicas
+            }
+            for topic_id, topic_info in cluster_layout.iteritems()
+            for p_id, replicas in topic_info['partitions'].iteritems()
+        ]
+        return {
+            'version': 1,
+            'partitions': partitions
+        }

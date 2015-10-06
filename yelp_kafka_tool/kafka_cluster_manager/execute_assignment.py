@@ -12,44 +12,20 @@ _log = logging.getLogger('kafka-cluster-manager')
 
 
 # Execute or display cluster-topology in zookeeper
-def execute_plan(params):
+def evaluate_assignment(ct, zk, max_changes, to_apply, no_confirm, plan_file, script_path):
     # Get final-proposed-plan
     result = get_reduced_proposed_plan(
-        params['initial_plan'],
-        params['curr_plan'],
-        params['max_actions'],
+        ct.initial_assignment,
+        ct.assignment,
+        max_changes,
     )
-    apply = params['apply']
-    no_confirm = params['no_confirm']
-    # Valid plan found, Execute or display the plan
-    log_only = False if apply and not no_confirm or not apply else True
+    log_only = True if no_confirm else False
     if result:
-        # Display plan only if user-confirmation is required
+        # Display or store plan
         display_assignment_changes(result[1], result[2], result[3], log_only)
-
-        to_execute = False
-        proposed_plan = result[0]
-        if apply:
-            if no_confirm:
-                to_execute = True
-            else:
-                if confirm_execution():
-                    to_execute = True
-        # Execute proposed-plan
-        if to_execute:
-            _log.info('Executing Proposed Plan')
-            kafka = KafkaInterface(params['script_path'])
-            kafka.execute_plan(
-                proposed_plan,
-                params['zk'],
-                params['brokers'],
-                params['topics'],
-            )
-        else:
-            _log.info('Proposed Plan won\'t be executed.')
-        # Export proposed-plan to json file
-        if params['proposed_plan_file']:
-            proposed_plan_json(proposed_plan, params['proposed_plan_file'])
+        # Store and/or execute plan
+        execute = to_execute(to_apply, no_confirm)
+        save_execute_plan(ct, zk, result[0], execute, plan_file, script_path)
     else:
         # No new-plan
         msgStr = 'No topic-partition layout changes proposed.'
@@ -58,3 +34,33 @@ def execute_plan(params):
         else:
             print(msgStr)
     return
+
+
+def save_execute_plan(ct, zk, proposed_plan, execute, plan_file, script_path):
+    """Save proposed-plan and execute the same if requested."""
+    # Export proposed-plan to json file
+    if plan_file:
+        proposed_plan_json(proposed_plan, plan_file)
+    # Execute proposed-plan
+    if execute:
+        _log.info('Executing Proposed Plan')
+        kafka = KafkaInterface(script_path)
+        kafka.execute_plan(
+            zk,
+            proposed_plan,
+            ct.brokers.values(),
+            ct.topics.values(),
+        )
+    else:
+        _log.info('Proposed Plan won\'t be executed.')
+
+
+def to_execute(to_apply, no_confirm):
+    """Confirm if proposed-plan should be executed."""
+    if to_apply:
+        if no_confirm:
+            return True
+        else:
+            if confirm_execution():
+                return True
+    return False

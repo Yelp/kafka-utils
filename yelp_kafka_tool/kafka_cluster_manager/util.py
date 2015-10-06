@@ -7,11 +7,7 @@ import os
 import subprocess
 import tempfile
 
-from kazoo.exceptions import NodeExistsError, NoNodeError
 from .cluster_info.util import get_assignment_map
-
-REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
-REASSIGNMENT_PARENT_PATH = "/admin"
 
 
 class KafkaInterface(object):
@@ -20,7 +16,6 @@ class KafkaInterface(object):
     def __init__(self, script_path=None):
         self._kafka_script_path = script_path
         self.log = logging.getLogger(self.__class__.__name__)
-        self.reassignment_zookeeper_path = REASSIGNMENT_ZOOKEEPER_PATH
 
     def run_repartition_cmd(
         self,
@@ -75,7 +70,7 @@ class KafkaInterface(object):
             'version': 1
         }
         if not self._kafka_script_path:
-            assignment = self.get_cluster_assignment_zk(zk)
+            assignment = zk.get_cluster_assignment()
             return get_assignment_map(assignment)
         else:
             zookeeper = zk.cluster_config.zookeeper
@@ -106,8 +101,8 @@ class KafkaInterface(object):
 
     def execute_plan(
         self,
-        proposed_layout,
         zk,
+        proposed_layout,
         brokers,
         topics,
     ):
@@ -119,9 +114,8 @@ class KafkaInterface(object):
         Arguments:
         proposed_plan:   Proposed plan in json format
         """
-
         if not self._kafka_script_path:
-            self.execute_assignment_zk(zk, proposed_layout)
+            zk.execute_assignment(proposed_layout)
         else:
             with tempfile.NamedTemporaryFile() as temp_reassignment_file:
                 json.dump(proposed_layout, temp_reassignment_file)
@@ -133,65 +127,3 @@ class KafkaInterface(object):
                     temp_reassignment_file.name,
                     True,
                 )
-
-    def execute_assignment_zk(self, zk, data):
-        """Executing plan directly sending it to zookeeper nodes.
-        Algorithm:
-        1. Verification:
-         a) Verify that data is not empty
-         b) Verify no duplicate partitions
-        2. Save current assignment for future (save, skipping)
-        3. Verify if partitions exist  (skipping)
-            Throw partition-topic not exist error
-        4. Re-assign:
-            Exceptions:
-            * NodeExists error: Assignment already in progress
-                -- Get partitions which are in progress
-            * NoNode error: create parent node
-            * Raise any other exception throw
-
-        """
-        path = self.reassignment_zookeeper_path
-        plan = json.dumps(data)
-        try:
-            self.log.info('Sending assignment to Zookeeper...')
-            zk.create(path, plan)
-            self.log.info('Assignment sent to Zookeeper successfully.')
-        except NodeExistsError:
-            # If reassign_partitions node already exists, report
-            self.log.error(
-                'Sending assignment to zookeeper Failed. Previous_assignment'
-                ' currently in progress...',
-            )
-            # TODO: Read node to list data of currently running??
-        except NoNodeError:
-            parent = REASSIGNMENT_PARENT_PATH
-            self.log.warning('Admin node missing in zookeeper, creating admin path... ')
-            zk.create(parent, makepath=True)
-            self.log.info('Second attempt: Sending assignment to Zookeeper...')
-            zk.create(path, plan)
-            self.log.info('Assignment sent to Zookeeper successfully.')
-        except exception as e:
-            self.log.error(
-                'Could not re-assign partitions {plan}. Error: {e}'
-                .format(plan=plan, e=e),
-            )
-            raise
-
-    def get_cluster_assignment_zk(self, zk):
-        """Fetch cluster assignment directly from zookeeper."""
-        cluster_layout = zk.get_partitions()
-        # Re-format cluster-layout
-        partitions = [
-            {
-                'topic': topic_id,
-                'partition': int(p_id),
-                'replicas': replicas
-            }
-            for topic_id, topic_info in cluster_layout.iteritems()
-            for p_id, replicas in topic_info['partitions'].iteritems()
-        ]
-        return {
-            'version': 1,
-            'partitions': partitions
-        }

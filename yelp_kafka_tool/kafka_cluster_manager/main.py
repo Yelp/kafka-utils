@@ -39,8 +39,7 @@ from yelp_kafka.config import ClusterConfig
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 from .cluster_info.cluster_topology import ClusterTopology
-from .execute_assignment import execute_plan
-
+from .execute_assignment import evaluate_assignment
 
 DEFAULT_MAX_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
@@ -50,29 +49,26 @@ _log = logging.getLogger('kafka-cluster-manager')
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
-        script_path = args.use_kafka_script
-        if script_path == 'default':
-            script_path = KAFKA_SCRIPT_PATH
+        script_path = None
+        # Use kafka-scripts
+        if args.use_kafka_script:
+            script_path = args.script_path
         ct = ClusterTopology(zk=zk, script_path=script_path)
 
         # Re-balance replication-groups
         if args.replication_groups:
             ct.reassign_partitions(replication_groups=True)
 
-        # Execute or display plan
-        params = {
-            'zk': zk,
-            'initial_plan': ct.initial_assignment,
-            'curr_plan': ct.assignment,
-            'max_actions': args.max_changes,
-            'apply': args.apply,
-            'no_confirm': args.no_confirm,
-            'proposed_plan_file': args.proposed_plan_file,
-            'brokers': ct.brokers.keys(),
-            'topics': ct.topics.keys(),
-            'script_path': script_path,
-        }
-        execute_plan(params)
+        # Evaluate proposed-plan and execute/display the same
+        evaluate_assignment(
+            ct,
+            zk,
+            max_changes=args.max_changes,
+            to_apply=args.apply,
+            no_confirm=args.no_confirm,
+            plan_file=args.proposed_plan_file,
+            script_path=script_path,
+        )
 
 
 def parse_args():
@@ -109,19 +105,25 @@ def parse_args():
         description='Re-assign partitions over brokers.',
     )
     parser_rebalance.add_argument(
-        '--use-kafka-script-path',
-        dest='use_kafka_script',
-        type=str,
-        default=None,
-        help='Path of kafka-cli scripts to be used to access zookeeper.'
-        ' Use \'default\' to use default path: {default}'
-        .format(default=KAFKA_SCRIPT_PATH),
-    )
-    parser_rebalance.add_argument(
         '--replication-groups',
         dest='replication_groups',
         action='store_true',
         help='Evenly distributes replicas over replication-groups.',
+    )
+    parser_rebalance.add_argument(
+        '--use-kafka-script',
+        dest='use_kafka_script',
+        action='store_true',
+        help='Use kafka-cli scripts to access zookeeper.'
+        ' Use --script-path to provide path for script.',
+    )
+    parser_rebalance.add_argument(
+        '--script-path',
+        dest='script_path',
+        type=str,
+        default=KAFKA_SCRIPT_PATH,
+        help='Path of kafka-cli scripts to be used to access zookeeper.'
+        ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
         '--max-changes',
@@ -177,7 +179,7 @@ def validate_args(args):
 
     # At-least one of rebalancing options required
     if not any(rebalance_options):
-        _log.error('\'--replication-groups\' flag required.')
+        _log.error('--replication-groups flag required.')
         result = False
 
     if args.no_confirm and not args.apply:
