@@ -81,33 +81,10 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
-    def decrease_leader_count(self, partitions, opt_count):
-        """Re-order eligible replicas to balance preferred leader assignment.
+    def request_leadership(self, opt_count, skip_brokers, skip_partitions, optimal=False):
+        """Under-balanced broker requests leadership from current leader, on the
+        pretext that it recursively can maintain its leadership count as optimal.
 
-        @params:
-        partitions:         Set of all partitions in the cluster.
-        opt_count:          Optimal value for each broker to act as leader.
-        """
-        # Generate a list of partitions for which we can change the leader.
-        # Filter out partitions with one replica (Replicas cannot be changed).
-        # self is current-leader
-        owned_partitions = filter(
-            lambda p: self == p.leader and len(p.replicas) > 1,
-            partitions,
-        )
-        leader_cnt = self.count_preferred_replica()
-        for partition in owned_partitions:
-            for broker in partition.followers:
-                b_leader_cnt = broker.count_preferred_replica()
-                if b_leader_cnt <= opt_count and leader_cnt - b_leader_cnt > 1:
-                    # Assign 'broker' as new leader for 'partition'
-                    partition.swap_leader(broker)
-                    break
-            if leader_cnt == opt_count:
-                return
-
-    def request_leadership(self, opt_count, skip_brokers, skip_partitions):
-        """
         @key_terms:
         leader-balanced: Count of brokers as leader is at least opt-count
 
@@ -136,7 +113,6 @@ class Broker(object):
                 continue
             # Current broker is granted leadership temporarily
             prev_leader = partition.swap_leader(self)
-
             # Continue if prev-leader remains balanced
             if prev_leader.count_preferred_replica() >= opt_count:
                 # If current broker is leader-balanced return else
@@ -169,4 +145,46 @@ class Broker(object):
                     else:
                         continue
         # Leadership-grant unsuccessful
+        return False
+
+    def donate_leadership(self, opt_count, skip_brokers, skip_partitions):
+        owned_partitions = filter(
+            lambda p: self is p.leader and len(p.replicas) > 1,
+            self.partitions,
+        )
+        for partition in owned_partitions:
+            if partition in skip_partitions:
+                continue
+            potential_new_leaders = [follower for follower in partition.followers if follower not in skip_brokers]
+            for new_leader in potential_new_leaders:
+                prev_leader = partition.swap_leader(new_leader)
+                assert(prev_leader == self)
+                # new-leader didn't imbalance
+                if new_leader.count_preferred_replica() <= opt_count + 1:
+                    skip_partitions.append(partition)
+                    # over-broker balanced
+                    if self.count_preferred_replica() <= opt_count + 1:
+                        return True
+                    else:
+                        # Try new-leader
+                        continue
+                else:  # new-leader (broker) became over-balanced
+                    skip_brokers.append(new_leader)
+                    new_leader.donate_leadership(opt_count, skip_brokers, skip_partitions)
+                    # new-leader couldn't be balanced, revert
+                    if new_leader.count_preferred_replica() > opt_count + 1:
+                        partition.swap_leader(self)
+                        # try next leader or partition
+                        continue
+                    else:
+                        # new-leader was successfuly balanced
+                        skip_partitions.append(partition)
+                        # new-leader can be reused
+                        skip_brokers.remove(new_leader)
+                        # now broker is balanced
+                        if self.count_preferred_replica() <= opt_count + 1:
+                            return True
+                        else:
+                            # Further reduction required
+                            continue
         return False

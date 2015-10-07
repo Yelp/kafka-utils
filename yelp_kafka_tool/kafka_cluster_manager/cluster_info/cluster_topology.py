@@ -339,8 +339,6 @@ class ClusterTopology(object):
         preferred leader evenly.
         """
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
-        # Over-balanced brokers transfer leadership to their under-balanced followers
-        self.rebalancing_followers(opt_leader_cnt)
         # Balanced brokers transfer leadership to their under-balanced followers
         self.rebalancing_non_followers(opt_leader_cnt)
 
@@ -382,14 +380,24 @@ class ClusterTopology(object):
             2. If path found, update UB-broker and delete path-edges (skip-partitions).
             3. Continue with step-1 until all possible paths explored.
         """
+        # TODO: rename
         under_brokers = filter(
             lambda b: b.count_preferred_replica() < opt_cnt,
             self.brokers.values(),
         )
-        if not under_brokers:
-            return
-        skip_brokers, skip_partitions = [], []
-        for broker in under_brokers:
-            skip_brokers.append(broker)
-            # Updating leaders-per-broker
-            broker.request_leadership(opt_cnt, skip_brokers, skip_partitions)
+        if under_brokers:
+            skip_brokers, skip_partitions = [], []
+            for broker in under_brokers:
+                skip_brokers.append(broker)
+                broker.request_leadership(opt_cnt, skip_brokers, skip_partitions)
+
+        over_brokers = filter(
+            lambda b: b.count_preferred_replica() > opt_cnt + 1,
+            self.brokers.values(),
+        )
+        # Any over-balanced brokers tries to donate thier leadership to followers
+        if over_brokers:
+            skip_brokers, skip_partitions = [], []
+            for broker in over_brokers:
+                skip_brokers.append(broker)
+                broker.donate_leadership(opt_cnt, skip_brokers, skip_partitions)

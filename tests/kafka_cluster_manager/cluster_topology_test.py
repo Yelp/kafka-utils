@@ -711,6 +711,43 @@ class TestClusterToplogy(object):
             assert new_leaders_per_broker[1] == 1
             assert new_leaders_per_broker[0] == 3
 
+    def test_rebalance_leaders_unbalanced_case2f(self):
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [2, 0]),
+                ((u'T1', 0), [2, 0]),
+                ((u'T1', 1), [0]),
+                ((u'T2', 0), [1]),
+                ((u'T2', 1), [2]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(3)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify leader-balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
+
+    def test_rebalance_leaders_unbalanced_case5(self):
+        # Special case, wherein none under-balanced
+        # but 0 is overbalanced
+        assignment = OrderedDict(
+            [
+                ((u'T1', 1), [0, 1]),
+                ((u'T2', 0), [0]),
+                ((u'T2', 1), [0]),
+                ((u'T3', 0), [2, 3]),
+                ((u'T3', 1), [3, 1]),
+                ((u'T4', 0), [1]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(4)) as ct:
+            ct.rebalance_leaders()
+
+            # Verify leader-balanced
+            _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+            assert leader_imbal == 0
+
     def assert_leader_valid(self, orig_assignment, new_assignment):
         """Verify that new-assignment complies with just leader changes.
 
