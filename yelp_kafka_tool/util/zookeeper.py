@@ -206,7 +206,7 @@ class ZK:
         )
         self.delete(path)
 
-    def execute_assignment(self, data):
+    def execute_assignment(self, assignment):
         """Executing plan directly sending it to zookeeper nodes.
         Algorithm:
         1. Verification:
@@ -223,8 +223,9 @@ class ZK:
             * Raise any other exception throw
 
         """
+        print('data', assignment)
         path = REASSIGNMENT_ZOOKEEPER_PATH
-        plan = json.dumps(data)
+        plan = json.dumps(assignment)
         try:
             print('[INFO] Sending assignment to Zookeeper...')
             self.create(path, plan, makepath=True)

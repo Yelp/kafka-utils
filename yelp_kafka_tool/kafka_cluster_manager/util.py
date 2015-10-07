@@ -58,7 +58,6 @@ class KafkaInterface(object):
             '--broker-list',
             brokers_str
         ]
-        """Run reassignment kafka command based on given parameters."""
         return subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
 
     def get_cluster_assignment(self, zk, brokers, topic_ids):

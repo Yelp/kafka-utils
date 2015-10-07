@@ -39,11 +39,41 @@ from yelp_kafka.config import ClusterConfig
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 from .cluster_info.cluster_topology import ClusterTopology
-from .execute_assignment import evaluate_assignment
+from .cluster_info.display import display_assignment_changes
+from .cluster_info.util import (
+    get_reduced_proposed_plan,
+    confirm_execution,
+    proposed_plan_json,
+)
+from .util import KafkaInterface
+
 
 DEFAULT_MAX_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
+KAFKA_SCRIPT_PATH = '/nail/home/manpreet/pg/yelp-kafka-util/kafka-info/kafka_reassignment/kafka/bin'
 _log = logging.getLogger('kafka-cluster-manager')
+
+
+def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
+    """Save proposed-plan and execute the same if requested."""
+    # Execute proposed-plan
+    if to_execute(to_apply, no_confirm):
+        _log.info('Executing Proposed Plan')
+        KafkaInterface(script_path).execute_plan(
+            zk,
+            proposed_plan,
+            ct.brokers.values(),
+            ct.topics.values(),
+        )
+    else:
+        _log.info('Proposed Plan won\'t be executed.')
+
+
+def to_execute(to_apply, no_confirm):
+    """Confirm if proposed-plan should be executed."""
+    if to_apply and (no_confirm or confirm_execution()):
+        return True
+    return False
 
 
 def reassign_partitions(cluster_config, args):
@@ -60,15 +90,30 @@ def reassign_partitions(cluster_config, args):
             ct.reassign_partitions(replication_groups=True)
 
         # Evaluate proposed-plan and execute/display the same
-        evaluate_assignment(
-            ct,
-            zk,
-            max_changes=args.max_changes,
-            to_apply=args.apply,
-            no_confirm=args.no_confirm,
-            plan_file=args.proposed_plan_file,
-            script_path=script_path,
+        # Get final-proposed-plan details
+        result = get_reduced_proposed_plan(
+            ct.initial_assignment,
+            ct.assignment,
+            args.max_changes,
         )
+        no_confirm = args.no_confirm
+
+        if result:
+            # Display or store plan
+            display_assignment_changes(result, no_confirm)
+            # Export proposed-plan to json file
+            plan_file = args.proposed_plan_file
+            if plan_file:
+                proposed_plan_json(result[0], plan_file)
+            # Check and execute plan
+            execute_plan(ct, zk, result[0], args.apply, no_confirm, script_path)
+        else:
+            # No new-plan
+            msg_str = 'No topic-partition layout changes proposed.'
+            if no_confirm:
+                _log.info(msg_str)
+            else:
+                print(msg_str)
 
 
 def parse_args():
