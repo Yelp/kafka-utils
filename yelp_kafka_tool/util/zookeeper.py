@@ -83,10 +83,15 @@ class ZK:
             brokers[b_id] = broker
         return brokers
 
-    def get_topics(self, topic_name=None, names_only=False, fetch_partition_state=False):
+    def get_topics(
+        self,
+        topic_name=None,
+        names_only=False,
+        fetch_partition_state=False,
+    ):
         """Get information on all the available topics."""
         topic_ids = [topic_name] if topic_name else self.get_children(
-            "/brokers/topics"
+            "/brokers/topics",
         )
         if names_only:
             return topic_ids
@@ -106,9 +111,9 @@ class ZK:
             return topics_data
         else:
             # Fetch state of partitions
-            return self._fetch_status(topics_data)
+            return self._fetch_partition_state(topics_data)
 
-    def _fetch_status(self, topics_data):
+    def _fetch_partition_state(self, topics_data):
         # Get information on partition-state as well
         result = {}
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
