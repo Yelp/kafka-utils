@@ -83,27 +83,6 @@ class ZK:
             brokers[b_id] = broker
         return brokers
 
-    def get_partitions(self, topic_name=None):
-        """Get topic to partition-count info on all the available topics."""
-        topic_ids = [topic_name] if topic_name else self.get_children(
-            "/brokers/topics",
-        )
-        try:
-            topic_info = [
-                self.get("/brokers/topics/{id}".format(id=id))
-                for id in topic_ids
-            ]
-            return dict(
-                (topic_id, json.loads(topic_json))
-                for topic_id, [topic_json, _] in zip(topic_ids, topic_info)
-            )
-        except NoNodeError:
-            print(
-                "[ERROR] topic '{topic}' not found.".format(topic=topic_name),
-                file=sys.stderr,
-            )
-            return {}
-
     def get_topics(self, topic_name=None, names_only=False, fetch_partition_state=False):
         """Get information on all the available topics."""
         topic_ids = [topic_name] if topic_name else self.get_children(
