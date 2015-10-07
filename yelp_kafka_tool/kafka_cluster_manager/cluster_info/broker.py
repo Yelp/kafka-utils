@@ -113,13 +113,14 @@ class Broker(object):
                 continue
             # Current broker is granted leadership temporarily
             prev_leader = partition.swap_leader(self)
+            # Partition shouldn't be used again
+            skip_partitions.append(partition)
             # Continue if prev-leader remains balanced
             if prev_leader.count_preferred_replica() >= opt_count:
                 # If current broker is leader-balanced return else
                 # request next-partition
-                skip_partitions.append(partition)
                 if self.count_preferred_replica() >= opt_count:
-                    return True
+                    return
                 else:
                     continue
             else:  # prev-leader (broker) became unbalanced
@@ -130,6 +131,8 @@ class Broker(object):
                 # If prev-leader couldn't be leader-balanced
                 # revert its previous grant to current-broker
                 if prev_leader.count_preferred_replica() < opt_count:
+                    # Partition can be used again for rebalancing
+                    skip_partitions.remove(partition)
                     partition.swap_leader(prev_leader)
                     # Try requesting leadership from next partition
                     continue
@@ -141,54 +144,56 @@ class Broker(object):
                     skip_brokers.remove(prev_leader)
                     if self.count_preferred_replica() >= opt_count:
                         # Return if current-broker is leader-balanced
-                        return True
+                        return
                     else:
                         continue
         # Leadership-grant unsuccessful
         return False
 
-    def donate_leadership(self, opt_count, skip_brokers, skip_partitions):
+    def donate_leadership(self, opt_count, skip_brokers, skip_followers):
         owned_partitions = filter(
             lambda p: self is p.leader and len(p.replicas) > 1,
             self.partitions,
         )
         for partition in owned_partitions:
-            # Skip partition if already considered, before
-            # TODO: partition can be considered again for different follower?
-            if partition in skip_partitions:
-                continue
+            # Skip using same partition with broker if already used before
             potential_new_leaders = filter(
                 lambda f: f not in skip_brokers,
                 partition.followers,
             )
-            for new_leader in potential_new_leaders:
-                prev_leader = partition.swap_leader(new_leader)
+            for follower in potential_new_leaders:
+                # Don't swap the broker-pair if already swapped before
+                # in same partition
+                if (partition, self, follower) in skip_followers:
+                    continue
+                prev_leader = partition.swap_leader(follower)
+                skip_followers.append((partition, follower, self))
                 assert(prev_leader == self)
-                # new-leader didn't imbalance
-                if new_leader.count_preferred_replica() <= opt_count + 1:
-                    skip_partitions.append(partition)
+                # new-leader didn't unbalance
+                if follower.count_preferred_replica() <= opt_count + 1:
                     # over-broker balanced
                     if self.count_preferred_replica() <= opt_count + 1:
-                        return True
+                        return
                     else:
                         # Try new-leader
                         continue
                 else:  # new-leader (broker) became over-balanced
-                    skip_brokers.append(new_leader)
-                    new_leader.donate_leadership(opt_count, skip_brokers, skip_partitions)
+                    skip_brokers.append(follower)
+                    follower.donate_leadership(opt_count, skip_brokers, skip_followers)
                     # new-leader couldn't be balanced, revert
-                    if new_leader.count_preferred_replica() > opt_count + 1:
+                    if follower.count_preferred_replica() > opt_count + 1:
+                        skip_followers.append((partition, follower, self))
                         partition.swap_leader(self)
                         # try next leader or partition
                         continue
                     else:
                         # new-leader was successfuly balanced
-                        skip_partitions.append(partition)
+                        skip_followers.append((partition, follower, self))
                         # new-leader can be reused
-                        skip_brokers.remove(new_leader)
+                        skip_brokers.remove(follower)
                         # now broker is balanced
                         if self.count_preferred_replica() <= opt_count + 1:
-                            return True
+                            return
                         else:
                             # Further reduction required
                             continue
