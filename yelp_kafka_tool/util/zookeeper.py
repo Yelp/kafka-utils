@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import copy
 import json
 import sys
 
@@ -82,7 +83,28 @@ class ZK:
             brokers[b_id] = broker
         return brokers
 
-    def get_topics(self, topic_name=None, names_only=False, partitions_only=False):
+    def get_partitions(self, topic_name=None):
+        """Get topic to partition-count info on all the available topics."""
+        topic_ids = [topic_name] if topic_name else self.get_children(
+            "/brokers/topics",
+        )
+        try:
+            topic_info = [
+                self.get("/brokers/topics/{id}".format(id=id))
+                for id in topic_ids
+            ]
+            return dict(
+                (topic_id, json.loads(topic_json))
+                for topic_id, [topic_json, _] in zip(topic_ids, topic_info)
+            )
+        except NoNodeError:
+            print(
+                "[ERROR] topic '{topic}' not found.".format(topic=topic_name),
+                file=sys.stderr,
+            )
+            return {}
+
+    def get_topics(self, topic_name=None, names_only=False, fetch_partition_state=False):
         """Get information on all the available topics."""
         topic_ids = [topic_name] if topic_name else self.get_children(
             "/brokers/topics"
@@ -90,41 +112,43 @@ class ZK:
         if names_only:
             return topic_ids
         try:
-            topics = [
-                self.get("/brokers/topics/{id}".format(id=id))
+            topics_data = dict(
+                (id, json.loads(self.get("/brokers/topics/{id}".format(id=id))[0]))
                 for id in topic_ids
-            ]
+            )
         except NoNodeError:
             print(
                 "[ERROR] topic '{topic}' not found.".format(topic=topic_name),
                 file=sys.stderr,
             )
             return {}
-        # Return information of topics upto to partition-node only
-        # State of partitions is not required
-        if partitions_only:
-            return dict(
-                (topic_id, json.loads(topic_json))
-                for topic_id, [topic_json, _] in zip(topic_ids, topics)
-            )
+        if fetch_partition_state:
+            # Return information of topics upto to partition-node only
+            return topics_data
+        else:
+            # Fetch state of partitions
+            return self._fetch_status(topics_data)
+
+    def _fetch_status(self, topics_data):
         # Get information on partition-state as well
         result = {}
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
-        for topic_id, [topic_json, _] in zip(topic_ids, topics):
-            topic = json.loads(topic_json)
-            partitions = topic["partitions"]
+        # Deepcopy original topics-data since it is modified later
+        new_topics_data = copy.deepcopy(topics_data)
+        for topic_id, topic_data in new_topics_data.iteritems():
+            partitions = topic_data["partitions"]
             partitions_data = {}
-            for p_id, replicas in partitions.items():
+            for p_id, replicas in partitions.iteritems():
                 try:
                     partition_json, _ = self.get(
-                        state_path.format(topic_id=topic_id, p_id=p_id)
+                        state_path.format(topic_id=topic_id, p_id=p_id),
                     )
                     partitions_data[p_id] = json.loads(partition_json)
                     partitions_data[p_id]['replicas'] = replicas
                 except NoNodeError:
                     partitions_data[p_id] = None  # The partition has no data
-            topic['partitions'] = partitions_data
-            result[topic_id] = topic
+            topic_data['partitions'] = partitions_data
+            result[topic_id] = topic_data
         return result
 
     def get_my_subscribed_topics(self, groupid):
@@ -249,7 +273,7 @@ class ZK:
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
-        cluster_layout = self.get_topics(partitions_only=True)
+        cluster_layout = self.get_topics(fetch_partition_state=True)
         # Re-format cluster-layout
         partitions = [
             {
