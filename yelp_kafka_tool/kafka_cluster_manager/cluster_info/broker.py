@@ -192,7 +192,7 @@ class Broker(object):
                     if self.count_preferred_replica() <= opt_count + 1:
                         return
                     else:
-                        # Try new-leader for different partition
+                        # Try next-partition, not another follower
                         break
                 else:  # new-leader (broker) became over-balanced
                     skip_brokers.append(follower)
@@ -204,14 +204,14 @@ class Broker(object):
                         # Try next leader or partition
                         continue
                     else:
-                        # new-leader was successfully balanced
+                        # New-leader was successfully balanced
                         used_edges.append((partition, follower, self))
-                        # new-leader can be reused
+                        # New-leader can be reused
                         skip_brokers.remove(follower)
-                        # now broker is balanced
                         if self.count_preferred_replica() <= opt_count + 1:
+                            # Now broker is balanced
                             return
                         else:
                             # Try next-partition, not another follower
-                            continue
+                            break
         return False
