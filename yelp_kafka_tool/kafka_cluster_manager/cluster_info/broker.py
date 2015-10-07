@@ -99,9 +99,9 @@ class Broker(object):
         for partition in owned_partitions:
             for broker in partition.followers:
                 b_leader_cnt = broker.count_preferred_replica()
-                if b_leader_cnt < opt_count and leader_cnt - b_leader_cnt > 1:
+                if b_leader_cnt <= opt_count and leader_cnt - b_leader_cnt > 1:
                     # Assign 'broker' as new leader for 'partition'
-                    partition.swap_leader(self)
+                    partition.swap_leader(broker)
                     break
             if leader_cnt == opt_count:
                 return
