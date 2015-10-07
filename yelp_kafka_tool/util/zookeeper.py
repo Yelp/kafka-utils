@@ -101,9 +101,10 @@ class ZK:
             return topic_ids
         topics_data = {}
         for topic_id in topic_ids:
-            print('in topic', topic_id)
             try:
-                topic_data = json.loads(self.get("/brokers/topics/{id}".format(id=topic_id))[0])
+                topic_data = json.loads(
+                    self.get("/brokers/topics/{id}".format(id=topic_id))[0],
+                )
             except NoNodeError:
                 print(
                     "[ERROR] topic '{topic}' not found.".format(topic=topic_id),
@@ -115,6 +116,7 @@ class ZK:
             for p_id, replicas in topic_data["partitions"].iteritems():
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
+                    # Fetch partition-state from zookeeper
                     partitions_data[p_id] = self._fetch_partition_state(topic_id, p_id)
                 partitions_data[p_id]['replicas'] = replicas
             topic_data['partitions'] = partitions_data
@@ -122,9 +124,9 @@ class ZK:
         return topics_data
 
     def _fetch_partition_state(self, topic_id, partition_id):
-        """Populate given topics-data with partitions state.
+        """Fetch partition-state for given topic-partition.
 
-        Topic-data format before populating:-
+        Topic-data format before fetching:-
         topic_data = {
             'version': 1,
             'partitions': {
@@ -135,8 +137,7 @@ class ZK:
             }
         }
 
-        Topic-data format after populating:-
-        Replace replica-list with partition-info
+        Topic-data format after fetching:-
         topic_data = {
             'version': 1,
             'partitions': {
@@ -157,7 +158,7 @@ class ZK:
             )
             return json.loads(partition_json)
         except NoNodeError:
-            return None  # The partition has no data
+            return {}  # The partition has no data
 
     def get_my_subscribed_topics(self, groupid):
         """Get the list of topics that a consumer is subscribed to
