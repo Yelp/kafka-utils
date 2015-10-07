@@ -153,9 +153,14 @@ class Broker(object):
             self.partitions,
         )
         for partition in owned_partitions:
+            # Skip partition if already considered, before
+            # TODO: partition can be considered again for different follower?
             if partition in skip_partitions:
                 continue
-            potential_new_leaders = [follower for follower in partition.followers if follower not in skip_brokers]
+            potential_new_leaders = filter(
+                lambda f: f not in skip_brokers,
+                partition.followers,
+            )
             for new_leader in potential_new_leaders:
                 prev_leader = partition.swap_leader(new_leader)
                 assert(prev_leader == self)

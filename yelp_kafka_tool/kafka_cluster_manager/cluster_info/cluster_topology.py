@@ -380,7 +380,6 @@ class ClusterTopology(object):
             2. If path found, update UB-broker and delete path-edges (skip-partitions).
             3. Continue with step-1 until all possible paths explored.
         """
-        # TODO: rename
         under_brokers = filter(
             lambda b: b.count_preferred_replica() < opt_cnt,
             self.brokers.values(),
