@@ -50,7 +50,6 @@ from .util import KafkaInterface
 
 DEFAULT_MAX_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
-KAFKA_SCRIPT_PATH = '/nail/home/manpreet/pg/yelp-kafka-util/kafka-info/kafka_reassignment/kafka/bin'
 _log = logging.getLogger('kafka-cluster-manager')
 
 
@@ -96,21 +95,19 @@ def reassign_partitions(cluster_config, args):
             ct.assignment,
             args.max_changes,
         )
-        no_confirm = args.no_confirm
-
         if result:
             # Display or store plan
-            display_assignment_changes(result, no_confirm)
+            display_assignment_changes(result, args.no_confirm)
             # Export proposed-plan to json file
             plan_file = args.proposed_plan_file
             if plan_file:
                 proposed_plan_json(result[0], plan_file)
             # Check and execute plan
-            execute_plan(ct, zk, result[0], args.apply, no_confirm, script_path)
+            execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
         else:
             # No new-plan
             msg_str = 'No topic-partition layout changes proposed.'
-            if no_confirm:
+            if args.no_confirm:
                 _log.info(msg_str)
             else:
                 print(msg_str)

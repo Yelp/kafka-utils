@@ -82,7 +82,7 @@ class ZK:
             brokers[b_id] = broker
         return brokers
 
-    def get_topics(self, topic_name=None, names_only=False):
+    def get_topics(self, topic_name=None, names_only=False, partitions_only=False):
         """Get information on all the available topics."""
         topic_ids = [topic_name] if topic_name else self.get_children(
             "/brokers/topics"
@@ -100,6 +100,15 @@ class ZK:
                 file=sys.stderr,
             )
             return {}
+        # Return information of topics upto to partition-node only
+        # State of partitions is not required
+        if partitions_only:
+            print('return partition only')
+            return dict(
+                (topic_id, json.loads(topic_json))
+                for topic_id, [topic_json, _] in zip(topic_ids, topics)
+            )
+        # Get information on partition-state as well
         result = {}
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
         for topic_id, [topic_json, _] in zip(topic_ids, topics):
@@ -223,7 +232,6 @@ class ZK:
             * Raise any other exception throw
 
         """
-        print('data', assignment)
         path = REASSIGNMENT_ZOOKEEPER_PATH
         plan = json.dumps(assignment)
         try:
@@ -242,7 +250,7 @@ class ZK:
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
-        cluster_layout = self.get_partitions()
+        cluster_layout = self.get_topics(partitions_only=True)
         # Re-format cluster-layout
         partitions = [
             {

@@ -128,6 +128,7 @@ def display_assignment_changes(plan_details, to_log=True):
     """
     _, curr_plan_list, new_plan_list, total_changes = plan_details
     action_cnt = '\n[INFO] Total actions required {0}'.format(total_changes)
+    # TODO: Make it as part of small function as part of another review
     _log.info(action_cnt) if to_log else print(action_cnt)
     action_cnt = (
         '[INFO] Total actions that will be executed {0}'
