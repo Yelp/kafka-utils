@@ -103,7 +103,6 @@ class ZK:
         # Return information of topics upto to partition-node only
         # State of partitions is not required
         if partitions_only:
-            print('return partition only')
             return dict(
                 (topic_id, json.loads(topic_json))
                 for topic_id, [topic_json, _] in zip(topic_ids, topics)
