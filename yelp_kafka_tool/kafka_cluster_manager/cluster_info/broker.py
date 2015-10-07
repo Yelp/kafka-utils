@@ -150,7 +150,25 @@ class Broker(object):
         # Leadership-grant unsuccessful
         return False
 
-    def donate_leadership(self, opt_count, skip_brokers, skip_followers):
+    def donate_leadership(self, opt_count, skip_brokers, used_edges):
+        """Over-loaded brokers tries to donate their leadership to one of their
+        followers recursively until they become balanced.
+
+        :key_terms:
+        used_edges: Represent list of tuple/edges (partition, prev-leader, new-leader),
+                    which have already been used for donating leadership from
+                    prev-leader to new-leader in same partition before.
+        skip_brokers: This is to avoid using same broker recursively for balancing
+                      to prevent loops.
+
+        :Algorithm:
+        * Over-loaded leader tries to donate its leadership to one of its followers
+        * Follower will be tried to balanced recursively if it becomes over-balanced
+        * If it is successful, over-loaded leader moves to next partition if required,
+            return otherwise.
+        * If it is unsuccessful, it tries for next-follower or next-partition whatever
+            or returns if none available.
+        """
         owned_partitions = filter(
             lambda p: self is p.leader and len(p.replicas) > 1,
             self.partitions,
@@ -164,37 +182,36 @@ class Broker(object):
             for follower in potential_new_leaders:
                 # Don't swap the broker-pair if already swapped before
                 # in same partition
-                if (partition, self, follower) in skip_followers:
+                if (partition, self, follower) in used_edges:
                     continue
-                prev_leader = partition.swap_leader(follower)
-                skip_followers.append((partition, follower, self))
-                assert(prev_leader == self)
+                partition.swap_leader(follower)
+                used_edges.append((partition, follower, self))
                 # new-leader didn't unbalance
                 if follower.count_preferred_replica() <= opt_count + 1:
                     # over-broker balanced
                     if self.count_preferred_replica() <= opt_count + 1:
                         return
                     else:
-                        # Try new-leader
-                        continue
+                        # Try new-leader for different partition
+                        break
                 else:  # new-leader (broker) became over-balanced
                     skip_brokers.append(follower)
-                    follower.donate_leadership(opt_count, skip_brokers, skip_followers)
+                    follower.donate_leadership(opt_count, skip_brokers, used_edges)
                     # new-leader couldn't be balanced, revert
                     if follower.count_preferred_replica() > opt_count + 1:
-                        skip_followers.append((partition, follower, self))
+                        used_edges.append((partition, follower, self))
                         partition.swap_leader(self)
-                        # try next leader or partition
+                        # Try next leader or partition
                         continue
                     else:
-                        # new-leader was successfuly balanced
-                        skip_followers.append((partition, follower, self))
+                        # new-leader was successfully balanced
+                        used_edges.append((partition, follower, self))
                         # new-leader can be reused
                         skip_brokers.remove(follower)
                         # now broker is balanced
                         if self.count_preferred_replica() <= opt_count + 1:
                             return
                         else:
-                            # Further reduction required
+                            # Try next-partition, not another follower
                             continue
         return False

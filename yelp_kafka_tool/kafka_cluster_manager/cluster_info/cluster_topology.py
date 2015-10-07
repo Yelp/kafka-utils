@@ -396,7 +396,7 @@ class ClusterTopology(object):
         )
         # Any over-balanced brokers tries to donate thier leadership to followers
         if over_brokers:
-            skip_brokers, skip_partitions = [], []
+            skip_brokers, used_edges = [], []
             for broker in over_brokers:
                 skip_brokers.append(broker)
-                broker.donate_leadership(opt_cnt, skip_brokers, skip_partitions)
+                broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
