@@ -52,6 +52,9 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk)
         if args.replication_groups:
             ct.reassign_partitions(replication_groups=True)
+        if args.leaders:
+            ct.reassign_partitions(leaders=True)
+
         # Execute or display plan
         execute_plan(
             ct.initial_assignment,
@@ -97,37 +100,46 @@ def parse_args():
     # re-assign partitions
     parser_rebalance = subparsers.add_parser(
         'rebalance',
-        description='Re-balance the replication-groups',
+        description='Re-assign partitions over brokers.',
     )
     parser_rebalance.add_argument(
         '--replication-groups',
         dest='replication_groups',
         action='store_true',
-        help='Evenly distributes replicas over replication-groups',
+        help='Evenly distributes replicas over replication-groups.',
     )
+    parser_rebalance.add_argument(
+        '--leaders',
+        dest='leaders',
+        action='store_true',
+        help='Evenly distributes leaders optimally over brokers',
+    )
+
     parser_rebalance.add_argument(
         '--max-changes',
         dest='max_changes',
         type=int,
         default=DEFAULT_MAX_CHANGES,
         help='Maximum number of actions executed from proposed assignment'
-             '%(default)s'
+             ' DEFAULT: %(default)s'
     )
     parser_rebalance.add_argument(
         '--apply',
         dest='apply',
         action='store_true',
-        help='Proposed-plan will be executed on confirmation'
+        help='Proposed-plan will be executed on confirmation.'
     )
     parser_rebalance.add_argument(
         '--no-confirm',
         dest='no_confirm',
         action='store_true',
-        help='Proposed-plan will be executed without confirmation',
+        help='Proposed-plan will be executed without confirmation.'
+             ' --apply flag also required.'
     )
     parser_rebalance.add_argument(
         '--json',
         dest='proposed_plan_file',
+        metavar='<reassignment-plan-file-path>',
         type=str,
         help='Export candidate partition reassignment configuration '
              'to given json file.',
@@ -153,9 +165,9 @@ def validate_args(args):
             .format(max_changes=args.max_changes)
         )
         result = False
-    rebalance_options = [args.replication_groups]
+    rebalance_options = [args.replication_groups, args.leaders]
     if not any(rebalance_options):
-        _log.error('\'--replication-groups\' flag required.')
+        _log.error('\'--replication-groups\' and/or \'--leaders\' flag required.')
         result = False
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
@@ -171,9 +183,10 @@ def run():
         sys.exit(1)
     if args.zookeeper:
         cluster_config = ClusterConfig(
+            type=None,
             name=args.cluster_name,
             broker_list=[],
-            zookeeper=args.zookeeper
+            zookeeper=args.zookeeper,
         )
     else:
         cluster_config = config.get_cluster_config(

@@ -141,7 +141,7 @@ def display_assignment_changes(
     changes = ('[INFO] Proposed Changes in current cluster-layout:\n')
     _log.info(changes) if log_only else print(changes)
 
-    tp_str = 'Topic-Partition'
+    tp_str = 'Topic - Partition'
     curr_repl_str = 'Previous-Assignment'
     new_rep_str = 'Proposed-Assignment'
     tp_list = [tp_repl[0] for tp_repl in curr_plan_list]
@@ -167,7 +167,7 @@ def display_assignment_changes(
         proposed_repl = [
             tp_repl[1] for tp_repl in new_plan_list if tp_repl[0] == tp
         ][0]
-        tp_str = '{topic}-{partition:<2d}'.format(topic=tp[0], partition=tp[1])
+        tp_str = '{topic} - {partition:<2d}'.format(topic=tp[0], partition=tp[1])
         row = (
             '{tp:<30s}: {curr_repl:<20s} ==> {proposed_repl:<20s}'.format(
                 tp=tp_str,
