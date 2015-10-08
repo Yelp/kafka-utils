@@ -147,8 +147,6 @@ class Broker(object):
                         return
                     else:
                         continue
-        # Leadership-grant unsuccessful
-        return False
 
     def donate_leadership(self, opt_count, skip_brokers, used_edges):
         """Over-loaded brokers tries to donate their leadership to one of their
@@ -214,4 +212,3 @@ class Broker(object):
                         else:
                             # Try next-partition, not another follower
                             break
-        return False
