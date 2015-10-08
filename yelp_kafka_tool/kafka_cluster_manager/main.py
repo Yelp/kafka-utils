@@ -85,8 +85,12 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk=zk, script_path=script_path)
 
         # Re-balance replication-groups
-        # TODO change!
-        ct.reassign_partitions(replication_groups=True)
+        if args.replication_groups:
+            ct.reassign_partitions(replication_groups=True)
+
+        # Re-balance leaders
+        if args.leaders:
+            ct.reassign_partitions(leaders=True)
 
         # Evaluate proposed-plan and execute/display the same
         # Get final-proposed-plan details
