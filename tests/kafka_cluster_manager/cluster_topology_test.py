@@ -19,6 +19,8 @@ from yelp_kafka.config import ClusterConfig
 
 
 class TestClusterToplogy(object):
+    # replication-group to broker map
+    # rg1: 0, 1, 4; rg2: 2, 3; rg3: 5; rg4: 6;
     broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3', 6: 'rg4'}
     topic_ids = ['T0', 'T1', 'T2', 'T3']
     brokers_info = {

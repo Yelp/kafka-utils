@@ -1,9 +1,15 @@
+from collections import OrderedDict
 from mock import Mock, sentinel
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
+    get_partition_imbalance_stats,
+    calculate_partition_movement,
+)
+from .cluster_topology_test import TestClusterToplogy as CT
 
 
 class TestReplicationGroup(object):
@@ -221,3 +227,289 @@ class TestReplicationGroup(object):
         # dest-broker shouldn't be b3 since it has more partitions than b4
         # dest-broker can't be b5 since it has victim-partition p1
         assert broker_dest in [b4, b6]
+
+    # Test brokers-rebalancing
+    def test_get_target_brokers(self):
+        # rg1: 0,1; rg2: 2, 3
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1, 2]),
+                ((u'T1', 1), [0, 3]),
+                ((u'T2', 0), [2]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(5)) as ct:
+            rg1 = ct.rgs['rg1']
+            over_loaded = [ct.brokers[0]]
+            under_loaded = [ct.brokers[1]]
+            b_source, b_dest, victim_partition = \
+                rg1._get_target_brokers(over_loaded, under_loaded)
+
+            # Assert source-broker is 0 and destination-broker is 1
+            assert b_source.id == 0
+            assert b_dest.id == 1
+            # Partition can't be T3, 0, since it already has replica on broker 1
+            # Partitions shouldn't be (T1, 0) since it has its sibling (T1, 1)
+            # at destination broker-1
+            # So ideal-partition should be (T0, 0)
+            assert victim_partition.name == ('T0', 0)
+
+    def test_get_target_brokers_case2(self):
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1, 2]),
+                ((u'T1', 1), [0, 3]),
+                ((u'T2', 0), [2]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(5)) as ct:
+            rg1 = ct.rgs['rg1']
+            over_loaded = [ct.brokers[0]]
+            under_loaded = [ct.brokers[1]]
+            b_source, b_dest, victim_partition = \
+                rg1._get_target_brokers(over_loaded, under_loaded)
+
+            # Assert source-broker is 0 and destination-broker is 1
+            assert b_source.id == 0
+            assert b_dest.id == 1
+            # Partition can't be T3, 0, since it already has replica on broker 1
+            # Partitions shouldn't be (T1, 0) since it has its sibling (T1, 1)
+            # at destination broker-1
+            # So ideal-partition should be (T0, 0)
+            assert victim_partition.name == ('T0', 0)
+
+    def test_rebalance_brokers_balanced_1(self):
+        # Single replication-group
+        # Group: map(broker, p-count)
+        # rg1:  (0: 2, 1:2, 4:2)
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 4]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T2', 1), [1]),
+                ((u'T3', 0), [0, 1, 4]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, ['0', '1', '4']) as ct:
+            ct.rebalance_brokers()
+
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 0
+            # Verify no change is assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+
+    def test_rebalance_brokers_balanced_2(self):
+        # 2 replication-groups are balanced individually
+        # and overall balanced as well
+        # Rg-Group: map(broker, p-count)
+        # rg1:      (0: 2, 1:2)
+        # rg2:      (2: 1)
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T1', 1), [1]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
+            ct.rebalance_brokers()
+
+            # Verify no change is assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+            # Verify overall-imbalance is 0
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 0
+            # Verify  rg1 is balanced
+            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
+            assert net_rg1 == 0
+            # Verify  rg2 is balanced
+            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
+            assert net_rg2 == 0
+
+    def test_rebalance_brokers_balanced_3(self):
+        # 2 replication-groups are in balanced state individually
+        # but overall imbalanced.
+        # Rg-Group: map(broker, p-count)
+        # rg1:      (0: 2, 1:2); rg2:      (2: 1, 3:0)
+        # opt-overall: 5/4 ==> 1, extra-overall: 1
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T1', 1), [1]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
+            ct.rebalance_brokers()
+
+            # Verify no change is assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+            # Verify overall-imbalance is NOT 0, since we don't move partitions
+            # across rg's, to balance brokers
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 1
+            # Verify  rg1 is balanced
+            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
+            assert net_rg1 == 0
+            # Verify  rg2 is balanced
+            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
+            assert net_rg2 == 0
+
+    def test_rebalance_brokers_imbalanced_1(self):
+        # 1 rg is balanced, 2nd imbalanced
+        # Result: Overall-balanced and individually-balanced
+        # rg1: (0: 3, 1:1); rg2: (2: 1)
+        # opt-overall: 5/3 ==> 1, extra-overall: 2
+        # opt-rg1: 4/2 ==> 2, extra-rg1: 0
+        # ==> 0, 1 should have 2 partitions each
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T1', 1), [0]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
+            ct.rebalance_brokers()
+
+            # Verify partition-count of 0 and 1 as equal to 2
+            assert len(ct.brokers[0].partitions) == 2
+            assert len(ct.brokers[1].partitions) == 2
+            # Verify overall-imbalance is 0
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 0
+            # Verify  rg1 is balanced
+            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
+            assert net_rg1 == 0
+            # Verify  rg2 is balanced
+            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
+            assert net_rg2 == 0
+
+    def test_rebalance_brokers_imbalanced_2(self):
+        # 2-rg's: Both rg's imbalanced
+        # Result: rgs' balanced individually and overall
+        # rg1: (0: 3, 1:1); rg2: (2: 2, 3:0)
+        # opt-overall: 6/4 ==> 1, extra-overall: 2
+        # opt-rg1: 4/2 ==> 2, extra-rg1: 0
+        # opt-rg2: 2/2 ==> 1, extra-rg1: 0
+        # ==> 0, 1 should have 2 partitions each
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T1', 1), [0, 2]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
+            ct.rebalance_brokers()
+
+            # rg1: Verify partition-count of 0 and 1 as equal to 2
+            assert len(ct.brokers[0].partitions) == 2
+            assert len(ct.brokers[1].partitions) == 2
+            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            assert len(ct.brokers[2].partitions) == 1
+            assert len(ct.brokers[3].partitions) == 1
+            # Verify overall-imbalance is 0
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 0
+            # Verify  rg1 is balanced
+            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
+            assert net_rg1 == 0
+            # Verify  rg2 is balanced
+            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
+            assert net_rg2 == 0
+
+    def test_rebalance_brokers_imbalanced_3(self):
+        # 2-rg's: Both rg's imbalanced
+        # Result: rgs' balanced individually but NOT overall
+        # rg1: (0: 4, 1:2); rg2: (2: 2, 3:0)
+        # opt-overall: 8/4 ==> 2, extra-overall: 0
+        # opt-rg1: 6/2 ==> 3, extra-rg1: 0
+        # opt-rg2: 2/2 ==> 1, extra-rg1: 0
+        # ==> 0, 1 should have 3 partitions each
+        # ==> 2, 3 should have 1 partition each
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2, 1]),
+                ((u'T1', 0), [0, 1]),
+                ((u'T1', 1), [0, 2]),
+                ((u'T1', 2), [0]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
+            ct.rebalance_brokers()
+
+            # rg1: Verify partition-count of 0 and 1 as equal to 3
+            assert len(ct.brokers[0].partitions) == 3
+            assert len(ct.brokers[1].partitions) == 3
+            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            assert len(ct.brokers[2].partitions) == 1
+            assert len(ct.brokers[3].partitions) == 1
+            # Verify overall-imbalance is NON-zero, since we don't move partitions
+            # across replication-groups
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 2
+            # Verify  rg1 is balanced
+            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
+            assert net_rg1 == 0
+            # Verify  rg2 is balanced
+            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
+            assert net_rg2 == 0
+
+    def test_rebalance_brokers_imbalanced_4(self):
+        # Test minimum-movements
+        # 3-rg's: 2 rg's imbalanced, 1 rg is balanced
+        # Result: All 3 rgs' balanced
+        # rg1: (0: 3, 1:0, 4:2); rg2: (2: 2, 3:0); rg3: (4:1)
+        # For minimum movements partition from 0 should move to 1
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 4]),
+                ((u'T1', 1), [4, 2]),
+                ((u'T1', 2), [0, 5]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(6)) as ct:
+            # Re-balance each replication-group separately
+            ct.rgs['rg1'].rebalance_brokers()
+            ct.rgs['rg2'].rebalance_brokers()
+            ct.rgs['rg3'].rebalance_brokers()
+
+            # rg1: Verify partition-count of 0:2, 1:1, 4:2
+            assert len(ct.brokers[0].partitions) == 2
+            assert len(ct.brokers[1].partitions) == 1
+            assert len(ct.brokers[4].partitions) == 2
+            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            assert len(ct.brokers[2].partitions) == 1
+            assert len(ct.brokers[3].partitions) == 1
+            # rg3: Verify partition-count of 5 as equal to 1
+            assert len(ct.brokers[5].partitions) == 1
+            # Verify overall imbalance is also 0
+            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
+            assert net_imbalance == 0
+            # Verify  rg1 is balanced
+            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
+            assert net_rg1 == 0
+            # Verify  rg2 is balanced
+            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
+            assert net_rg2 == 0
+            # Verify  rg3 is balanced
+            _, net_rg3, _ = get_partition_imbalance_stats(ct.rgs['rg3'].brokers)
+            assert net_rg3 == 0
+            # Assert Min-partition movements as previous net-imbalance for each
+            # group which is 2 (1 for rg1 and 1 for rg2)
+            _, total_movements = \
+                calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            assert total_movements == 2
