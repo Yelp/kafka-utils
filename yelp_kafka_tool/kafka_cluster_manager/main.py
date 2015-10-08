@@ -85,8 +85,8 @@ def reassign_partitions(cluster_config, args):
         ct = ClusterTopology(zk=zk, script_path=script_path)
 
         # Re-balance replication-groups
-        if args.replication_groups:
-            ct.reassign_partitions(replication_groups=True)
+        # TODO change!
+        ct.reassign_partitions(replication_groups=True)
 
         # Evaluate proposed-plan and execute/display the same
         # Get final-proposed-plan details
@@ -168,6 +168,13 @@ def parse_args():
         ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
+        '--leaders',
+        dest='leaders',
+        action='store_true',
+        help='Evenly distributes leaders optimally over brokers',
+    )
+
+    parser_rebalance.add_argument(
         '--max-changes',
         dest='max_changes',
         type=int,
@@ -217,11 +224,9 @@ def validate_args(args):
             .format(max_changes=args.max_changes)
         )
         result = False
-    rebalance_options = [args.replication_groups]
-
-    # At-least one of rebalancing options required
+    rebalance_options = [args.replication_groups, args.leaders]
     if not any(rebalance_options):
-        _log.error('--replication-groups flag required.')
+        _log.error('--replication-groups and/or --leaders flag required.')
         result = False
 
     if args.no_confirm and not args.apply:
