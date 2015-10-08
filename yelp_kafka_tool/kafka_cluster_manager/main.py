@@ -39,34 +39,79 @@ from yelp_kafka.config import ClusterConfig
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 from .cluster_info.cluster_topology import ClusterTopology
-from .execute_assignment import execute_plan
+from .cluster_info.display import display_assignment_changes
+from .cluster_info.util import (
+    get_reduced_proposed_plan,
+    confirm_execution,
+    proposed_plan_json,
+)
+from .util import KafkaInterface
 
 
 DEFAULT_MAX_CHANGES = 5
+KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 _log = logging.getLogger('kafka-cluster-manager')
+
+
+def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
+    """Save proposed-plan and execute the same if requested."""
+    # Execute proposed-plan
+    if to_execute(to_apply, no_confirm):
+        _log.info('Executing Proposed Plan')
+        KafkaInterface(script_path).execute_plan(
+            zk,
+            proposed_plan,
+            ct.brokers.values(),
+            ct.topics.values(),
+        )
+    else:
+        _log.info('Proposed Plan won\'t be executed.')
+
+
+def to_execute(to_apply, no_confirm):
+    """Confirm if proposed-plan should be executed."""
+    if to_apply and (no_confirm or confirm_execution()):
+        return True
+    return False
 
 
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
-        ct = ClusterTopology(zk)
+        script_path = None
+        # Use kafka-scripts
+        if args.use_kafka_script:
+            script_path = args.script_path
+        ct = ClusterTopology(zk=zk, script_path=script_path)
         ct.reassign_partitions(
             replication_groups=args.replication_groups,
             brokers=args.brokers,
             leaders=args.leaders,
         )
-        # Execute or display plan
-        execute_plan(
+
+        # Evaluate proposed-plan and execute/display the same
+        # Get final-proposed-plan details
+        result = get_reduced_proposed_plan(
             ct.initial_assignment,
             ct.assignment,
             args.max_changes,
-            args.apply,
-            args.no_confirm,
-            args.proposed_plan_file,
-            zk,
-            ct.brokers.keys(),
-            ct.topics.keys(),
         )
+        if result:
+            # Display or store plan
+            display_assignment_changes(result, args.no_confirm)
+            # Export proposed-plan to json file
+            plan_file = args.proposed_plan_file
+            if plan_file:
+                proposed_plan_json(result[0], plan_file)
+            # Check and execute plan
+            execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
+        else:
+            # No new-plan
+            msg_str = 'No topic-partition layout changes proposed.'
+            if args.no_confirm:
+                _log.info(msg_str)
+            else:
+                print(msg_str)
 
 
 def parse_args():
@@ -107,6 +152,21 @@ def parse_args():
         dest='replication_groups',
         action='store_true',
         help='Evenly distributes replicas over replication-groups.',
+    )
+    parser_rebalance.add_argument(
+        '--use-kafka-script',
+        dest='use_kafka_script',
+        action='store_true',
+        help='Use kafka-cli scripts to access zookeeper.'
+        ' Use --script-path to provide path for script.',
+    )
+    parser_rebalance.add_argument(
+        '--script-path',
+        dest='script_path',
+        type=str,
+        default=KAFKA_SCRIPT_PATH,
+        help='Path of kafka-cli scripts to be used to access zookeeper.'
+        ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
         '--leaders',
@@ -177,6 +237,7 @@ def validate_args(args):
             'At least one of --replication-groups, --leaders, --brokers flag required.',
         )
         result = False
+
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
         result = False

@@ -50,12 +50,11 @@ class Partition(object):
         """
         # Replica set cannot be changed
         assert(new_leader in self._replicas)
+        curr_leader = self.leader
         idx = self._replicas.index(new_leader)
-        new_replicas = self._replicas[:]
-        new_replicas[0] = self._replicas[idx]
-        new_replicas[idx] = self._replicas[0]
-        self._replicas = new_replicas
-        return
+        self._replicas[0], self._replicas[idx] = \
+            self._replicas[idx], self._replicas[0]
+        return curr_leader
 
     @property
     def followers(self):

@@ -22,7 +22,6 @@ from .stats import (
     get_leader_imbalance_stats,
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
-    get_leaders_per_broker,
 )
 from .util import separate_groups, get_assignment_map
 
@@ -33,10 +32,11 @@ class ClusterTopology(object):
     A Kafka cluster topology consists of:
     replication group (alias rg), broker, topic and partition.
     """
-    def __init__(self, zk):
+    def __init__(self, zk, script_path=None):
         self._name = zk.cluster_config.name
         self._zk = zk
         self.log = logging.getLogger(self.__class__.__name__)
+        self._kafka_script_path = script_path
         # Getting Initial assignment
         broker_ids = [
             int(broker) for broker in self._zk.get_brokers().iterkeys()
@@ -99,11 +99,11 @@ class ClusterTopology(object):
 
         Assignment is ordered by partition name tuple.
         """
-        # Requires running kafka-scripts
-        self._initial_assignment = KafkaInterface().get_cluster_assignment(
-            self._zk.cluster_config.zookeeper,
+        kafka = KafkaInterface(self._kafka_script_path)
+        self._initial_assignment = kafka.get_cluster_assignment(
+            self._zk,
             broker_ids,
-            topic_ids
+            topic_ids,
         )
 
     def _get_replication_group_id(self, broker):
@@ -314,21 +314,6 @@ class ClusterTopology(object):
             return min_replicated_rg
         return None
 
-    # Re-balancing leaders
-    def rebalance_leaders(self):
-        """Re-order brokers in replicas such that, every broker is assigned as
-        preferred leader evenly.
-        """
-        leaders_per_broker = get_leaders_per_broker(self.brokers.values())
-        opt_leader_cnt = len(self.partitions) // len(self.brokers)
-        for broker, count in leaders_per_broker.iteritems():
-            if count > opt_leader_cnt:
-                broker.decrease_leader_count(
-                    self.partitions.values(),
-                    leaders_per_broker,
-                    opt_leader_cnt,
-                )
-
     # Re-balancing partition count across brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers across all replication
@@ -336,3 +321,71 @@ class ClusterTopology(object):
         """
         for rg in self.rgs.values():
             rg.rebalance_brokers()
+
+    # Re-balancing leaders
+    def rebalance_leaders(self):
+        """Re-order brokers in replicas such that, every broker is assigned as
+        preferred leader evenly.
+        """
+        opt_leader_cnt = len(self.partitions) // len(self.brokers)
+        # Balanced brokers transfer leadership to their under-balanced followers
+        self.rebalancing_non_followers(opt_leader_cnt)
+
+    def rebalancing_followers(self, opt_leader_cnt):
+        """Transfer leadership from current over-balanced leaders to their
+        under-balanced followers.
+
+        @key-term:
+        over-balanced brokers:  Brokers with leadership-count > opt-count
+                                Note: Even brokers with leadership-count
+                                == opt-count are assumed as over-balanced.
+        under-balanced brokers: Brokers with leadership-count < opt-count
+        """
+        for broker in self.brokers.values():
+            if broker.count_preferred_replica() > opt_leader_cnt:
+                broker.decrease_leader_count(
+                    self.partitions.values(),
+                    opt_leader_cnt,
+                )
+
+    def rebalancing_non_followers(self, opt_cnt):
+        """Transfer leadership to any under-balanced followers on the pretext
+        that they remain leader-balanced or can be recursively balanced through
+        non-followers (followers of other leaders).
+
+        Context:
+        Consider a graph G:
+        Nodes: Brokers (e.g. b1, b2, b3)
+        Edges: From b1 to b2 s.t. b1 is a leader and b2 is its follower
+        State of nodes:
+            1. Over-balanced/Optimally-balanced: (OB)
+                if leadership-count(broker) >= opt-count
+            2. Under-balanced (UB) if leadership-count(broker) < opt-count
+            leader-balanced: leadership-count(broker) is in [opt-count, opt-count+1]
+
+        Algorithm:
+            1. Use Depth-first-search algorithm to find path between
+            between some UB-broker to some OB-broker.
+            2. If path found, update UB-broker and delete path-edges (skip-partitions).
+            3. Continue with step-1 until all possible paths explored.
+        """
+        under_brokers = filter(
+            lambda b: b.count_preferred_replica() < opt_cnt,
+            self.brokers.values(),
+        )
+        if under_brokers:
+            skip_brokers, skip_partitions = [], []
+            for broker in under_brokers:
+                skip_brokers.append(broker)
+                broker.request_leadership(opt_cnt, skip_brokers, skip_partitions)
+
+        over_brokers = filter(
+            lambda b: b.count_preferred_replica() > opt_cnt + 1,
+            self.brokers.values(),
+        )
+        # Any over-balanced brokers tries to donate thier leadership to followers
+        if over_brokers:
+            skip_brokers, used_edges = [], []
+            for broker in over_brokers:
+                skip_brokers.append(broker)
+                broker.donate_leadership(opt_cnt, skip_brokers, used_edges)

@@ -4,8 +4,10 @@ import json
 import sys
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NodeExistsError, NoNodeError
 from yelp_kafka_tool.util import config
+
+REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
 
 
 class ZK:
@@ -80,42 +82,83 @@ class ZK:
             brokers[b_id] = broker
         return brokers
 
-    def get_topics(self, topic_name=None, names_only=False):
-        """Get information on all the available topics."""
+    def get_topics(
+        self,
+        topic_name=None,
+        names_only=False,
+        fetch_partition_state=True,
+    ):
+        """Get information on all the available topics.
+
+        Note: By default we also fetch partition-state which results in
+        accessing the zookeeper twice. If just partition-replica information is
+        required fetch_partition_state should be set to False.
+        """
         topic_ids = [topic_name] if topic_name else self.get_children(
-            "/brokers/topics"
+            "/brokers/topics",
         )
         if names_only:
             return topic_ids
-        try:
-            topics = [
-                self.get("/brokers/topics/{id}".format(id=id))
-                for id in topic_ids
-            ]
-        except NoNodeError:
-            print(
-                "[ERROR] topic '{topic}' not found.".format(topic=topic_name),
-                file=sys.stderr,
-            )
-            return {}
-        result = {}
-        state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
-        for topic_id, [topic_json, _] in zip(topic_ids, topics):
-            topic = json.loads(topic_json)
-            partitions = topic["partitions"]
+        topics_data = {}
+        for topic_id in topic_ids:
+            try:
+                topic_data = json.loads(
+                    self.get("/brokers/topics/{id}".format(id=topic_id))[0],
+                )
+            except NoNodeError:
+                print(
+                    "[ERROR] topic '{topic}' not found.".format(topic=topic_id),
+                    file=sys.stderr,
+                )
+                return {}
+            # Prepare data for each partition
             partitions_data = {}
-            for p_id, replicas in partitions.items():
-                try:
-                    partition_json, _ = self.get(
-                        state_path.format(topic_id=topic_id, p_id=p_id)
-                    )
-                    partitions_data[p_id] = json.loads(partition_json)
-                    partitions_data[p_id]['replicas'] = replicas
-                except NoNodeError:
-                    partitions_data[p_id] = None  # The partition has no data
-            topic['partitions'] = partitions_data
-            result[topic_id] = topic
-        return result
+            for p_id, replicas in topic_data["partitions"].iteritems():
+                partitions_data[p_id] = {}
+                if fetch_partition_state:
+                    # Fetch partition-state from zookeeper
+                    partitions_data[p_id] = self._fetch_partition_state(topic_id, p_id)
+                partitions_data[p_id]['replicas'] = replicas
+            topic_data['partitions'] = partitions_data
+            topics_data[topic_id] = topic_data
+        return topics_data
+
+    def _fetch_partition_state(self, topic_id, partition_id):
+        """Fetch partition-state for given topic-partition.
+
+        Topic-data format before fetching:-
+        topic_data = {
+            'version': 1,
+            'partitions': {
+                p_id: {
+                    replicas: <replica-list>
+                    ...
+                }
+            }
+        }
+
+        Topic-data format after fetching:-
+        topic_data = {
+            'version': 1,
+            'partitions': {
+                p_id:{
+                    replicas: replica-list,
+                    isr: isr-list,
+                    controller_epoch: <val>,
+                    leader_epoch: <val>,
+                    version: 1,
+                    leader: <broker-id>,
+            }
+        }
+        """
+        state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
+        try:
+            partition_json, _ = self.get(
+                state_path.format(topic_id=topic_id, p_id=partition_id),
+            )
+            return json.loads(partition_json)
+        except NoNodeError:
+            return {}  # The partition has no data
 
     def get_my_subscribed_topics(self, groupid):
         """Get the list of topics that a consumer is subscribed to
@@ -203,3 +246,54 @@ class ZK:
             topic=topic,
         )
         self.delete(path)
+
+    def execute_assignment(self, assignment):
+        """Executing plan directly sending it to zookeeper nodes.
+        Algorithm:
+        1. Verification:
+         a) Verify that data is not empty
+         b) Verify no duplicate partitions
+        2. Save current assignment for future (save, skipping)
+        3. Verify if partitions exist  (skipping)
+            Throw partition-topic not exist error
+        4. Re-assign:
+            Exceptions:
+            * NodeExists error: Assignment already in progress
+                -- Get partitions which are in progress
+            * NoNode error: create parent node
+            * Raise any other exception throw
+
+        """
+        path = REASSIGNMENT_ZOOKEEPER_PATH
+        plan = json.dumps(assignment)
+        try:
+            print('[INFO] Sending assignment to Zookeeper...')
+            self.create(path, plan, makepath=True)
+            print('[INFO] Assignment sent to Zookeeper successfully.')
+            # TODO: Read node to list data of currently running??
+        except NodeExistsError:
+            print('[ERROR] Previous assignment in progress. Exiting..')
+        except Exception as e:
+            print(
+                '[ERROR] Could not re-assign partitions {plan}. Error: {e}'
+                .format(plan=plan, e=e),
+            )
+            raise
+
+    def get_cluster_assignment(self):
+        """Fetch cluster assignment directly from zookeeper."""
+        cluster_layout = self.get_topics(fetch_partition_state=False)
+        # Re-format cluster-layout
+        partitions = [
+            {
+                'topic': topic_id,
+                'partition': int(p_id),
+                'replicas': partitions_data['replicas']
+            }
+            for topic_id, topic_info in cluster_layout.iteritems()
+            for p_id, partitions_data in topic_info['partitions'].iteritems()
+        ]
+        return {
+            'version': 1,
+            'partitions': partitions
+        }
