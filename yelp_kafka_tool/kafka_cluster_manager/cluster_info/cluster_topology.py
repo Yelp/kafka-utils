@@ -35,10 +35,11 @@ class ClusterTopology(object):
     A Kafka cluster topology consists of:
     replication group (alias rg), broker, topic and partition.
     """
-    def __init__(self, zk):
+    def __init__(self, zk, script_path=None):
         self._name = zk.cluster_config.name
         self._zk = zk
         self.log = logging.getLogger(self.__class__.__name__)
+        self._kafka_script_path = script_path
         # Getting Initial assignment
         broker_ids = [
             int(broker) for broker in self._zk.get_brokers().iterkeys()
@@ -101,11 +102,11 @@ class ClusterTopology(object):
 
         Assignment is ordered by partition name tuple.
         """
-        # Requires running kafka-scripts
-        self._initial_assignment = KafkaInterface().get_cluster_assignment(
-            self._zk.cluster_config.zookeeper,
+        kafka = KafkaInterface(self._kafka_script_path)
+        self._initial_assignment = kafka.get_cluster_assignment(
+            self._zk,
             broker_ids,
-            topic_ids
+            topic_ids,
         )
 
     def _get_replication_group_id(self, broker):
