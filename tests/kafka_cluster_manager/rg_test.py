@@ -272,7 +272,7 @@ class TestReplicationGroup(object):
         )
         with test_ct.build_cluster_topology(assignment, ['0', '1', '2', '4']) as ct:
             rg1 = ct.rgs['rg1']
-            over_loaded = [ct.brokers[0], ct.brokers[1]]
+            over_loaded = [ct.brokers[1], ct.brokers[0]]
             under_loaded = [ct.brokers[4]]
             b_source, b_dest, victim_partition = \
                 rg1._get_target_brokers(over_loaded, under_loaded)
@@ -281,13 +281,13 @@ class TestReplicationGroup(object):
             assert b_dest.id == 4
             # Here both 0 and 1 euqal minimum siblings in broker 4 (0)
             # Both 0 and 1 could be selected as source broker, but since
-            # broker 1 has more partitions (3 > 2) than 0, broker-1 should be
-            # selected as source-broker
-            assert b_source.id == 1
-            # Only partition with no siblings in 4 is (T0, 1)
-            assert victim_partition.name == ('T0', 1)
+            # broker 0 has more partitions (3 > 2) than 1, broker-0 should be
+            # selected as source-broker.
+            assert b_source.id == 0
+            # Only partition with no siblings in 4 is (T0, 0)
+            assert victim_partition.name == ('T0', 0)
 
-    def test_get_target_brokers_case2(self):
+    def test_get_target_brokers_case3(self):
         # Source broker selection decision
         # Minimum-sibling count gets preference
         # rg-groups: rg1: brokers:(0, 1, 4)

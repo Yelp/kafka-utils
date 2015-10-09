@@ -138,7 +138,6 @@ class ZK:
             # Prepare data for each partition
             partitions_data = {}
             for p_id, replicas in topic_data['partitions'].iteritems():
-                print('fetch state', fetch_partition_state)
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
