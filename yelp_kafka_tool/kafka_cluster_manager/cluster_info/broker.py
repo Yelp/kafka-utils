@@ -81,7 +81,6 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
-    # TODO: check if required?
     def get_preferred_partition(self, broker):
         """Get partition from given source-partitions with least siblings in
         given destination broker-partitions and sibling count.

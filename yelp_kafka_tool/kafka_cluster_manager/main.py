@@ -100,9 +100,8 @@ def reassign_partitions(cluster_config, args):
             # Display or store plan
             display_assignment_changes(result, args.no_confirm)
             # Export proposed-plan to json file
-            plan_file = args.proposed_plan_file
-            if plan_file:
-                proposed_plan_json(result[0], plan_file)
+            if args.proposed_plan_file:
+                proposed_plan_json(result[0], args.proposed_plan_file)
             # Check and execute plan
             execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
         else:

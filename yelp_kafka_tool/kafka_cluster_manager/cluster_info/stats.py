@@ -193,7 +193,7 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
         curr_replicas = curr_assignment[prev_partition]
         diff = len(set(curr_replicas) - set(prev_replicas))
         if diff:
-            total_movements += 1
+            total_movements += diff
             movements[prev_partition] = (
                 (set(prev_replicas) - set(curr_replicas)),
                 (set(curr_replicas) - set(prev_replicas)),

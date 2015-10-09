@@ -90,42 +90,6 @@ class ZK:
     ):
         """Get information on all the available topics.
 
-        Note: By default we also fetch partition-state which results in
-        accessing the zookeeper twice. If just partition-replica information is
-        required fetch_partition_state should be set to False.
-        """
-        topic_ids = [topic_name] if topic_name else self.get_children(
-            "/brokers/topics",
-        )
-        if names_only:
-            return topic_ids
-        topics_data = {}
-        for topic_id in topic_ids:
-            try:
-                topic_data = json.loads(
-                    self.get("/brokers/topics/{id}".format(id=topic_id))[0],
-                )
-            except NoNodeError:
-                print(
-                    "[ERROR] topic '{topic}' not found.".format(topic=topic_id),
-                    file=sys.stderr,
-                )
-                return {}
-            # Prepare data for each partition
-            partitions_data = {}
-            for p_id, replicas in topic_data["partitions"].iteritems():
-                partitions_data[p_id] = {}
-                if fetch_partition_state:
-                    # Fetch partition-state from zookeeper
-                    partitions_data[p_id] = self._fetch_partition_state(topic_id, p_id)
-                partitions_data[p_id]['replicas'] = replicas
-            topic_data['partitions'] = partitions_data
-            topics_data[topic_id] = topic_data
-        return topics_data
-
-    def _fetch_partition_state(self, topic_id, partition_id):
-        """Fetch partition-state for given topic-partition.
-
         Topic-data format before fetching:-
         topic_data = {
             'version': 1,
@@ -150,7 +114,42 @@ class ZK:
                     leader: <broker-id>,
             }
         }
+        Note: By default we also fetch partition-state which results in
+        accessing the zookeeper twice. If just partition-replica information is
+        required fetch_partition_state should be set to False.
         """
+        topic_ids = [topic_name] if topic_name else self.get_children(
+            "/brokers/topics",
+        )
+        if names_only:
+            return topic_ids
+        topics_data = {}
+        for topic_id in topic_ids:
+            try:
+                topic_data = json.loads(
+                    self.get("/brokers/topics/{id}".format(id=topic_id))[0],
+                )
+            except NoNodeError:
+                print(
+                    "[ERROR] topic '{topic}' not found.".format(topic=topic_id),
+                    file=sys.stderr,
+                )
+                return {}
+            # Prepare data for each partition
+            partitions_data = {}
+            for p_id, replicas in topic_data['partitions'].iteritems():
+                print('fetch state', fetch_partition_state)
+                partitions_data[p_id] = {}
+                if fetch_partition_state:
+                    # Fetch partition-state from zookeeper
+                    partitions_data[p_id] = self._fetch_partition_state(topic_id, p_id)
+                partitions_data[p_id]['replicas'] = replicas
+            topic_data['partitions'] = partitions_data
+            topics_data[topic_id] = topic_data
+        return topics_data
+
+    def _fetch_partition_state(self, topic_id, partition_id):
+        """Fetch partition-state for given topic-partition."""
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
         try:
             partition_json, _ = self.get(

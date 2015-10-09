@@ -229,7 +229,8 @@ class TestReplicationGroup(object):
         assert broker_dest in [b4, b6]
 
     # Test brokers-rebalancing
-    def test_get_target_brokers(self):
+    def test_get_target_brokers_case1(self):
+        # Partition-selection decision
         # rg1: 0,1; rg2: 2, 3
         test_ct = CT()
         assignment = OrderedDict(
@@ -250,37 +251,78 @@ class TestReplicationGroup(object):
             # Assert source-broker is 0 and destination-broker is 1
             assert b_source.id == 0
             assert b_dest.id == 1
-            # Partition can't be T3, 0, since it already has replica on broker 1
-            # Partitions shouldn't be (T1, 0) since it has its sibling (T1, 1)
+            # Partition can't be T1, 0, since it already has replica on broker 1
+            # Partition shouldn't be (T1, 1) since it has its sibling (T1, 0)
             # at destination broker-1
             # So ideal-partition should be (T0, 0)
             assert victim_partition.name == ('T0', 0)
 
     def test_get_target_brokers_case2(self):
+        # Source broker selection decision
+        # Partition-count plays role
+        # Helps in minimum movements
         test_ct = CT()
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [0, 2]),
+                ((u'T0', 0), [0, 1]),
                 ((u'T1', 0), [0, 1, 2]),
-                ((u'T1', 1), [0, 3]),
-                ((u'T2', 0), [2]),
+                ((u'T1', 1), [0]),
+                ((u'T1', 2), [4]),
             ]
         )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(5)) as ct:
+        with test_ct.build_cluster_topology(assignment, ['0', '1', '2', '4']) as ct:
             rg1 = ct.rgs['rg1']
-            over_loaded = [ct.brokers[0]]
-            under_loaded = [ct.brokers[1]]
+            over_loaded = [ct.brokers[0], ct.brokers[1]]
+            under_loaded = [ct.brokers[4]]
             b_source, b_dest, victim_partition = \
                 rg1._get_target_brokers(over_loaded, under_loaded)
 
-            # Assert source-broker is 0 and destination-broker is 1
-            assert b_source.id == 0
-            assert b_dest.id == 1
-            # Partition can't be T3, 0, since it already has replica on broker 1
-            # Partitions shouldn't be (T1, 0) since it has its sibling (T1, 1)
-            # at destination broker-1
-            # So ideal-partition should be (T0, 0)
-            assert victim_partition.name == ('T0', 0)
+            # Verify destination-broker is 4
+            assert b_dest.id == 4
+            # Here both 0 and 1 euqal minimum siblings in broker 4 (0)
+            # Both 0 and 1 could be selected as source broker, but since
+            # broker 1 has more partitions (3 > 2) than 0, broker-1 should be
+            # selected as source-broker
+            assert b_source.id == 1
+            # Only partition with no siblings in 4 is (T0, 1)
+            assert victim_partition.name == ('T0', 1)
+
+    def test_get_target_brokers_case2(self):
+        # Source broker selection decision
+        # Minimum-sibling count gets preference
+        # rg-groups: rg1: brokers:(0, 1, 4)
+        # Broker-partition cnt: opt-partition-cnt: 10/3: 3, extra: 1
+        # Over-loaded: 0:5, 1:4
+        # Under-loaded: 4:1
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 1]),
+                ((u'T0', 1), [0, 4]),
+                ((u'T0', 2), [0, 1]),
+                ((u'T0', 3), [0]),
+                ((u'T0', 4), [0, 1]),
+                ((u'T3', 1), [1]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, ['0', '1', '4']) as ct:
+            rg1 = ct.rgs['rg1']
+            over_loaded = [ct.brokers[0], ct.brokers[1]]
+            under_loaded = [ct.brokers[4]]
+            b_source, b_dest, victim_partition = \
+                rg1._get_target_brokers(over_loaded, under_loaded)
+
+            # Verify destination broker is 4 (only option)
+            assert b_dest.id == 4
+            # Note: Even though broker-1 has more partitions(5) than
+            # broker-1 (4), but broker-1 will be selected as source-broker
+            # since it has lesser siblings in destination-broker 4
+            # Sibling of broker-0 in broker-4: 1 (for every partition: of topic T0)
+            # Siblings of broker-1 in broker-4: 0 (for partition: (T3, 1)
+            # Verify source-broker is 1
+            assert b_source.id == 1
+            # Verify partition be (T3, 1) with minimum-siblings
+            assert victim_partition.name == ('T3', 1)
 
     def test_rebalance_brokers_balanced_1(self):
         # Single replication-group
@@ -491,7 +533,7 @@ class TestReplicationGroup(object):
             assert len(ct.brokers[0].partitions) == 2
             assert len(ct.brokers[1].partitions) == 1
             assert len(ct.brokers[4].partitions) == 2
-            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            # rg2: Verify partition-count of 2:1, 3:1
             assert len(ct.brokers[2].partitions) == 1
             assert len(ct.brokers[3].partitions) == 1
             # rg3: Verify partition-count of 5 as equal to 1

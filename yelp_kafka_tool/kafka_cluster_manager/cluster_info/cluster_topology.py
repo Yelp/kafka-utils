@@ -86,13 +86,14 @@ class ClusterTopology(object):
             partition = Partition(topic, partition_id)
             self.partitions[partition_name] = partition
 
-            # Updating corresponding topic object
-            topic.add_partition(partition)
-
             # Updating corresponding broker objects
             for broker_id in replica_ids:
                 broker = self.brokers[broker_id]
                 broker.add_partition(partition)
+
+            # Updating corresponding topic object. Should be done in end since
+            # replication-factor is updated once partition is updated.
+            topic.add_partition(partition)
 
     def _fetch_initial_assignment(self, broker_ids, topic_ids):
         """Fetch initial assignment from zookeeper.
