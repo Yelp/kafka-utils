@@ -100,7 +100,7 @@ class ZK:
             }
         }
 
-        Topic-data format after fetching:-
+        Topic-data format with fetch_partition_state as True:-
         topic_data = {
             'version': 1,
             'partitions': {
