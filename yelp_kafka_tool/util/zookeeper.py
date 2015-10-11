@@ -90,13 +90,12 @@ class ZK:
     ):
         """Get information on all the available topics.
 
-        Topic-data format before fetching:-
+        Topic-data format with fetch_partition_state as False :-
         topic_data = {
             'version': 1,
             'partitions': {
-                p_id: {
+                <p_id>: {
                     replicas: <replica-list>
-                    ...
                 }
             }
         }
@@ -105,9 +104,9 @@ class ZK:
         topic_data = {
             'version': 1,
             'partitions': {
-                p_id:{
-                    replicas: replica-list,
-                    isr: isr-list,
+                <p_id>:{
+                    replicas: [<broker_id>, <broker_id>, ...],
+                    isr: [<broker_id>, <broker_id>, ...],
                     controller_epoch: <val>,
                     leader_epoch: <val>,
                     version: 1,

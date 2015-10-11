@@ -253,7 +253,7 @@ class TestReplicationGroup(object):
             assert b_dest.id == 1
             # Partition can't be T1, 0, since it already has replica on broker 1
             # Partition shouldn't be (T1, 1) since it has its sibling (T1, 0)
-            # at destination broker-1
+            # at destination broker 1
             # So ideal-partition should be (T0, 0)
             assert victim_partition.name == ('T0', 0)
 
@@ -279,9 +279,9 @@ class TestReplicationGroup(object):
 
             # Verify destination-broker is 4
             assert b_dest.id == 4
-            # Here both 0 and 1 euqal minimum siblings in broker 4 (0)
+            # Here both 0 and 1 equal minimum siblings in broker 4 (0)
             # Both 0 and 1 could be selected as source broker, but since
-            # broker 0 has more partitions (3 > 2) than 1, broker-0 should be
+            # broker 0 has more partitions (3 > 2) than 1, broker 0 should be
             # selected as source-broker.
             assert b_source.id == 0
             # Only partition with no siblings in 4 is (T0, 0)
@@ -314,11 +314,11 @@ class TestReplicationGroup(object):
 
             # Verify destination broker is 4 (only option)
             assert b_dest.id == 4
-            # Note: Even though broker-1 has more partitions(5) than
-            # broker-1 (4), but broker-1 will be selected as source-broker
+            # Note: Even though broker 1 has more partitions(5) than
+            # broker 1 (4), but broker 1 will be selected as source-broker
             # since it has lesser siblings in destination-broker 4
-            # Sibling of broker-0 in broker-4: 1 (for every partition: of topic T0)
-            # Siblings of broker-1 in broker-4: 0 (for partition: (T3, 1)
+            # Sibling of broker 0 in broker 4: 1 (for every partition: of topic T0)
+            # Siblings of broker 1 in broker 4: 0 (for partition: (T3, 1)
             # Verify source-broker is 1
             assert b_source.id == 1
             # Verify partition be (T3, 1) with minimum-siblings

@@ -112,7 +112,7 @@ class Broker(object):
         """Under-balanced broker requests leadership from current leader, on the
         pretext that it recursively can maintain its leadership count as optimal.
 
-        @key_terms:
+        :key_terms:
         leader-balanced: Count of brokers as leader is at least opt-count
 
         Algorithm:

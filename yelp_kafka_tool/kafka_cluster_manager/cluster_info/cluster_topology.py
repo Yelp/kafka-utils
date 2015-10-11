@@ -336,7 +336,7 @@ class ClusterTopology(object):
         """Transfer leadership from current over-balanced leaders to their
         under-balanced followers.
 
-        @key-term:
+        :key-terms:
         over-balanced brokers:  Brokers with leadership-count > opt-count
                                 Note: Even brokers with leadership-count
                                 == opt-count are assumed as over-balanced.

@@ -67,7 +67,7 @@ class Partition(object):
     def count_siblings(self, partitions):
         """Count siblings of partition in given partition-list.
 
-        @key term
+        :key-term:
         sibling:    partitions with same topic
         """
         count = sum(
