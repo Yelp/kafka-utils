@@ -266,7 +266,6 @@ class ZK:
             _log.info('Sending assignment to Zookeeper...')
             self.create(path, plan, makepath=True)
             _log.info('Assignment sent to Zookeeper successfully.')
-            # TODO: Read node to list data of currently running??
         except NodeExistsError:
             _log.error('Previous assignment in progress. Exiting..')
         except Exception as e:
@@ -278,7 +277,7 @@ class ZK:
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
-        _log.info('Fetching current assignment from Zookeeper...')
+        _log.info('Fetching current cluster-topology from Zookeeper...')
         cluster_layout = self.get_topics(fetch_partition_state=False)
         # Re-format cluster-layout
         partitions = [
