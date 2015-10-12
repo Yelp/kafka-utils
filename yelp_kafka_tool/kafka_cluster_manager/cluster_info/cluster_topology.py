@@ -207,11 +207,9 @@ class ClusterTopology(object):
             for partition in rg.partitions
         ]
 
-    # Re-balancing analytical statistics
     def partition_imbalance(self, cluster_wide=False):
         """Report partition count imbalance over brokers in current cluster
         state for each replication-group.
-
         """
         # Get broker-imbalance stats cluster-wide or for each replication-group
         if cluster_wide:

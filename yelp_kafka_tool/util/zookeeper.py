@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import json
+import logging
 import sys
 
 from kazoo.client import KazooClient
@@ -8,6 +9,7 @@ from kazoo.exceptions import NodeExistsError, NoNodeError
 from yelp_kafka_tool.util import config
 
 REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+_log = logging.getLogger('kafka-zookeeper-manager')
 
 
 class ZK:
@@ -95,7 +97,7 @@ class ZK:
             'version': 1,
             'partitions': {
                 <p_id>: {
-                    replicas: <replica-list>
+                    replicas: <broker-ids>
                 }
             }
         }
@@ -248,37 +250,35 @@ class ZK:
         """Executing plan directly sending it to zookeeper nodes.
         Algorithm:
         1. Verification:
-         a) Verify that data is not empty
-         b) Verify no duplicate partitions
-        2. Save current assignment for future (save, skipping)
-        3. Verify if partitions exist  (skipping)
-            Throw partition-topic not exist error
-        4. Re-assign:
+         a) TODO: next review: Validate given assignment
+        2. TODO:Save current assignment for future?
+        3. Re-assign:
+            * Send command to zookeeper to re-assign and create parent-node
+              if missing.
             Exceptions:
             * NodeExists error: Assignment already in progress
-                -- Get partitions which are in progress
-            * NoNode error: create parent node
-            * Raise any other exception throw
+            * Raise any other exception
 
         """
         path = REASSIGNMENT_ZOOKEEPER_PATH
         plan = json.dumps(assignment)
         try:
-            print('[INFO] Sending assignment to Zookeeper...')
+            _log.info('Sending assignment to Zookeeper...')
             self.create(path, plan, makepath=True)
-            print('[INFO] Assignment sent to Zookeeper successfully.')
+            _log.info('Assignment sent to Zookeeper successfully.')
             # TODO: Read node to list data of currently running??
         except NodeExistsError:
-            print('[ERROR] Previous assignment in progress. Exiting..')
+            _log.error('Previous assignment in progress. Exiting..')
         except Exception as e:
-            print(
-                '[ERROR] Could not re-assign partitions {plan}. Error: {e}'
+            log.error(
+                'Could not re-assign partitions {plan}. Error: {e}'
                 .format(plan=plan, e=e),
             )
             raise
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
+        _log.info('Fetching current assignment from Zookeeper...')
         cluster_layout = self.get_topics(fetch_partition_state=False)
         # Re-format cluster-layout
         partitions = [

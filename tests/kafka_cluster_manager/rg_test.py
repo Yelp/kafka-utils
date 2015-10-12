@@ -314,7 +314,7 @@ class TestReplicationGroup(object):
 
             # Verify destination broker is 4 (only option)
             assert b_dest.id == 4
-            # Note: Even though broker 1 has more partitions(5) than
+            # Note: Even though broker 0 has more partitions(5) than
             # broker 1 (4), but broker 1 will be selected as source-broker
             # since it has lesser siblings in destination-broker 4
             # Sibling of broker 0 in broker 4: 1 (for every partition: of topic T0)
