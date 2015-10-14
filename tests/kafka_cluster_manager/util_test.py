@@ -172,7 +172,7 @@ def test_validate_format_version_wrong():
         [{"partition": 0, "topic": 't1', "replicas": [0, 1, 2]}]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -180,7 +180,7 @@ def test_validate_format_empty():
     # Empty assignment
     assignment = {}
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -191,7 +191,7 @@ def test_validate_format_partitions_empty():
         "partitions": []
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -206,7 +206,7 @@ def test_validate_format_missing_key_partition():
         ]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -221,7 +221,7 @@ def test_validate_format_missing_key_topic():
         ]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -236,7 +236,7 @@ def test_validate_format_missing_key_replicas():
         ]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -247,7 +247,7 @@ def test_validate_format_invalid_type_partitions():
         "partitions": {"partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -258,7 +258,7 @@ def test_validate_format_invalid_type_partition():
         "partitions": [{"partition": '0', "topic": 't2', "replicas": [0, 1, 2]}]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -269,7 +269,7 @@ def test_validate_format_invalid_type_topic():
         "partitions": [{"partition": 0, "topic": 2, "replicas": [0, 1, 2]}]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -280,7 +280,7 @@ def test_validate_format_invalid_type_replicas():
         "partitions": [{"partition": 0, "topic": 't1', "replicas": 0}]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -291,18 +291,18 @@ def test_validate_format_invalid_type_replica_brokers():
         "partitions": [{"partition": 0, "topic": 't1', "replicas": ['0', 1]}]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
 def test_validate_format_replica_empty():
-    # replica-brokers are not int
+    # replica-brokers are empty
     assignment = {
         "version": 1,
         "partitions": [{"partition": 0, "topic": 't1', "replicas": []}]
     }
 
-    # Verify Validation failed
+    # Verify validation failed
     assert validate_format(assignment) is False
 
 
@@ -444,7 +444,7 @@ def test_validate_assigment_base_replication_factor_changed():
 
 
 def test_validate_assigment_base_invalid_brokers():
-    # Broker 4 in partition-replicas (t1, 0): [0, 4] is not_preset in
+    # Broker 4 in partition-replicas (t1, 0): [0, 4] is not present in
     # base assignment
     assignment = {
         "version": 1,
@@ -555,13 +555,3 @@ def test_validate_plan_invalid_plan():
     }
     # Verify validation failed
     assert validate_plan(assignment, base_assignment) is False
-
-
-# TODO: REMOVE:
-'''
-    assignment = {
-        "version": 1
-        "partitions":
-        [{"partition": 0, "topic": 't1', "replicas": [0, 1, 2]}]
-    }
-'''
