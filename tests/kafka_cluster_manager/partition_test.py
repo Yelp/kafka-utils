@@ -59,3 +59,19 @@ class TestPartition(object):
         p2 = Partition(mock_topic, 0, [sentinel.r1])
 
         assert p2.followers == []
+
+    def test_count_siblings(self):
+        t1, t1.id = sentinel.t1, 't1'
+        t2, t2.id = sentinel.t2, 't2'
+        p1, p3, p4 = Partition(t1, 0), Partition(t1, 1), Partition(t2, 0),
+
+        # verify sibling count
+        p_group = [p1, p4, p3]
+        assert p3.count_siblings(p_group) == 2
+        assert p4.count_siblings(p_group) == 1
+        p_group = [p4]
+        assert p1.count_siblings(p_group) == 0
+
+        # Empty group
+        p_group = []
+        assert p1.count_siblings(p_group) == 0

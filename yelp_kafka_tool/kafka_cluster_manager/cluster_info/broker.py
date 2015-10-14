@@ -81,11 +81,38 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
+    def get_preferred_partition(self, broker):
+        """Get partition from given source-partitions with least siblings in
+        given destination broker-partitions and sibling count.
+
+        :key_term:
+        siblings: Partitions belonging to same topic
+        source-partitions: Partitions of current object
+
+        :params:
+        broker:   Destination broker where siblings for given source
+                  partitions are analysed
+        """
+        # Only partitions not having replica in broker are valid
+        # Get best fit partition, based on avoiding partition from same topic
+        # and partition with least siblings in destination-broker.
+        # TODO: will multiple partition with minimum value lead to non-determinism?
+        eligible_partitions = self.partitions - broker.partitions
+        if eligible_partitions:
+            pref_partition = min(
+                eligible_partitions,
+                key=lambda source_partition:
+                    source_partition.count_siblings(broker.partitions),
+            )
+            return pref_partition
+        else:
+            return None
+
     def request_leadership(self, opt_count, skip_brokers, skip_partitions, optimal=False):
         """Under-balanced broker requests leadership from current leader, on the
         pretext that it recursively can maintain its leadership count as optimal.
 
-        @key_terms:
+        :key_terms:
         leader-balanced: Count of brokers as leader is at least opt-count
 
         Algorithm:

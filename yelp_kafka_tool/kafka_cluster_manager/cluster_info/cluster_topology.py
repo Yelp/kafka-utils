@@ -23,10 +23,7 @@ from .stats import (
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
 )
-from .util import (
-    compute_optimal_count,
-    get_assignment_map,
-)
+from .util import separate_groups, get_assignment_map
 
 
 class ClusterTopology(object):
@@ -89,13 +86,14 @@ class ClusterTopology(object):
             partition = Partition(topic, partition_id)
             self.partitions[partition_name] = partition
 
-            # Updating corresponding topic object
-            topic.add_partition(partition)
-
             # Updating corresponding broker objects
             for broker_id in replica_ids:
                 broker = self.brokers[broker_id]
                 broker.add_partition(partition)
+
+            # Updating corresponding topic object. Should be done in end since
+            # replication-factor is updated once partition is updated.
+            topic.add_partition(partition)
 
     def _fetch_initial_assignment(self, broker_ids, topic_ids):
         """Fetch initial assignment from zookeeper.
@@ -129,10 +127,16 @@ class ClusterTopology(object):
             raise ValueError(error_msg)
         return rg_name
 
-    def reassign_partitions(self, replication_groups=False, leaders=False):
+    def reassign_partitions(
+        self,
+        replication_groups=False,
+        leaders=False,
+        brokers=False,
+    ):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
         """
+        # Balancing to be done in the given order only
         # Rebalance replication-groups
         if replication_groups:
             self.log.info(
@@ -140,10 +144,18 @@ class ClusterTopology(object):
                 .format(groups=', '.join(self.rgs.keys())),
             )
             self.rebalance_replication_groups()
+        # Rebalance broker-partition count per replication-groups
+        if brokers:
+            self.log.info(
+                'Re-balancing partition-count across brokers: {brokers}...'
+                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
+            )
+            self.rebalance_brokers()
+        # Rebalance broker as leader count per broker
         if leaders:
             self.log.info(
                 'Re-balancing leader-count across brokers: {brokers}...'
-                .format(brokers=', '.join(str(self.brokers.keys()))),
+                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
             )
             self.rebalance_leaders()
 
@@ -195,12 +207,18 @@ class ClusterTopology(object):
             for partition in rg.partitions
         ]
 
-    # Re-balancing analytical statistics
-    def partition_imbalance(self):
-        """Report partition count imbalance over brokers for given assignment
-        or assignment in current state.
+    def partition_imbalance(self, cluster_wide=False):
+        """Report partition count imbalance over brokers in current cluster
+        state for each replication-group.
         """
-        return get_partition_imbalance_stats(self.brokers.values())
+        # Get broker-imbalance stats cluster-wide or for each replication-group
+        if cluster_wide:
+            return [(get_partition_imbalance_stats(self.brokers.values()))]
+        else:
+            return [
+                (get_partition_imbalance_stats(rg.brokers))
+                for rg in self.rgs.values()
+            ]
 
     def leader_imbalance(self):
         """Report leader imbalance count over each broker."""
@@ -231,21 +249,11 @@ class ClusterTopology(object):
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
-        # Get optimal replica count
-        opt_replica_count, extra_replicas_cnt = \
-            compute_optimal_count(
-                partition.replication_factor,
-                len(self.rgs.values()),
-            )
-
-        # Segregate replication-groups into under and over replicated
-        evenly_distribute_replicas = not extra_replicas_cnt
-        under_replicated_rgs, over_replicated_rgs = \
-            self._segregate_replication_groups(
-                partition,
-                opt_replica_count,
-                evenly_distribute_replicas,
-            )
+        # Separate replication-groups into under and over replicated
+        over_replicated_rgs, under_replicated_rgs = separate_groups(
+            self.rgs.values(),
+            lambda g: g.count_replica(partition),
+        )
         # Move replicas from over-replicated to under-replicated groups
         while under_replicated_rgs and over_replicated_rgs:
             # Decide source and destination group
@@ -264,43 +272,14 @@ class ClusterTopology(object):
                     rg_destination,
                     partition,
                 )
-                # Update replication groups after movement of partition
-                source_replica_cnt = rg_source.count_replica(partition)
-                dest_replica_cnt = rg_destination.count_replica(partition)
-                # Remove group from list if balanced
-                if source_replica_cnt == opt_replica_count:
-                    over_replicated_rgs.remove(rg_source)
-                allowed_dest_cnt = dest_replica_cnt + 1 \
-                    if not evenly_distribute_replicas else dest_replica_cnt
-                if allowed_dest_cnt == opt_replica_count:
-                    under_replicated_rgs.remove(rg_destination)
             else:
                 # Groups balanced or cannot be balanced further
                 break
-
-    def _segregate_replication_groups(
-        self,
-        partition,
-        opt_replica_count,
-        evenly_distribute_replicas,
-    ):
-        """Separate replication-groups into under-replicated, over-replicated
-        and optimally replicated groups.
-        """
-        under_replicated_rgs = []
-        over_replicated_rgs = []
-        for rg in self.rgs.itervalues():
-            replica_cnt = rg.count_replica(partition)
-            if replica_cnt < opt_replica_count:
-                under_replicated_rgs.append(rg)
-            elif replica_cnt > opt_replica_count:
-                over_replicated_rgs.append(rg)
-            else:
-                if not evenly_distribute_replicas:
-                    # Case 1 or 3: Rp % G !=0: Rp < G or Rp > G
-                    # Helps in adjusting one extra replica if required
-                    under_replicated_rgs.append(rg)
-        return under_replicated_rgs, over_replicated_rgs
+            # Re-compute under and over-replicated replication-groups
+            over_replicated_rgs, under_replicated_rgs = separate_groups(
+                self.rgs.values(),
+                lambda g: g.count_replica(partition),
+            )
 
     def _elect_source_replication_group(
         self,
@@ -334,6 +313,14 @@ class ClusterTopology(object):
             return min_replicated_rg
         return None
 
+    # Re-balancing partition count across brokers
+    def rebalance_brokers(self):
+        """Rebalance partition-count across brokers across all replication
+        groups.
+        """
+        for rg in self.rgs.values():
+            rg.rebalance_brokers()
+
     # Re-balancing leaders
     def rebalance_leaders(self):
         """Re-order brokers in replicas such that, every broker is assigned as
@@ -347,7 +334,7 @@ class ClusterTopology(object):
         """Transfer leadership from current over-balanced leaders to their
         under-balanced followers.
 
-        @key-term:
+        :key-terms:
         over-balanced brokers:  Brokers with leadership-count > opt-count
                                 Note: Even brokers with leadership-count
                                 == opt-count are assumed as over-balanced.

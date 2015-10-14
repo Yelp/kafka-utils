@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import json
+import logging
 import sys
 
 from kazoo.client import KazooClient
@@ -8,6 +9,7 @@ from kazoo.exceptions import NodeExistsError, NoNodeError
 from yelp_kafka_tool.util import config
 
 REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+_log = logging.getLogger('kafka-zookeeper-manager')
 
 
 class ZK:
@@ -90,6 +92,29 @@ class ZK:
     ):
         """Get information on all the available topics.
 
+        Topic-data format with fetch_partition_state as False :-
+        topic_data = {
+            'version': 1,
+            'partitions': {
+                <p_id>: {
+                    replicas: <broker-ids>
+                }
+            }
+        }
+
+        Topic-data format with fetch_partition_state as True:-
+        topic_data = {
+            'version': 1,
+            'partitions': {
+                <p_id>:{
+                    replicas: [<broker_id>, <broker_id>, ...],
+                    isr: [<broker_id>, <broker_id>, ...],
+                    controller_epoch: <val>,
+                    leader_epoch: <val>,
+                    version: 1,
+                    leader: <broker-id>,
+            }
+        }
         Note: By default we also fetch partition-state which results in
         accessing the zookeeper twice. If just partition-replica information is
         required fetch_partition_state should be set to False.
@@ -113,7 +138,7 @@ class ZK:
                 return {}
             # Prepare data for each partition
             partitions_data = {}
-            for p_id, replicas in topic_data["partitions"].iteritems():
+            for p_id, replicas in topic_data['partitions'].iteritems():
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
@@ -124,33 +149,7 @@ class ZK:
         return topics_data
 
     def _fetch_partition_state(self, topic_id, partition_id):
-        """Fetch partition-state for given topic-partition.
-
-        Topic-data format before fetching:-
-        topic_data = {
-            'version': 1,
-            'partitions': {
-                p_id: {
-                    replicas: <replica-list>
-                    ...
-                }
-            }
-        }
-
-        Topic-data format after fetching:-
-        topic_data = {
-            'version': 1,
-            'partitions': {
-                p_id:{
-                    replicas: replica-list,
-                    isr: isr-list,
-                    controller_epoch: <val>,
-                    leader_epoch: <val>,
-                    version: 1,
-                    leader: <broker-id>,
-            }
-        }
-        """
+        """Fetch partition-state for given topic-partition."""
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
         try:
             partition_json, _ = self.get(
@@ -251,37 +250,34 @@ class ZK:
         """Executing plan directly sending it to zookeeper nodes.
         Algorithm:
         1. Verification:
-         a) Verify that data is not empty
-         b) Verify no duplicate partitions
-        2. Save current assignment for future (save, skipping)
-        3. Verify if partitions exist  (skipping)
-            Throw partition-topic not exist error
-        4. Re-assign:
+         a) TODO: next review: Validate given assignment
+        2. TODO:Save current assignment for future?
+        3. Re-assign:
+            * Send command to zookeeper to re-assign and create parent-node
+              if missing.
             Exceptions:
             * NodeExists error: Assignment already in progress
-                -- Get partitions which are in progress
-            * NoNode error: create parent node
-            * Raise any other exception throw
+            * Raise any other exception
 
         """
         path = REASSIGNMENT_ZOOKEEPER_PATH
         plan = json.dumps(assignment)
         try:
-            print('[INFO] Sending assignment to Zookeeper...')
+            _log.info('Sending assignment to Zookeeper...')
             self.create(path, plan, makepath=True)
-            print('[INFO] Assignment sent to Zookeeper successfully.')
-            # TODO: Read node to list data of currently running??
+            _log.info('Assignment sent to Zookeeper successfully.')
         except NodeExistsError:
-            print('[ERROR] Previous assignment in progress. Exiting..')
+            _log.error('Previous assignment in progress. Exiting..')
         except Exception as e:
-            print(
-                '[ERROR] Could not re-assign partitions {plan}. Error: {e}'
+            log.error(
+                'Could not re-assign partitions {plan}. Error: {e}'
                 .format(plan=plan, e=e),
             )
             raise
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
+        _log.info('Fetching current cluster-topology from Zookeeper...')
         cluster_layout = self.get_topics(fetch_partition_state=False)
         # Re-format cluster-layout
         partitions = [

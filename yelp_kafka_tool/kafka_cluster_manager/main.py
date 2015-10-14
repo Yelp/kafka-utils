@@ -83,14 +83,11 @@ def reassign_partitions(cluster_config, args):
         if args.use_kafka_script:
             script_path = args.script_path
         ct = ClusterTopology(zk=zk, script_path=script_path)
-
-        # Re-balance replication-groups
-        if args.replication_groups:
-            ct.reassign_partitions(replication_groups=True)
-
-        # Re-balance leaders
-        if args.leaders:
-            ct.reassign_partitions(leaders=True)
+        ct.reassign_partitions(
+            replication_groups=args.replication_groups,
+            brokers=args.brokers,
+            leaders=args.leaders,
+        )
 
         # Evaluate proposed-plan and execute/display the same
         # Get final-proposed-plan details
@@ -103,9 +100,8 @@ def reassign_partitions(cluster_config, args):
             # Display or store plan
             display_assignment_changes(result, args.no_confirm)
             # Export proposed-plan to json file
-            plan_file = args.proposed_plan_file
-            if plan_file:
-                proposed_plan_json(result[0], plan_file)
+            if args.proposed_plan_file:
+                proposed_plan_json(result[0], args.proposed_plan_file)
             # Check and execute plan
             execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
         else:
@@ -175,9 +171,15 @@ def parse_args():
         '--leaders',
         dest='leaders',
         action='store_true',
-        help='Evenly distributes leaders optimally over brokers',
+        help='Evenly distributes leaders optimally over brokers.',
     )
-
+    parser_rebalance.add_argument(
+        '--brokers',
+        dest='brokers',
+        action='store_true',
+        help='Evenly distributes partitions optimally over brokers'
+        ' with minimal movements for each replication-group.',
+    )
     parser_rebalance.add_argument(
         '--max-changes',
         dest='max_changes',
@@ -228,9 +230,11 @@ def validate_args(args):
             .format(max_changes=args.max_changes)
         )
         result = False
-    rebalance_options = [args.replication_groups, args.leaders]
+    rebalance_options = [args.replication_groups, args.leaders, args.brokers]
     if not any(rebalance_options):
-        _log.error('--replication-groups and/or --leaders flag required.')
+        _log.error(
+            'At least one of --replication-groups, --leaders, --brokers flag required.',
+        )
         result = False
 
     if args.no_confirm and not args.apply:
