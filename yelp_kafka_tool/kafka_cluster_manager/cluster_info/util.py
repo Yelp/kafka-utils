@@ -306,8 +306,6 @@ def validate_format(assignment):
             ...
         ]}
     """
-    # TODO: remove
-    # assignment = {"version": 1, 'partitions': [{'topic': 't1', 'partition': 0, 'replicas': [0, 1, 2]}]}
     try:
         # Verify presence of required keys
         if sorted(assignment.keys()) != sorted(['version', 'partitions']):
