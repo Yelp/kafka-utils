@@ -88,9 +88,22 @@ class ClusterTopology(object):
 
             # Updating corresponding broker objects
             for broker_id in replica_ids:
-                broker = self.brokers[broker_id]
-                broker.add_partition(partition)
-
+                # Check if broker-id is present in current active brokers
+                if broker_id in self.brokers.keys():
+                    broker = self.brokers[broker_id]
+                    broker.add_partition(partition)
+                else:
+                    self.log.error(
+                        'Broker {b_id} in replicas {replicas} for partition '
+                        '{partition} not present in active brokers {active_b}.'
+                        .format(
+                            b_id=broker_id,
+                            replicas=replica_ids,
+                            partition=partition_name,
+                            active_b=self.brokers.keys(),
+                        ),
+                    )
+                    raise
             # Updating corresponding topic object. Should be done in end since
             # replication-factor is updated once partition is updated.
             topic.add_partition(partition)

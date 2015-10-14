@@ -7,6 +7,10 @@ import sys
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError, NoNodeError
 from yelp_kafka_tool.util import config
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
+    validate_plan,
+)
+
 
 REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
@@ -213,7 +217,7 @@ class ZK:
         """Deletes a Zookeeper node.
 
         :param: path: The zookeeper node path
-        :param: recrusive: Recursively delete node and all its children.
+        :param: recursive: Recursively delete node and all its children.
         """
         if config.debug:
             print("[INFO] ZK: Deleting node " + path, file=sys.stderr)
@@ -262,12 +266,42 @@ class ZK:
         """
         path = REASSIGNMENT_ZOOKEEPER_PATH
         plan = json.dumps(assignment)
+        # Verify if previous assignment is in progress
+        if REASSIGNMENT_NODE in self.get_children(ADMIN_PATH):
+            try:
+                in_progress_assignment = json.loads(self.get(path)[0])
+                in_progress_partitions = [
+                    '{topic}-{p_id}'.format(
+                        topic=p_data['topic'],
+                        p_id=str(p_data['partition']),
+                    )
+                    for p_data in in_progress_assignment['partitions']
+                ]
+                _log.error(
+                    '{count} partition(s) reassignment currently in progress:-'
+                    .format(count=len(in_progress_partitions)),
+                )
+                _log.error(
+                    '{partitions}. ABORTING reassignment...'
+                    .format(partitions=', '.join(in_progress_partitions)),
+                )
+                return
+            except Exception as e:
+                _log.error(
+                    'Information in_{path} could not be parsed. ABORTING '
+                    'reassignment...'.format(path=path),
+                )
+        # Verify if given plan is valid plan
+        # Fetch latest assignment from zookeeper
+        base_assignment = self.get_cluster_assignment()
+        if not validate_plan(assignment, base_assignment):
+            _log.error('Given plan is invalid. ABORTING reassignment...')
+            return
+        # Execute assignment
         try:
             _log.info('Sending assignment to Zookeeper...')
             self.create(path, plan, makepath=True)
             _log.info('Assignment sent to Zookeeper successfully.')
-        except NodeExistsError:
-            _log.error('Previous assignment in progress. Exiting..')
         except Exception as e:
             log.error(
                 'Could not re-assign partitions {plan}. Error: {e}'

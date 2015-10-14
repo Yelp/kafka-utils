@@ -102,10 +102,11 @@ def reassign_partitions(cluster_config, args):
             # Export proposed-plan to json file
             if args.proposed_plan_file:
                 proposed_plan_json(result[0], args.proposed_plan_file)
-            # Check and execute plan
+            # Validate and execute plan
             if validate_plan(ct.assignment, ct.initial_assignment):
-                _log.error('Invalid propose-plan. Aborting...')
                 execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
+            else:
+                _log.error('Invalid propose-plan. Ignoring Execution...')
         else:
             # No new-plan
             msg_str = 'No topic-partition layout changes proposed.'

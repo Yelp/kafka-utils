@@ -191,23 +191,26 @@ def validate_plan(curr_assignment, base_assignment=None):
     """Verify that the curr-assignment is valid for execution.
 
     Given kafka-reassignment plan should affirm with following rules:-
-    a) partition-name list remains unchanged
-    b) Replication-factor for each partition remains same
-    c) No duplicate broker-ids in each replicas
-    d) Broker-list is subset of given list of brokers
-    e) Format of plan is same as in standard format
+    a) Format of plan is expected format for reassignment to zookeeper
+    b) Plan should have at least one  partition for re-assignment
+    c) Partition-name list should be subset of base-plan partition-list
+    d) Replication-factor for each partition of same topic is same
+    e) Replication-factor for each partition remains unchanged
+    f) No duplicate broker-ids in each replicas
+    g) Broker-ids in replicas be subset of brokers of base-plan
     """
+    # Standard individual validation of given assignment
     if not validate_assignment(curr_assignment):
-        _log.error('Invalid proposed-plan')
+        _log.error('Invalid proposed-plan.')
         return False
     if not validate_assignment(base_assignment):
-        _log.error('Invalid assignment from cluster')
+        _log.error('Invalid assignment from cluster.')
         return False
     # Validate given plan with current cluster-assignment
     if base_assignment:
         if not validate_assignment_base(curr_assignment, base_assignment):
             return False
-    # Validation check successful
+    # Plan validation successful
     return True
 
 
@@ -269,7 +272,7 @@ def validate_assignment_base(curr_assignment, base_assignment):
             )
         return False
 
-    # Verify that brokers in replicas of new-assignment are subset of brokers
+    # Verify that replicas-brokers of new-assignment are subset of brokers
     # in base-assignment
     base_brokers = set([
         broker
@@ -293,10 +296,12 @@ def validate_assignment_base(curr_assignment, base_assignment):
 def validate_format(assignment):
     """Validate if the format of the assignment as expected.
 
-    1. Verify if it ONLY and MUST have keys and value, 'version' and 'partitions'
-    2. Verify if each value of 'partitions' ONLY and MUST have keys 'replicas',
+    Validate format of assignment on following rules:-
+    a) Verify if it ONLY and MUST have keys and value, 'version' and 'partitions'
+    b) Verify if each value of 'partitions' ONLY and MUST have keys 'replicas',
         'partition', 'topic'
-    3. Verify that replicas are of type int
+    c) Verify desired type of each value
+    d) Verify non-empty partitions and replicas
     Sample-assignment format:
     {
         "version": 1,
@@ -326,7 +331,7 @@ def validate_format(assignment):
         # Empty partitions
         if not assignment['partitions']:
             _log.error(
-                '"partitions" is empty list"'
+                '"partitions" list found empty"'
                 .format(version=assignment['partitions']),
             )
             return False
@@ -346,21 +351,36 @@ def validate_format(assignment):
                 return False
             # Check types of keys
             if not isinstance(p_data['topic'], str):
-                _log.error('"topic" of type string expected {p_data}"'.format(p_data=p_data))
+                _log.error(
+                    '"topic" of type string expected {p_data}"'
+                    .format(p_data=p_data),
+                )
                 return False
             if not isinstance(p_data['partition'], int):
-                _log.error('"partition" of type int expected {p_data}"'.format(p_data=p_data))
+                _log.error(
+                    '"partition" of type int expected {p_data}"'
+                    .format(p_data=p_data),
+                )
                 return False
             if not isinstance(p_data['replicas'], list):
-                _log.error('"replicas" of type list expected {p_data}"'.format(p_data=p_data))
+                _log.error(
+                    '"replicas" of type list expected {p_data}"'
+                    .format(p_data=p_data),
+                )
                 return False
             if not p_data['replicas']:
-                _log.error('Non-empty "replicas" expected: {p_data}"'.format(p_data=p_data))
+                _log.error(
+                    'Non-empty "replicas" expected: {p_data}"'
+                    .format(p_data=p_data),
+                )
                 return False
             # Invalid broker-type
             for broker in p_data['replicas']:
                 if not isinstance(broker, int):
-                    _log.error('"replicas" of type integer list expected {p_data}"'.format(p_data=p_data))
+                    _log.error(
+                        '"replicas" of type integer list expected {p_data}"'
+                        .format(p_data=p_data),
+                    )
                     return False
     except KeyError as e:
         _log.error('Invalid given plan format: {e}'.format(e=assignment))
