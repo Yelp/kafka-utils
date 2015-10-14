@@ -190,7 +190,7 @@ def separate_groups(groups, key):
 def validate_plan(curr_assignment, base_assignment=None):
     """Verify that the curr-assignment is valid for execution.
 
-    Following parameters confirms that the plan is valid.
+    Given kafka-reassignment plan should affirm with following rules:-
     a) partition-name list remains unchanged
     b) Replication-factor for each partition remains same
     c) No duplicate broker-ids in each replicas
@@ -226,9 +226,7 @@ def validate_assignment_base(curr_assignment, base_assignment):
     if not validate_format(curr_assignment):
         return False
 
-    # Validate given assignment compared to base-assignment
     # Verify that assignment-partitions are subset of base-assignment
-    # Get (topic, partition-id) sets
     curr_partitions = set([
         (p_data['topic'], p_data['partition'])
         for p_data in curr_assignment['partitions']
@@ -246,7 +244,7 @@ def validate_assignment_base(curr_assignment, base_assignment):
         )
         return False
 
-    # Verify replication-factor remains constant
+    # Verify replication-factor remains consistent
     base_partition_replicas = {
         (p_data['topic'], p_data['partition']): p_data['replicas']
         for p_data in base_assignment['partitions']
@@ -308,31 +306,39 @@ def validate_format(assignment):
             ...
         ]}
     """
-    assignment = {"version": 1, 'partitions': [{'topic': 't1', 'partition': 0, 'replicas': [0, 1, 2]}]}
+    # TODO: remove
+    # assignment = {"version": 1, 'partitions': [{'topic': 't1', 'partition': 0, 'replicas': [0, 1, 2]}]}
     try:
         # Verify presence of required keys
-        json.loads(json.dumps(assignment))
         if sorted(assignment.keys()) != sorted(['version', 'partitions']):
             _log.error(
                 ' "version" or "partitions" key not present in given assignment:'
                 '{keys}'.format(keys=', '.join(assignment.keys())),
             )
             return False
+
+        # Invalid version
         if assignment['version'] != 1:
             _log.error(
                 'Invalid version of assignment {version}'
                 .format(version=assignment['version']),
             )
             return False
+
+        # Empty partitions
         if not assignment['partitions']:
             _log.error(
                 '"partitions" is empty list"'
                 .format(version=assignment['partitions']),
             )
             return False
+
+        # Invalid partitions type
         if not isinstance(assignment['partitions'], list):
             _log.error('"partitions" of type list expected."')
             return False
+
+        # Invalid partition-data
         for p_data in assignment['partitions']:
             if sorted(p_data.keys()) != sorted(['topic', 'partition', 'replicas']):
                 _log.error(
@@ -353,6 +359,7 @@ def validate_format(assignment):
             if not p_data['replicas']:
                 _log.error('Non-empty "replicas" expected: {p_data}"'.format(p_data=p_data))
                 return False
+            # Invalid broker-type
             for broker in p_data['replicas']:
                 if not isinstance(broker, int):
                     _log.error('"replicas" of type integer list expected {p_data}"'.format(p_data=p_data))
@@ -364,7 +371,8 @@ def validate_format(assignment):
 
 
 def validate_assignment(assignment):
-    """
+    """Validate if given assignment is valid based on kafka-cluster-assignment protocols.
+
     Validate following parameters:-
     a) Correct .json format of assignment
     b) Partition-list should be unique
@@ -374,7 +382,7 @@ def validate_assignment(assignment):
     # Validate format of assignment
     if not validate_format(assignment):
         return False
-    # Validate given assignment
+
     # Verify no duplicate partitions
     partition_names = [
         (p_data['topic'], p_data['partition'])
@@ -394,7 +402,6 @@ def validate_assignment(assignment):
     # Verify no duplicate brokers in partition-replicas
     dup_replica_brokers = []
     for p_data in assignment['partitions']:
-        # for replicas in partition_info['replicas']:
         dup_replica_brokers = [
             broker
             for broker, count in Counter(p_data['replicas']).items()
