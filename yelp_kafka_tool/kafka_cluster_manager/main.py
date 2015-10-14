@@ -45,6 +45,7 @@ from .cluster_info.util import (
     confirm_execution,
     proposed_plan_json,
     validate_plan,
+    get_plan_str,
 )
 from .util import KafkaInterface
 
@@ -59,12 +60,18 @@ def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
     # Execute proposed-plan
     if to_execute(to_apply, no_confirm):
         _log.info('Executing Proposed Plan')
-        KafkaInterface(script_path).execute_plan(
+        status = KafkaInterface(script_path).execute_plan(
             zk,
             proposed_plan,
             ct.brokers.values(),
             ct.topics.values(),
         )
+        if not status:
+            _log.error('Plan execution unsuccessful. Exiting...')
+            sys.exit(1)
+        else:
+            _log.info('Plan sent to zookeeper for reassignment successfully')
+
     else:
         _log.info('Proposed Plan won\'t be executed.')
 
@@ -89,6 +96,12 @@ def reassign_partitions(cluster_config, args):
             brokers=args.brokers,
             leaders=args.leaders,
         )
+        # Validate if latest cluster-topology adheres to original topology
+        curr_plan = get_plan_str(ct.assignment)
+        base_plan = get_plan_str(ct.initial_assignment)
+        if not validate_plan(curr_plan, base_plan):
+            _log.error('Invalid latest-cluster assignment. Exiting...')
+            sys.exit(1)
 
         # Evaluate proposed-plan and execute/display the same
         # Get final-proposed-plan details
@@ -104,10 +117,12 @@ def reassign_partitions(cluster_config, args):
             if args.proposed_plan_file:
                 proposed_plan_json(result[0], args.proposed_plan_file)
             # Validate and execute plan
-            if validate_plan(ct.assignment, ct.initial_assignment):
+            base_plan = get_plan_str(ct.initial_assignment)
+            if validate_plan(result[0], base_plan):
                 execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
             else:
-                _log.error('Invalid propose-plan. Ignoring Execution...')
+                _log.error('Invalid proposed-plan. Execution Unsuccessful. Exiting...')
+                sys.exit(1)
         else:
             # No new-plan
             msg_str = 'No topic-partition layout changes proposed.'

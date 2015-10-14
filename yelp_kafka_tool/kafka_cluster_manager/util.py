@@ -98,13 +98,7 @@ class KafkaInterface(object):
                         result,
                     )
 
-    def execute_plan(
-        self,
-        zk,
-        proposed_layout,
-        brokers,
-        topics,
-    ):
+    def execute_plan(self, zk, proposed_layout, brokers, topics):
         """Execute the proposed plan.
 
         Execute the given proposed plan over given
@@ -114,7 +108,7 @@ class KafkaInterface(object):
         proposed_plan:   Proposed plan in json format
         """
         if not self._kafka_script_path:
-            zk.execute_assignment(proposed_layout)
+            return zk.execute_assignment(proposed_layout)
         else:
             with tempfile.NamedTemporaryFile() as temp_reassignment_file:
                 json.dump(proposed_layout, temp_reassignment_file)
@@ -126,3 +120,4 @@ class KafkaInterface(object):
                     temp_reassignment_file.name,
                     True,
                 )
+                return True

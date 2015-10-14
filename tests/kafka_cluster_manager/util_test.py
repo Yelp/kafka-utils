@@ -3,9 +3,9 @@ from pytest import fixture
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     get_reduced_proposed_plan,
     get_assignment_map,
-    validate_format,
-    validate_assignment,
-    validate_assignment_base,
+    _validate_format,
+    _validate_assignment,
+    _validate_plan_base,
     validate_plan,
 )
 
@@ -144,7 +144,7 @@ def test_validate_format():
     }
 
     # Verify correct format
-    assert validate_format(assignment) is True
+    assert _validate_format(assignment) is True
 
 
 def test_validate_format_version_absent():
@@ -154,14 +154,26 @@ def test_validate_format_version_absent():
     }
 
     # 'version' key missing: Verify Validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
+
+
+def test_validate_format_invalid_key():
+    # Invalid key "cluster"
+    assignment = {
+        "cluster": "invalid_key",
+        "partitions":
+        [{"partition": 0, "topic": 't1', "replicas": [0, 1, 2]}]
+    }
+
+    # Verify validation failed
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_partitions_absent():
     assignment = {"version": 1}
 
     # 'partitions' key missing: Verify Validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_version_wrong():
@@ -173,7 +185,7 @@ def test_validate_format_version_wrong():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_empty():
@@ -181,7 +193,7 @@ def test_validate_format_empty():
     assignment = {}
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_partitions_empty():
@@ -192,7 +204,22 @@ def test_validate_format_partitions_empty():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
+
+
+def test_validate_format_invalid_key_partition():
+    # Invalid/unwanted key 'isr'
+    assignment = {
+        "version": 1,
+        "partitions":
+        [
+            {"topic": 't1', "replicas": [0, 1, 2]},
+            {"isr": [0, 1, 2], "partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
+        ]
+    }
+
+    # Verify validation failed
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_missing_key_partition():
@@ -207,7 +234,7 @@ def test_validate_format_missing_key_partition():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_missing_key_topic():
@@ -222,7 +249,7 @@ def test_validate_format_missing_key_topic():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_missing_key_replicas():
@@ -237,7 +264,7 @@ def test_validate_format_missing_key_replicas():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_invalid_type_partitions():
@@ -248,7 +275,7 @@ def test_validate_format_invalid_type_partitions():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_invalid_type_partition():
@@ -259,7 +286,7 @@ def test_validate_format_invalid_type_partition():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_invalid_type_topic():
@@ -270,7 +297,7 @@ def test_validate_format_invalid_type_topic():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_invalid_type_replicas():
@@ -281,7 +308,7 @@ def test_validate_format_invalid_type_replicas():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_invalid_type_replica_brokers():
@@ -292,7 +319,7 @@ def test_validate_format_invalid_type_replica_brokers():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_format_replica_empty():
@@ -303,7 +330,7 @@ def test_validate_format_replica_empty():
     }
 
     # Verify validation failed
-    assert validate_format(assignment) is False
+    assert _validate_format(assignment) is False
 
 
 def test_validate_assignment():
@@ -316,7 +343,7 @@ def test_validate_assignment():
     }
 
     # Verify valid assignment
-    assert validate_assignment(assignment) is True
+    assert _validate_assignment(assignment) is True
 
 
 def test_validate_assignment_duplicate_partitions():
@@ -330,7 +357,7 @@ def test_validate_assignment_duplicate_partitions():
     }
 
     # Verify validation failed
-    assert validate_assignment(assignment) is False
+    assert _validate_assignment(assignment) is False
 
 
 def test_validate_assignment_duplicate_replica_brokers():
@@ -341,7 +368,7 @@ def test_validate_assignment_duplicate_replica_brokers():
     }
 
     # Verify validation failed
-    assert validate_assignment(assignment) is False
+    assert _validate_assignment(assignment) is False
 
 
 def test_validate_assignment_different_replication_factor():
@@ -356,10 +383,10 @@ def test_validate_assignment_different_replication_factor():
     }
 
     # Verify validation failed
-    assert validate_assignment(assignment) is False
+    assert _validate_assignment(assignment) is False
 
 
-def test_validate_assigment_base():
+def test_validate_plan_base():
     assignment = {
         "version": 1,
         "partitions": [
@@ -377,10 +404,10 @@ def test_validate_assigment_base():
     }
 
     # Verify valid assignment compared to base
-    assert validate_assignment_base(assignment, base_assignment) is True
+    assert _validate_plan_base(assignment, base_assignment) is True
 
 
-def test_validate_assigment_base_invalid_partitions():
+def test_validate_plan_base_invalid_partitions():
     # partition: ('invalid', 0) not present in base assignment
     assignment = {
         "version": 1,
@@ -398,10 +425,10 @@ def test_validate_assigment_base_invalid_partitions():
     }
 
     # Verify validation failed
-    assert validate_assignment_base(assignment, base_assignment) is False
+    assert _validate_plan_base(assignment, base_assignment) is False
 
 
-def test_validate_assigment_base_invalid_partitions_2():
+def test_validate_plan_base_invalid_partitions_2():
     # partition: ('t2', 1) not present in base assignment
     assignment = {
         "version": 1,
@@ -419,10 +446,10 @@ def test_validate_assigment_base_invalid_partitions_2():
     }
 
     # Verify validation failed
-    assert validate_assignment_base(assignment, base_assignment) is False
+    assert _validate_plan_base(assignment, base_assignment) is False
 
 
-def test_validate_assigment_base_replication_factor_changed():
+def test_validate_plan_base_replication_factor_changed():
     # replication-factor of (t1, 0) is 1 in assignment and 2 in base-assignment
     assignment = {
         "version": 1,
@@ -440,10 +467,10 @@ def test_validate_assigment_base_replication_factor_changed():
     }
 
     # Verify validation failed
-    assert validate_assignment_base(assignment, base_assignment) is False
+    assert _validate_plan_base(assignment, base_assignment) is False
 
 
-def test_validate_assigment_base_invalid_brokers():
+def test_validate_plan_base_invalid_brokers():
     # Broker 4 in partition-replicas (t1, 0): [0, 4] is not present in
     # base assignment
     assignment = {
@@ -462,7 +489,7 @@ def test_validate_assigment_base_invalid_brokers():
     }
 
     # Verify validation failed
-    assert validate_assignment_base(assignment, base_assignment) is False
+    assert _validate_plan_base(assignment, base_assignment) is False
 
 
 def test_validate_plan_1():
@@ -480,6 +507,29 @@ def test_validate_plan_1():
 
 
 def test_validate_plan_2():
+    # All partitions in new-plan
+    assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 3]}
+        ]
+    }
+    base_assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
+        ]
+    }
+
+    # Verify valid plan
+    assert validate_plan(assignment, base_assignment) is True
+
+
+def test_validate_plan_3():
     assignment = {
         "version": 1,
         "partitions": [
@@ -501,7 +551,7 @@ def test_validate_plan_2():
 
 
 def test_validate_plan_invalid_format():
-    # Invalid format: broker-id string
+    # Invalid format: partition-id string
     assignment = {
         "version": 1,
         "partitions": [
@@ -522,7 +572,7 @@ def test_validate_plan_invalid_format():
     assert validate_plan(assignment, base_assignment) is False
 
 
-def test_validate_plan_invalid_assignment():
+def test_validate_plan_duplicate_partition():
     # Invalid assignment: Duplicate partition
     assignment = {
         "version": 1,
@@ -555,3 +605,7 @@ def test_validate_plan_invalid_plan():
     }
     # Verify validation failed
     assert validate_plan(assignment, base_assignment) is False
+
+
+def irange(n):
+    return [x for x in range(n)]

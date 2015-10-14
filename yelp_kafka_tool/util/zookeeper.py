@@ -65,7 +65,7 @@ class ZK:
         data, _ = self.get(path, watch)
         return json.loads(data) if data else None
 
-    def get_brokers(self, broker_name=None):
+    def get_brokers(self, broker_name=None, names_only=False):
         """Get information on all the available brokers.
 
         :rtype : dict of brokers
@@ -74,6 +74,11 @@ class ZK:
             broker_ids = [broker_name]
         else:
             broker_ids = self.get_children("/brokers/ids")
+
+        # Return broker-ids only
+        if names_only:
+            return {b_id: None for b_id in broker_ids}
+
         brokers = {}
         for b_id in broker_ids:
             try:
@@ -287,29 +292,33 @@ class ZK:
                     '{partitions}. ABORTING reassignment...'
                     .format(partitions=', '.join(in_progress_partitions)),
                 )
-                return
+                return False
             except Exception as e:
                 _log.error(
                     'Information in_{path} could not be parsed. ABORTING '
                     'reassignment...'.format(path=path),
                 )
+                return False
         # Verify if given plan is valid plan
         # Fetch latest assignment from zookeeper
         base_assignment = self.get_cluster_assignment()
-        if not validate_plan(assignment, base_assignment):
+        # Fetch current active brokers
+        brokers = [int(b_id) for b_id in self.get_brokers(names_only=True)]
+        if not validate_plan(assignment, base_assignment, brokers):
             _log.error('Given plan is invalid. ABORTING reassignment...')
-            return
+            return False
         # Execute assignment
         try:
             _log.info('Sending assignment to Zookeeper...')
             self.create(path, plan, makepath=True)
             _log.info('Assignment sent to Zookeeper successfully.')
+            return True
         except Exception as e:
             _log.error(
                 'Could not re-assign partitions {plan}. Error: {e}'
                 .format(plan=plan, e=e),
             )
-            raise
+            return False
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
