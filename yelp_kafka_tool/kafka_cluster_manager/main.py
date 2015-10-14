@@ -44,6 +44,7 @@ from .cluster_info.util import (
     get_reduced_proposed_plan,
     confirm_execution,
     proposed_plan_json,
+    validate_plan,
 )
 from .util import KafkaInterface
 

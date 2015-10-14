@@ -203,11 +203,12 @@ def validate_plan(curr_assignment, base_assignment=None):
     if not validate_assignment(curr_assignment):
         _log.error('Invalid proposed-plan.')
         return False
-    if not validate_assignment(base_assignment):
-        _log.error('Invalid assignment from cluster.')
-        return False
-    # Validate given plan with current cluster-assignment
+
+    # Validate given plan in reference to base-plan
     if base_assignment:
+        if not validate_assignment(base_assignment):
+            _log.error('Invalid assignment from cluster.')
+            return False
         if not validate_assignment_base(curr_assignment, base_assignment):
             return False
     # Plan validation successful
@@ -291,6 +292,9 @@ def validate_assignment_base(curr_assignment, base_assignment):
             .format(brokers=invalid_brokers)
         )
         return False
+
+    # Validation successfull
+    return True
 
 
 def validate_format(assignment):
@@ -383,7 +387,7 @@ def validate_format(assignment):
                     )
                     return False
     except KeyError as e:
-        _log.error('Invalid given plan format: {e}'.format(e=assignment))
+        _log.error('Invalid given plan format: {e}'.format(e=e))
         return False
     return True
 

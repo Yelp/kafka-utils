@@ -5,7 +5,7 @@ import logging
 import sys
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NodeExistsError, NoNodeError
+from kazoo.exceptions import NoNodeError
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     validate_plan,
@@ -13,6 +13,8 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
 
 
 REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+ADMIN_PATH = "/admin"
+REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
 
 
@@ -303,7 +305,7 @@ class ZK:
             self.create(path, plan, makepath=True)
             _log.info('Assignment sent to Zookeeper successfully.')
         except Exception as e:
-            log.error(
+            _log.error(
                 'Could not re-assign partitions {plan}. Error: {e}'
                 .format(plan=plan, e=e),
             )
