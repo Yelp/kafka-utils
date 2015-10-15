@@ -125,11 +125,17 @@ def reassign_partitions(cluster_config, args):
             _log.error('Cluster-state is not stable. Exiting...')
             sys.exit(1)
         ct = ClusterTopology(zk=zk, script_path=script_path)
+        # TODO: remove
+        from .cluster_info.stats import imbalance_value_all
+        prev_imbal = imbalance_value_all(ct, True)
+        print('initial-imbal', prev_imbal)
         ct.reassign_partitions(
             replication_groups=args.replication_groups,
             brokers=args.brokers,
             leaders=args.leaders,
         )
+        prev_imbal = imbalance_value_all(ct, True)
+        print('after-imbal', prev_imbal)
         curr_plan = get_plan(ct.assignment)
         base_plan = get_plan(ct.initial_assignment)
         if not validate_plan(curr_plan, base_plan):

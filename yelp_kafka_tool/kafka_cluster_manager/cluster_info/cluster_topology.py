@@ -124,12 +124,24 @@ class ClusterTopology(object):
         """Fetch replication-group to broker map from zookeeper."""
         try:
             hostname = broker.get_hostname(self._zk)
+            # TODO: remove, temporary for localhost
+            '''
             if 'localhost' in hostname:
                 self.log.warning(
                     "Setting replication-group as localhost for broker %s",
                     broker.id,
                 )
                 rg_name = 'localhost'
+            '''
+            if 'dev8-devc' in hostname:
+                if broker.id == 0:
+                    rg_name = 'a'
+                elif broker.id == 1:
+                    rg_name = 'a'
+                elif broker.id == 2:
+                    rg_name = 'a'
+                else:
+                    rg_name = 'c'
             else:
                 habitat = hostname.rsplit('-', 1)[1]
                 rg_name = habitat.split('.', 1)[0]
