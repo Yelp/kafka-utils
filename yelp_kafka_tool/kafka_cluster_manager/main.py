@@ -33,7 +33,6 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
-import json
 import sys
 
 from yelp_kafka.config import ClusterConfig
@@ -46,7 +45,7 @@ from .cluster_info.util import (
     confirm_execution,
     proposed_plan_json,
     validate_plan,
-    get_plan_str,
+    get_plan,
 )
 from .util import KafkaInterface
 
@@ -96,11 +95,23 @@ def is_cluster_reliable(zk):
     could have incorrect replicas.
     """
     if REASSIGNMENT_NODE in zk.get_children(ADMIN_PATH):
-        in_progress_partitions = json.loads(zk.get(REASSIGNMENT_ZOOKEEPER_PATH)[0])['partitions']
-        _log.warning(
-            'Previous re-assignment is in progress for {count} partitions.'
-            .format(count=len(in_progress_partitions))
-        )
+        in_progress_plan = zk.get_in_progress_plan()
+        if in_progress_plan:
+            in_progress_partitions = in_progress_plan['partitions']
+            print(
+                'Previous re-assignment in progress for {count} partitions.'
+                ' Current partitions in re-assignment queue: {partitions}'
+                .format(
+                    count=len(in_progress_partitions),
+                    partitions=in_progress_partitions,
+                )
+            )
+        else:
+            _log.warning(
+                'Previous re-assignment in progress. In progress partitions'
+                ' could not be fetched',
+            )
+            return False
         return False
     return True
 
@@ -122,8 +133,8 @@ def reassign_partitions(cluster_config, args):
             brokers=args.brokers,
             leaders=args.leaders,
         )
-        curr_plan = get_plan_str(ct.assignment)
-        base_plan = get_plan_str(ct.initial_assignment)
+        curr_plan = get_plan(ct.assignment)
+        base_plan = get_plan(ct.initial_assignment)
         if not validate_plan(curr_plan, base_plan):
             _log.error('Invalid latest-cluster assignment. Exiting...')
             sys.exit(1)
@@ -142,7 +153,7 @@ def reassign_partitions(cluster_config, args):
             if args.proposed_plan_file:
                 proposed_plan_json(result[0], args.proposed_plan_file)
             # Validate and execute plan
-            base_plan = get_plan_str(ct.initial_assignment)
+            base_plan = get_plan(ct.initial_assignment)
             if validate_plan(result[0], base_plan):
                 execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
             else:

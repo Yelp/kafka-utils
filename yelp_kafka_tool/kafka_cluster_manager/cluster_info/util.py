@@ -71,9 +71,6 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
     if original_assignment == new_assignment or \
             max_changes < 1 or not original_assignment or not new_assignment:
         return {}
-    assert(
-        set(original_assignment.keys()) == set(new_assignment.keys())
-    ), 'Mismatch in topic-partitions set in original and proposed plans.'
     # Get change-list for given assignments
     proposed_assignment = [
         (t_p_key, new_assignment[t_p_key])
@@ -88,11 +85,11 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
         (ele[0], ele[1])
         for ele in red_proposed_plan_list
     )
-    plan_str = get_plan_str(red_proposed_assignment)
+    plan_str = get_plan(red_proposed_assignment)
     return plan_str, red_curr_plan_list, red_proposed_plan_list, tot_actions
 
 
-def get_plan_str(proposed_assignment):
+def get_plan(proposed_assignment):
     return {
         'version': 1,
         'partitions':

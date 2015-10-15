@@ -10,7 +10,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
     calculate_partition_movement,
 )
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    get_plan_str,
+    get_plan,
     validate_plan,
     _validate_plan_base,
 )
@@ -293,8 +293,8 @@ class TestReplicationGroup(object):
             # Only partition with no siblings in 4 is (T0, 0)
             assert victim_partition.name == ('T0', 0)
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
     def test_get_target_brokers_case3(self):
@@ -334,8 +334,8 @@ class TestReplicationGroup(object):
             # Verify partition be (T3, 1) with minimum-siblings
             assert victim_partition.name == ('T3', 1)
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
     def test_rebalance_brokers_balanced_1(self):
@@ -359,8 +359,8 @@ class TestReplicationGroup(object):
             # Verify no change is assignment
             assert sorted(ct.assignment) == sorted(ct.initial_assignment)
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
     def test_rebalance_brokers_balanced_2(self):
@@ -392,8 +392,8 @@ class TestReplicationGroup(object):
             _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
             assert net_rg2 == 0
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
     def test_rebalance_brokers_balanced_3(self):
@@ -426,8 +426,8 @@ class TestReplicationGroup(object):
             _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
             assert net_rg2 == 0
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
     def test_rebalance_brokers_imbalanced_1(self):
@@ -461,8 +461,8 @@ class TestReplicationGroup(object):
             _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
             assert net_rg2 == 0
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
     def test_rebalance_brokers_imbalanced_2(self):
@@ -500,8 +500,8 @@ class TestReplicationGroup(object):
             _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
             assert net_rg2 == 0
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
     def test_rebalance_brokers_imbalanced_3(self):
@@ -542,8 +542,8 @@ class TestReplicationGroup(object):
             _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
             assert net_rg2 == 0
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
     def test_rebalance_brokers_imbalanced_4(self):
@@ -594,6 +594,6 @@ class TestReplicationGroup(object):
                 calculate_partition_movement(ct.initial_assignment, ct.assignment)
             assert total_movements == 2
             # Verify new plan
-            new_plan = get_plan_str(ct.assignment)
-            original_plan = get_plan_str(ct.initial_assignment)
+            new_plan = get_plan(ct.assignment)
+            original_plan = get_plan(ct.initial_assignment)
             assert validate_plan(new_plan, original_plan, irange(6)) is True

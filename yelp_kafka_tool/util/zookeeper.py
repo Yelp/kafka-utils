@@ -328,3 +328,19 @@ class ZK:
             'version': 1,
             'partitions': partitions
         }
+
+    def get_in_progress_plan(self):
+        """Read the currently runnign plan on reassign_partitions node."""
+        path = REASSIGNMENT_ZOOKEEPER_PATH
+        try:
+            result = self.get(path)
+            return json.loads(result[0])
+        except NoNodeError:
+            _log.error('{path} node does not exists'.format(path=path))
+            return {}
+        except IndexError:
+            _log.error(
+                'Content of node {path} could not be parsed. {content}'
+                .format(path=path, content=result),
+            )
+            return {}

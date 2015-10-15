@@ -12,6 +12,7 @@ from __future__ import unicode_literals
 
 import logging
 
+from collections import OrderedDict
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 from .broker import Broker
 from .partition import Partition
@@ -23,7 +24,7 @@ from .stats import (
     get_topic_imbalance_stats,
     get_replication_group_imbalance_stats,
 )
-from .util import separate_groups, get_assignment_map
+from .util import separate_groups
 
 
 class ClusterTopology(object):
@@ -171,42 +172,20 @@ class ClusterTopology(object):
             )
             self.rebalance_leaders()
 
-    def get_assignment_json(self):
-        """Build and return cluster-topology in json format."""
-        assignment_json = {
-            'version': 1,
-            'partitions':
-            [
-                {
-                    'topic': partition.topic.id,
-                    'partition': partition.partition_id,
-                    'replicas': [broker.id for broker in partition.replicas]
-                }
-                for partition in self.partitions.itervalues()
-            ]
-        }
-        return assignment_json
-
-    def get_initial_assignment_json(self):
-        return {
-            'version': 1,
-            'partitions':
-            [
-                {
-                    'topic': t_p_key[0],
-                    'partition': t_p_key[1],
-                    'replicas': replica
-                } for t_p_key, replica in self._initial_assignment.iteritems()
-            ]
-        }
-
     @property
     def initial_assignment(self):
         return self._initial_assignment
 
     @property
     def assignment(self):
-        return get_assignment_map(self.get_assignment_json())
+        assignment = {}
+        for partition in self.partitions.itervalues():
+            #  assignment_json['partitions']:
+            assignment[
+                (partition.topic.id, partition.partition_id)
+            ] = [broker.id for broker in partition.replicas]
+        # assignment map created in sorted order for deterministic solution
+        return OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
 
     @property
     def partition_replicas(self):
