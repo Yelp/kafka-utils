@@ -85,7 +85,7 @@ def to_execute(to_apply, no_confirm):
 
 
 def is_cluster_stable(zk):
-    """Return if current-cluster state if reliable.
+    """Return True if the cluster state is unstable.
 
     Currently, the existence of node 'reassign_partitions' in zookeeper
     implies previous reassignment in progress. This means that cluster-state
@@ -108,7 +108,6 @@ def is_cluster_stable(zk):
                 'Previous re-assignment in progress. In progress partitions'
                 ' could not be fetched',
             )
-            return False
         return False
     return True
 

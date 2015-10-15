@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import json
 import logging
-import os
 import sys
 
 from kazoo.client import KazooClient
@@ -271,10 +270,8 @@ class ZK:
             * Raise any other exception
 
         """
-        reassignment_path = os.path.join(
-            os.path.abspath(ADMIN_PATH),
-            REASSIGNMENT_NODE,
-        )
+        reassignment_path = '{admin}/{reassignment_node}'\
+            .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         plan = json.dumps(assignment)
         # Final plan validation against latest assignment in zookeeper
         base_assignment = self.get_cluster_assignment()
@@ -336,10 +333,8 @@ class ZK:
 
     def get_in_progress_plan(self):
         """Read the currently runnign plan on reassign_partitions node."""
-        reassignment_path = os.path.join(
-            os.path.abspath(ADMIN_PATH),
-            REASSIGNMENT_NODE,
-        )
+        reassignment_path = '{admin}/{reassignment_node}'\
+            .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         try:
             result = self.get(reassignment_path)
             return json.loads(result[0])

@@ -85,8 +85,8 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
         (ele[0], ele[1])
         for ele in red_proposed_plan_list
     )
-    plan_str = get_plan(red_proposed_assignment)
-    return plan_str, red_curr_plan_list, red_proposed_plan_list, tot_actions
+    plan = get_plan(red_proposed_assignment)
+    return plan, red_curr_plan_list, red_proposed_plan_list, tot_actions
 
 
 def get_plan(proposed_assignment):
