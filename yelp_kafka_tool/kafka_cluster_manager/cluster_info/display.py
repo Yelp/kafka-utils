@@ -3,11 +3,12 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import logging
+from .util import get_plan
 _log = logging.getLogger('kafka-cluster-manager')
 
 
 def display_cluster_topology(cluster_topology):
-    print(cluster_topology.get_assignment_json())
+    print(get_plan(cluster_topology.assignment))
 
 
 def display_same_replica_count_rg(

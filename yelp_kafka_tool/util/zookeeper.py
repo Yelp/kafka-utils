@@ -7,8 +7,13 @@ import sys
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError, NoNodeError
 from yelp_kafka_tool.util import config
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
+    validate_plan,
+)
 
-REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+
+ADMIN_PATH = "/admin"
+REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
 
 
@@ -59,7 +64,7 @@ class ZK:
         data, _ = self.get(path, watch)
         return json.loads(data) if data else None
 
-    def get_brokers(self, broker_name=None):
+    def get_brokers(self, broker_name=None, names_only=False):
         """Get information on all the available brokers.
 
         :rtype : dict of brokers
@@ -68,6 +73,11 @@ class ZK:
             broker_ids = [broker_name]
         else:
             broker_ids = self.get_children("/brokers/ids")
+
+        # Return broker-ids only
+        if names_only:
+            return {b_id: None for b_id in broker_ids}
+
         brokers = {}
         for b_id in broker_ids:
             try:
@@ -213,7 +223,7 @@ class ZK:
         """Deletes a Zookeeper node.
 
         :param: path: The zookeeper node path
-        :param: recrusive: Recursively delete node and all its children.
+        :param: recursive: Recursively delete node and all its children.
         """
         if config.debug:
             print("[INFO] ZK: Deleting node " + path, file=sys.stderr)
@@ -250,7 +260,6 @@ class ZK:
         """Executing plan directly sending it to zookeeper nodes.
         Algorithm:
         1. Verification:
-         a) TODO: next review: Validate given assignment
         2. TODO:Save current assignment for future?
         3. Re-assign:
             * Send command to zookeeper to re-assign and create parent-node
@@ -260,20 +269,47 @@ class ZK:
             * Raise any other exception
 
         """
-        path = REASSIGNMENT_ZOOKEEPER_PATH
+        reassignment_path = '{admin}/{reassignment_node}'\
+            .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         plan = json.dumps(assignment)
+        # Final plan validation against latest assignment in zookeeper
+        base_assignment = self.get_cluster_assignment()
+        brokers = [int(b_id) for b_id in self.get_brokers(names_only=True)]
+        if not validate_plan(assignment, base_assignment, brokers):
+            _log.error('Given plan is invalid. ABORTING reassignment...')
+            return False
+        # Send proposed-plan to zookeeper
         try:
             _log.info('Sending assignment to Zookeeper...')
-            self.create(path, plan, makepath=True)
+            self.create(reassignment_path, plan, makepath=True)
             _log.info('Assignment sent to Zookeeper successfully.')
+            return True
         except NodeExistsError:
-            _log.error('Previous assignment in progress. Exiting..')
+            _log.warning('Previous assignment in progress. Exiting..')
+            in_progress_assignment = json.loads(self.get(reassignment_path)[0])
+            in_progress_partitions = [
+                '{topic}-{p_id}'.format(
+                    topic=p_data['topic'],
+                    p_id=str(p_data['partition']),
+                )
+                for p_data in in_progress_assignment['partitions']
+            ]
+            _log.warning(
+                '{count} partition(s) reassignment currently in progress:-'
+                .format(count=len(in_progress_partitions)),
+            )
+            _log.warning(
+                '{partitions}. ABORTING reassignment...'.format(
+                    partitions=', '.join(in_progress_partitions),
+                ),
+            )
+            return False
         except Exception as e:
-            log.error(
+            _log.error(
                 'Could not re-assign partitions {plan}. Error: {e}'
                 .format(plan=plan, e=e),
             )
-            raise
+            return False
 
     def get_cluster_assignment(self):
         """Fetch cluster assignment directly from zookeeper."""
@@ -293,3 +329,32 @@ class ZK:
             'version': 1,
             'partitions': partitions
         }
+
+    def get_in_progress_plan(self):
+        """Read the currently runnign plan on reassign_partitions node."""
+        reassignment_path = '{admin}/{reassignment_node}'\
+            .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
+        try:
+            result = self.get(reassignment_path)
+            return json.loads(result[0])
+        except NoNodeError:
+            _log.error('{path} node not present.'.format(path=reassignment_path))
+            return {}
+        except IndexError:
+            _log.error(
+                'Content of node {path} could not be parsed. {content}'
+                .format(path=reassignment_path, content=result),
+            )
+            return {}
+
+    def reassignment_in_progress(self):
+        """Returns true if reassignment-node is present."""
+        try:
+            if REASSIGNMENT_NODE in self.get_children(ADMIN_PATH):
+                return True
+            else:
+                return False
+        except NoNodeError:
+            # If node is not present, we can safely assume
+            # that reassignment-node is not present as well
+            return True

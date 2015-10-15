@@ -44,12 +44,15 @@ from .cluster_info.util import (
     get_reduced_proposed_plan,
     confirm_execution,
     proposed_plan_json,
+    validate_plan,
+    get_plan,
 )
 from .util import KafkaInterface
 
 
 DEFAULT_MAX_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
+
 _log = logging.getLogger('kafka-cluster-manager')
 
 
@@ -58,12 +61,18 @@ def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
     # Execute proposed-plan
     if to_execute(to_apply, no_confirm):
         _log.info('Executing Proposed Plan')
-        KafkaInterface(script_path).execute_plan(
+        status = KafkaInterface(script_path).execute_plan(
             zk,
             proposed_plan,
             ct.brokers.values(),
             ct.topics.values(),
         )
+        if not status:
+            _log.error('Plan execution unsuccessful. Exiting...')
+            sys.exit(1)
+        else:
+            _log.info('Plan sent to zookeeper for reassignment successfully')
+
     else:
         _log.info('Proposed Plan won\'t be executed.')
 
@@ -75,6 +84,35 @@ def to_execute(to_apply, no_confirm):
     return False
 
 
+def is_cluster_stable(zk):
+    """Return True if cluster state is stable.
+
+    :key-term: stable
+    Currently cluster being stable means non existence of 'reassign_partitions'
+    node in zookeeper. The existence of above node implies previous reassignment
+    in progress, implying that cluster has incorrect replicas temporarily.
+    """
+    if zk.reassignment_in_progress():
+        in_progress_plan = zk.get_in_progress_plan()
+        if in_progress_plan:
+            in_progress_partitions = in_progress_plan['partitions']
+            print(
+                'Previous re-assignment in progress for {count} partitions.'
+                ' Current partitions in re-assignment queue: {partitions}'
+                .format(
+                    count=len(in_progress_partitions),
+                    partitions=in_progress_partitions,
+                )
+            )
+        else:
+            _log.warning(
+                'Previous re-assignment in progress. In progress partitions'
+                ' could not be fetched',
+            )
+        return False
+    return True
+
+
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
@@ -82,12 +120,21 @@ def reassign_partitions(cluster_config, args):
         # Use kafka-scripts
         if args.use_kafka_script:
             script_path = args.script_path
+
+        if not is_cluster_stable(zk):
+            _log.error('Cluster-state is not stable. Exiting...')
+            sys.exit(1)
         ct = ClusterTopology(zk=zk, script_path=script_path)
         ct.reassign_partitions(
             replication_groups=args.replication_groups,
             brokers=args.brokers,
             leaders=args.leaders,
         )
+        curr_plan = get_plan(ct.assignment)
+        base_plan = get_plan(ct.initial_assignment)
+        if not validate_plan(curr_plan, base_plan):
+            _log.error('Invalid latest-cluster assignment. Exiting...')
+            sys.exit(1)
 
         # Evaluate proposed-plan and execute/display the same
         # Get final-proposed-plan details
@@ -102,8 +149,13 @@ def reassign_partitions(cluster_config, args):
             # Export proposed-plan to json file
             if args.proposed_plan_file:
                 proposed_plan_json(result[0], args.proposed_plan_file)
-            # Check and execute plan
-            execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
+            # Validate and execute plan
+            base_plan = get_plan(ct.initial_assignment)
+            if validate_plan(result[0], base_plan):
+                execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
+            else:
+                _log.error('Invalid proposed-plan. Execution Unsuccessful. Exiting...')
+                sys.exit(1)
         else:
             # No new-plan
             msg_str = 'No topic-partition layout changes proposed.'

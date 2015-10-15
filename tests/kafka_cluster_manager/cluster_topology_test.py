@@ -265,23 +265,6 @@ class TestClusterToplogy(object):
             # Assert initial-assignment
             assert ct.initial_assignment == self._initial_assignment
 
-    def test_get_assignment_json(self):
-        with self.build_cluster_topology() as ct:
-            assignment_json = {
-                'version': 1,
-                'partitions':
-                [
-                    {
-                        'topic': partition[0],
-                        'partition': partition[1],
-                        'replicas': replicas
-                    }
-                    for partition, replicas in self._initial_assignment.iteritems()
-                ]
-            }
-            # Verify json formatted assignment
-            assert sorted(ct.get_assignment_json()) == sorted(assignment_json)
-
     def test_elect_source_replication_group(self):
         # Sample assignment with 3 replication groups
         # with replica-count as as per map :-
