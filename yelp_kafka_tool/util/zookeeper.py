@@ -260,7 +260,6 @@ class ZK:
         """Executing plan directly sending it to zookeeper nodes.
         Algorithm:
         1. Verification:
-         a) TODO: next review: Validate given assignment
         2. TODO:Save current assignment for future?
         3. Re-assign:
             * Send command to zookeeper to re-assign and create parent-node

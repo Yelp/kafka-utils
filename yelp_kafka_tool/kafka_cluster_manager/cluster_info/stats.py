@@ -42,11 +42,7 @@ def get_net_imbalance(count_per_broker):
     return net_imbalance
 
 
-def get_extra_element_count(
-    curr_count,
-    opt_count,
-    extra_allowed_cnt,
-):
+def get_extra_element_count(curr_count, opt_count, extra_allowed_cnt):
     """Evaluate and return extra same element count based on given values.
 
     :key-term:
