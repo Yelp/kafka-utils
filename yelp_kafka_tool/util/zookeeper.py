@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import json
 import logging
+import os
 import sys
 
 from kazoo.client import KazooClient
@@ -12,7 +13,8 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
 )
 
 
-REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+ADMIN_PATH = "/admin"
+REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
 
 
@@ -269,7 +271,10 @@ class ZK:
             * Raise any other exception
 
         """
-        path = REASSIGNMENT_ZOOKEEPER_PATH
+        reassignment_path = os.path.join(
+            os.path.abspath(ADMIN_PATH),
+            REASSIGNMENT_NODE,
+        )
         plan = json.dumps(assignment)
         # Final plan validation against latest assignment in zookeeper
         base_assignment = self.get_cluster_assignment()
@@ -280,12 +285,12 @@ class ZK:
         # Send proposed-plan to zookeeper
         try:
             _log.info('Sending assignment to Zookeeper...')
-            self.create(path, plan, makepath=True)
+            self.create(reassignment_path, plan, makepath=True)
             _log.info('Assignment sent to Zookeeper successfully.')
             return True
         except NodeExistsError:
             _log.warning('Previous assignment in progress. Exiting..')
-            in_progress_assignment = json.loads(self.get(path)[0])
+            in_progress_assignment = json.loads(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
                     topic=p_data['topic'],
@@ -331,16 +336,31 @@ class ZK:
 
     def get_in_progress_plan(self):
         """Read the currently runnign plan on reassign_partitions node."""
-        path = REASSIGNMENT_ZOOKEEPER_PATH
+        reassignment_path = os.path.join(
+            os.path.abspath(ADMIN_PATH),
+            REASSIGNMENT_NODE,
+        )
         try:
-            result = self.get(path)
+            result = self.get(reassignment_path)
             return json.loads(result[0])
         except NoNodeError:
-            _log.error('{path} node does not exists'.format(path=path))
+            _log.error('{path} node not present.'.format(path=reassignment_path))
             return {}
         except IndexError:
             _log.error(
                 'Content of node {path} could not be parsed. {content}'
-                .format(path=path, content=result),
+                .format(path=reassignment_path, content=result),
             )
             return {}
+
+    def reassignment_in_progress(self):
+        """Returns true if reassignment-node is present."""
+        try:
+            if REASSIGNMENT_NODE in self.get_children(ADMIN_PATH):
+                return True
+            else:
+                return False
+        except NoNodeError:
+            # If node is not present, we can safely assume
+            # that reassignment-node is not present as well
+            return True

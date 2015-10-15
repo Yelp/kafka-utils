@@ -52,9 +52,6 @@ from .util import KafkaInterface
 
 DEFAULT_MAX_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
-ADMIN_PATH = "/admin"
-REASSIGNMENT_NODE = "reassign_partitions"
-REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
 
 _log = logging.getLogger('kafka-cluster-manager')
 
@@ -94,7 +91,7 @@ def is_cluster_stable(zk):
     implies previous reassignment in progress. This means that cluster-state
     could have incorrect replicas.
     """
-    if REASSIGNMENT_NODE in zk.get_children(ADMIN_PATH):
+    if zk.reassignment_in_progress():
         in_progress_plan = zk.get_in_progress_plan()
         if in_progress_plan:
             in_progress_partitions = in_progress_plan['partitions']
