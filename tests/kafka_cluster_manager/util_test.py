@@ -526,7 +526,63 @@ def test_validate_plan_2():
     }
 
     # Verify valid plan
-    assert validate_plan(assignment, base_assignment) is True
+    assert validate_plan(assignment, base_assignment, is_partition_subset=False) is True
+
+
+def test_validate_plan_incomplete_partition_subset():
+    # All partitions in new-plan
+    # Given complete-assignment partition-set incomplete
+    complete_assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+        ]
+    }
+    base_assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
+        ]
+    }
+
+    # Verify valid plan
+    assert validate_plan(
+        complete_assignment,
+        base_assignment,
+        is_partition_subset=False,
+    ) is False
+
+
+def test_validate_plan_incomplete_partition_subset_2():
+    # All partitions in new-plan
+    # Given complete-assignment partition-set superset
+    complete_assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]},
+            {"partition": 0, "topic": 't3', "replicas": [0, 1]}
+        ]
+    }
+    base_assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
+        ]
+    }
+
+    # Verify valid plan
+    assert validate_plan(
+        complete_assignment,
+        base_assignment,
+        is_partition_subset=False,
+    ) is False
 
 
 def test_validate_plan_3():

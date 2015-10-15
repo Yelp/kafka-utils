@@ -91,12 +91,15 @@ def reassign_partitions(cluster_config, args):
         if args.use_kafka_script:
             script_path = args.script_path
         ct = ClusterTopology(zk=zk, script_path=script_path)
-        ct.reassign_partitions(
+        status = ct.reassign_partitions(
             replication_groups=args.replication_groups,
             brokers=args.brokers,
             leaders=args.leaders,
         )
         # Validate if latest cluster-topology adheres to original topology
+        if not status:
+            _log.error('Re-assignment unsucessful. Exiting...')
+            sys.exit(1)
         curr_plan = get_plan_str(ct.assignment)
         base_plan = get_plan_str(ct.initial_assignment)
         if not validate_plan(curr_plan, base_plan):

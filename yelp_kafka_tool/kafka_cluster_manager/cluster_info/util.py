@@ -187,7 +187,12 @@ def separate_groups(groups, key):
     return revised_over_loaded, under_loaded
 
 
-def validate_plan(curr_assignment_str, base_assignment_str=None, active_brokers=None):
+def validate_plan(
+    curr_assignment_str,
+    base_assignment_str=None,
+    active_brokers=None,
+    is_partition_subset=True,
+):
     """Verify that the curr-assignment is valid for execution.
 
     Given kafka-reassignment plan should affirm with following rules:
@@ -216,13 +221,19 @@ def validate_plan(curr_assignment_str, base_assignment_str=None, active_brokers=
             curr_assignment,
             base_assignment,
             active_brokers,
+            is_partition_subset,
         ):
             return False
     # Plan validation successful
     return True
 
 
-def _validate_plan_base(curr_assignment, base_assignment, active_brokers=None):
+def _validate_plan_base(
+    curr_assignment,
+    base_assignment,
+    active_brokers=None,
+    is_partition_subset=True,
+):
     """Validate if given assignment is valid comparing with given base-assignment.
 
     Validate following assertions:
@@ -241,7 +252,14 @@ def _validate_plan_base(curr_assignment, base_assignment, active_brokers=None):
         (p_data['topic'], p_data['partition'])
         for p_data in base_assignment['partitions']
     ])
-    invalid_partitions = list(set(curr_partitions) - set(base_partitions))
+    if is_partition_subset:
+        invalid_partitions = list(curr_partitions - base_partitions)
+    else:
+        # partition set should be equal
+        invalid_partitions = list(
+            curr_partitions.union(base_partitions) -
+            curr_partitions.intersection(base_partitions),
+        )
     if invalid_partitions:
         _log.error(
             'Invalid partition(s) found: {p_list}'.format(
@@ -457,7 +475,7 @@ def _validate_assignment(assignment):
             if topic_replication_factor[topic] != replication_factor:
                 _log.error(
                     'Mismatch in replication-factor of partitions for topic '
-                    '{topic}".format(topic=topic)',
+                    '{topic}'.format(topic=topic),
                 )
                 return False
         else:
