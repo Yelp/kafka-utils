@@ -87,7 +87,7 @@ def to_execute(to_apply, no_confirm):
     return False
 
 
-def is_cluster_reliable(zk):
+def is_cluster_stable(zk):
     """Return if current-cluster state if reliable.
 
     Currently, the existence of node 'reassign_partitions' in zookeeper
@@ -124,7 +124,7 @@ def reassign_partitions(cluster_config, args):
         if args.use_kafka_script:
             script_path = args.script_path
 
-        if not is_cluster_reliable(zk):
+        if not is_cluster_stable(zk):
             _log.error('Cluster-state is not stable. Exiting...')
             sys.exit(1)
         ct = ClusterTopology(zk=zk, script_path=script_path)
