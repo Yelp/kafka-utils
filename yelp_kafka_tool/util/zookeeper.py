@@ -298,8 +298,9 @@ class ZK:
                 .format(count=len(in_progress_partitions)),
             )
             _log.warning(
-                '{partitions}. ABORTING reassignment...'
-                .format(partitions=', '.join(in_progress_partitions)),
+                '{partitions}. ABORTING reassignment...'.format(
+                    partitions=', '.join(in_progress_partitions),
+                ),
             )
             return False
         except Exception as e:
