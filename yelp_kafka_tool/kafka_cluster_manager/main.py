@@ -33,6 +33,7 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
+import json
 import sys
 
 from yelp_kafka.config import ClusterConfig
@@ -52,6 +53,10 @@ from .util import KafkaInterface
 
 DEFAULT_MAX_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
+ADMIN_PATH = "/admin"
+REASSIGNMENT_NODE = "reassign_partitions"
+REASSIGNMENT_ZOOKEEPER_PATH = "/admin/reassign_partitions"
+
 _log = logging.getLogger('kafka-cluster-manager')
 
 
@@ -83,6 +88,23 @@ def to_execute(to_apply, no_confirm):
     return False
 
 
+def is_cluster_reliable(zk):
+    """Return if current-cluster state if reliable.
+
+    Currently, the existence of node 'reassign_partitions' in zookeeper
+    implies previous reassignment in progress. This means that cluster-state
+    could have incorrect replicas.
+    """
+    if REASSIGNMENT_NODE in zk.get_children(ADMIN_PATH):
+        in_progress_partitions = json.loads(zk.get(REASSIGNMENT_ZOOKEEPER_PATH)[0])['partitions']
+        _log.warning(
+            'Previous re-assignment is in progress for {count} partitions.'
+            .format(count=len(in_progress_partitions))
+        )
+        return False
+    return True
+
+
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
@@ -90,16 +112,16 @@ def reassign_partitions(cluster_config, args):
         # Use kafka-scripts
         if args.use_kafka_script:
             script_path = args.script_path
+
+        if not is_cluster_reliable(zk):
+            _log.error('Cluster-state is not stable. Exiting...')
+            sys.exit(1)
         ct = ClusterTopology(zk=zk, script_path=script_path)
-        status = ct.reassign_partitions(
+        ct.reassign_partitions(
             replication_groups=args.replication_groups,
             brokers=args.brokers,
             leaders=args.leaders,
         )
-        # Validate if latest cluster-topology adheres to original topology
-        if not status:
-            _log.error('Re-assignment unsucessful. Exiting...')
-            sys.exit(1)
         curr_plan = get_plan_str(ct.assignment)
         base_plan = get_plan_str(ct.initial_assignment)
         if not validate_plan(curr_plan, base_plan):

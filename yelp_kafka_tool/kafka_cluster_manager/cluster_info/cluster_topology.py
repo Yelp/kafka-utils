@@ -25,9 +25,6 @@ from .stats import (
 )
 from .util import separate_groups, get_assignment_map
 
-ADMIN_PATH = "/admin"
-REASSIGNMENT_NODE = "reassign_partitions"
-
 
 class ClusterTopology(object):
     """Represent a Kafka cluster and functionalities supported over the cluster.
@@ -151,14 +148,6 @@ class ClusterTopology(object):
         """Rebalance current cluster-state to get updated state based on
         rebalancing option.
         """
-        # Don't execute the algorithm if previous assignment is in progress
-        if REASSIGNMENT_NODE in self._zk.get_children(ADMIN_PATH):
-            print('previous in proress')
-            self.log.warning(
-                'Current assignment is in progress. Partitions won\'t be '
-                'reassigned',
-            )
-            return False
         # Balancing to be done in the given order only
         # Rebalance replication-groups
         if replication_groups:
@@ -181,7 +170,6 @@ class ClusterTopology(object):
                 .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
             )
             self.rebalance_leaders()
-        return True
 
     def get_assignment_json(self):
         """Build and return cluster-topology in json format."""
