@@ -85,11 +85,12 @@ def to_execute(to_apply, no_confirm):
 
 
 def is_cluster_stable(zk):
-    """Return True if the cluster state is unstable.
+    """Return True if cluster state is stable.
 
-    Currently, the existence of node 'reassign_partitions' in zookeeper
-    implies previous reassignment in progress. This means that cluster-state
-    could have incorrect replicas.
+    :key-term: stable
+    Currently cluster being stable means non existence of 'reassign_partitions'
+    node in zookeeper. The existence of above node implies previous reassignment
+    in progress, implying that cluster has incorrect replicas temporarily.
     """
     if zk.reassignment_in_progress():
         in_progress_plan = zk.get_in_progress_plan()
