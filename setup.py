@@ -21,6 +21,7 @@ setup(
         "scripts/kafka-partition-manager",
         "scripts/kafka-consumer-manager",
         "scripts/yelpkafka",
+        "scripts/kafka-check",
     ],
     install_requires=[
         "argcomplete",
