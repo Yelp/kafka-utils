@@ -10,16 +10,20 @@ from fabric.api import sudo
 from fabric.api import task
 
 from operator import itemgetter
+from requests_futures.sessions import FuturesSession
+from requests.exceptions import RequestException
 
 from yelp_kafka import discovery
-
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-PRINT_MESSAGE = "Will restart the following brokers in {0}:"
+HEADER_MESSAGE = "Will restart the following brokers in {0}:"
 CONFIRM_MESSAGE = "Do you want to restart these brokers?"
 
 RESTART_COMMAND = "service kafka restart"
+
+JOLOKIA_PREFIX = "jolokia/"
+UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
 
 @task
@@ -29,14 +33,15 @@ def restart_broker():
 
 
 def execute_rolling_restart(brokers, jmx_port):
-    for _, host in brokers.items():
-        with settings(forward_agent=True, connection_attempts=3, timeout=2):
-            try:
-                result = execute(restart_broker, hosts=host)
-                print(result)
-            except Exception as e:
-                print("Unexpected exception {0}".format(e))
-                return result
+    with settings(forward_agent=True, connection_attempts=3, timeout=2):
+        try:
+            #result = execute(restart_broker, hosts=host)
+            result = read_cluster_status(brokers.values(), jmx_port)
+            print(result)
+            return None
+        except Exception as e:
+            print("Unexpected exception {0}: {1}".format(type(e), e))
+            return None
     return result
 
 
@@ -58,6 +63,34 @@ def get_broker_list(cluster_config):
         for id, data in zk.get_brokers().items():
             result[id] = data['host']
         return result
+
+
+def generate_requests(hosts, jmx_port):
+    session = FuturesSession()
+    for host in hosts:
+        url = "http://{host}:{port}/{prefix}/read/{key}".format(
+            host=host,
+            port=jmx_port,
+            prefix=JOLOKIA_PREFIX,
+            key=UNDER_REPL_KEY,
+        )
+        yield host, session.get(url)
+
+
+def read_cluster_status(hosts, jmx_port):
+    under_replicated = 0
+    missing_brokers = 0
+    for host, request in generate_requests(hosts, jmx_port):
+        try:
+            json = request.result().json()
+            under_replicated += json['value']
+        except RequestException as e:
+            print("Error while fetching {0}: {1}".format(host, e), file=sys.stderr)
+            missing_brokers += 1
+        except KeyError:
+            print("Cannot find the key, Kafka is probably starting up", file=sys.stderr)
+            missing_brokers += 1
+    return under_replicated, missing_brokers
 
 
 def parse_options():
@@ -82,7 +115,7 @@ def parse_options():
 
 
 def print_brokers(cluster_config, brokers):
-    print(PRINT_MESSAGE.format(cluster_config.name))
+    print(HEADER_MESSAGE.format(cluster_config.name))
     for id, host in sorted(brokers.items(), key=itemgetter(0)):
         print("  {0}: {1}".format(id, host))
 
@@ -104,7 +137,8 @@ def run():
     cluster_config = get_cluster(options.cluster_type, options.cluster_name)
     brokers = get_broker_list(cluster_config)
     print_brokers(cluster_config, brokers)
+    #brokers['lol'] = "127.0.0.1"
     if options.no_confirm or ask_confirmation(CONFIRM_MESSAGE):
         print("\nExecute restart")
-        print(execute_rolling_restart(brokers, 1234))
+        print(execute_rolling_restart(brokers, 8778))
 
