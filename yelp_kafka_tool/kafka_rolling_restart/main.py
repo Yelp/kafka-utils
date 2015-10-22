@@ -2,8 +2,8 @@ from __future__ import print_function
 
 import argparse
 import sys
+import time
 
-from fabric.api import env
 from fabric.api import execute
 from fabric.api import settings
 from fabric.api import sudo
@@ -14,6 +14,7 @@ from requests_futures.sessions import FuturesSession
 from requests.exceptions import RequestException
 
 from yelp_kafka import discovery
+from yelp_kafka.error import ConfigurationError
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -22,27 +23,57 @@ CONFIRM_MESSAGE = "Do you want to restart these brokers?"
 
 RESTART_COMMAND = "service kafka restart"
 
-JOLOKIA_PREFIX = "jolokia/"
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
+DEFAULT_CHECK_INTERVAL = 10  # seconds
+DEFAULT_CHECK_COUNT = 12
+DEFAULT_JOLOKIA_PORT = 8778
+DEFAULT_JOLOKIA_PREFIX = "jolokia/"
 
-@task
-def restart_broker():
-    #sudo(RESTART_COMMAND)
-    sudo("ls /")
 
-
-def execute_rolling_restart(brokers, jmx_port):
-    with settings(forward_agent=True, connection_attempts=3, timeout=2):
-        try:
-            #result = execute(restart_broker, hosts=host)
-            result = read_cluster_status(brokers.values(), jmx_port)
-            print(result)
-            return None
-        except Exception as e:
-            print("Unexpected exception {0}: {1}".format(type(e), e))
-            return None
-    return result
+def parse_opts():
+    parser = argparse.ArgumentParser(
+        description=('Performs a rolling restart of the specified'
+                     'kafka cluster.'))
+    parser.add_argument(
+        '--cluster-type',
+        required=True,
+        help='cluster type, e.g. "standard"',
+    )
+    parser.add_argument(
+        '--cluster-name',
+        help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
+    )
+    parser.add_argument(
+        '--check-interval',
+        help='the interval between each check, in second',
+        type=int,
+        default=DEFAULT_CHECK_INTERVAL,
+    )
+    parser.add_argument(
+        '--check-count',
+        help=('the minimum number of time the cluster should result stable ',
+              'before restarting the next broker'),
+        type=int,
+        default=DEFAULT_CHECK_COUNT,
+    )
+    parser.add_argument(
+        '--jolokia-port',
+        help='the jolokia port on the server',
+        type=int,
+        default=DEFAULT_JOLOKIA_PORT,
+    )
+    parser.add_argument(
+        '--jolokia-prefix',
+        help='the jolokia HTTP prefix',
+        default=DEFAULT_JOLOKIA_PREFIX,
+    )
+    parser.add_argument(
+        '--no-confirm',
+        help='proceed without asking confirmation',
+        action="store_true",
+    )
+    return parser.parse_args()
 
 
 def get_cluster(cluster_type, cluster_name):
@@ -65,22 +96,22 @@ def get_broker_list(cluster_config):
         return result
 
 
-def generate_requests(hosts, jmx_port):
+def generate_requests(hosts, jolokia_port, jolokia_prefix):
     session = FuturesSession()
     for host in hosts:
         url = "http://{host}:{port}/{prefix}/read/{key}".format(
             host=host,
-            port=jmx_port,
-            prefix=JOLOKIA_PREFIX,
+            port=jolokia_port,
+            prefix=jolokia_prefix,
             key=UNDER_REPL_KEY,
         )
         yield host, session.get(url)
 
 
-def read_cluster_status(hosts, jmx_port):
+def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
     under_replicated = 0
     missing_brokers = 0
-    for host, request in generate_requests(hosts, jmx_port):
+    for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix):
         try:
             json = request.result().json()
             under_replicated += json['value']
@@ -91,27 +122,6 @@ def read_cluster_status(hosts, jmx_port):
             print("Cannot find the key, Kafka is probably starting up", file=sys.stderr)
             missing_brokers += 1
     return under_replicated, missing_brokers
-
-
-def parse_options():
-    parser = argparse.ArgumentParser(
-        description=('Performs a rolling restart of the specified'
-                     'kafka cluster.'))
-    parser.add_argument(
-        '--cluster-type',
-        required=True,
-        help='cluster type, e.g. "standard"',
-    )
-    parser.add_argument(
-        '--cluster-name',
-        help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
-    )
-    parser.add_argument(
-        '--no-confirm',
-        help='proceed without asking confirmation',
-        action="store_true",
-    )
-    return parser.parse_args()
 
 
 def print_brokers(cluster_config, brokers):
@@ -132,13 +142,74 @@ def ask_confirmation(message):
             print("Please respond with 'yes' or 'no'")
 
 
+@task
+def restart_broker():
+    sudo(RESTART_COMMAND)
+
+
+def wait_for_cluster_stable(
+    hosts,
+    jolokia_port,
+    jolokia_prefix,
+    check_interval,
+    check_count,
+):
+    stable_counter = 0
+    while True:
+        partitions, brokers = read_cluster_status(
+            hosts,
+            jolokia_port,
+            jolokia_prefix,
+        )
+        if partitions == 0 and brokers == 0:
+            stable_counter += 1
+        else:
+            stable_counter = 0
+        print(
+            "Under replicated partitions: {0}, missing brokers: {1} ({2}/{3})".format(
+                partitions,
+                brokers,
+                stable_counter,
+                check_count,
+            ))
+        if stable_counter >= check_count:
+            break
+        time.sleep(check_interval)
+    print("The cluster is stable")
+
+
+def execute_rolling_restart(
+    brokers,
+    jolokia_port,
+    jolokia_prefix,
+    check_interval,
+    check_count,
+):
+    for n, host in enumerate(brokers.values()):
+        with settings(forward_agent=True, connection_attempts=3, timeout=2):
+            wait_for_cluster_stable(
+                brokers.values(),
+                jolokia_port,
+                jolokia_prefix,
+                check_interval,
+                1 if n == 0 else check_count
+            )
+            result = execute(restart_broker, hosts=host)
+            print(result)
+    return result
+
+
 def run():
-    options = parse_options()
-    cluster_config = get_cluster(options.cluster_type, options.cluster_name)
+    opts = parse_opts()
+    cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
     brokers = get_broker_list(cluster_config)
     print_brokers(cluster_config, brokers)
-    #brokers['lol'] = "127.0.0.1"
-    if options.no_confirm or ask_confirmation(CONFIRM_MESSAGE):
+    if opts.no_confirm or ask_confirmation(CONFIRM_MESSAGE):
         print("\nExecute restart")
-        print(execute_rolling_restart(brokers, 8778))
-
+        execute_rolling_restart(
+            brokers,
+            opts.jolokia_port,
+            opts.jolokia_prefix,
+            opts.check_interval,
+            opts.check_count,
+        )
