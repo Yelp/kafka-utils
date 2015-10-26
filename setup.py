@@ -22,6 +22,7 @@ setup(
         "scripts/kafka-consumer-manager",
         "scripts/yelpkafka",
         "scripts/kafka-check",
+        "scripts/kafka-rolling-restart",
     ],
     install_requires=[
         "argcomplete",

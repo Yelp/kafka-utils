@@ -286,7 +286,6 @@ def execute_rolling_restart(
                 1 if n == 0 else check_count
             )
             result = execute(restart_broker, hosts=host)
-            print(result)
     return result
 
 
