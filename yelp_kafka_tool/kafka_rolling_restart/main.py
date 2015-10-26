@@ -3,18 +3,15 @@ from __future__ import print_function
 import argparse
 import sys
 import time
-
 from collections import OrderedDict
+from operator import itemgetter
 
 from fabric.api import execute
 from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
-
-from operator import itemgetter
 from requests_futures.sessions import FuturesSession
 from requests.exceptions import RequestException
-
 from yelp_kafka import discovery
 from yelp_kafka.error import ConfigurationError
 from yelp_kafka_tool.util.zookeeper import ZK
@@ -52,7 +49,7 @@ def parse_opts():
     )
     parser.add_argument(
         '--check-count',
-        help=('the minimum number of time the cluster should result stable '
+        help=('the minimum number of times the cluster should result stable '
               'before restarting the next broker. Default: %(default)s'),
         type=int,
         default=DEFAULT_CHECK_COUNT,
@@ -75,8 +72,8 @@ def parse_opts():
     )
     parser.add_argument(
         '--skip',
-        help=('the number of brokers to skip without restarting. '
-              'Default: %(default)s'),
+        help=('the number of brokers to skip without restarting. Brokers are '
+              'restarted in increasing broker-id order. Default: %(default)s'),
         type=int,
         default=0,
     )
@@ -84,7 +81,7 @@ def parse_opts():
 
 
 def get_cluster(cluster_type, cluster_name):
-    """Returns the cluster configuration, given cluster type and name.
+    """Return the cluster configuration, given cluster type and name.
     Use the local cluster if cluster_name is not speficied.
 
     :param cluster_type: the type of the cluster
@@ -163,7 +160,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
             print("Broker {0} is down: {1}".format(host, e), file=sys.stderr)
             missing_brokers += 1
         except KeyError:
-            print("Cannot find the key, Kafka is probably starting up", file=sys.stderr)
+            print("Cannot find the key, Kafka is probably still starting up", file=sys.stderr)
             missing_brokers += 1
     return under_replicated, missing_brokers
 
@@ -204,7 +201,7 @@ def restart_broker():
     sudo(RESTART_COMMAND)
 
 
-def wait_for_cluster_stable(
+def wait_for_stable_cluster(
     hosts,
     jolokia_port,
     jolokia_prefix,
@@ -233,10 +230,10 @@ def wait_for_cluster_stable(
             jolokia_port,
             jolokia_prefix,
         )
-        if partitions == 0 and brokers == 0:
-            stable_counter += 1
-        else:
+        if partitions or brokers:
             stable_counter = 0
+        else:
+            stable_counter += 1
         print(
             "Under replicated partitions: {0}, missing brokers: {1} ({2}/{3})".format(
                 partitions,
@@ -278,13 +275,14 @@ def execute_rolling_restart(
     """
     for n, host in enumerate(brokers.values()):
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
-            wait_for_cluster_stable(
+            wait_for_stable_cluster(
                 brokers.values(),
                 jolokia_port,
                 jolokia_prefix,
                 check_interval,
                 1 if n == 0 else check_count
             )
+            print("\nRestarting {0} ({1}/{2})".format(host, n, len(brokers)))
             result = execute(restart_broker, hosts=host)
     return result
 
