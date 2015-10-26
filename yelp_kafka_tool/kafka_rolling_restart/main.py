@@ -4,6 +4,8 @@ import argparse
 import sys
 import time
 
+from collections import OrderedDict
+
 from fabric.api import execute
 from fabric.api import settings
 from fabric.api import sudo
@@ -71,6 +73,13 @@ def parse_opts():
         help='proceed without asking confirmation. Default: %(default)s',
         action="store_true",
     )
+    parser.add_argument(
+        '--skip',
+        help=('the number of brokers to skip without restarting. '
+              'Default: %(default)s'),
+        type=int,
+        default=0,
+    )
     return parser.parse_args()
 
 
@@ -93,15 +102,18 @@ def get_cluster(cluster_type, cluster_name):
         sys.exit(1)
 
 
-def get_broker_list(cluster_config):
+def get_broker_list(cluster_config, skip):
     """Returns a dictionary of brokers in the form {id: host}
 
     :param cluster_config: the configuration of the cluster
     :type cluster_config: map
+    :param skip: the number of brokers to skip
+    :type skip: integer
     """
     with ZK(cluster_config) as zk:
-        result = {}
-        for id, data in zk.get_brokers().items():
+        result = OrderedDict([])
+        brokers = sorted(zk.get_brokers().items(), key=itemgetter(0))
+        for id, data in brokers[skip:]:
             result[id] = data['host']
         return result
 
@@ -281,7 +293,7 @@ def execute_rolling_restart(
 def run():
     opts = parse_opts()
     cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
-    brokers = get_broker_list(cluster_config)
+    brokers = get_broker_list(cluster_config, opts.skip)
     print_brokers(cluster_config, brokers)
     if opts.no_confirm or ask_confirmation():
         print("\nExecute restart")
