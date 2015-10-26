@@ -43,31 +43,32 @@ def parse_opts():
     )
     parser.add_argument(
         '--check-interval',
-        help='the interval between each check, in second',
+        help=('the interval between each check, in seconds. '
+              'Default: %(default)s seconds'),
         type=int,
         default=DEFAULT_CHECK_INTERVAL,
     )
     parser.add_argument(
         '--check-count',
-        help=('the minimum number of time the cluster should result stable ',
-              'before restarting the next broker'),
+        help=('the minimum number of time the cluster should result stable '
+              'before restarting the next broker. Default: %(default)s'),
         type=int,
         default=DEFAULT_CHECK_COUNT,
     )
     parser.add_argument(
         '--jolokia-port',
-        help='the jolokia port on the server',
+        help='the jolokia port on the server. Default: %(default)s',
         type=int,
         default=DEFAULT_JOLOKIA_PORT,
     )
     parser.add_argument(
         '--jolokia-prefix',
-        help='the jolokia HTTP prefix',
+        help='the jolokia HTTP prefix. Default: %(default)s',
         default=DEFAULT_JOLOKIA_PREFIX,
     )
     parser.add_argument(
         '--no-confirm',
-        help='proceed without asking confirmation',
+        help='proceed without asking confirmation. Default: %(default)s',
         action="store_true",
     )
     return parser.parse_args()
