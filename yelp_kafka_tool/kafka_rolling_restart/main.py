@@ -18,9 +18,6 @@ from yelp_kafka.error import ConfigurationError
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-HEADER_MESSAGE = "Will restart the following brokers in {0}:"
-CONFIRM_MESSAGE = "Do you want to restart these brokers?"
-
 RESTART_COMMAND = "service kafka restart"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
@@ -77,6 +74,14 @@ def parse_opts():
 
 
 def get_cluster(cluster_type, cluster_name):
+    """Returns the cluster configuration, given cluster type and name.
+    Use the local cluster if cluster_name is not speficied.
+
+    :param cluster_type: the type of the cluster
+    :type cluster_type: string
+    :param cluster_name: the name of the cluster
+    :type cluster_name: string
+    """
     try:
         if cluster_name:
             return discovery.get_cluster_by_name(cluster_type, cluster_name)
@@ -88,7 +93,11 @@ def get_cluster(cluster_type, cluster_name):
 
 
 def get_broker_list(cluster_config):
-    """Returns a dictionary of brokers in the form {id: host}"""
+    """Returns a dictionary of brokers in the form {id: host}
+
+    :param cluster_config: the configuration of the cluster
+    :type cluster_config: map
+    """
     with ZK(cluster_config) as zk:
         result = {}
         for id, data in zk.get_brokers().items():
@@ -97,6 +106,17 @@ def get_broker_list(cluster_config):
 
 
 def generate_requests(hosts, jolokia_port, jolokia_prefix):
+    """Return a generator of requests to fetch the under replicated
+    partition number from the specified hosts.
+
+    :param hosts: list of brokers ip addresses
+    :type hosts: list of strings
+    :param jolokia_port: HTTP port for Jolokia
+    :type jolokia_port: integer
+    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
+    :type jolokia_prefix: string
+    :returns: generator of requests
+    """
     session = FuturesSession()
     for host in hosts:
         url = "http://{host}:{port}/{prefix}/read/{key}".format(
@@ -109,6 +129,17 @@ def generate_requests(hosts, jolokia_port, jolokia_prefix):
 
 
 def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
+    """Read and return the number of under replicated partitions and
+    missing brokers from the specified hosts.
+
+    :param hosts: list of brokers ip addresses
+    :type hosts: list of strings
+    :param jolokia_port: HTTP port for Jolokia
+    :type jolokia_port: integer
+    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
+    :type jolokia_prefix: string
+    :returns: tuple of integers
+    """
     under_replicated = 0
     missing_brokers = 0
     for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix):
@@ -116,7 +147,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
             json = request.result().json()
             under_replicated += json['value']
         except RequestException as e:
-            print("Error while fetching {0}: {1}".format(host, e), file=sys.stderr)
+            print("Broker {0} is down: {1}".format(host, e), file=sys.stderr)
             missing_brokers += 1
         except KeyError:
             print("Cannot find the key, Kafka is probably starting up", file=sys.stderr)
@@ -125,18 +156,30 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
 
 
 def print_brokers(cluster_config, brokers):
-    print(HEADER_MESSAGE.format(cluster_config.name))
+    """Print the list of brokers that will be restarted.
+
+    :param cluster_config: the cluster configuration as returned by yelpkafka discovery
+    :type cluster_config: map
+    :param brokers: the brokers that will be restarted
+    :type brokers: map of broker ids and host names
+    """
+    print("Will restart the following brokers in {0}:".format(cluster_config.name))
     for id, host in sorted(brokers.items(), key=itemgetter(0)):
         print("  {0}: {1}".format(id, host))
+    print()
 
 
-def ask_confirmation(message):
+def ask_confirmation():
+    """Ask for confirmation to the user. Return true if the user confirmed
+    the execution, false otherwise.
+    :returns: bool
+    """
     while True:
-        print(message + " ", end="")
+        print("Do you want to restart these brokers? ", end="")
         choice = raw_input().lower()
-        if choice == 'yes':
+        if choice in ['yes', 'y']:
             return True
-        elif choice == 'no':
+        elif choice in ['no', 'n']:
             return False
         else:
             print("Please respond with 'yes' or 'no'")
@@ -144,6 +187,7 @@ def ask_confirmation(message):
 
 @task
 def restart_broker():
+    """Execute the restart"""
     sudo(RESTART_COMMAND)
 
 
@@ -154,6 +198,21 @@ def wait_for_cluster_stable(
     check_interval,
     check_count,
 ):
+    """
+    Block the caller until the cluster can be considered stable.
+
+    :param hosts: list of brokers ip addresses
+    :type hosts: list of strings
+    :param jolokia_port: HTTP port for Jolokia
+    :type jolokia_port: integer
+    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
+    :type jolokia_prefix: string
+    :param check_interval: the number of seconds it will wait between each check
+    :type check_interval: integer
+    :param check_count: the number of times the check should be positive before
+    restarting the next broker
+    :type check_count: integer
+    """
     stable_counter = 0
     while True:
         partitions, brokers = read_cluster_status(
@@ -185,6 +244,25 @@ def execute_rolling_restart(
     check_interval,
     check_count,
 ):
+    """Execute the rolling restart on the specified brokers. It check the
+    number of under replicated partitions on each broker, using Jolokia.
+
+    The check is performed at constant intervals, and a broker will be restarted
+    when all the brokers are answering and are reporting zero under replicated
+    partitions.
+
+    :param brokers: the brokers that will be restarted
+    :type brokers: map of broker ids and host names
+    :param jolokia_port: HTTP port for Jolokia
+    :type jolokia_port: integer
+    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
+    :type jolokia_prefix: string
+    :param check_interval: the number of seconds it will wait between each check
+    :type check_interval: integer
+    :param check_count: the number of times the check should be positive before
+    restarting the next broker
+    :type check_count: integer
+    """
     for n, host in enumerate(brokers.values()):
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
             wait_for_cluster_stable(
@@ -204,7 +282,7 @@ def run():
     cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
     brokers = get_broker_list(cluster_config)
     print_brokers(cluster_config, brokers)
-    if opts.no_confirm or ask_confirmation(CONFIRM_MESSAGE):
+    if opts.no_confirm or ask_confirmation():
         print("\nExecute restart")
         execute_rolling_restart(
             brokers,
