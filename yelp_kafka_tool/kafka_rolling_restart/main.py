@@ -3,7 +3,6 @@ from __future__ import print_function
 import argparse
 import sys
 import time
-from collections import OrderedDict
 from operator import itemgetter
 
 from fabric.api import execute
@@ -108,11 +107,8 @@ def get_broker_list(cluster_config):
     :type cluster_config: map
     """
     with ZK(cluster_config) as zk:
-        result = OrderedDict([])
         brokers = sorted(zk.get_brokers().items(), key=itemgetter(0))
-        for id, data in brokers:
-            result[id] = data['host']
-        return result
+        return [(id, data['host']) for id, data in brokers]
 
 
 def generate_requests(hosts, jolokia_port, jolokia_prefix):
@@ -169,7 +165,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
     return under_replicated, missing_brokers
 
 
-def print_brokers(cluster_config, brokers, skip):
+def print_brokers(cluster_config, brokers):
     """Print the list of brokers that will be restarted.
 
     :param cluster_config: the cluster configuration as returned by yelp_kafka
@@ -177,11 +173,9 @@ def print_brokers(cluster_config, brokers, skip):
     :type cluster_config: map
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
-    :param skip: the number of brokers to skip
-    :type skip: integer
     """
     print("Will restart the following brokers in {0}:".format(cluster_config.name))
-    for id, host in brokers.items()[skip:]:
+    for id, host in brokers:
         print("  {0}: {1}".format(id, host))
     print()
 
@@ -243,11 +237,11 @@ def wait_for_stable_cluster(
         else:
             stable_counter += 1
         print(
-            "Under replicated partitions: {0}, missing brokers: {1} ({2}/{3})".format(
-                partitions,
-                brokers,
-                stable_counter,
-                check_count,
+            "Under replicated partitions: {p_count}, missing brokers: {b_count} ({stable}/{limit})".format(
+                p_count=partitions,
+                b_count=brokers,
+                stable=stable_counter,
+                limit=check_count,
             ))
         if stable_counter >= check_count:
             break
@@ -284,18 +278,17 @@ def execute_rolling_restart(
     :param skip: the number of brokers to skip
     :type skip: integer
     """
-    for n, host in enumerate(brokers.itervalues()):
-        if n < skip:
-            continue
+    all_hosts = [b[1] for b in brokers]
+    for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
             wait_for_stable_cluster(
-                brokers.values(),
+                all_hosts,
                 jolokia_port,
                 jolokia_prefix,
                 check_interval,
-                1 if n - skip == 0 else check_count,
+                1 if n == 0 else check_count,
             )
-            print("\nRestarting {0} ({1}/{2})".format(host, n, len(brokers)))
+            print("\nRestarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
             execute(restart_broker, hosts=host)
 
 
@@ -329,7 +322,7 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    print_brokers(cluster_config, brokers, opts.skip)
+    print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("\nExecute restart")
         execute_rolling_restart(
