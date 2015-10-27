@@ -14,6 +14,7 @@ from requests_futures.sessions import FuturesSession
 from requests.exceptions import RequestException
 from yelp_kafka import discovery
 from yelp_kafka.error import ConfigurationError
+
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -63,6 +64,7 @@ def parse_opts():
     parser.add_argument(
         '--jolokia-prefix',
         help='the jolokia HTTP prefix. Default: %(default)s',
+        type=str,
         default=DEFAULT_JOLOKIA_PREFIX,
     )
     parser.add_argument(
@@ -82,7 +84,7 @@ def parse_opts():
 
 def get_cluster(cluster_type, cluster_name):
     """Return the cluster configuration, given cluster type and name.
-    Use the local cluster if cluster_name is not speficied.
+    Use the local cluster if cluster_name is not specified.
 
     :param cluster_type: the type of the cluster
     :type cluster_type: string
@@ -99,18 +101,16 @@ def get_cluster(cluster_type, cluster_name):
         sys.exit(1)
 
 
-def get_broker_list(cluster_config, skip):
+def get_broker_list(cluster_config):
     """Returns a dictionary of brokers in the form {id: host}
 
     :param cluster_config: the configuration of the cluster
     :type cluster_config: map
-    :param skip: the number of brokers to skip
-    :type skip: integer
     """
     with ZK(cluster_config) as zk:
         result = OrderedDict([])
         brokers = sorted(zk.get_brokers().items(), key=itemgetter(0))
-        for id, data in brokers[skip:]:
+        for id, data in brokers:
             result[id] = data['host']
         return result
 
@@ -154,7 +154,11 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
     missing_brokers = 0
     for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix):
         try:
-            json = request.result().json()
+            response = request.result()
+            if 400 <= response.status_code <= 499:
+                print("Got status code {0}. Exiting.".format(response.status_code))
+                sys.exit(1)
+            json = response.json()
             under_replicated += json['value']
         except RequestException as e:
             print("Broker {0} is down: {1}".format(host, e), file=sys.stderr)
@@ -165,16 +169,19 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
     return under_replicated, missing_brokers
 
 
-def print_brokers(cluster_config, brokers):
+def print_brokers(cluster_config, brokers, skip):
     """Print the list of brokers that will be restarted.
 
-    :param cluster_config: the cluster configuration as returned by yelpkafka discovery
+    :param cluster_config: the cluster configuration as returned by yelp_kafka
+    discovery
     :type cluster_config: map
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
+    :param skip: the number of brokers to skip
+    :type skip: integer
     """
     print("Will restart the following brokers in {0}:".format(cluster_config.name))
-    for id, host in sorted(brokers.items(), key=itemgetter(0)):
+    for id, host in brokers.items()[skip:]:
         print("  {0}: {1}".format(id, host))
     print()
 
@@ -182,6 +189,7 @@ def print_brokers(cluster_config, brokers):
 def ask_confirmation():
     """Ask for confirmation to the user. Return true if the user confirmed
     the execution, false otherwise.
+
     :returns: bool
     """
     while True:
@@ -253,8 +261,9 @@ def execute_rolling_restart(
     jolokia_prefix,
     check_interval,
     check_count,
+    skip,
 ):
-    """Execute the rolling restart on the specified brokers. It check the
+    """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
 
     The check is performed at constant intervals, and a broker will be restarted
@@ -272,26 +281,55 @@ def execute_rolling_restart(
     :param check_count: the number of times the check should be positive before
     restarting the next broker
     :type check_count: integer
+    :param skip: the number of brokers to skip
+    :type skip: integer
     """
-    for n, host in enumerate(brokers.values()):
+    for n, host in enumerate(brokers.itervalues()):
+        if n < skip:
+            continue
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
             wait_for_stable_cluster(
                 brokers.values(),
                 jolokia_port,
                 jolokia_prefix,
                 check_interval,
-                1 if n == 0 else check_count
+                1 if n - skip == 0 else check_count,
             )
             print("\nRestarting {0} ({1}/{2})".format(host, n, len(brokers)))
-            result = execute(restart_broker, hosts=host)
-    return result
+            execute(restart_broker, hosts=host)
+
+
+def validate_opts(opts, brokers_num):
+    """Basic option validation. Returns True if the options are not valid,
+    False otherwise.
+
+    :param opts: the command line options
+    :type opts: map
+    :param brokers_num: the number of brokers
+    :type brokers_num: integer
+    :returns: bool
+    """
+    if opts.skip < 0 or opts.skip >= brokers_num:
+        print("Error: --skip must be >= 0 and < #brokers")
+        return True
+    if opts.check_count < 0:
+        print("Error: --check-count must be >= 0")
+        return True
+    if opts.check_count == 0:
+        print("Warning: no check will be performed")
+    if opts.check_interval < 0:
+        print("Error: --check-interval must be >= 0")
+        return True
+    return False
 
 
 def run():
     opts = parse_opts()
     cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
-    brokers = get_broker_list(cluster_config, opts.skip)
-    print_brokers(cluster_config, brokers)
+    brokers = get_broker_list(cluster_config)
+    if validate_opts(opts, len(brokers)):
+        sys.exit(1)
+    print_brokers(cluster_config, brokers, opts.skip)
     if opts.no_confirm or ask_confirmation():
         print("\nExecute restart")
         execute_rolling_restart(
@@ -300,4 +338,5 @@ def run():
             opts.jolokia_prefix,
             opts.check_interval,
             opts.check_count,
+            opts.skip,
         )
