@@ -1,6 +1,9 @@
+from __future__ import division
 from __future__ import print_function
 
 import argparse
+import logging
+import math
 import sys
 import time
 from operator import itemgetter
@@ -24,6 +27,7 @@ UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManage
 
 DEFAULT_CHECK_INTERVAL = 10  # seconds
 DEFAULT_CHECK_COUNT = 12
+DEFAULT_TIME_LIMIT = 600     # 10 minutes
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
 
@@ -54,6 +58,13 @@ def parse_opts():
               'before restarting the next broker. Default: %(default)s'),
         type=int,
         default=DEFAULT_CHECK_COUNT,
+    )
+    parser.add_argument(
+        '--unstable-time-limit',
+        help=('the maximum amount of time the cluster can be unstable before '
+              'stopping the rolling restart. Default: %(default)s'),
+        type=int,
+        default=DEFAULT_TIME_LIMIT,
     )
     parser.add_argument(
         '--jolokia-port',
@@ -158,7 +169,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
     for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix):
         try:
             response = request.result()
-            if 400 <= response.status_code <= 499:
+            if 400 <= response.status_code <= 599:
                 print("Got status code {0}. Exiting.".format(response.status_code))
                 sys.exit(1)
             json = response.json()
@@ -215,6 +226,7 @@ def wait_for_stable_cluster(
     jolokia_prefix,
     check_interval,
     check_count,
+    unstable_time_limit,
 ):
     """
     Block the caller until the cluster can be considered stable.
@@ -230,9 +242,14 @@ def wait_for_stable_cluster(
     :param check_count: the number of times the check should be positive before
     restarting the next broker
     :type check_count: integer
+    :param unstable_time_limit: the maximum number of seconds it will wait for
+    the cluster to become stable before exiting with error
+    :type unstable_time_limit: integer
+    :returns: False if succeeded, True if time out
     """
     stable_counter = 0
-    while True:
+    max_checks = int(math.ceil(unstable_time_limit / check_interval))
+    for i in range(max_checks):
         partitions, brokers = read_cluster_status(
             hosts,
             jolokia_port,
@@ -250,9 +267,10 @@ def wait_for_stable_cluster(
                 limit=check_count,
             ))
         if stable_counter >= check_count:
-            break
+            print("The cluster is stable")
+            return False
         time.sleep(check_interval)
-    print("The cluster is stable")
+    return True
 
 
 def execute_rolling_restart(
@@ -261,6 +279,7 @@ def execute_rolling_restart(
     jolokia_prefix,
     check_interval,
     check_count,
+    unstable_time_limit,
     skip,
     verbose,
 ):
@@ -282,6 +301,9 @@ def execute_rolling_restart(
     :param check_count: the number of times the check should be positive before
     restarting the next broker
     :type check_count: integer
+    :param unstable_time_limit: the maximum number of seconds it will wait for
+    the cluster to become stable before exiting with error
+    :type unstable_time_limit: integer
     :param skip: the number of brokers to skip
     :type skip: integer
     :param verbose: print commend execution information
@@ -290,13 +312,17 @@ def execute_rolling_restart(
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
-            wait_for_stable_cluster(
+            timeout = wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
                 jolokia_prefix,
                 check_interval,
                 1 if n == 0 else check_count,
+                unstable_time_limit,
             )
+            if timeout:
+                print("ERROR: cluster is still unstable, exiting")
+                sys.exit(1)
             print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
             hidden = [] if verbose else ['output', 'running']
             with hide(*hidden):
@@ -319,6 +345,9 @@ def validate_opts(opts, brokers_num):
     if opts.check_count < 0:
         print("Error: --check-count must be >= 0")
         return True
+    if opts.unstable_time_limit < 0:
+        print("Error: --unstable-time-limit must be >= 0")
+        return True
     if opts.check_count == 0:
         print("Warning: no check will be performed")
     if opts.check_interval < 0:
@@ -329,6 +358,10 @@ def validate_opts(opts, brokers_num):
 
 def run():
     opts = parse_opts()
+    if opts.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARN)
     cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
@@ -342,6 +375,7 @@ def run():
             opts.jolokia_prefix,
             opts.check_interval,
             opts.check_count,
+            opts.unstable_time_limit,
             opts.skip,
             opts.verbose,
         )
