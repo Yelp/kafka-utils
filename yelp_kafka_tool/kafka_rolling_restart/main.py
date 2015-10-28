@@ -6,6 +6,7 @@ import time
 from operator import itemgetter
 
 from fabric.api import execute
+from fabric.api import hide
 from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
@@ -77,6 +78,12 @@ def parse_opts():
               'restarted in increasing broker-id order. Default: %(default)s'),
         type=int,
         default=0,
+    )
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        help='print verbose execution information. Default: %(default)s',
+        action="store_true",
     )
     return parser.parse_args()
 
@@ -177,7 +184,6 @@ def print_brokers(cluster_config, brokers):
     print("Will restart the following brokers in {0}:".format(cluster_config.name))
     for id, host in brokers:
         print("  {0}: {1}".format(id, host))
-    print()
 
 
 def ask_confirmation():
@@ -256,6 +262,7 @@ def execute_rolling_restart(
     check_interval,
     check_count,
     skip,
+    verbose,
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -277,6 +284,8 @@ def execute_rolling_restart(
     :type check_count: integer
     :param skip: the number of brokers to skip
     :type skip: integer
+    :param verbose: print commend execution information
+    :type verbose: bool
     """
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
@@ -288,8 +297,10 @@ def execute_rolling_restart(
                 check_interval,
                 1 if n == 0 else check_count,
             )
-            print("\nRestarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
-            execute(restart_broker, hosts=host)
+            print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
+            hidden = [] if verbose else ['output', 'running']
+            with hide(*hidden):
+                execute(restart_broker, hosts=host)
 
 
 def validate_opts(opts, brokers_num):
@@ -324,7 +335,7 @@ def run():
         sys.exit(1)
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
-        print("\nExecute restart")
+        print("Execute restart")
         execute_rolling_restart(
             brokers,
             opts.jolokia_port,
@@ -332,4 +343,5 @@ def run():
             opts.check_interval,
             opts.check_count,
             opts.skip,
+            opts.verbose,
         )
