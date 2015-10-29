@@ -9,7 +9,10 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
     get_replication_group_imbalance_stats,
     get_leader_imbalance_stats,
+    get_partition_imbalance_stats,
+    calculate_partition_movement,
 )
+
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     compute_optimal_count,
     separate_groups,
@@ -737,6 +740,153 @@ class TestClusterToplogy(object):
             # Verify leader-balanced
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             assert leader_imbal == 0
+
+    # TODO: revisit comments
+    def test_rebalance_brokers_rg_case1(self):
+        # rg1 has 6 partition-replicas
+        # rg2 has 2 partition-replicas
+        # Both rg's are balanced
+        assignment = OrderedDict(
+            [
+                ((u'T1', 1), [0, 1, 2]),
+                ((u'T1', 0), [1]),
+                ((u'T3', 0), [1]),
+                ((u'T2', 0), [0, 1, 3]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, self.srange(4)) as ct:
+            ct.rebalance_replication_groups()
+
+            # Verify no change in assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+
+            ct.rebalance_brokers()
+            print (ct.assignment, 'new-assignment')
+            tot_part = sum(
+                1
+                for partition in ct.rgs['rg2'].partitions
+            )
+            print('tot-partitions', tot_part)
+            _, net_imbalance, p_id = get_partition_imbalance_stats(ct.brokers.values())
+            print('p per broker', p_id)
+            assert net_imbalance == 0
+            _, total_movements = \
+                calculate_partition_movement(ct.initial_assignment, ct.assignment)
+
+    def test_rebalance_brokers_rg_case2(self):
+        # 1 over-balance, 2 under-balanced
+        # rg1 has 4 partition-replicas
+        # rg2 has 1 partition-replica
+        # rg3 has  1 partition-replica
+        # All rg's are balanced initially
+        assignment = OrderedDict(
+            [
+                ((u'T1', 1), [0, 2]),
+                ((u'T3', 1), [0]),
+                ((u'T3', 0), [0]),
+                ((u'T2', 0), [0, 5]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
+            ct.rebalance_replication_groups()
+
+            # Verify no change in assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+
+            ct.rebalance_brokers()
+            print (ct.assignment, 'new-assignment')
+            tot_part = sum(
+                1
+                for partition in ct.rgs['rg2'].partitions
+            )
+            print('tot-partitions', tot_part)
+            _, net_imbalance, p_id = get_partition_imbalance_stats(ct.brokers.values())
+            print('p per broker', p_id)
+            assert net_imbalance == 0
+            _, total_movements = \
+                calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            assert net_imbal == 0
+
+    def test_rebalance_brokers_rg_case3(self):
+        # 1 over-balance, 1 under-balanced, 1 opt-balanced
+        # rg1 has 3 partition-replicas
+        # rg2 has 2 partition-replica
+        # rg3 has  1 partition-replica
+        # All rg's are balanced initially
+        assignment = OrderedDict(
+            [
+                ((u'T1', 1), [0, 2]),
+                ((u'T3', 1), [2]),
+                ((u'T3', 0), [0]),
+                ((u'T2', 0), [0, 5]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
+            ct.rebalance_replication_groups()
+
+            # Verify no change in assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+
+            ct.rebalance_brokers()
+            print (ct.assignment, 'new-assignment')
+            tot_part = sum(
+                1
+                for partition in ct.rgs['rg2'].partitions
+            )
+            print('tot-partitions', tot_part)
+            _, net_imbalance, p_id = get_partition_imbalance_stats(ct.brokers.values())
+            print('p per broker', p_id)
+            assert net_imbalance == 0
+            _, total_movements = \
+                calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            assert net_imbal == 0
+
+    # TODO: is it same?
+    def test_rebalance_brokers_rg_case4(self):
+        # 1 over-balance, 1 under-balanced, 1 opt-balanced
+        # rg1 has 3 partition-replicas
+        # rg2 has 2 partition-replica
+        # rg3 has  1 partition-replica
+        # All rg's are balanced initially
+        assignment = OrderedDict(
+            [
+                ((u'T1', 1), [0, 2]),
+                ((u'T3', 1), [2]),
+                ((u'T3', 0), [0]),
+                ((u'T2', 0), [0, 5]),
+            ]
+        )
+        with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
+            ct.rebalance_replication_groups()
+
+            # Verify no change in assignment
+            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
+
+            ct.rebalance_brokers()
+            print (ct.assignment, 'new-assignment')
+            tot_part = sum(
+                1
+                for partition in ct.rgs['rg2'].partitions
+            )
+            print('tot-partitions', tot_part)
+            _, net_imbalance, p_id = get_partition_imbalance_stats(ct.brokers.values())
+            print('p per broker', p_id)
+            assert net_imbalance == 0
+            _, total_movements = \
+                calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            net_imbal, extra_cnt_per_rg = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            assert net_imbal == 0
 
     def assert_leader_valid(self, orig_assignment, new_assignment):
         """Verify that new-assignment complies with just leader changes.

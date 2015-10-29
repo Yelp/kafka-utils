@@ -411,7 +411,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
+            ct.rebalance_brokers_rg()
 
             # Verify no change is assignment
             assert sorted(ct.assignment) == sorted(ct.initial_assignment)
@@ -446,7 +446,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
-            ct.rebalance_brokers()
+            ct.rebalance_brokers_rg()
 
             # Verify partition-count of 0 and 1 as equal to 2
             assert len(ct.brokers[0].partitions) == 2
@@ -486,9 +486,9 @@ class TestReplicationGroup(object):
 
             # rg1: Verify partition-count of 0 and 1 as equal to 2
             assert len(ct.brokers[0].partitions) == 2
-            assert len(ct.brokers[1].partitions) == 2
+            assert len(ct.brokers[1].partitions) == 1
             # rg2: Verify partition-count of 2 and 3 as equal to 1
-            assert len(ct.brokers[2].partitions) == 1
+            assert len(ct.brokers[2].partitions) == 2
             assert len(ct.brokers[3].partitions) == 1
             # Verify overall-imbalance is 0
             _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
@@ -523,7 +523,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
+            ct.rebalance_brokers_rg()
 
             # rg1: Verify partition-count of 0 and 1 as equal to 3
             assert len(ct.brokers[0].partitions) == 3
