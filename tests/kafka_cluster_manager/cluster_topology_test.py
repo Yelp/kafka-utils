@@ -9,10 +9,8 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
     get_replication_group_imbalance_stats,
     get_leader_imbalance_stats,
-    get_partition_imbalance_stats,
     calculate_partition_movement,
 )
-
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     compute_optimal_count,
     separate_groups,
@@ -741,7 +739,7 @@ class TestClusterToplogy(object):
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             assert leader_imbal == 0
 
-    def test_rebalance_brokers_rg_case1(self):
+    def test_rebalance_brokers_cluster_case1(self):
         # rg1 has 6 partition-replicas
         # rg2 has 2 partition-replicas
         # Both rg's are balanced
@@ -754,6 +752,7 @@ class TestClusterToplogy(object):
             ]
         )
         with self.build_cluster_topology(assignment, self.srange(4)) as ct:
+            # Re-balance replication-groups
             ct.rebalance_replication_groups()
 
             # Verify no change in assignment
@@ -762,16 +761,20 @@ class TestClusterToplogy(object):
             # Re-balance brokers
             ct.rebalance_brokers_cluster()
 
-            # Verify no imbalance for partition count across replication-groups
-            _, net_imbalance, _ = \
-                get_partition_imbalance_stats(ct.brokers.values(),)
-            assert net_imbalance == 0 or net_imbalance == 1
+            # Verify both replication-groups have same partition-count
+            assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
             _, total_movements = \
                 calculate_partition_movement(ct.initial_assignment, ct.assignment)
             # Verify minimum partition movements 2
             assert total_movements == 2
+            net_imbal, _ = get_replication_group_imbalance_stats(
+                ct.rgs.values(),
+                ct.partitions.values(),
+            )
+            # Verify replica-count imbalance remains unaltered
+            assert net_imbal == 0
 
-    def test_rebalance_brokers_rg_case2(self):
+    def test_rebalance_brokers_cluster_case2(self):
         # 1 over-balanced, 2 under-balanced replication-groups
         # rg1 has 4 partition-replicas
         # rg2 has 1 partition-replica
@@ -794,10 +797,9 @@ class TestClusterToplogy(object):
             # Re-balance brokers
             ct.rebalance_brokers_cluster()
 
-            # Verify no imbalance for partition count across replication-groups
-            _, net_imbalance, _ = \
-                get_partition_imbalance_stats(ct.brokers.values(),)
-            assert net_imbalance == 0
+            # Verify all replication-groups have same partition-count
+            assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
+            assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg3'].partitions)
             _, total_movements = \
                 calculate_partition_movement(ct.initial_assignment, ct.assignment)
             # Verify minimum partition movements 2
@@ -806,9 +808,10 @@ class TestClusterToplogy(object):
                 ct.rgs.values(),
                 ct.partitions.values(),
             )
+            # Verify replica-count imbalance remains 0
             assert net_imbal == 0
 
-    def test_rebalance_brokers_rg_case3(self):
+    def test_rebalance_brokers_cluster_case3(self):
         # 1 over-balanced, 1 under-balanced, 1 opt-balanced replication-group
         # rg1 has 3 partition-replicas
         # rg2 has 2 partition-replicas
@@ -826,10 +829,9 @@ class TestClusterToplogy(object):
             # Re-balance brokers across replication-groups
             ct.rebalance_brokers_cluster()
 
-            # Verify no imbalance for partition count across replication-groups
-            _, net_imbalance, _ = \
-                get_partition_imbalance_stats(ct.brokers.values(),)
-            assert net_imbalance == 0
+            # Verify all replication-groups have same partition-count
+            assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
+            assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg3'].partitions)
             _, total_movements = \
                 calculate_partition_movement(ct.initial_assignment, ct.assignment)
             # Verify minimum partition movements
@@ -838,6 +840,7 @@ class TestClusterToplogy(object):
                 ct.rgs.values(),
                 ct.partitions.values(),
             )
+            # Verify replica-count imbalance remains 0
             assert net_imbal == 0
 
     def assert_leader_valid(self, orig_assignment, new_assignment):

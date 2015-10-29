@@ -396,7 +396,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
-    def test_rebalance_brokers_balanced_3(self):
+    def test_rebalance_brokers_rg_balanced_3(self):
         # 2 replication-groups are in balanced state individually
         # but overall imbalanced.
         # Rg-Group: map(broker, p-count)
@@ -430,7 +430,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
-    def test_rebalance_brokers_imbalanced_1(self):
+    def test_rebalance_brokers_rg_imbalanced_1(self):
         # 1 rg is balanced, 2nd imbalanced
         # Result: Overall-balanced and individually-balanced
         # rg1: (0: 3, 1:1); rg2: (2: 1)
@@ -504,7 +504,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
-    def test_rebalance_brokers_imbalanced_3(self):
+    def test_rebalance_brokers_rg_imbalanced_3(self):
         # 2-rg's: Both rg's imbalanced
         # Result: rgs' balanced individually but NOT overall
         # rg1: (0: 4, 1:2); rg2: (2: 2, 3:0)

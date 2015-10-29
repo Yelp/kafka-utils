@@ -310,8 +310,12 @@ class ClusterTopology(object):
 
     # Re-balancing partition count across brokers
     def rebalance_brokers(self):
-        """Rebalance partition-count across brokers across all replication
-        groups.
+        """Rebalance partition-count across all brokers.
+
+        First step involves rebalancing partition-count across replication-groups
+        of the cluster.
+        Second step involves rebalancing partition-count across brokers within
+        each replication-group.
         """
         # Re-balance partition-count across replication-groups (cluster-wide)
         self.rebalance_brokers_cluster()
@@ -324,10 +328,11 @@ class ClusterTopology(object):
             rg.rebalance_brokers()
 
     def rebalance_brokers_cluster(self):
-        """Re-balance partition-count across replication-groups without
-        creating any replica-count imbalance.
+        """Re-balance partition-count across replication-groups.
 
         Algorithm:
+        The key constraint is not to create any replica-count imbalance while
+        moving partitions across replication-groups.
         1) Divide replication-groups into over and under loaded groups in terms
            of partition-count.
         2) For each over-loaded replication-group, select eligible partitions
@@ -366,78 +371,31 @@ class ClusterTopology(object):
         )
         # Balance replication-groups
         for over_loaded_rg in over_loaded_rgs:
-            # Filter unique partition with > opt-replica-count in over-loaded-rgs
-            eligible_partitions = set(filter(
-                lambda partition: over_loaded_rg.count_replica(partition) >
-                len(partition.replicas) // len(self.rgs),
-                over_loaded_rg.partitions,
-            ))
-            # If no eligible partition found continue with next replication-group
-            if not eligible_partitions:
-                continue
             for under_loaded_rg in under_loaded_rgs:
+                # Filter unique partition with replica-count > opt-replica-count
+                # in over-loaded-rgs and <= opt-replica-count in under-loaded-rgs
+                eligible_partitions = set(filter(
+                    lambda partition:
+                    over_loaded_rg.count_replica(partition) >
+                        len(partition.replicas) // len(self.rgs) and
+                    under_loaded_rg.count_replica(partition) <=
+                        len(partition.replicas) // len(self.rgs),
+                    over_loaded_rg.partitions,
+                ))
                 # Move all possible partitions
-                for victim_partition in eligible_partitions:
-                    # Evaluate possible source and destination-broker
-                    source_broker, dest_broker = self._get_target_brokers(
+                for eligible_partition in eligible_partitions:
+                    over_loaded_rg.move_partition_replica(
                         under_loaded_rg,
-                        over_loaded_rg,
-                        victim_partition,
+                        eligible_partition,
                     )
-                    if source_broker and dest_broker:
-                        # Move partition
-                        source_broker.move_partition(victim_partition, dest_broker)
-                    else:
-                        # No suitable broker-pair found, try with next partition
-                        continue
-                    # Move to next replication-group if either of them got balanced
+                    # Move to next replication-group if either of the groups got
+                    # balanced, otherwise try with next eligible partition
                     if len(under_loaded_rg.partitions) == opt_partition_cnt or \
                             len(over_loaded_rg.partitions) == opt_partition_cnt:
                         break
                 if len(over_loaded_rg.partitions) == opt_partition_cnt:
                     # Move to next over-loaded replication-group if balanced
                     break
-
-    def _get_target_brokers(self, under_loaded_rg, over_loaded_rg, victim_partition):
-        """Evaluate and return source and destination broker-pair from over-loaded
-        and under-loaded replication-group if possible, return None otherwise.
-
-        Return source broker with maximum partitions and destination broker with
-        minimum partitions based on following conditions:-
-        1) Under-replicated group should have less than max possible replicas of
-        victim-partition. This is to ensure replica-count does not gets imbalanced.
-        2) At-least one broker in under-loaded group which does not have victim-partition
-        Since, a broker cannot have 2 replicas of same partition.
-        3) At-least one broker in over-loaded group which has victim-partition
-        """
-        # Under-loaded replication-group cannot have more than max possible replicas
-        if under_loaded_rg.count_replica(victim_partition) > \
-                len(victim_partition.replicas) // len(self.rgs):
-            return (None, None)
-
-        under_brokers = filter(
-            lambda b: victim_partition not in b.partitions,
-            under_loaded_rg.brokers,
-        )
-        if not under_brokers:
-            return (None, None)
-        over_brokers = filter(
-            lambda b: victim_partition in b.partitions,
-            over_loaded_rg.brokers,
-        )
-        if not over_brokers:
-            return (None, None)
-
-        # Get source and destination broker
-        source_broker = max(
-            over_brokers,
-            key=lambda broker: len(broker.partitions),
-        )
-        dest_broker = min(
-            under_brokers,
-            key=lambda broker: len(broker.partitions),
-        )
-        return (source_broker, dest_broker)
 
     # Re-balancing leaders
     def rebalance_leaders(self):
