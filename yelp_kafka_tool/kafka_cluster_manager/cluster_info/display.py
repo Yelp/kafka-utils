@@ -127,17 +127,16 @@ def display_assignment_changes(plan_details, to_log=True):
     """Display current and proposed changes in
     topic-partition to replica layout over brokers.
     """
-    _, curr_plan_list, new_plan_list, total_changes = plan_details
+    curr_plan_list, new_plan_list, total_changes = plan_details
     action_cnt = '\n[INFO] Total actions required {0}'.format(total_changes)
-    # TODO: Make it as part of small function as part of another review
-    _log.info(action_cnt) if to_log else print(action_cnt)
+    _log_or_display(to_log, action_cnt)
     action_cnt = (
         '[INFO] Total actions that will be executed {0}'
         .format(len(new_plan_list))
     )
-    _log.info(action_cnt) if to_log else print(action_cnt)
+    _log_or_display(to_log, action_cnt)
     changes = ('[INFO] Proposed Changes in current cluster-layout:\n')
-    _log.info(changes) if to_log else print(changes)
+    _log_or_display(to_log, changes)
 
     tp_str = 'Topic - Partition'
     curr_repl_str = 'Previous-Assignment'
@@ -145,7 +144,8 @@ def display_assignment_changes(plan_details, to_log=True):
     tp_list = [tp_repl[0] for tp_repl in curr_plan_list]
 
     # Display heading
-    _log.info('=' * 80) if to_log else print('=' * 80)
+    msg = '=' * 80
+    _log_or_display(to_log, msg)
     row = (
         '{tp:^30s}: {curr_rep_str:^20s} ==> {new_rep_str:^20s}' .format(
             tp=tp_str,
@@ -153,8 +153,9 @@ def display_assignment_changes(plan_details, to_log=True):
             new_rep_str=new_rep_str,
         )
     )
-    _log.info(row) if to_log else print(row)
-    _log.info('=' * 80) if to_log else print('=' * 80)
+    _log_or_display(to_log, row)
+    msg = '=' * 80
+    _log_or_display(to_log, msg)
 
     # Display each topic-partition list with changes
     tp_list_sorted = sorted(tp_list, key=lambda tp: (tp[0], tp[1]))
@@ -173,4 +174,12 @@ def display_assignment_changes(plan_details, to_log=True):
                 proposed_repl=proposed_repl,
             )
         )
-        _log.info(row) if to_log else print(row)
+        _log_or_display(to_log, row)
+
+
+def _log_or_display(to_log, msg):
+    """Log or display the information."""
+    if to_log:
+        _log.info(msg)
+    else:
+        print(msg)

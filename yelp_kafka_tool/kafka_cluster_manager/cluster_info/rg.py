@@ -94,6 +94,7 @@ class ReplicationGroup(object):
         under_loaded_brokers = rg_destination._select_under_loaded_brokers(
             victim_partition,
         )
+        # TODO: topic-partition optimization: similar to _get_target_brokers?
         broker_source = self._elect_source_broker(over_loaded_brokers)
         broker_destination = self._elect_dest_broker(
             under_loaded_brokers,
@@ -144,6 +145,7 @@ class ReplicationGroup(object):
             broker_topic_partition_cnt,
             key=lambda ele: ele[1],
         )
+        # TODO: Decision-optimization: if multiple minimum broker?
         return min_count_pair[0]
 
     # Re-balancing brokers
@@ -202,6 +204,9 @@ class ReplicationGroup(object):
                             or min_sibling_partition_cnt == -1:
                         min_sibling_partition_cnt = sibling_cnt
                         target = (source, dest, best_fit_partition)
+                        if min_sibling_partition_cnt == 0:
+                            # Minimum possible sibling-count
+                            break
                 else:
                     # If relatively-unbalanced then all brokers in destination
                     # will be thereafter, return from here

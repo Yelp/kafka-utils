@@ -15,14 +15,21 @@ import logging
 from collections import OrderedDict
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 from .broker import Broker
+from .display import (
+    display_leader_count_per_broker,
+    display_partition_count_per_broker,
+    display_same_replica_count_rg,
+    display_same_topic_partition_count_broker,
+)
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
 from .stats import (
-    get_partition_imbalance_stats,
-    get_leader_imbalance_stats,
-    get_topic_imbalance_stats,
-    get_replication_group_imbalance_stats,
+    calculate_partition_movement,
+    leader_imbalance,
+    partition_imbalance,
+    replication_group_imbalance,
+    topic_imbalance,
 )
 from .util import separate_groups
 
@@ -49,6 +56,7 @@ class ClusterTopology(object):
         self._build_brokers(broker_ids)
         self._build_replication_groups()
         self._build_partitions()
+        self.log.debug('Cluster-topology object created.')
 
     def _build_topics(self, topic_ids):
         """List of topic objects from topic-ids."""
@@ -152,38 +160,6 @@ class ClusterTopology(object):
             raise ValueError(error_msg)
         return rg_name
 
-    def reassign_partitions(
-        self,
-        replication_groups=False,
-        leaders=False,
-        brokers=False,
-    ):
-        """Rebalance current cluster-state to get updated state based on
-        rebalancing option.
-        """
-        # Balancing to be done in the given order only
-        # Rebalance replication-groups
-        if replication_groups:
-            self.log.info(
-                'Re-balancing replication groups: {groups}...'
-                .format(groups=', '.join(self.rgs.keys())),
-            )
-            self.rebalance_replication_groups()
-        # Rebalance broker-partition count per replication-groups
-        if brokers:
-            self.log.info(
-                'Re-balancing partition-count across brokers: {brokers}...'
-                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
-            )
-            self.rebalance_brokers()
-        # Rebalance broker as leader count per broker
-        if leaders:
-            self.log.info(
-                'Re-balancing leader-count across brokers: {brokers}...'
-                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
-            )
-            self.rebalance_leaders()
-
     @property
     def initial_assignment(self):
         return self._initial_assignment
@@ -210,38 +186,50 @@ class ClusterTopology(object):
             for partition in rg.partitions
         ]
 
-    def partition_imbalance(self, cluster_wide=False):
-        """Report partition count imbalance over brokers in current cluster
-        state for each replication-group.
+    def reassign_partitions(
+        self,
+        replication_groups=False,
+        leaders=False,
+        brokers=False,
+        get_imbalance_stats=True,
+    ):
+        """Rebalance current cluster-state to get updated state based on
+        rebalancing option.
         """
-        # Get broker-imbalance stats cluster-wide or for each replication-group
-        if cluster_wide:
-            return [(get_partition_imbalance_stats(self.brokers.values()))]
-        else:
-            return [
-                (get_partition_imbalance_stats(rg.brokers))
-                for rg in self.rgs.values()
-            ]
+        # Balancing to be done in the given order only
+        # Rebalance replication-groups
+        if get_imbalance_stats:
+            initial_imbal = self._pre_balancing_imbalance_stats()
 
-    def leader_imbalance(self):
-        """Report leader imbalance count over each broker."""
-        return get_leader_imbalance_stats(self.brokers.values())
+        if replication_groups:
+            self.log.info(
+                'Re-balancing replica-count over replication groups: {groups}...'
+                .format(groups=', '.join(self.rgs.keys())),
+            )
+            self.rebalance_replication_groups()
+            if get_imbalance_stats:
+                self._replication_group_rebalance_stats(initial_imbal)
 
-    def topic_imbalance(self):
-        """Return count of topics and partitions on each broker having multiple
-        partitions of same topic.
-        """
-        return get_topic_imbalance_stats(
-            self.brokers.values(),
-            self.topics.values(),
-        )
+        # Rebalance broker-partition count per replication-groups
+        if brokers:
+            self.log.info(
+                'Re-balancing partition-count across brokers: {brokers}...'
+                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
+            )
+            self.rebalance_brokers()
+            if get_imbalance_stats:
+                self._broker_rebalance_stats(initial_imbal)
 
-    def replication_group_imbalance(self):
-        """Calculate same replica count over each replication-group."""
-        return get_replication_group_imbalance_stats(
-            self.rgs.values(),
-            self.partitions.values(),
-        )
+        # Rebalance broker as leader count per broker
+        if leaders:
+            self.log.info(
+                'Re-balancing leader-count across brokers: {brokers}...'
+                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
+            )
+            self.rebalance_leaders()
+
+        if get_imbalance_stats:
+            self._leader_rebalance_stats(initial_imbal)
 
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
@@ -322,6 +310,10 @@ class ClusterTopology(object):
         groups.
         """
         for rg in self.rgs.values():
+            self.log.info(
+                'Re-balancing brokers over replication group: {group}...'
+                .format(group=rg.id),
+            )
             rg.rebalance_brokers()
 
     # Re-balancing leaders
@@ -332,23 +324,6 @@ class ClusterTopology(object):
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
         # Balanced brokers transfer leadership to their under-balanced followers
         self.rebalancing_non_followers(opt_leader_cnt)
-
-    def rebalancing_followers(self, opt_leader_cnt):
-        """Transfer leadership from current over-balanced leaders to their
-        under-balanced followers.
-
-        :key-terms:
-        over-balanced brokers:  Brokers with leadership-count > opt-count
-                                Note: Even brokers with leadership-count
-                                == opt-count are assumed as over-balanced.
-        under-balanced brokers: Brokers with leadership-count < opt-count
-        """
-        for broker in self.brokers.values():
-            if broker.count_preferred_replica() > opt_leader_cnt:
-                broker.decrease_leader_count(
-                    self.partitions.values(),
-                    opt_leader_cnt,
-                )
 
     def rebalancing_non_followers(self, opt_cnt):
         """Transfer leadership to any under-balanced followers on the pretext
@@ -385,9 +360,195 @@ class ClusterTopology(object):
             lambda b: b.count_preferred_replica() > opt_cnt + 1,
             self.brokers.values(),
         )
-        # Any over-balanced brokers tries to donate thier leadership to followers
+        # Any over-balanced brokers tries to donate their leadership to followers
         if over_brokers:
             skip_brokers, used_edges = [], []
             for broker in over_brokers:
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
+
+    # Imbalance statistics evaluation and reporting
+    def _pre_balancing_imbalance_stats(self):
+        self.log.info('Calculating initial rebalance imbalance statistics...')
+        initial_imbal = self.imbalance_value_all()
+        self._log_imbalance_stats(initial_imbal)
+        return initial_imbal
+
+    def _replication_group_rebalance_stats(self, initial_imbal):
+        self.log.info(
+            'Calculating rebalance imbalance-stats after rebalancing '
+            'replica-count over replication-groups...',
+        )
+        curr_imbal = self.imbalance_value_all(leaders=False)
+        self.log.info(
+            'Imbalance statistics after rebalancing replica-count over '
+            'replication-groups'
+        )
+        self._log_imbalance_stats(curr_imbal, leaders=False)
+        if curr_imbal['replica_cnt'] > 0:
+            # Report if replication-groups didn't rebalance
+            self.log.warning(
+                'Replication-group imbalance count is non-zero: {imbal}'
+                .format(imbal=curr_imbal['replica_cnt']),
+            )
+            # Report as error if replication-group imbalance increased
+            if curr_imbal['replica_cnt'] > initial_imbal['replica_cnt']:
+                self.log.error(
+                    'Replication-group (replica-count) imbalance count '
+                    'increased from {initial_imbal} to {curr_imbal}'.format(
+                        initial_imbal=initial_imbal['replica_cnt'],
+                        curr_imbal=curr_imbal['replica_cnt'],
+                    )
+                )
+
+    def _broker_rebalance_stats(self, initial_imbal):
+        self.log.info(
+            'Calculating rebalance imbalance-stats after rebalancing brokers',
+        )
+        curr_imbal = self.imbalance_value_all(leaders=False)
+        self._log_imbalance_stats(curr_imbal, leaders=False)
+        if curr_imbal['net_part_cnt_per_rg'] > 0:
+            # Report as warning if replication-groups didn't rebalance
+            self.log.warning(
+                'Partition-count over brokers imbalance count is non-zero: '
+                '{imbal}'.format(imbal=curr_imbal['net_part_cnt_per_rg']),
+            )
+            # Report as error if replication-group imbalance increased
+            if curr_imbal['net_part_cnt_per_rg'] > initial_imbal['net_part_cnt_per_rg']:
+                self.log.error(
+                    'Partition-count imbalance count increased from '
+                    '{initial_imbal} to {curr_imbal}'.format(
+                        initial_imbal=initial_imbal['net_part_cnt_per_rg'],
+                        curr_imbal=curr_imbal['net_part_cnt_per_rg'],
+                    )
+                )
+
+    def _leader_rebalance_stats(self, initial_imbal):
+        self.log.info(
+            'Calculating final rebalance imbalance-stats after rebalancing leaders',
+        )
+        curr_imbal = self.imbalance_value_all()
+        if curr_imbal['leader_cnt'] > 0:
+            # Report as warning if replication-groups didn't rebalance
+            self.log.warning(
+                'Leader-count over brokers imbalance count is non-zero: '
+                '{imbal}'.format(imbal=curr_imbal['leader_cnt']),
+            )
+            # Report as error if replication-group imbalance increased
+            if curr_imbal['leader_cnt'] > initial_imbal['leader_cnt']:
+                self.log.error(
+                    'Leader-count imbalance count increased from '
+                    '{initial_imbal} to {curr_imbal}'.format(
+                        initial_imbal=initial_imbal['leader_cnt'],
+                        curr_imbal=curr_imbal['leader_cnt'],
+                    )
+                )
+
+    def _log_imbalance_stats(self, imbal, leaders=True):
+        self.log.info(
+            'Replication-group imbalance (replica-count): {imbal}'.format(
+                imbal=imbal['replica_cnt'],
+            ),
+        )
+        self.log.info(
+            'Net Partition-count imbalance/replication-group: '
+            '{imbal}'.format(
+                imbal=imbal['net_part_cnt_per_rg'],
+            ),
+        )
+        self.log.info(
+            'Net Partition-count imbalance: {imbal}'.format(
+                imbal=imbal['partition_cnt'],
+            ),
+        )
+
+        self.log.info(
+            'Topic-partition-count imbalance: {imbal}'.format(
+                imbal=imbal['topic_partition_cnt'],
+            ),
+        )
+        if leaders:
+            self.log.info(
+                'Leader-count imbalance: {imbal}'.format(
+                    imbal=imbal['leader_cnt'],
+                ),
+            )
+        net_imbalance = (
+            imbal['replica_cnt'] +
+            imbal['net_part_cnt_per_rg'] +
+            imbal['topic_partition_cnt']
+        )
+        if leaders:
+            net_imbalance_with_leaders = net_imbalance + imbal['leader_cnt']
+            self.log.info(
+                'Net-cluster imbalance (including leader-imbalance): '
+                '{imbal}'.format(imbal=net_imbalance_with_leaders),
+            )
+        self.log.info(
+            'Net-cluster imbalance (excluding leader-imbalance): '
+            '{imbal}'.format(imbal=net_imbalance),
+        )
+        # Net movements required
+        self.log.info(
+            'Total partition-movements: {movement_cnt}'
+            .format(movement_cnt=imbal['total_movements']),
+        )
+
+    def imbalance_value_all(self, leaders=True, display=True):
+        """Evaluate imbalance statistics based on given params.
+
+        Params represent the layer for which imbalance needs to be calculated
+        """
+        # Partition-count imbalance
+        (stdev_imbalance, imbal_part, partitions_per_broker) = \
+            partition_imbalance(self.rgs.values(), self.brokers.values(), cluster_wide=True)[0]
+        imbal_part_per_rg = partition_imbalance(self.rgs.values(), self.brokers.values())
+        net_imbal_part_per_rg = sum(imbal_part_rg[1] for imbal_part_rg in imbal_part_per_rg)
+
+        # Duplicate-replica-count imbalance
+        imbal_replica, duplicate_replica_count_per_rg = \
+            replication_group_imbalance(self.rgs.values(), self.partitions.values())
+
+        # Same topic-partition count
+        imbal_topic, same_topic_partition_count_per_broker = \
+            topic_imbalance(self.brokers.values(), self.topics.values())
+
+        imbal_leader = 0
+        if leaders:
+            # Leader-count imbalance
+            stdev_imbalance, imbal_leader, leaders_per_broker = \
+                leader_imbalance(self.brokers.values())
+
+        # Display stats to stdout
+        if display:
+            display_partition_count_per_broker(
+                partitions_per_broker,
+                stdev_imbalance,
+                imbal_part,
+            )
+            display_same_replica_count_rg(
+                duplicate_replica_count_per_rg,
+                imbal_replica,
+            )
+            display_same_topic_partition_count_broker(
+                same_topic_partition_count_per_broker,
+                imbal_topic,
+            )
+            if leaders:
+                display_leader_count_per_broker(
+                    leaders_per_broker,
+                    stdev_imbalance,
+                    imbal_leader,
+                )
+        total_movements = calculate_partition_movement(
+            self.initial_assignment,
+            self.assignment,
+        )[1]
+        return {
+            'net_part_cnt_per_rg': net_imbal_part_per_rg,
+            'partition_cnt': imbal_part,
+            'replica_cnt': imbal_replica,
+            'topic_partition_cnt': imbal_topic,
+            'leader_cnt': imbal_leader,
+            'total_movements': total_movements,
+        }

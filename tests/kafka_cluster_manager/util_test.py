@@ -1,11 +1,12 @@
 from collections import OrderedDict
 from pytest import fixture
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    get_reduced_proposed_plan,
-    get_assignment_map,
     _validate_format,
     _validate_assignment,
     _validate_plan_base,
+    get_assignment_map,
+    get_plan,
+    get_reduced_proposed_plan,
     validate_plan,
 )
 
@@ -95,9 +96,10 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
     )
 
     # Verify that result is not None
-    proposed_assignment = result[0]
+    red_proposed_assignment = dict((ele[0], ele[1]) for ele in result[1])
+    proposed_plan = get_plan(red_proposed_assignment)
     # Verify length of proposed-plan actions as 2
-    assert len(proposed_assignment['partitions']) == 2
+    assert len(proposed_plan['partitions']) == 2
 
     result = get_reduced_proposed_plan(
         orig_assignment,
@@ -105,12 +107,13 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
         5,
     )
 
-    proposed_assignment = result[0]
+    red_proposed_assignment = dict((ele[0], ele[1]) for ele in result[1])
+    proposed_plan = get_plan(red_proposed_assignment)
     # Verify no proposed plan less than max-changes
-    assert len(proposed_assignment['partitions']) == 4
+    assert len(proposed_plan['partitions']) == 4
     # Verify that proposed-plan is first change in sorted order of
     # partition-name
-    assert sorted(proposed_assignment['partitions']) == sorted([
+    assert sorted(proposed_plan['partitions']) == sorted([
         {'partition': 0, 'topic': u'T0', 'replicas': [2, 0]},
         {'partition': 1, 'topic': u'T0', 'replicas': [2, 1]},
         {'partition': 1, 'topic': u'T1', 'replicas': [2, 3]},

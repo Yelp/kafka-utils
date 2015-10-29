@@ -196,84 +196,30 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
             )
     return movements, total_movements
 
-# TODO: remove
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.display import (
-    display_same_replica_count_rg,
-    display_same_topic_partition_count_broker,
-    display_partition_count_per_broker,
-    display_leader_count_per_broker,
-)
+
+def partition_imbalance(rgs, brokers, cluster_wide=False):
+    """Report partition count imbalance over brokers in current cluster
+    state for each replication-group.
+    """
+    # Get broker-imbalance stats cluster-wide or for each replication-group
+    if cluster_wide:
+        return [(get_partition_imbalance_stats(brokers))]
+    else:
+        return [(get_partition_imbalance_stats(rg.brokers)) for rg in rgs]
 
 
-def imbalance_value_all(ct, display=False):
-    print('calculating imbalance all')
-    imbal_leader = 0
-    imbal_replica = 0
-    imbal_topic = 0
-    imbal_part = 0
-    total_imbal = 0
-    total_movements = 0
-    # print('not calculating imbalance')
-    # return imbal_part, imbal_replica, imbal_topic, imbal_leader, total_imbal, total_movements
-    # Partition-count imbalance
-    [(stdev_imbalance, imbal_part, partitions_per_broker)] = \
-        ct.partition_imbalance(cluster_wide=True)
+def leader_imbalance(brokers):
+    """Report leader imbalance count over each broker."""
+    return get_leader_imbalance_stats(brokers)
 
-    # Leader-count imbalance
-    stdev_imbalance, imbal_leader, leaders_per_broker = \
-        ct.leader_imbalance()
 
-    # Duplicate-replica-count imbalance
-    imbal_replica, duplicate_replica_count_per_rg = \
-        ct.replication_group_imbalance()
+def topic_imbalance(brokers, topics):
+    """Return count of topics and partitions on each broker having multiple
+    partitions of same topic.
+    """
+    return get_topic_imbalance_stats(brokers, topics)
 
-    # Same topic-partition count
-    imbal_topic, same_topic_partition_count_per_broker = \
-        ct.topic_imbalance()
-    total_imbal = imbal_leader + imbal_part + imbal_replica + imbal_topic
 
-    if display:
-        # Display if asked
-        # Get imbalance stats
-        # Partition-count imbalance
-        [(stdev_imbalance, net_imbalance, partitions_per_broker)] = \
-            ct.partition_imbalance(cluster_wide=True)
-        display_partition_count_per_broker(
-            partitions_per_broker,
-            stdev_imbalance,
-            net_imbalance,
-        )
-        # Leader-count imbalance
-        stdev_imbalance, net_imbalance, leaders_per_broker = \
-            ct.leader_imbalance()
-        display_leader_count_per_broker(
-            leaders_per_broker,
-            stdev_imbalance,
-            net_imbalance,
-        )
-
-        # Duplicate-replica-count imbalance
-        net_imbalance, duplicate_replica_count_per_rg = \
-            ct.replication_group_imbalance()
-        display_same_replica_count_rg(
-            duplicate_replica_count_per_rg,
-            net_imbalance,
-        )
-
-    # Same topic-partition count
-    net_imbalance, same_topic_partition_count_per_broker = \
-        ct.topic_imbalance()
-    display_same_topic_partition_count_broker(
-        same_topic_partition_count_per_broker,
-        net_imbalance,
-    )
-    total_movements = calculate_partition_movement(
-        ct.initial_assignment,
-        ct.assignment,
-    )[1]
-
-    print(
-        'part:', imbal_part, 'repl:', imbal_replica, 't-p:', imbal_topic,
-        'leader:', imbal_leader, 'total-imbal:', total_imbal, 'movements', total_movements,
-    )
-    return imbal_part, imbal_replica, imbal_topic, imbal_leader, total_imbal, total_movements
+def replication_group_imbalance(rgs, partitions):
+    """Calculate same replica count over each replication-group."""
+    return get_replication_group_imbalance_stats(rgs, partitions)

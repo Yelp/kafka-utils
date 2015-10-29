@@ -34,6 +34,7 @@ from __future__ import unicode_literals
 import argparse
 import logging
 import sys
+import time
 
 from yelp_kafka.config import ClusterConfig
 from yelp_kafka_tool.util import config
@@ -91,12 +92,13 @@ def is_cluster_stable(zk):
     Currently cluster being stable means non existence of 'reassign_partitions'
     node in zookeeper. The existence of above node implies previous reassignment
     in progress, implying that cluster has incorrect replicas temporarily.
+    TODO: Under-replicated-partition check
     """
     if zk.reassignment_in_progress():
         in_progress_plan = zk.get_in_progress_plan()
         if in_progress_plan:
             in_progress_partitions = in_progress_plan['partitions']
-            print(
+            _log.info(
                 'Previous re-assignment in progress for {count} partitions.'
                 ' Current partitions in re-assignment queue: {partitions}'
                 .format(
@@ -116,28 +118,36 @@ def is_cluster_stable(zk):
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
+        _log.info(
+            'Starting re-assignment tool for cluster: {c_name} over zookeeper: '
+            '{zookeeper}'.format(
+                c_name=cluster_config.name,
+                zookeeper=cluster_config.zookeeper,
+            )
+        )
+        _log.info(
+            'Evaluating any previous running re-assignments on zookeeper...',
+        )
+        if not is_cluster_stable(zk):
+            _log.error('Cluster-state is not stable. Exiting...')
+            sys.exit(1)
         script_path = None
         # Use kafka-scripts
         if args.use_kafka_script:
             script_path = args.script_path
 
-        if not is_cluster_stable(zk):
-            _log.error('Cluster-state is not stable. Exiting...')
-            sys.exit(1)
+        _log.info('Cluster state stable. Creating Cluster Topology...')
         ct = ClusterTopology(zk=zk, script_path=script_path)
-        # TODO: remove
-        from .cluster_info.stats import imbalance_value_all
-        prev_imbal = imbalance_value_all(ct, True)
-        print('initial-imbal', prev_imbal)
+        _log.info('Re-assigning cluster topology...')
         ct.reassign_partitions(
             replication_groups=args.replication_groups,
             brokers=args.brokers,
             leaders=args.leaders,
+            get_imbalance_stats=not args.skip_imbalance_stats,
         )
-        prev_imbal = imbalance_value_all(ct, True)
-        print('after-imbal', prev_imbal)
         curr_plan = get_plan(ct.assignment)
         base_plan = get_plan(ct.initial_assignment)
+        _log.info('Validating current cluster-topology against initial cluster-topology...')
         if not validate_plan(curr_plan, base_plan):
             _log.error('Invalid latest-cluster assignment. Exiting...')
             sys.exit(1)
@@ -153,12 +163,50 @@ def reassign_partitions(cluster_config, args):
             # Display or store plan
             display_assignment_changes(result, args.no_confirm)
             # Export proposed-plan to json file
+            red_original_assignment = dict((ele[0], ele[1]) for ele in result[0])
+            red_proposed_assignment = dict((ele[0], ele[1]) for ele in result[1])
+            proposed_plan = get_plan(red_proposed_assignment)
             if args.proposed_plan_file:
-                proposed_plan_json(result[0], args.proposed_plan_file)
+                _log.info(
+                    'Storing proposed-plan in json file, {file}'
+                    .format(file=args.proposed_plan_file),
+                )
+                proposed_plan_json(proposed_plan, args.proposed_plan_file)
             # Validate and execute plan
             base_plan = get_plan(ct.initial_assignment)
-            if validate_plan(result[0], base_plan):
-                execute_plan(ct, zk, result[0], args.apply, args.no_confirm, script_path)
+            reduced_original_plan = get_plan(red_original_assignment)
+            _log.info(
+                'Original plan before assignment {plan}'
+                .format(plan=reduced_original_plan),
+            )
+            _log.info(
+                'Proposed plan assignment {plan}'
+                .format(plan=reduced_original_plan),
+            )
+            _log.info('Validating complete proposed-plan...')
+            if validate_plan(proposed_plan, base_plan):
+                # Actual movement of partitions in new-plan
+                net_partition_movements = sum([
+                    len(set(replicas) - set(red_proposed_assignment[p_name]))
+                    for p_name, replicas in red_original_assignment.iteritems()
+                ])
+                # Net leader changes only
+                net_leader_only_changes = sum([
+                    1
+                    for p_name, replicas in red_original_assignment.iteritems()
+                    if set(replicas) == set(red_proposed_assignment[p_name]) and
+                    replicas[0] != red_proposed_assignment[p_name][0]
+                ])
+                _log.info(
+                    'Sending proposed-plan with {actions} actions, {movements} '
+                    'partition-movements, {leader_changes} leader only changes '
+                    'to zookeeper'.format(
+                        actions=len(proposed_plan['partitions']),
+                        movements=net_partition_movements,
+                        leader_changes=net_leader_only_changes,
+                    ),
+                )
+                execute_plan(ct, zk, proposed_plan, args.apply, args.no_confirm, script_path)
             else:
                 _log.error('Invalid proposed-plan. Execution Unsuccessful. Exiting...')
                 sys.exit(1)
@@ -169,6 +217,7 @@ def reassign_partitions(cluster_config, args):
                 _log.info(msg_str)
             else:
                 print(msg_str)
+        _log.info('Kafka-cluster-manager tool execution completed.')
 
 
 def parse_args():
@@ -267,6 +316,18 @@ def parse_args():
         help='Export candidate partition reassignment configuration '
              'to given json file.',
     )
+    parser_rebalance.add_argument(
+        '--skip-imbalance-stats',
+        dest='skip_imbalance_stats',
+        action='store_true',
+        help='Skip any imbalance calculations to speed-up rebalancing time',
+    )
+    parser_rebalance.add_argument(
+        '-v',
+        dest='verbose',
+        action='store_true',
+        help='Get debug level logs',
+    )
     parser_rebalance.set_defaults(command=reassign_partitions)
     return parser.parse_args()
 
@@ -303,8 +364,18 @@ def validate_args(args):
 
 def run():
     """Verify command-line arguments and run reassignment functionalities."""
-    logging.basicConfig(level=logging.ERROR)
     args = parse_args()
+    filename = 'reassignment-{date}.log'.format(date=str(time.strftime("%Y-%m-%d")))
+    if args.verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logging.basicConfig(
+        level=level,
+        filename=filename,
+        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s'
+    )
+    _log.info('Started Kafka-cluster-manager tool...')
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:
