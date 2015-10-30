@@ -156,7 +156,7 @@ class ReplicationGroup(object):
             lambda b: len(b.partitions),
         )
         # Report and return if nothing to be balanced
-        if not over_loaded_brokers and under_loaded_brokers:
+        if not over_loaded_brokers and not under_loaded_brokers:
             self.log.info(
                 'Brokers of replication-group: {rg} already balanced for '
                 'partition-count'.format(rg=self.id),
