@@ -94,7 +94,6 @@ class ReplicationGroup(object):
         under_loaded_brokers = rg_destination._select_under_loaded_brokers(
             victim_partition,
         )
-        # TODO: topic-partition optimization: similar to _get_target_brokers?
         broker_source = self._elect_source_broker(over_loaded_brokers)
         broker_destination = self._elect_dest_broker(
             under_loaded_brokers,
@@ -145,7 +144,7 @@ class ReplicationGroup(object):
             broker_topic_partition_cnt,
             key=lambda ele: ele[1],
         )
-        # TODO: Decision-optimization: if multiple minimum broker?
+        # TODO: Decision-optimization: if multiple minimum brokers?
         return min_count_pair[0]
 
     # Re-balancing brokers
@@ -156,6 +155,14 @@ class ReplicationGroup(object):
             self.brokers,
             lambda b: len(b.partitions),
         )
+        # Report and return if nothing to be balanced
+        if not over_loaded_brokers and under_loaded_brokers:
+            self.log.info(
+                'Brokers of replication-group: {rg} already balanced for '
+                'partition-count'.format(rg=self.id),
+            )
+            return
+
         while under_loaded_brokers and over_loaded_brokers:
             # Get best-fit source-broker, destination-broker and partition
             broker_source, broker_destination, victim_partition = \

@@ -132,24 +132,12 @@ class ClusterTopology(object):
         """Fetch replication-group to broker map from zookeeper."""
         try:
             hostname = broker.get_hostname(self._zk)
-            # TODO: remove, temporary for localhost
-            '''
             if 'localhost' in hostname:
                 self.log.warning(
                     "Setting replication-group as localhost for broker %s",
                     broker.id,
                 )
                 rg_name = 'localhost'
-            '''
-            if 'dev8-devc' in hostname:
-                if broker.id == 0:
-                    rg_name = 'a'
-                elif broker.id == 1:
-                    rg_name = 'a'
-                elif broker.id == 2:
-                    rg_name = 'a'
-                else:
-                    rg_name = 'c'
             else:
                 habitat = hostname.rsplit('-', 1)[1]
                 rg_name = habitat.split('.', 1)[0]
@@ -501,8 +489,15 @@ class ClusterTopology(object):
         """
         # Partition-count imbalance
         (stdev_imbalance, imbal_part, partitions_per_broker) = \
-            partition_imbalance(self.rgs.values(), self.brokers.values(), cluster_wide=True)[0]
-        imbal_part_per_rg = partition_imbalance(self.rgs.values(), self.brokers.values())
+            partition_imbalance(
+                self.rgs.values(),
+                self.brokers.values(),
+                cluster_wide=True,
+        )[0]
+        imbal_part_per_rg = partition_imbalance(
+            self.rgs.values(),
+            self.brokers.values(),
+        )
         net_imbal_part_per_rg = sum(imbal_part_rg[1] for imbal_part_rg in imbal_part_per_rg)
 
         # Duplicate-replica-count imbalance
