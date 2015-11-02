@@ -25,11 +25,15 @@ RESTART_COMMAND = "service kafka restart"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
-DEFAULT_CHECK_INTERVAL = 10  # seconds
+DEFAULT_CHECK_INTERVAL_SECS = 10
 DEFAULT_CHECK_COUNT = 12
-DEFAULT_TIME_LIMIT = 600     # 10 minutes
+DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
+
+
+class WaitTimeoutException(Exception):
+    pass
 
 
 def parse_opts():
@@ -50,7 +54,7 @@ def parse_opts():
         help=('the interval between each check, in seconds. '
               'Default: %(default)s seconds'),
         type=int,
-        default=DEFAULT_CHECK_INTERVAL,
+        default=DEFAULT_CHECK_INTERVAL_SECS,
     )
     parser.add_argument(
         '--check-count',
@@ -64,7 +68,7 @@ def parse_opts():
         help=('the maximum amount of time the cluster can be unstable before '
               'stopping the rolling restart. Default: %(default)s'),
         type=int,
-        default=DEFAULT_TIME_LIMIT,
+        default=DEFAULT_TIME_LIMIT_SECS,
     )
     parser.add_argument(
         '--jolokia-port',
@@ -245,7 +249,6 @@ def wait_for_stable_cluster(
     :param unstable_time_limit: the maximum number of seconds it will wait for
     the cluster to become stable before exiting with error
     :type unstable_time_limit: integer
-    :returns: False if succeeded, True if time out
     """
     stable_counter = 0
     max_checks = int(math.ceil(unstable_time_limit / check_interval))
@@ -268,9 +271,10 @@ def wait_for_stable_cluster(
             ))
         if stable_counter >= check_count:
             print("The cluster is stable")
-            return False
+            break
         time.sleep(check_interval)
-    return True
+    else:
+        raise WaitTimeoutException()
 
 
 def execute_rolling_restart(
@@ -312,15 +316,16 @@ def execute_rolling_restart(
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
-            timeout = wait_for_stable_cluster(
-                all_hosts,
-                jolokia_port,
-                jolokia_prefix,
-                check_interval,
-                1 if n == 0 else check_count,
-                unstable_time_limit,
-            )
-            if timeout:
+            try:
+                wait_for_stable_cluster(
+                    all_hosts,
+                    jolokia_port,
+                    jolokia_prefix,
+                    check_interval,
+                    1 if n == 0 else check_count,
+                    unstable_time_limit,
+                )
+            except WaitTimeoutException:
                 print("ERROR: cluster is still unstable, exiting")
                 sys.exit(1)
             print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
