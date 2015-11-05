@@ -316,22 +316,27 @@ def execute_rolling_restart(
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2):
-            try:
-                wait_for_stable_cluster(
-                    all_hosts,
-                    jolokia_port,
-                    jolokia_prefix,
-                    check_interval,
-                    1 if n == 0 else check_count,
-                    unstable_time_limit,
-                )
-            except WaitTimeoutException:
-                print("ERROR: cluster is still unstable, exiting")
-                sys.exit(1)
+            wait_for_stable_cluster(
+                all_hosts,
+                jolokia_port,
+                jolokia_prefix,
+                check_interval,
+                1 if n == 0 else check_count,
+                unstable_time_limit,
+            )
             print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
             hidden = [] if verbose else ['output', 'running']
             with hide(*hidden):
                 execute(restart_broker, hosts=host)
+    # Wait before terminating the script
+    wait_for_stable_cluster(
+        all_hosts,
+        jolokia_port,
+        jolokia_prefix,
+        check_interval,
+        check_count,
+        unstable_time_limit,
+    )
 
 
 def validate_opts(opts, brokers_num):
@@ -374,13 +379,17 @@ def run():
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
-        execute_rolling_restart(
-            brokers,
-            opts.jolokia_port,
-            opts.jolokia_prefix,
-            opts.check_interval,
-            opts.check_count,
-            opts.unstable_time_limit,
-            opts.skip,
-            opts.verbose,
-        )
+        try:
+            execute_rolling_restart(
+                brokers,
+                opts.jolokia_port,
+                opts.jolokia_prefix,
+                opts.check_interval,
+                opts.check_count,
+                opts.unstable_time_limit,
+                opts.skip,
+                opts.verbose,
+            )
+        except WaitTimeoutException:
+            print("ERROR: cluster is still unstable, exiting")
+            sys.exit(1)
