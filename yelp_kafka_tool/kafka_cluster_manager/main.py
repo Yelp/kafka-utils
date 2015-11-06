@@ -34,7 +34,6 @@ from __future__ import unicode_literals
 import argparse
 import logging
 import sys
-import time
 
 from yelp_kafka.config import ClusterConfig
 from yelp_kafka_tool.util import config
@@ -463,6 +462,11 @@ def parse_args():
              'to given json file.',
     )
     parser_rebalance.add_argument(
+        '--log-file',
+        type=str,
+        help='Write logs to specified file',
+    )
+    parser_rebalance.add_argument(
         '--skip-imbalance-stats',
         dest='skip_imbalance_stats',
         action='store_true',
@@ -511,16 +515,22 @@ def validate_args(args):
 def run():
     """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
-    filename = 'reassignment-{date}.log'.format(date=str(time.strftime("%Y-%m-%d")))
     if args.debug:
         level = logging.DEBUG
     else:
         level = logging.INFO
-    logging.basicConfig(
-        level=level,
-        filename=filename,
-        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
-    )
+    # Re-direct logs to file or stdout
+    if args.log_file:
+        logging.basicConfig(
+            level=level,
+            filename=args.log_file,
+            format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
+        )
+    else:
+        logging.basicConfig(
+            level=level,
+            format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
+        )
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:

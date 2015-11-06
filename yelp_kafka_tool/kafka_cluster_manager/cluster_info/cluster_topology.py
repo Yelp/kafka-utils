@@ -18,13 +18,6 @@ from .broker import Broker
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
-from .stats import (
-    calculate_partition_movement,
-    leader_imbalance,
-    partition_imbalance,
-    replication_group_imbalance,
-    topic_imbalance,
-)
 from .util import (
     compute_group_optimum,
     separate_groups,
