@@ -99,7 +99,7 @@ class ReplicationGroup(object):
             victim_partition,
         )
         # Get underloaded brokers in destination replication-group
-        under_loaded_brokers = rg_destination._select_under_loaded_brokers(
+        under_loaded_brokers = rg_destination.select_under_loaded_brokers(
             victim_partition,
         )
         broker_source = self._elect_source_broker(over_loaded_brokers)
@@ -124,7 +124,7 @@ class ReplicationGroup(object):
             reverse=True,
         )
 
-    def _select_under_loaded_brokers(self, victim_partition):
+    def select_under_loaded_brokers(self, victim_partition):
         """Get brokers in ascending sorted order of partition-count
         not containing victim-partition.
         """

@@ -118,7 +118,7 @@ class TestReplicationGroup(object):
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         victim_partition = sentinel.p7
-        actual = rg._select_under_loaded_brokers(victim_partition)
+        actual = rg.select_under_loaded_brokers(victim_partition)
         # Since sentinel.p7 is not present in b1, b2 and b3, they should be
         # returned in increasing order of partition-count
         assert actual == [b3, b2, b1]
@@ -126,7 +126,7 @@ class TestReplicationGroup(object):
         # under-loaded-brokers SHOULD NOT contain victim-partition sentinel.p4
         # Brokers returned in sorted order of DECREASING partition-count
         victim_partition = sentinel.p4
-        actual = rg._select_under_loaded_brokers(victim_partition)
+        actual = rg.select_under_loaded_brokers(victim_partition)
         assert actual == [b3, b1]
 
     def test_select_over_loaded_brokers(self):

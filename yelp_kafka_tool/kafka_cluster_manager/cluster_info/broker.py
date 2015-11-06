@@ -108,7 +108,7 @@ class Broker(object):
         else:
             return None
 
-    def request_leadership(self, opt_count, skip_brokers, skip_partitions, optimal=False):
+    def request_leadership(self, opt_count, skip_brokers, skip_partitions):
         """Under-balanced broker requests leadership from current leader, on the
         pretext that it recursively can maintain its leadership count as optimal.
 

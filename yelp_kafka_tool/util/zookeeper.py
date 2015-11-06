@@ -274,8 +274,8 @@ class ZK:
         plan = json.dumps(assignment)
         # Final plan validation against latest assignment in zookeeper
         _log.info(
-            'Fetching current cluster-layout from zookeeper before sending to ',
-            'zookeeper for validation...',
+            'Validating proposed cluster-layout with current layout before '
+            'sending to zookeeper...',
         )
         base_assignment = self.get_cluster_assignment()
         brokers = [int(b_id) for b_id in self.get_brokers(names_only=True)]

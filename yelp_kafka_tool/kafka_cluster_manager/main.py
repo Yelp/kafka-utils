@@ -72,7 +72,7 @@ def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
             _log.error('Plan execution unsuccessful. Exiting...')
             sys.exit(1)
         else:
-            _log.info('Plan sent to zookeeper for reassignment successfully')
+            _log.info('Plan sent to zookeeper for reassignment successfully.')
 
     else:
         _log.info('Proposed Plan won\'t be executed.')
@@ -120,6 +120,7 @@ def rebalance_layers(
     rebalance_replication_groups=False,
     rebalance_brokers=False,
     rebalance_leaders=False,
+    display=True,
 ):
     """Rebalance current cluster-state to get updated state based on
     rebalancing options for different rebalance layers.
@@ -130,7 +131,7 @@ def rebalance_layers(
     c) Leaders: (Broker as leader-count imbalance)
     """
     # Get initial imbalance statistics
-    initial_imbal = pre_balancing_imbalance_stats(ct)
+    initial_imbal = pre_balancing_imbalance_stats(ct, display)
 
     # Balancing to be done in the given order only
     # Rebalance replication-groups
@@ -140,6 +141,7 @@ def rebalance_layers(
             .format(groups=', '.join(ct.rgs.keys())),
         )
         ct.rebalance_replication_groups()
+        replication_group_rebalance_stats(ct, display)
 
     # Rebalance broker-partition count per replication-groups
     if rebalance_brokers:
@@ -148,7 +150,7 @@ def rebalance_layers(
             .format(brokers=', '.join(str(e) for e in ct.brokers.keys())),
         )
         ct.rebalance_brokers()
-        broker_rebalance_stats(ct, initial_imbal)
+        broker_rebalance_stats(ct, initial_imbal, display)
 
     # Rebalance broker as leader count per broker
     if rebalance_leaders:
@@ -157,23 +159,23 @@ def rebalance_layers(
             .format(brokers=', '.join(str(e) for e in ct.brokers.keys())),
         )
         ct.rebalance_leaders()
-        leader_rebalance_stats(ct, initial_imbal)
+    final_rebalance_stats(ct, initial_imbal, display, rebalance_leaders)
 
 
 # Imbalance statistics evaluation and reporting
-def pre_balancing_imbalance_stats(ct):
+def pre_balancing_imbalance_stats(ct, display):
     _log.info('Calculating initial rebalance imbalance statistics...')
-    initial_imbal = imbalance_value_all(ct)
+    initial_imbal = imbalance_value_all(ct, display=display)
     log_imbalance_stats(initial_imbal)
     return initial_imbal
 
 
-def replication_group_rebalance_stats(ct, initial_imbal):
+def replication_group_rebalance_stats(ct, display):
     _log.info(
         'Calculating rebalance imbalance-stats after rebalancing '
         'replica-count over replication-groups...',
     )
-    curr_imbal = imbalance_value_all(ct, leaders=False)
+    curr_imbal = imbalance_value_all(ct, leaders=False, display=display)
     _log.info(
         'Imbalance statistics after rebalancing replica-count over '
         'replication-groups'
@@ -186,11 +188,11 @@ def replication_group_rebalance_stats(ct, initial_imbal):
     )
 
 
-def broker_rebalance_stats(ct, initial_imbal):
+def broker_rebalance_stats(ct, initial_imbal, display):
     _log.info(
-        'Calculating rebalance imbalance-stats after rebalancing brokers',
+        'Calculating rebalance imbalance-stats after rebalancing brokers...',
     )
-    curr_imbal = imbalance_value_all(ct, leaders=False)
+    curr_imbal = imbalance_value_all(ct, leaders=False, display=display)
     log_imbalance_stats(curr_imbal, leaders=False)
     if curr_imbal['net_part_cnt_per_rg'] > 0:
         # Report as warning if replication-groups didn't rebalance
@@ -199,7 +201,9 @@ def broker_rebalance_stats(ct, initial_imbal):
             '{imbal}'.format(imbal=curr_imbal['net_part_cnt_per_rg']),
         )
         # Assert that replication-group imbalance should not increase
-        assert(curr_imbal['net_part_cnt_per_rg'] <= initial_imbal['net_part_cnt_per_rg']), (
+        assert(
+            curr_imbal['net_part_cnt_per_rg'] <=
+            initial_imbal['net_part_cnt_per_rg']), (
             'Partition-count imbalance count increased from '
             '{initial_imbal} to {curr_imbal}'.format(
                 initial_imbal=initial_imbal['net_part_cnt_per_rg'],
@@ -208,25 +212,26 @@ def broker_rebalance_stats(ct, initial_imbal):
         )
 
 
-def leader_rebalance_stats(ct, initial_imbal):
-    _log.info(
-        'Calculating final rebalance imbalance-stats after rebalancing leaders',
-    )
-    curr_imbal = imbalance_value_all(ct)
-    if curr_imbal['leader_cnt'] > 0:
-        # Report as warning if replication-groups didn't rebalance
-        ct.log.warning(
-            'Leader-count over brokers imbalance count is non-zero: '
-            '{imbal}'.format(imbal=curr_imbal['leader_cnt']),
-        )
-        # Assert that leader-imbalance should not increase
-        assert(curr_imbal['leader_cnt'] <= initial_imbal['leader_cnt']), (
-            'Leader-count imbalance count increased from '
-            '{initial_imbal} to {curr_imbal}'.format(
-                initial_imbal=initial_imbal['leader_cnt'],
-                curr_imbal=curr_imbal['leader_cnt'],
+def final_rebalance_stats(ct, initial_imbal, display, leaders_balanced=False):
+    _log.info('Calculating final rebalance imbalance-stats... ')
+    curr_imbal = imbalance_value_all(ct, display)
+    log_imbalance_stats(curr_imbal)
+    # Verify leader-imbalance only if balanced
+    if leaders_balanced:
+        if curr_imbal['leader_cnt'] > 0:
+            # Report as warning if replication-groups didn't rebalance
+            ct.log.warning(
+                'Leader-count over brokers imbalance count is non-zero: '
+                '{imbal}'.format(imbal=curr_imbal['leader_cnt']),
             )
-        )
+            # Assert that leader-imbalance should not increase
+            assert(curr_imbal['leader_cnt'] <= initial_imbal['leader_cnt']), (
+                'Leader-count imbalance count increased from '
+                '{initial_imbal} to {curr_imbal}'.format(
+                    initial_imbal=initial_imbal['leader_cnt'],
+                    curr_imbal=curr_imbal['leader_cnt'],
+                )
+            )
 
 
 def log_imbalance_stats(imbal, leaders=True):
@@ -238,7 +243,7 @@ def log_imbalance_stats(imbal, leaders=True):
     _log.info(
         'Replication-group imbalance (replica-count): {imbal_repl}\n'
         'Net Partition-count imbalance/replication-group: '
-        '{imbal_part_rg}\n. Net Partition-count imbalance: {imbal_part}\n'
+        '{imbal_part_rg}\nNet Partition-count imbalance: {imbal_part}\n'
         'Topic-partition-count imbalance: {imbal_tp}\n'
         'Net-cluster imbalance (excluding leader-imbalance): '
         '{imbal_net}'.format(
@@ -269,7 +274,7 @@ def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
         _log.info(
-            'Starting re-assignment tool for cluster: {c_name} over zookeeper: '
+            'Starting re-assignment tool for cluster: {c_name} and zookeeper: '
             '{zookeeper}'.format(
                 c_name=cluster_config.name,
                 zookeeper=cluster_config.zookeeper,
@@ -319,14 +324,13 @@ def reassign_partitions(cluster_config, args):
                 proposed_plan_json(proposed_plan, args.proposed_plan_file)
             # Validate and execute plan
             base_plan = get_plan(ct.initial_assignment)
-            reduced_original_plan = get_plan(red_original_assignment)
             _log.info(
                 'Original plan before assignment {plan}'
-                .format(plan=reduced_original_plan),
+                .format(plan=get_plan(red_original_assignment)),
             )
             _log.info(
                 'Proposed plan assignment {plan}'
-                .format(plan=reduced_original_plan),
+                .format(plan=get_plan(red_proposed_assignment)),
             )
             _log.info('Validating complete proposed-plan...')
             if validate_plan(proposed_plan, base_plan):
@@ -343,9 +347,9 @@ def reassign_partitions(cluster_config, args):
                     replicas[0] != red_proposed_assignment[p_name][0]
                 ])
                 _log.info(
-                    'Sending proposed-plan with {actions} actions, {movements} '
-                    'partition-movements, {leader_changes} leader only changes '
-                    'to zookeeper'.format(
+                    'Proposed-plan has {actions} action(s), {movements} '
+                    'partition-movement(s), {leader_changes} leader-only '
+                    'change(s) to zookeeper'.format(
                         actions=len(proposed_plan['partitions']),
                         movements=net_partition_movements,
                         leader_changes=net_leader_only_changes,
@@ -520,17 +524,11 @@ def run():
     else:
         level = logging.INFO
     # Re-direct logs to file or stdout
-    if args.log_file:
-        logging.basicConfig(
-            level=level,
-            filename=args.log_file,
-            format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
-        )
-    else:
-        logging.basicConfig(
-            level=level,
-            format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
-        )
+    logging.basicConfig(
+        level=level,
+        filename=args.log_file,
+        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
+    )
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:
