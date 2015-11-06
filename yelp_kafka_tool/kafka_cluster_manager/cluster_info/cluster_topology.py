@@ -237,10 +237,19 @@ class ClusterTopology(object):
 
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
-        """Rebalance partitions over replication groups (availability-zones)."""
+        """Rebalance partitions over replication groups (availability-zones).
+
+        First step involves rebalancing replica-count for each partition across
+        replication-groups.
+        Second step involves rebalancing partition-count across replication-groups
+        of the cluster.
+        """
         # Balance replicas over replication-groups for each partition
         for partition in self.partitions.itervalues():
             self._rebalance_partition(partition)
+
+        # Balance partition-count over replication-groups
+        self.rebalance_groups_partition_cnt()
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
@@ -308,24 +317,7 @@ class ClusterTopology(object):
             return min_replicated_rg
         return None
 
-    # Re-balancing partition count across brokers
-    def rebalance_brokers(self):
-        """Rebalance partition-count across all brokers.
-
-        First step involves rebalancing partition-count across replication-groups
-        of the cluster.
-        Second step involves rebalancing partition-count across brokers within
-        each replication-group.
-        """
-        self.rebalance_brokers_cluster()
-        self.rebalance_brokers_rg()
-
-    def rebalance_brokers_rg(self):
-        """Rebalance partition-count across brokers within each replication-group."""
-        for rg in self.rgs.values():
-            rg.rebalance_brokers()
-
-    def rebalance_brokers_cluster(self):
+    def rebalance_groups_partition_cnt(self):
         """Re-balance partition-count across replication-groups.
 
         Algorithm:
@@ -394,6 +386,12 @@ class ClusterTopology(object):
                 if len(over_loaded_rg.partitions) == opt_partition_cnt:
                     # Move to next over-loaded replication-group if balanced
                     break
+
+    # Re-balancing partition count across brokers
+    def rebalance_brokers(self):
+        """Rebalance partition-count across brokers within each replication-group."""
+        for rg in self.rgs.values():
+            rg.rebalance_brokers()
 
     # Re-balancing leaders
     def rebalance_leaders(self):

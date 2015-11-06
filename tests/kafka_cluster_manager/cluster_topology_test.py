@@ -739,10 +739,11 @@ class TestClusterToplogy(object):
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             assert leader_imbal == 0
 
-    def test_rebalance_brokers_cluster_case1(self):
-        # rg1 has 6 replicas
-        # rg2 has 2 replicas
+    def test_rebalance_groups_partition_cnt_case1(self):
+        # rg1 has 6 partitions
+        # rg2 has 2 partitions
         # Both rg's are balanced(based on replica-count) initially
+        # Result: rg's will be balanced for partition-count
         assignment = OrderedDict(
             [
                 ((u'T1', 1), [0, 1, 2]),
@@ -752,14 +753,8 @@ class TestClusterToplogy(object):
             ]
         )
         with self.build_cluster_topology(assignment, self.srange(4)) as ct:
-            # Re-balance replication-groups
-            ct.rebalance_replication_groups()
-
-            # Verify no change in assignment
-            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
-
-            # Re-balance brokers
-            ct.rebalance_brokers_cluster()
+            # Re-balance replication-groups for partition-count
+            ct.rebalance_groups_partition_cnt()
 
             # Verify both replication-groups have same partition-count
             assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
@@ -774,12 +769,13 @@ class TestClusterToplogy(object):
             # Verify replica-count imbalance remains unaltered
             assert net_imbal == 0
 
-    def test_rebalance_brokers_cluster_case2(self):
+    def test_rebalance_groups_partition_cnt_case2(self):
         # 1 over-balanced, 2 under-balanced replication-groups
-        # rg1 has 4 replicas
-        # rg2 has 1 replica
-        # rg3 has 1 replica
+        # rg1 has 4 partitions
+        # rg2 has 1 partition
+        # rg3 has 1 partition
         # All rg's are balanced(based on replica-count) initially
+        # Result: rg's will be balanced for partition-count
         assignment = OrderedDict(
             [
                 ((u'T1', 1), [0, 2]),
@@ -789,13 +785,8 @@ class TestClusterToplogy(object):
             ]
         )
         with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
-            ct.rebalance_replication_groups()
-
-            # Verify no change in assignment
-            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
-
             # Re-balance brokers
-            ct.rebalance_brokers_cluster()
+            ct.rebalance_groups_partition_cnt()
 
             # Verify all replication-groups have same partition-count
             assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
@@ -811,12 +802,13 @@ class TestClusterToplogy(object):
             # Verify replica-count imbalance remains 0
             assert net_imbal == 0
 
-    def test_rebalance_brokers_cluster_case3(self):
+    def test_rebalance_groups_partition_cnt_case3(self):
         # 1 over-balanced, 1 under-balanced, 1 opt-balanced replication-group
-        # rg1 has 3 replicas
-        # rg2 has 2 replicas
-        # rg3 has 1 replica
+        # rg1 has 3 partitions
+        # rg2 has 2 partitions
+        # rg3 has 1 partition
         # All rg's are balanced(based on replica-count) initially
+        # Result: rg's will be balanced for partition-count
         assignment = OrderedDict(
             [
                 ((u'T1', 1), [0, 2]),
@@ -827,7 +819,7 @@ class TestClusterToplogy(object):
         )
         with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
             # Re-balance brokers across replication-groups
-            ct.rebalance_brokers_cluster()
+            ct.rebalance_groups_partition_cnt()
 
             # Verify all replication-groups have same partition-count
             assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)

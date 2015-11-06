@@ -396,7 +396,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
-    def test_rebalance_brokers_rg_balanced_3(self):
+    def test_rebalance_brokers_balanced_3(self):
         # 2 replication-groups are in balanced state individually
         # but overall imbalanced.
         # Rg-Group: map(broker, p-count)
@@ -411,7 +411,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers_rg()
+            ct.rebalance_brokers()
 
             # Verify no change is assignment
             assert sorted(ct.assignment) == sorted(ct.initial_assignment)
@@ -430,7 +430,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
-    def test_rebalance_brokers_rg_imbalanced_1(self):
+    def test_rebalance_brokers_imbalanced_1(self):
         # 1 rg is balanced, 2nd imbalanced
         # Result: Overall-balanced and individually-balanced
         # rg1: (0: 3, 1:1); rg2: (2: 1)
@@ -446,7 +446,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
-            ct.rebalance_brokers_rg()
+            ct.rebalance_brokers()
 
             # Verify partition-count of brokers 0 and 1 as equal to 2
             assert len(ct.brokers[0].partitions) == 2
@@ -484,11 +484,11 @@ class TestReplicationGroup(object):
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
             ct.rebalance_brokers()
 
-            # rg1: Verify partition-count of broker 0:2, 1:1
+            # rg1: Verify partition-count of broker 0:2, 1:2
             assert len(ct.brokers[0].partitions) == 2
-            assert len(ct.brokers[1].partitions) == 1
-            # rg2: Verify partition-count of brokers 2:2, 3:1
-            assert len(ct.brokers[2].partitions) == 2
+            assert len(ct.brokers[1].partitions) == 2
+            # rg2: Verify partition-count of brokers 2:1, 3:1
+            assert len(ct.brokers[2].partitions) == 1
             assert len(ct.brokers[3].partitions) == 1
             # Verify overall-imbalance is 0
             _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
@@ -504,7 +504,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
-    def test_rebalance_brokers_rg_imbalanced_3(self):
+    def test_rebalance_brokers_imbalanced_3(self):
         # 2-rg's: Both rg's imbalanced
         # Result: rgs' balanced individually but NOT overall
         # rg1: (0: 4, 1:2); rg2: (2: 2, 3:0)
@@ -523,7 +523,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers_rg()
+            ct.rebalance_brokers()
 
             # rg1: Verify partition-count of brokers 0 and 1 as equal to 3
             assert len(ct.brokers[0].partitions) == 3
