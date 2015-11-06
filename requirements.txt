@@ -4,7 +4,7 @@ argcomplete==0.8.1
 cffi==1.1.2
 cryptography==0.8.2
 enum34==1.0.4
-fabric==1.10.2
+fabric==1.8.1
 jsonschema==2.4.0
 kafka-python==0.9.4.post1
 kazoo==2.2

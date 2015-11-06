@@ -27,7 +27,9 @@ setup(
     install_requires=[
         "argcomplete",
         "kazoo>=2.0.post2,<3.0.0",
+        "fabric>=1.8.0,<1.11.0",
         "PyYAML<4.0.0",
+        "requests-futures>0.9.0",
         "yelp-kafka>=4.0.0,<5.0.0",
         "requests<3.0.0"
     ],

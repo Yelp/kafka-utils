@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import itertools
 import logging
 import math
 import sys
@@ -252,7 +253,7 @@ def wait_for_stable_cluster(
     """
     stable_counter = 0
     max_checks = int(math.ceil(unstable_time_limit / check_interval))
-    for i in range(max_checks):
+    for i in itertools.count():
         partitions, brokers = read_cluster_status(
             hosts,
             jolokia_port,
@@ -271,10 +272,10 @@ def wait_for_stable_cluster(
             ))
         if stable_counter >= check_count:
             print("The cluster is stable")
-            break
+            return
+        if i >= max_checks:
+            raise WaitTimeoutException()
         time.sleep(check_interval)
-    else:
-        raise WaitTimeoutException()
 
 
 def execute_rolling_restart(
@@ -314,8 +315,9 @@ def execute_rolling_restart(
     :type verbose: bool
     """
     all_hosts = [b[1] for b in brokers]
+    hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
-        with settings(forward_agent=True, connection_attempts=3, timeout=2):
+        with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
             wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
@@ -325,9 +327,7 @@ def execute_rolling_restart(
                 unstable_time_limit,
             )
             print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
-            hidden = [] if verbose else ['output', 'running']
-            with hide(*hidden):
-                execute(restart_broker, hosts=host)
+            execute(restart_broker, hosts=host)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
