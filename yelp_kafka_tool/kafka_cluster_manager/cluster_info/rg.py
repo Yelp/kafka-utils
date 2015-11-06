@@ -233,14 +233,10 @@ class ReplicationGroup(object):
             lambda b: eligible_partition not in b.partitions,
             under_loaded_rg.brokers,
         )
-        if not under_brokers:
-            return (None, None)
         over_brokers = filter(
             lambda b: eligible_partition in b.partitions,
             self.brokers,
         )
-        if not over_brokers:
-            return (None, None)
 
         # Get source and destination broker
         source_broker = max(

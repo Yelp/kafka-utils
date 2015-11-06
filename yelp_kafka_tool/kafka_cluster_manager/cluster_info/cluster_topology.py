@@ -317,9 +317,7 @@ class ClusterTopology(object):
         Second step involves rebalancing partition-count across brokers within
         each replication-group.
         """
-        # Re-balance partition-count across replication-groups (cluster-wide)
         self.rebalance_brokers_cluster()
-        # Re-balance partition-count per replication-group
         self.rebalance_brokers_rg()
 
     def rebalance_brokers_rg(self):
@@ -390,8 +388,8 @@ class ClusterTopology(object):
                     )
                     # Move to next replication-group if either of the groups got
                     # balanced, otherwise try with next eligible partition
-                    if len(under_loaded_rg.partitions) == opt_partition_cnt or \
-                            len(over_loaded_rg.partitions) == opt_partition_cnt:
+                    if (len(under_loaded_rg.partitions) == opt_partition_cnt or
+                            len(over_loaded_rg.partitions) == opt_partition_cnt):
                         break
                 if len(over_loaded_rg.partitions) == opt_partition_cnt:
                     # Move to next over-loaded replication-group if balanced

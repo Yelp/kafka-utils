@@ -448,7 +448,7 @@ class TestReplicationGroup(object):
         with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
             ct.rebalance_brokers_rg()
 
-            # Verify partition-count of 0 and 1 as equal to 2
+            # Verify partition-count of brokers 0 and 1 as equal to 2
             assert len(ct.brokers[0].partitions) == 2
             assert len(ct.brokers[1].partitions) == 2
             # Verify overall-imbalance is 0
@@ -484,10 +484,10 @@ class TestReplicationGroup(object):
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
             ct.rebalance_brokers()
 
-            # rg1: Verify partition-count of 0 and 1 as equal to 2
+            # rg1: Verify partition-count of broker 0:2, 1:1
             assert len(ct.brokers[0].partitions) == 2
             assert len(ct.brokers[1].partitions) == 1
-            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            # rg2: Verify partition-count of brokers 2:2, 3:1
             assert len(ct.brokers[2].partitions) == 2
             assert len(ct.brokers[3].partitions) == 1
             # Verify overall-imbalance is 0
@@ -525,10 +525,10 @@ class TestReplicationGroup(object):
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
             ct.rebalance_brokers_rg()
 
-            # rg1: Verify partition-count of 0 and 1 as equal to 3
+            # rg1: Verify partition-count of brokers 0 and 1 as equal to 3
             assert len(ct.brokers[0].partitions) == 3
             assert len(ct.brokers[1].partitions) == 3
-            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            # rg2: Verify partition-count of brokers 2 and 3 as equal to 1
             assert len(ct.brokers[2].partitions) == 1
             assert len(ct.brokers[3].partitions) == 1
             # Verify overall-imbalance is NON-zero, since we don't move partitions
@@ -574,7 +574,7 @@ class TestReplicationGroup(object):
             # rg2: Verify partition-count of 2:1, 3:1
             assert len(ct.brokers[2].partitions) == 1
             assert len(ct.brokers[3].partitions) == 1
-            # rg3: Verify partition-count of 5 as equal to 1
+            # rg3: Verify partition-count of broker 5 as equal to 1
             assert len(ct.brokers[5].partitions) == 1
             # Verify overall imbalance is also 0
             _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
