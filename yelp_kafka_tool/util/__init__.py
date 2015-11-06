@@ -26,12 +26,16 @@ def to_h(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def print_json(data):
-    """Converts `data` into json and prints it to stdout.
-
+def format_to_json(data):
+    """Converts `data` into json
     If stdout is a tty it performs a pretty print.
     """
     if sys.stdout.isatty():
-        print(json.dumps(data, indent=4, separators=(',', ': ')))
+        return json.dumps(data, indent=4, separators=(',', ': '))
     else:
-        print(json.dumps(data))
+        return json.dumps(data)
+
+
+def print_json(data):
+    """Converts `data` into json and prints it to stdout."""
+    print(format_to_json(data))

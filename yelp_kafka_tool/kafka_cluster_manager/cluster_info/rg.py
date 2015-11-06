@@ -219,3 +219,44 @@ class ReplicationGroup(object):
                     # will be thereafter, return from here
                     break
         return target
+
+    def move_partition_replica(self, under_loaded_rg, eligible_partition):
+        """Move partition to under-loaded replication-group if possible."""
+        # Evaluate possible source and destination-broker
+        source_broker, dest_broker = self._get_eligible_broker_pair(
+            under_loaded_rg,
+            eligible_partition,
+        )
+        if source_broker and dest_broker:
+            # Move partition if eligible brokers found
+            source_broker.move_partition(eligible_partition, dest_broker)
+
+    def _get_eligible_broker_pair(self, under_loaded_rg, eligible_partition):
+        """Evaluate and return source and destination broker-pair from over-loaded
+        and under-loaded replication-group if possible, return None otherwise.
+
+        Return source broker with maximum partitions and destination broker with
+        minimum partitions based on following conditions:-
+        1) At-least one broker in under-loaded group which does not have
+        victim-partition. This is because a broker cannot have duplicate replica.
+        2) At-least one broker in over-loaded group which has victim-partition
+        """
+        under_brokers = filter(
+            lambda b: eligible_partition not in b.partitions,
+            under_loaded_rg.brokers,
+        )
+        over_brokers = filter(
+            lambda b: eligible_partition in b.partitions,
+            self.brokers,
+        )
+
+        # Get source and destination broker
+        source_broker = max(
+            over_brokers,
+            key=lambda broker: len(broker.partitions),
+        )
+        dest_broker = min(
+            under_brokers,
+            key=lambda broker: len(broker.partitions),
+        )
+        return (source_broker, dest_broker)

@@ -31,7 +31,11 @@ from .stats import (
     replication_group_imbalance,
     topic_imbalance,
 )
-from .util import separate_groups
+from .util import (
+    compute_group_optimum,
+    separate_groups,
+    smart_separate_groups,
+)
 
 
 class ClusterTopology(object):
@@ -294,15 +298,94 @@ class ClusterTopology(object):
 
     # Re-balancing partition count across brokers
     def rebalance_brokers(self):
-        """Rebalance partition-count across brokers across all replication
-        groups.
+        """Rebalance partition-count across all brokers.
+
+        First step involves rebalancing partition-count across replication-groups
+        of the cluster.
+        Second step involves rebalancing partition-count across brokers within
+        each replication-group.
         """
+        self.rebalance_brokers_cluster()
+        self.rebalance_brokers_rg()
+
+    def rebalance_brokers_rg(self):
+        """Rebalance partition-count across brokers within each replication-group."""
         for rg in self.rgs.values():
             self.log.info(
                 'Re-balancing brokers over replication group: {group}...'
                 .format(group=rg.id),
             )
             rg.rebalance_brokers()
+
+    def rebalance_brokers_cluster(self):
+        """Re-balance partition-count across replication-groups.
+
+        Algorithm:
+        The key constraint is not to create any replica-count imbalance while
+        moving partitions across replication-groups.
+        1) Divide replication-groups into over and under loaded groups in terms
+           of partition-count.
+        2) For each over-loaded replication-group, select eligible partitions
+           which can be moved to under-replicated groups. Partitions with greater
+           than optimum replica-count for the group have the ability to donate one
+           of their replicas without creating replica-count imbalance.
+        3) Destination replication-group is selected based on minimum partition-count
+           and ability to accept one of the eligible partition-replicas.
+        4) Source and destination brokers are selected based on :-
+            * their ability to donate and accept extra partition-replica respectively.
+            * maximum and minimum partition-counts respectively.
+        5) Move partition-replica from source to destination-broker.
+        6) Repeat steps 1) to 5) until groups are balanced or cannot be balanced further.
+        """
+        # Segregate replication-groups based on partition-count
+        over_loaded_rgs, under_loaded_rgs, _ = smart_separate_groups(
+            self.rgs.values(),
+            lambda rg: len(rg.partitions),
+        )
+        if over_loaded_rgs and under_loaded_rgs:
+            self.log.info(
+                'Over-loaded replication-groups {over_loaded}, under-loaded '
+                'replication-groups {under_loaded}'.format(
+                    over_loaded=[rg.id for rg in over_loaded_rgs],
+                    under_loaded=[rg.id for rg in under_loaded_rgs],
+                )
+            )
+        else:
+            # TODO: Insert warning if partition-count imbalance is non-zero
+            return
+
+        # Get optimal partition-count per replication-group
+        opt_partition_cnt, _ = compute_group_optimum(
+            self.rgs.values(),
+            lambda rg: len(rg.partitions),
+        )
+        # Balance replication-groups
+        for over_loaded_rg in over_loaded_rgs:
+            for under_loaded_rg in under_loaded_rgs:
+                # Filter unique partition with replica-count > opt-replica-count
+                # in over-loaded-rgs and <= opt-replica-count in under-loaded-rgs
+                eligible_partitions = set(filter(
+                    lambda partition:
+                    over_loaded_rg.count_replica(partition) >
+                        len(partition.replicas) // len(self.rgs) and
+                    under_loaded_rg.count_replica(partition) <=
+                        len(partition.replicas) // len(self.rgs),
+                    over_loaded_rg.partitions,
+                ))
+                # Move all possible partitions
+                for eligible_partition in eligible_partitions:
+                    over_loaded_rg.move_partition_replica(
+                        under_loaded_rg,
+                        eligible_partition,
+                    )
+                    # Move to next replication-group if either of the groups got
+                    # balanced, otherwise try with next eligible partition
+                    if (len(under_loaded_rg.partitions) == opt_partition_cnt or
+                            len(over_loaded_rg.partitions) == opt_partition_cnt):
+                        break
+                if len(over_loaded_rg.partitions) == opt_partition_cnt:
+                    # Move to next over-loaded replication-group if balanced
+                    break
 
     # Re-balancing leaders
     def rebalance_leaders(self):
