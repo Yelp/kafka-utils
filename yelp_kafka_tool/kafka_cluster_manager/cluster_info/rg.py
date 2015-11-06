@@ -67,8 +67,16 @@ class ReplicationGroup(object):
             rg_destination,
             victim_partition,
         )
-
         # Actual-movement of victim-partition
+        self.log.debug(
+            'Moving partition {p_name} from broker {broker_source} to '
+            'replication-group:broker {rg_dest}:{dest_broker}'.format(
+                p_name=victim_partition.name,
+                broker_source=broker_source.id,
+                dest_broker=broker_destination.id,
+                rg_dest=rg_destination.id,
+            ),
+        )
         broker_source.move_partition(victim_partition, broker_destination)
 
     def _select_broker_pair(self, rg_destination, victim_partition):
@@ -170,6 +178,15 @@ class ReplicationGroup(object):
             # No valid source or target brokers found
             if broker_source and broker_destination:
                 # Move partition
+                self.log.debug(
+                    'Moving partition {p_name} from broker {broker_source} to '
+                    'broker {broker_destination}'
+                    .format(
+                        p_name=victim_partition.name,
+                        broker_source=broker_source.id,
+                        broker_destination=broker_destination.id,
+                    ),
+                )
                 broker_source.move_partition(victim_partition, broker_destination)
             else:
                 # Brokers are balanced or could not be balanced further
@@ -228,6 +245,15 @@ class ReplicationGroup(object):
             eligible_partition,
         )
         if source_broker and dest_broker:
+            self.log.debug(
+                'Moving partition {p_name} from broker {source_broker} to '
+                'replication-group:broker {rg_dest}:{dest_broker}'.format(
+                    p_name=eligible_partition.name,
+                    source_broker=source_broker.id,
+                    dest_broker=dest_broker.id,
+                    rg_dest=under_loaded_rg.id,
+                ),
+            )
             # Move partition if eligible brokers found
             source_broker.move_partition(eligible_partition, dest_broker)
 

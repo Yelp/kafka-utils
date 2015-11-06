@@ -48,6 +48,7 @@ from .cluster_info.util import (
     validate_plan,
     get_plan,
 )
+from .cluster_info.stats import imbalance_value_all
 from .util import KafkaInterface
 
 
@@ -115,6 +116,156 @@ def is_cluster_stable(zk):
     return True
 
 
+def rebalance_layers(
+    ct,
+    rebalance_replication_groups=False,
+    rebalance_brokers=False,
+    rebalance_leaders=False,
+):
+    """Rebalance current cluster-state to get updated state based on
+    rebalancing options for different rebalance layers.
+
+    NOTE: Ordering of rebalancing layers should be :-
+    a) Replication-groups: (Replica-count imbalance)
+    b) Brokers: (partition-count imbalance)
+    c) Leaders: (Broker as leader-count imbalance)
+    """
+    # Get initial imbalance statistics
+    initial_imbal = pre_balancing_imbalance_stats(ct)
+
+    # Balancing to be done in the given order only
+    # Rebalance replication-groups
+    if rebalance_replication_groups:
+        _log.info(
+            'Re-balancing replica-count over replication groups: {groups}...'
+            .format(groups=', '.join(ct.rgs.keys())),
+        )
+        ct.rebalance_replication_groups()
+
+    # Rebalance broker-partition count per replication-groups
+    if rebalance_brokers:
+        _log.info(
+            'Re-balancing partition-count across brokers: {brokers}...'
+            .format(brokers=', '.join(str(e) for e in ct.brokers.keys())),
+        )
+        ct.rebalance_brokers()
+        broker_rebalance_stats(ct, initial_imbal)
+
+    # Rebalance broker as leader count per broker
+    if rebalance_leaders:
+        _log.info(
+            'Re-balancing leader-count across brokers: {brokers}...'
+            .format(brokers=', '.join(str(e) for e in ct.brokers.keys())),
+        )
+        ct.rebalance_leaders()
+        leader_rebalance_stats(ct, initial_imbal)
+
+
+# Imbalance statistics evaluation and reporting
+def pre_balancing_imbalance_stats(ct):
+    _log.info('Calculating initial rebalance imbalance statistics...')
+    initial_imbal = imbalance_value_all(ct)
+    log_imbalance_stats(initial_imbal)
+    return initial_imbal
+
+
+def replication_group_rebalance_stats(ct, initial_imbal):
+    _log.info(
+        'Calculating rebalance imbalance-stats after rebalancing '
+        'replica-count over replication-groups...',
+    )
+    curr_imbal = imbalance_value_all(ct, leaders=False)
+    _log.info(
+        'Imbalance statistics after rebalancing replica-count over '
+        'replication-groups'
+    )
+    log_imbalance_stats(curr_imbal, leaders=False)
+    # Assert that replication-groups balanced
+    assert(curr_imbal['replica_cnt'] == 0), (
+        'Replication-group imbalance count is non-zero: {imbal}'
+        .format(imbal=curr_imbal['replica_cnt']),
+    )
+
+
+def broker_rebalance_stats(ct, initial_imbal):
+    _log.info(
+        'Calculating rebalance imbalance-stats after rebalancing brokers',
+    )
+    curr_imbal = imbalance_value_all(ct, leaders=False)
+    log_imbalance_stats(curr_imbal, leaders=False)
+    if curr_imbal['net_part_cnt_per_rg'] > 0:
+        # Report as warning if replication-groups didn't rebalance
+        _log.error(
+            'Partition-count over brokers imbalance count is non-zero: '
+            '{imbal}'.format(imbal=curr_imbal['net_part_cnt_per_rg']),
+        )
+        # Assert that replication-group imbalance should not increase
+        assert(curr_imbal['net_part_cnt_per_rg'] <= initial_imbal['net_part_cnt_per_rg']), (
+            'Partition-count imbalance count increased from '
+            '{initial_imbal} to {curr_imbal}'.format(
+                initial_imbal=initial_imbal['net_part_cnt_per_rg'],
+                curr_imbal=curr_imbal['net_part_cnt_per_rg'],
+            )
+        )
+
+
+def leader_rebalance_stats(ct, initial_imbal):
+    _log.info(
+        'Calculating final rebalance imbalance-stats after rebalancing leaders',
+    )
+    curr_imbal = imbalance_value_all(ct)
+    if curr_imbal['leader_cnt'] > 0:
+        # Report as warning if replication-groups didn't rebalance
+        ct.log.warning(
+            'Leader-count over brokers imbalance count is non-zero: '
+            '{imbal}'.format(imbal=curr_imbal['leader_cnt']),
+        )
+        # Assert that leader-imbalance should not increase
+        assert(curr_imbal['leader_cnt'] <= initial_imbal['leader_cnt']), (
+            'Leader-count imbalance count increased from '
+            '{initial_imbal} to {curr_imbal}'.format(
+                initial_imbal=initial_imbal['leader_cnt'],
+                curr_imbal=curr_imbal['leader_cnt'],
+            )
+        )
+
+
+def log_imbalance_stats(imbal, leaders=True):
+    net_imbalance = (
+        imbal['replica_cnt'] +
+        imbal['net_part_cnt_per_rg'] +
+        imbal['topic_partition_cnt']
+    )
+    _log.info(
+        'Replication-group imbalance (replica-count): {imbal_repl}\n'
+        'Net Partition-count imbalance/replication-group: '
+        '{imbal_part_rg}\n. Net Partition-count imbalance: {imbal_part}\n'
+        'Topic-partition-count imbalance: {imbal_tp}\n'
+        'Net-cluster imbalance (excluding leader-imbalance): '
+        '{imbal_net}'.format(
+            imbal_part_rg=imbal['net_part_cnt_per_rg'],
+            imbal_repl=imbal['replica_cnt'],
+            imbal_part=imbal['partition_cnt'],
+            imbal_tp=imbal['topic_partition_cnt'],
+            imbal_net=net_imbalance,
+        )
+    )
+    if leaders:
+        net_imbalance_with_leaders = net_imbalance + imbal['leader_cnt']
+        _log.info(
+            'Leader-count imbalance: {imbal_leader}\n'
+            'Net-cluster imbalance (including leader-imbalance): '
+            '{imbal}'.format(
+                imbal=net_imbalance_with_leaders,
+                imbal_leader=imbal['leader_cnt'],
+            )
+        )
+    _log.info(
+        'Total partition-movements: {movement_cnt}'
+        .format(movement_cnt=imbal['total_movements']),
+    )
+
+
 def reassign_partitions(cluster_config, args):
     """Get executable proposed plan(if any) for display or execution."""
     with ZK(cluster_config) as zk:
@@ -125,9 +276,6 @@ def reassign_partitions(cluster_config, args):
                 zookeeper=cluster_config.zookeeper,
             )
         )
-        _log.info(
-            'Evaluating any previous running re-assignments on zookeeper...',
-        )
         if not is_cluster_stable(zk):
             _log.error('Cluster-state is not stable. Exiting...')
             sys.exit(1)
@@ -135,15 +283,13 @@ def reassign_partitions(cluster_config, args):
         # Use kafka-scripts
         if args.use_kafka_script:
             script_path = args.script_path
-
-        _log.info('Cluster state stable. Creating Cluster Topology...')
         ct = ClusterTopology(zk=zk, script_path=script_path)
-        _log.info('Re-assigning cluster topology...')
-        ct.reassign_partitions(
-            replication_groups=args.replication_groups,
-            brokers=args.brokers,
-            leaders=args.leaders,
-            get_imbalance_stats=not args.skip_imbalance_stats,
+        _log.info('Re-assigning partitions across cluster topology...')
+        rebalance_layers(
+            ct,
+            rebalance_replication_groups=args.replication_groups,
+            rebalance_brokers=args.brokers,
+            rebalance_leaders=args.leaders,
         )
         curr_plan = get_plan(ct.assignment)
         base_plan = get_plan(ct.initial_assignment)
@@ -323,10 +469,10 @@ def parse_args():
         help='Skip any imbalance calculations to speed-up rebalancing time',
     )
     parser_rebalance.add_argument(
-        '-v',
-        dest='verbose',
+        '--debug',
+        dest='debug',
         action='store_true',
-        help='Get debug level logs',
+        help='Get debug level logs.',
     )
     parser_rebalance.set_defaults(command=reassign_partitions)
     return parser.parse_args()
@@ -366,16 +512,15 @@ def run():
     """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
     filename = 'reassignment-{date}.log'.format(date=str(time.strftime("%Y-%m-%d")))
-    if args.verbose:
+    if args.debug:
         level = logging.DEBUG
     else:
         level = logging.INFO
     logging.basicConfig(
         level=level,
         filename=filename,
-        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s'
+        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
     )
-    _log.info('Started Kafka-cluster-manager tool...')
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:

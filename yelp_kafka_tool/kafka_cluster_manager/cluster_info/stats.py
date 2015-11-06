@@ -9,6 +9,12 @@ from .util import (
     get_leaders_per_broker,
     compute_optimal_count,
 )
+from .display import (
+    display_leader_count_per_broker,
+    display_partition_count_per_broker,
+    display_same_replica_count_rg,
+    display_same_topic_partition_count_broker,
+)
 
 
 # Get imbalance stats
@@ -223,3 +229,70 @@ def topic_imbalance(brokers, topics):
 def replication_group_imbalance(rgs, partitions):
     """Calculate same replica count over each replication-group."""
     return get_replication_group_imbalance_stats(rgs, partitions)
+
+
+def imbalance_value_all(ct, leaders=True, display=True):
+    """Evaluate imbalance statistics based on given params.
+
+    Params represent the layer for which imbalance needs to be calculated
+    """
+    # Partition-count imbalance
+    (stdev_imbalance, imbal_part, partitions_per_broker) = \
+        partition_imbalance(
+            ct.rgs.values(),
+            ct.brokers.values(),
+            cluster_wide=True,
+    )[0]
+    imbal_part_per_rg = partition_imbalance(
+        ct.rgs.values(),
+        ct.brokers.values(),
+    )
+    net_imbal_part_per_rg = sum(imbal_part_rg[1] for imbal_part_rg in imbal_part_per_rg)
+
+    # Duplicate-replica-count imbalance
+    imbal_replica, duplicate_replica_count_per_rg = \
+        replication_group_imbalance(ct.rgs.values(), ct.partitions.values())
+
+    # Same topic-partition count
+    imbal_topic, same_topic_partition_count_per_broker = \
+        topic_imbalance(ct.brokers.values(), ct.topics.values())
+
+    imbal_leader = 0
+    if leaders:
+        # Leader-count imbalance
+        stdev_imbalance, imbal_leader, leaders_per_broker = \
+            leader_imbalance(ct.brokers.values())
+
+    # Display stats to stdout
+    if display:
+        display_partition_count_per_broker(
+            partitions_per_broker,
+            stdev_imbalance,
+            imbal_part,
+        )
+        display_same_replica_count_rg(
+            duplicate_replica_count_per_rg,
+            imbal_replica,
+        )
+        display_same_topic_partition_count_broker(
+            same_topic_partition_count_per_broker,
+            imbal_topic,
+        )
+        if leaders:
+            display_leader_count_per_broker(
+                leaders_per_broker,
+                stdev_imbalance,
+                imbal_leader,
+            )
+    total_movements = calculate_partition_movement(
+        ct.initial_assignment,
+        ct.assignment,
+    )[1]
+    return {
+        'net_part_cnt_per_rg': net_imbal_part_per_rg,
+        'partition_cnt': imbal_part,
+        'replica_cnt': imbal_replica,
+        'topic_partition_cnt': imbal_topic,
+        'leader_cnt': imbal_leader,
+        'total_movements': total_movements,
+    }
