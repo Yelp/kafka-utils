@@ -102,7 +102,7 @@ class ReplicationGroup(object):
         under_loaded_brokers = rg_destination.select_under_loaded_brokers(
             victim_partition,
         )
-        broker_source = self._elect_source_broker(over_loaded_brokers)
+        broker_source = self._elect_source_broker(over_loaded_brokers, victim_partition)
         broker_destination = self._elect_dest_broker(
             under_loaded_brokers,
             victim_partition,
@@ -135,9 +135,21 @@ class ReplicationGroup(object):
         ]
         return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
 
-    def _elect_source_broker(self, over_loaded_brokers):
-        """Select first broker from given brokers having victim_partition."""
-        return over_loaded_brokers[0]
+    def _elect_source_broker(self, over_loaded_brokers, victim_partition):
+        """Select first broker from given brokers having victim_partition.
+
+        Note: The broker with maximum siblings of victim-partitions (same topic)
+        is selected to reduce topic-partition imbalance.
+        """
+        broker_topic_partition_cnt = [
+            (broker, broker.count_partitions(victim_partition.topic))
+            for broker in over_loaded_brokers
+        ]
+        max_count_pair = max(
+            broker_topic_partition_cnt,
+            key=lambda ele: ele[1],
+        )
+        return max_count_pair[0]
 
     def _elect_dest_broker(self, under_loaded_brokers, victim_partition):
         """Select first broker from under_loaded_brokers preferring not having
@@ -152,7 +164,6 @@ class ReplicationGroup(object):
             broker_topic_partition_cnt,
             key=lambda ele: ele[1],
         )
-        # TODO: Decision-optimization: if multiple minimum brokers?
         return min_count_pair[0]
 
     # Re-balancing brokers

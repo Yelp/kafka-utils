@@ -96,7 +96,6 @@ class Broker(object):
         # Only partitions not having replica in broker are valid
         # Get best fit partition, based on avoiding partition from same topic
         # and partition with least siblings in destination-broker.
-        # TODO: will multiple partition with minimum value lead to non-determinism?
         eligible_partitions = self.partitions - broker.partitions
         if eligible_partitions:
             pref_partition = min(
