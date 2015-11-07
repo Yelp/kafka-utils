@@ -200,16 +200,16 @@ def broker_rebalance_stats(ct, initial_imbal, display):
             'Partition-count over brokers imbalance count is non-zero: '
             '{imbal}'.format(imbal=curr_imbal['net_part_cnt_per_rg']),
         )
-        # Assert that replication-group imbalance should not increase
-        assert(
-            curr_imbal['net_part_cnt_per_rg'] <=
-            initial_imbal['net_part_cnt_per_rg']), (
-            'Partition-count imbalance count increased from '
-            '{initial_imbal} to {curr_imbal}'.format(
-                initial_imbal=initial_imbal['net_part_cnt_per_rg'],
-                curr_imbal=curr_imbal['net_part_cnt_per_rg'],
-            )
+    # Assert that replication-group imbalance should not increase
+    assert(
+        curr_imbal['net_part_cnt_per_rg'] <=
+        initial_imbal['net_part_cnt_per_rg']), (
+        'Partition-count imbalance count increased from '
+        '{initial_imbal} to {curr_imbal}'.format(
+            initial_imbal=initial_imbal['net_part_cnt_per_rg'],
+            curr_imbal=curr_imbal['net_part_cnt_per_rg'],
         )
+    )
 
 
 def final_rebalance_stats(ct, initial_imbal, display, leaders_balanced=False):
@@ -224,14 +224,14 @@ def final_rebalance_stats(ct, initial_imbal, display, leaders_balanced=False):
                 'Leader-count over brokers imbalance count is non-zero: '
                 '{imbal}'.format(imbal=curr_imbal['leader_cnt']),
             )
-            # Assert that leader-imbalance should not increase
-            assert(curr_imbal['leader_cnt'] <= initial_imbal['leader_cnt']), (
-                'Leader-count imbalance count increased from '
-                '{initial_imbal} to {curr_imbal}'.format(
-                    initial_imbal=initial_imbal['leader_cnt'],
-                    curr_imbal=curr_imbal['leader_cnt'],
-                )
+        # Assert that leader-imbalance should not increase
+        assert(curr_imbal['leader_cnt'] <= initial_imbal['leader_cnt']), (
+            'Leader-count imbalance count increased from '
+            '{initial_imbal} to {curr_imbal}'.format(
+                initial_imbal=initial_imbal['leader_cnt'],
+                curr_imbal=curr_imbal['leader_cnt'],
             )
+        )
 
 
 def log_imbalance_stats(imbal, leaders=True):
