@@ -347,9 +347,9 @@ def reassign_partitions(cluster_config, args):
                     replicas[0] != red_proposed_assignment[p_name][0]
                 ])
                 _log.info(
-                    'Proposed-plan has {actions} action(s), {movements} '
-                    'partition-movement(s), {leader_changes} leader-only '
-                    'change(s) to zookeeper'.format(
+                    'Proposed-plan description: Action(s): {actions}, '
+                    'Partition-movement(s): {movements}, Leader-only '
+                    'change(s): {leader_changes}'.format(
                         actions=len(proposed_plan['partitions']),
                         movements=net_partition_movements,
                         leader_changes=net_leader_only_changes,
