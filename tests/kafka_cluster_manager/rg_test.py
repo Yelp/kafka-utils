@@ -70,13 +70,25 @@ class TestReplicationGroup(object):
         assert expected == rg.brokers
 
     def test_elect_source_broker(self):
-        over_loaded_brokers = [sentinel.broker1, sentinel.broker2]
-        rg = ReplicationGroup(
-            'test_rg',
-            set([sentinel.broker1, sentinel.broker2]),
-        )
-        actual = rg._elect_source_broker(over_loaded_brokers)
-        assert actual == sentinel.broker1
+        # Creating 2 partitions with topic:t1 for broker: b1
+        p1 = self.create_partition('t1', 0)
+        p2 = self.create_partition('t2', 0)
+        p3 = self.create_partition('t1', 1)
+        b1 = Broker('b1', set([p1, p3]))
+
+        p4 = self.create_partition('t3', 0)
+        b2 = Broker('b2', set([p1, p2, p4]))
+
+        # Creating replication-group with above brokers
+        rg = ReplicationGroup('test_rg', set([b1, b2, sentinel.b3]))
+
+        over_loaded_brokers = [b1, b2]
+        # Since p1.topic is t1 and b1 has 2 partitions (p1 and p3) for same topic
+        # t1 and b2 has only 1 partition with topic t2, even though it has more
+        # partition, so b1 is preferred (To reduce topic-partition imbalance).
+        victim_partition = p1
+        actual = rg._elect_source_broker(over_loaded_brokers, victim_partition)
+        assert actual == b1
 
     def test_elect_dest_broker(self):
         # Creating 2 partitions with topic:t1 for broker: b1
@@ -118,7 +130,7 @@ class TestReplicationGroup(object):
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         victim_partition = sentinel.p7
-        actual = rg._select_under_loaded_brokers(victim_partition)
+        actual = rg.select_under_loaded_brokers(victim_partition)
         # Since sentinel.p7 is not present in b1, b2 and b3, they should be
         # returned in increasing order of partition-count
         assert actual == [b3, b2, b1]
@@ -126,7 +138,7 @@ class TestReplicationGroup(object):
         # under-loaded-brokers SHOULD NOT contain victim-partition sentinel.p4
         # Brokers returned in sorted order of DECREASING partition-count
         victim_partition = sentinel.p4
-        actual = rg._select_under_loaded_brokers(victim_partition)
+        actual = rg.select_under_loaded_brokers(victim_partition)
         assert actual == [b3, b1]
 
     def test_select_over_loaded_brokers(self):
@@ -396,7 +408,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan) is True
 
-    def test_rebalance_brokers_balanced_3(self):
+    def test_rebalance_brokers_rg_balanced_3(self):
         # 2 replication-groups are in balanced state individually
         # but overall imbalanced.
         # Rg-Group: map(broker, p-count)
@@ -411,7 +423,7 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
+            ct.rebalance_brokers_rg()
 
             # Verify no change is assignment
             assert sorted(ct.assignment) == sorted(ct.initial_assignment)
@@ -430,7 +442,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
-    def test_rebalance_brokers_imbalanced_1(self):
+    def test_rebalance_brokers_rg_imbalanced_1(self):
         # 1 rg is balanced, 2nd imbalanced
         # Result: Overall-balanced and individually-balanced
         # rg1: (0: 3, 1:1); rg2: (2: 1)
@@ -446,9 +458,9 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
-            ct.rebalance_brokers()
+            ct.rebalance_brokers_rg()
 
-            # Verify partition-count of 0 and 1 as equal to 2
+            # Verify partition-count of brokers 0 and 1 as equal to 2
             assert len(ct.brokers[0].partitions) == 2
             assert len(ct.brokers[1].partitions) == 2
             # Verify overall-imbalance is 0
@@ -484,11 +496,11 @@ class TestReplicationGroup(object):
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
             ct.rebalance_brokers()
 
-            # rg1: Verify partition-count of 0 and 1 as equal to 2
+            # rg1: Verify partition-count of broker 0:2, 1:1
             assert len(ct.brokers[0].partitions) == 2
-            assert len(ct.brokers[1].partitions) == 2
-            # rg2: Verify partition-count of 2 and 3 as equal to 1
-            assert len(ct.brokers[2].partitions) == 1
+            assert len(ct.brokers[1].partitions) == 1
+            # rg2: Verify partition-count of brokers 2:2, 3:1
+            assert len(ct.brokers[2].partitions) == 2
             assert len(ct.brokers[3].partitions) == 1
             # Verify overall-imbalance is 0
             _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
@@ -504,7 +516,7 @@ class TestReplicationGroup(object):
             original_plan = get_plan(ct.initial_assignment)
             assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
 
-    def test_rebalance_brokers_imbalanced_3(self):
+    def test_rebalance_brokers_rg_imbalanced_3(self):
         # 2-rg's: Both rg's imbalanced
         # Result: rgs' balanced individually but NOT overall
         # rg1: (0: 4, 1:2); rg2: (2: 2, 3:0)
@@ -523,12 +535,12 @@ class TestReplicationGroup(object):
             ]
         )
         with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
+            ct.rebalance_brokers_rg()
 
-            # rg1: Verify partition-count of 0 and 1 as equal to 3
+            # rg1: Verify partition-count of brokers 0 and 1 as equal to 3
             assert len(ct.brokers[0].partitions) == 3
             assert len(ct.brokers[1].partitions) == 3
-            # rg2: Verify partition-count of 2 and 3 as equal to 1
+            # rg2: Verify partition-count of brokers 2 and 3 as equal to 1
             assert len(ct.brokers[2].partitions) == 1
             assert len(ct.brokers[3].partitions) == 1
             # Verify overall-imbalance is NON-zero, since we don't move partitions
@@ -574,7 +586,7 @@ class TestReplicationGroup(object):
             # rg2: Verify partition-count of 2:1, 3:1
             assert len(ct.brokers[2].partitions) == 1
             assert len(ct.brokers[3].partitions) == 1
-            # rg3: Verify partition-count of 5 as equal to 1
+            # rg3: Verify partition-count of broker 5 as equal to 1
             assert len(ct.brokers[5].partitions) == 1
             # Verify overall imbalance is also 0
             _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())

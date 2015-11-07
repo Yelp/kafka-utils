@@ -273,6 +273,10 @@ class ZK:
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         plan = json.dumps(assignment)
         # Final plan validation against latest assignment in zookeeper
+        _log.info(
+            'Validating proposed cluster-layout with current layout before '
+            'sending to zookeeper...',
+        )
         base_assignment = self.get_cluster_assignment()
         brokers = [int(b_id) for b_id in self.get_brokers(names_only=True)]
         if not validate_plan(assignment, base_assignment, brokers):
@@ -282,7 +286,10 @@ class ZK:
         try:
             _log.info('Sending assignment to Zookeeper...')
             self.create(reassignment_path, plan, makepath=True)
-            _log.info('Assignment sent to Zookeeper successfully.')
+            _log.info(
+                'Re-assign partitions node in Zookeeper updated successfully '
+                'with {assignment}'.format(assignment=assignment),
+            )
             return True
         except NodeExistsError:
             _log.warning('Previous assignment in progress. Exiting..')

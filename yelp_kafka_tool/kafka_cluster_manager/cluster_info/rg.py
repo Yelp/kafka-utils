@@ -67,8 +67,16 @@ class ReplicationGroup(object):
             rg_destination,
             victim_partition,
         )
-
         # Actual-movement of victim-partition
+        self.log.debug(
+            'Moving partition {p_name} from broker {broker_source} to '
+            'replication-group:broker {rg_dest}:{dest_broker}'.format(
+                p_name=victim_partition.name,
+                broker_source=broker_source.id,
+                dest_broker=broker_destination.id,
+                rg_dest=rg_destination.id,
+            ),
+        )
         broker_source.move_partition(victim_partition, broker_destination)
 
     def _select_broker_pair(self, rg_destination, victim_partition):
@@ -91,10 +99,10 @@ class ReplicationGroup(object):
             victim_partition,
         )
         # Get underloaded brokers in destination replication-group
-        under_loaded_brokers = rg_destination._select_under_loaded_brokers(
+        under_loaded_brokers = rg_destination.select_under_loaded_brokers(
             victim_partition,
         )
-        broker_source = self._elect_source_broker(over_loaded_brokers)
+        broker_source = self._elect_source_broker(over_loaded_brokers, victim_partition)
         broker_destination = self._elect_dest_broker(
             under_loaded_brokers,
             victim_partition,
@@ -116,7 +124,7 @@ class ReplicationGroup(object):
             reverse=True,
         )
 
-    def _select_under_loaded_brokers(self, victim_partition):
+    def select_under_loaded_brokers(self, victim_partition):
         """Get brokers in ascending sorted order of partition-count
         not containing victim-partition.
         """
@@ -127,9 +135,21 @@ class ReplicationGroup(object):
         ]
         return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
 
-    def _elect_source_broker(self, over_loaded_brokers):
-        """Select first broker from given brokers having victim_partition."""
-        return over_loaded_brokers[0]
+    def _elect_source_broker(self, over_loaded_brokers, victim_partition):
+        """Select first broker from given brokers having victim_partition.
+
+        Note: The broker with maximum siblings of victim-partitions (same topic)
+        is selected to reduce topic-partition imbalance.
+        """
+        broker_topic_partition_cnt = [
+            (broker, broker.count_partitions(victim_partition.topic))
+            for broker in over_loaded_brokers
+        ]
+        max_count_pair = max(
+            broker_topic_partition_cnt,
+            key=lambda ele: ele[1],
+        )
+        return max_count_pair[0]
 
     def _elect_dest_broker(self, under_loaded_brokers, victim_partition):
         """Select first broker from under_loaded_brokers preferring not having
@@ -154,6 +174,14 @@ class ReplicationGroup(object):
             self.brokers,
             lambda b: len(b.partitions),
         )
+        # Report and return if nothing to be balanced
+        if not over_loaded_brokers and not under_loaded_brokers:
+            self.log.info(
+                'Brokers of replication-group: {rg} already balanced for '
+                'partition-count'.format(rg=self.id),
+            )
+            return
+
         while under_loaded_brokers and over_loaded_brokers:
             # Get best-fit source-broker, destination-broker and partition
             broker_source, broker_destination, victim_partition = \
@@ -161,6 +189,15 @@ class ReplicationGroup(object):
             # No valid source or target brokers found
             if broker_source and broker_destination:
                 # Move partition
+                self.log.debug(
+                    'Moving partition {p_name} from broker {broker_source} to '
+                    'broker {broker_destination}'
+                    .format(
+                        p_name=victim_partition.name,
+                        broker_source=broker_source.id,
+                        broker_destination=broker_destination.id,
+                    ),
+                )
                 broker_source.move_partition(victim_partition, broker_destination)
             else:
                 # Brokers are balanced or could not be balanced further
@@ -202,8 +239,61 @@ class ReplicationGroup(object):
                             or min_sibling_partition_cnt == -1:
                         min_sibling_partition_cnt = sibling_cnt
                         target = (source, dest, best_fit_partition)
+                        if min_sibling_partition_cnt == 0:
+                            # Minimum possible sibling-count
+                            break
                 else:
                     # If relatively-unbalanced then all brokers in destination
                     # will be thereafter, return from here
                     break
         return target
+
+    def move_partition_replica(self, under_loaded_rg, eligible_partition):
+        """Move partition to under-loaded replication-group if possible."""
+        # Evaluate possible source and destination-broker
+        source_broker, dest_broker = self._get_eligible_broker_pair(
+            under_loaded_rg,
+            eligible_partition,
+        )
+        if source_broker and dest_broker:
+            self.log.debug(
+                'Moving partition {p_name} from broker {source_broker} to '
+                'replication-group:broker {rg_dest}:{dest_broker}'.format(
+                    p_name=eligible_partition.name,
+                    source_broker=source_broker.id,
+                    dest_broker=dest_broker.id,
+                    rg_dest=under_loaded_rg.id,
+                ),
+            )
+            # Move partition if eligible brokers found
+            source_broker.move_partition(eligible_partition, dest_broker)
+
+    def _get_eligible_broker_pair(self, under_loaded_rg, eligible_partition):
+        """Evaluate and return source and destination broker-pair from over-loaded
+        and under-loaded replication-group if possible, return None otherwise.
+
+        Return source broker with maximum partitions and destination broker with
+        minimum partitions based on following conditions:-
+        1) At-least one broker in under-loaded group which does not have
+        victim-partition. This is because a broker cannot have duplicate replica.
+        2) At-least one broker in over-loaded group which has victim-partition
+        """
+        under_brokers = filter(
+            lambda b: eligible_partition not in b.partitions,
+            under_loaded_rg.brokers,
+        )
+        over_brokers = filter(
+            lambda b: eligible_partition in b.partitions,
+            self.brokers,
+        )
+
+        # Get source and destination broker
+        source_broker = max(
+            over_brokers,
+            key=lambda broker: len(broker.partitions),
+        )
+        dest_broker = min(
+            under_brokers,
+            key=lambda broker: len(broker.partitions),
+        )
+        return (source_broker, dest_broker)
