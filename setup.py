@@ -22,6 +22,7 @@ setup(
         "scripts/kafka-consumer-manager",
         "scripts/kafka-cluster-manager",
         "scripts/yelpkafka",
+        "scripts/kafka-check",
     ],
     install_requires=[
         "argcomplete",
