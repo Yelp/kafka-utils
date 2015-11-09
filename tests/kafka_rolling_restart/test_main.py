@@ -6,8 +6,6 @@ from requests.exceptions import RequestException
 from yelp_kafka_tool.kafka_rolling_restart import main
 
 
-# Test read_cluster_value
-
 @mock.patch.object(main.FuturesSession, 'get', autospec=True)
 def test_read_cluster_value_partitions(mock_get):
     response = mock.Mock(status_code=200, spec=requests.Response)
@@ -56,9 +54,6 @@ def test_read_cluster_value_server_down(mock_get):
 
     assert p == 0   # 0 missing partitions
     assert b == 1   # 1 missing brokers
-
-
-# Test wait_for_stable_cluster
 
 
 def read_cluster_state_values(first_part, repeat):
