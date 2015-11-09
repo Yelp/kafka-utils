@@ -96,7 +96,6 @@ class Broker(object):
         # Only partitions not having replica in broker are valid
         # Get best fit partition, based on avoiding partition from same topic
         # and partition with least siblings in destination-broker.
-        # TODO: will multiple partition with minimum value lead to non-determinism?
         eligible_partitions = self.partitions - broker.partitions
         if eligible_partitions:
             pref_partition = min(
@@ -108,7 +107,7 @@ class Broker(object):
         else:
             return None
 
-    def request_leadership(self, opt_count, skip_brokers, skip_partitions, optimal=False):
+    def request_leadership(self, opt_count, skip_brokers, skip_partitions):
         """Under-balanced broker requests leadership from current leader, on the
         pretext that it recursively can maintain its leadership count as optimal.
 

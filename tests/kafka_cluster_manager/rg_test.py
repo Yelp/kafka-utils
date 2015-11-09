@@ -70,13 +70,25 @@ class TestReplicationGroup(object):
         assert expected == rg.brokers
 
     def test_elect_source_broker(self):
-        over_loaded_brokers = [sentinel.broker1, sentinel.broker2]
-        rg = ReplicationGroup(
-            'test_rg',
-            set([sentinel.broker1, sentinel.broker2]),
-        )
-        actual = rg._elect_source_broker(over_loaded_brokers)
-        assert actual == sentinel.broker1
+        # Creating 2 partitions with topic:t1 for broker: b1
+        p1 = self.create_partition('t1', 0)
+        p2 = self.create_partition('t2', 0)
+        p3 = self.create_partition('t1', 1)
+        b1 = Broker('b1', set([p1, p3]))
+
+        p4 = self.create_partition('t3', 0)
+        b2 = Broker('b2', set([p1, p2, p4]))
+
+        # Creating replication-group with above brokers
+        rg = ReplicationGroup('test_rg', set([b1, b2, sentinel.b3]))
+
+        over_loaded_brokers = [b1, b2]
+        # Since p1.topic is t1 and b1 has 2 partitions (p1 and p3) for same topic
+        # t1 and b2 has only 1 partition with topic t2, even though it has more
+        # partition, so b1 is preferred (To reduce topic-partition imbalance).
+        victim_partition = p1
+        actual = rg._elect_source_broker(over_loaded_brokers, victim_partition)
+        assert actual == b1
 
     def test_elect_dest_broker(self):
         # Creating 2 partitions with topic:t1 for broker: b1
@@ -118,7 +130,7 @@ class TestReplicationGroup(object):
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         victim_partition = sentinel.p7
-        actual = rg._select_under_loaded_brokers(victim_partition)
+        actual = rg.select_under_loaded_brokers(victim_partition)
         # Since sentinel.p7 is not present in b1, b2 and b3, they should be
         # returned in increasing order of partition-count
         assert actual == [b3, b2, b1]
@@ -126,7 +138,7 @@ class TestReplicationGroup(object):
         # under-loaded-brokers SHOULD NOT contain victim-partition sentinel.p4
         # Brokers returned in sorted order of DECREASING partition-count
         victim_partition = sentinel.p4
-        actual = rg._select_under_loaded_brokers(victim_partition)
+        actual = rg.select_under_loaded_brokers(victim_partition)
         assert actual == [b3, b1]
 
     def test_select_over_loaded_brokers(self):

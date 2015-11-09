@@ -18,12 +18,6 @@ from .broker import Broker
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
-from .stats import (
-    get_partition_imbalance_stats,
-    get_leader_imbalance_stats,
-    get_topic_imbalance_stats,
-    get_replication_group_imbalance_stats,
-)
 from .util import (
     compute_group_optimum,
     separate_groups,
@@ -53,6 +47,7 @@ class ClusterTopology(object):
         self._build_brokers(broker_ids)
         self._build_replication_groups()
         self._build_partitions()
+        self.log.debug('Cluster-topology object created.')
 
     def _build_topics(self, topic_ids):
         """List of topic objects from topic-ids."""
@@ -144,38 +139,6 @@ class ClusterTopology(object):
             raise ValueError(error_msg)
         return rg_name
 
-    def reassign_partitions(
-        self,
-        replication_groups=False,
-        leaders=False,
-        brokers=False,
-    ):
-        """Rebalance current cluster-state to get updated state based on
-        rebalancing option.
-        """
-        # Balancing to be done in the given order only
-        # Rebalance replication-groups
-        if replication_groups:
-            self.log.info(
-                'Re-balancing replication groups: {groups}...'
-                .format(groups=', '.join(self.rgs.keys())),
-            )
-            self.rebalance_replication_groups()
-        # Rebalance broker-partition count per replication-groups
-        if brokers:
-            self.log.info(
-                'Re-balancing partition-count across brokers: {brokers}...'
-                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
-            )
-            self.rebalance_brokers()
-        # Rebalance broker as leader count per broker
-        if leaders:
-            self.log.info(
-                'Re-balancing leader-count across brokers: {brokers}...'
-                .format(brokers=', '.join(str(e) for e in self.brokers.keys())),
-            )
-            self.rebalance_leaders()
-
     @property
     def initial_assignment(self):
         return self._initial_assignment
@@ -201,39 +164,6 @@ class ClusterTopology(object):
             for rg in self.rgs.values()
             for partition in rg.partitions
         ]
-
-    def partition_imbalance(self, cluster_wide=False):
-        """Report partition count imbalance over brokers in current cluster
-        state for each replication-group.
-        """
-        # Get broker-imbalance stats cluster-wide or for each replication-group
-        if cluster_wide:
-            return [(get_partition_imbalance_stats(self.brokers.values()))]
-        else:
-            return [
-                (get_partition_imbalance_stats(rg.brokers))
-                for rg in self.rgs.values()
-            ]
-
-    def leader_imbalance(self):
-        """Report leader imbalance count over each broker."""
-        return get_leader_imbalance_stats(self.brokers.values())
-
-    def topic_imbalance(self):
-        """Return count of topics and partitions on each broker having multiple
-        partitions of same topic.
-        """
-        return get_topic_imbalance_stats(
-            self.brokers.values(),
-            self.topics.values(),
-        )
-
-    def replication_group_imbalance(self):
-        """Calculate same replica count over each replication-group."""
-        return get_replication_group_imbalance_stats(
-            self.rgs.values(),
-            self.partitions.values(),
-        )
 
     # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
@@ -272,10 +202,15 @@ class ClusterTopology(object):
             )
             if rg_source and rg_destination:
                 # Actual movement of partition
-                rg_source.move_partition(
-                    rg_destination,
-                    partition,
+                self.log.debug(
+                    'Moving partition {p_name} from replication-group '
+                    '{rg_source} to replication-group {rg_dest}'.format(
+                        p_name=partition.name,
+                        rg_source=rg_source.id,
+                        rg_dest=rg_destination.id,
+                    ),
                 )
+                rg_source.move_partition(rg_destination, partition)
             else:
                 # Groups balanced or cannot be balanced further
                 break
@@ -293,8 +228,6 @@ class ClusterTopology(object):
         """Decide source replication-group based as group with highest replica
         count.
         """
-        # TODO: optimization: decide based on partition-count and
-        # same-topic-partition count
         return max(
             over_replicated_rgs,
             key=lambda rg: rg.count_replica(partition),
@@ -317,6 +250,7 @@ class ClusterTopology(object):
             return min_replicated_rg
         return None
 
+    # Re-balancing partition count across brokers
     def rebalance_groups_partition_cnt(self):
         """Re-balance partition-count across replication-groups.
 
@@ -401,23 +335,6 @@ class ClusterTopology(object):
         opt_leader_cnt = len(self.partitions) // len(self.brokers)
         # Balanced brokers transfer leadership to their under-balanced followers
         self.rebalancing_non_followers(opt_leader_cnt)
-
-    def rebalancing_followers(self, opt_leader_cnt):
-        """Transfer leadership from current over-balanced leaders to their
-        under-balanced followers.
-
-        :key-terms:
-        over-balanced brokers:  Brokers with leadership-count > opt-count
-                                Note: Even brokers with leadership-count
-                                == opt-count are assumed as over-balanced.
-        under-balanced brokers: Brokers with leadership-count < opt-count
-        """
-        for broker in self.brokers.values():
-            if broker.count_preferred_replica() > opt_leader_cnt:
-                broker.decrease_leader_count(
-                    self.partitions.values(),
-                    opt_leader_cnt,
-                )
 
     def rebalancing_non_followers(self, opt_cnt):
         """Transfer leadership to any under-balanced followers on the pretext

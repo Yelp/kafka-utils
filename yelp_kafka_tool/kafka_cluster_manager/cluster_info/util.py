@@ -81,12 +81,7 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
     red_proposed_plan_list = proposed_assignment[:max_changes]
     red_curr_plan_list = [(tp_repl[0], original_assignment[tp_repl[0]])
                           for tp_repl in red_proposed_plan_list]
-    red_proposed_assignment = dict(
-        (ele[0], ele[1])
-        for ele in red_proposed_plan_list
-    )
-    plan = get_plan(red_proposed_assignment)
-    return plan, red_curr_plan_list, red_proposed_plan_list, tot_actions
+    return red_curr_plan_list, red_proposed_plan_list, tot_actions
 
 
 def get_plan(proposed_assignment):

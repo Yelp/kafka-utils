@@ -73,6 +73,7 @@ class KafkaInterface(object):
             return get_assignment_map(assignment)
         else:
             zookeeper = zk.cluster_config.zookeeper
+            self.log.info('Fetching plan from zookeeper using kafka-scripts...')
             with tempfile.NamedTemporaryFile() as temp_topic_file:
                 temp_topic_file.write(json.dumps(topic_data))
                 temp_topic_file.flush()
@@ -110,6 +111,7 @@ class KafkaInterface(object):
         if not self._kafka_script_path:
             return zk.execute_assignment(proposed_layout)
         else:
+            self.log.info('Sending plan to zookeeper using kafka-scripts...')
             with tempfile.NamedTemporaryFile() as temp_reassignment_file:
                 json.dump(proposed_layout, temp_reassignment_file)
                 temp_reassignment_file.flush()
