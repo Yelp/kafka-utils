@@ -1,6 +1,6 @@
 """
 Generate and/or execute the reassignment plan with minimal
-movements having optimally balanced replication-groups.
+movements having optimally balanced replication-groups and brokers.
 
 Example:
     kafka-cluster-manager --cluster-type scribe rebalance --replication-groups
@@ -18,15 +18,21 @@ Example:
     will be moved to new broker-id '2' and similarly for others.
 
 Attributes:
+    --cluster-type:     Type of cluster for example 'scribe', 'spam'
     --cluster-name:     Cluster name over which the reassignment will be done
     --zookeeper:        Zookeeper hostname
     rebalance:          Indicates that given request is for partition
                         reassignment
-    --cluster-type:     Type of cluster for example 'scribe', 'spam'
+    --leader:           Re-balance broker as leader count
+    --brokers:          Re-balance partition-count per broker
+    --replication-groups: Re-balance replica and partition-count per replication-group
     --max-changes:      Maximum number of actions as part of single execution
                         of the tool
     --apply:            On True execute proposed assignment after execution,
                         display proposed-plan otherwise
+    --no-confirm:       Execute the plan without asking for confirmation.
+    --log-file:         Export logs to given file
+    --json:             Export proposed-plan to .json format
 """
 from __future__ import absolute_import
 from __future__ import unicode_literals
@@ -469,12 +475,6 @@ def parse_args():
         '--log-file',
         type=str,
         help='Write logs to specified file',
-    )
-    parser_rebalance.add_argument(
-        '--skip-imbalance-stats',
-        dest='skip_imbalance_stats',
-        action='store_true',
-        help='Skip any imbalance calculations to speed-up rebalancing time',
     )
     parser_rebalance.add_argument(
         '--debug',
