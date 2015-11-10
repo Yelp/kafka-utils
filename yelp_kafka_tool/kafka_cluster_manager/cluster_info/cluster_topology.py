@@ -279,13 +279,14 @@ class ClusterTopology(object):
         if over_loaded_rgs and under_loaded_rgs:
             self.log.info(
                 'Over-loaded replication-groups {over_loaded}, under-loaded '
-                'replication-groups {under_loaded}'.format(
+                'replication-groups {under_loaded} based on partition-count'
+                .format(
                     over_loaded=[rg.id for rg in over_loaded_rgs],
                     under_loaded=[rg.id for rg in under_loaded_rgs],
                 )
             )
         else:
-            # TODO: Insert warning if partition-count imbalance is non-zero
+            self.log.info('Replication-groups are balanced based on partition-count.')
             return
 
         # Get optimal partition-count per replication-group
