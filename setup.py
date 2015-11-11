@@ -20,6 +20,7 @@ setup(
         "scripts/kafka-reassignment",
         "scripts/kafka-partition-manager",
         "scripts/kafka-consumer-manager",
+        "scripts/kafka-cluster-manager",
         "scripts/yelpkafka",
         "scripts/kafka-check",
         "scripts/kafka-rolling-restart",
