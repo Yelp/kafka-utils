@@ -1,12 +1,9 @@
-from __future__ import print_function
-
 import json
 import logging
 import sys
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError, NoNodeError
-from yelp_kafka_tool.util import config
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
     validate_plan,
 )
@@ -29,12 +26,10 @@ class ZK:
             hosts=self.cluster_config.zookeeper,
             read_only=True,
         )
-        if config.debug:
-            print(
-                "[INFO] ZK: Creating new zookeeper connection: {zookeeper}"
-                .format(zookeeper=self.cluster_config.zookeeper),
-                file=sys.stderr
-            )
+        _log.debug(
+            "ZK: Creating new zookeeper connection: {zookeeper}"
+            .format(zookeeper=self.cluster_config.zookeeper),
+        )
         self.zk.start()
         return self
 
@@ -43,20 +38,16 @@ class ZK:
 
     def get_children(self, path, watch=None):
         """Returns the children of the specified node."""
-        if config.debug:
-            print(
-                "[INFO] ZK: Getting children of {path}".format(path=path),
-                file=sys.stderr,
-            )
+        _log.debug(
+            "ZK: Getting children of {path}".format(path=path),
+        )
         return self.zk.get_children(path, watch)
 
     def get(self, path, watch=None):
         """Returns the data of the specified node."""
-        if config.debug:
-            print(
-                "[INFO] ZK: Getting {path}".format(path=path),
-                file=sys.stderr,
-            )
+        _log.debug(
+            "ZK: Getting {path}".format(path=path),
+        )
         return self.zk.get(path, watch)
 
     def get_json(self, path, watch=None):
@@ -85,9 +76,8 @@ class ZK:
                     "/brokers/ids/{b_id}".format(b_id=b_id)
                 )
             except NoNodeError:
-                print(
-                    "[ERROR] broker '{b_id}' not found.".format(b_id=b_id),
-                    file=sys.stderr
+                _log.error(
+                    "broker '{b_id}' not found.".format(b_id=b_id),
                 )
                 sys.exit(1)
             broker = json.loads(broker_json)
@@ -141,9 +131,8 @@ class ZK:
                     self.get("/brokers/topics/{id}".format(id=topic_id))[0],
                 )
             except NoNodeError:
-                print(
-                    "[ERROR] topic '{topic}' not found.".format(topic=topic_id),
-                    file=sys.stderr,
+                _log.error(
+                    "topic '{topic}' not found.".format(topic=topic_id),
                 )
                 return {}
             # Prepare data for each partition
@@ -215,8 +204,7 @@ class ZK:
         :param: makepath: Whether the path should be created if it doesn't
           exist.
         """
-        if config.debug:
-            print("[INFO] ZK: Creating node " + path, file=sys.stderr)
+        _log.debug("ZK: Creating node " + path)
         return self.zk.create(path, value, acl, ephemeral, sequence, makepath)
 
     def delete(self, path, recursive=False):
@@ -225,8 +213,7 @@ class ZK:
         :param: path: The zookeeper node path
         :param: recursive: Recursively delete node and all its children.
         """
-        if config.debug:
-            print("[INFO] ZK: Deleting node " + path, file=sys.stderr)
+        _log.debug("ZK: Deleting node " + path)
         return self.zk.delete(path, recursive=recursive)
 
     def delete_topic_partitions(self, groupid, topic, partitions):
