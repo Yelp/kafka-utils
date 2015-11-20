@@ -26,6 +26,13 @@ def to_h(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
+def to_int(num):
+    """Converts 'num' to int or to "None" in case of None."""
+    if num is None:
+        return "None"
+    return int(num)
+
+
 def format_to_json(data):
     """Converts `data` into json
     If stdout is a tty it performs a pretty print.
