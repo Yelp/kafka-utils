@@ -1,15 +1,16 @@
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import sys
+
 from kazoo.exceptions import NoNodeError
 
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class OffsetManagerBase(object):
+
     @classmethod
     def get_topics_from_consumer_group_id(
         cls,

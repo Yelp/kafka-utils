@@ -1,22 +1,22 @@
 import contextlib
-from collections import Counter, OrderedDict
-from mock import sentinel, patch, MagicMock
+from collections import Counter
+from collections import OrderedDict
+
+from mock import MagicMock
+from mock import patch
+from mock import sentinel
 from pytest import fixture
+from yelp_kafka.config import ClusterConfig
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import (
     ClusterTopology,
 )
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
-    calculate_partition_movement,
-    get_leader_imbalance_stats,
-    get_replication_group_imbalance_stats,
-)
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    compute_optimal_count,
-    separate_groups,
-)
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import calculate_partition_movement
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_leader_imbalance_stats
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_replication_group_imbalance_stats
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import compute_optimal_count
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import separate_groups
 from yelp_kafka_tool.kafka_cluster_manager.main import ZK
-from yelp_kafka.config import ClusterConfig
 
 
 class TestClusterToplogy(object):

@@ -1,11 +1,9 @@
 import contextlib
+
 import mock
 import pytest
-
-from kazoo.exceptions import (
-    NoNodeError,
-    ZookeeperError,
-)
+from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import ZookeeperError
 
 from yelp_kafka_tool.kafka_consumer_manager.commands. \
     delete_topics import DeleteTopics

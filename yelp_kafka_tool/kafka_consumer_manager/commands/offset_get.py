@@ -1,18 +1,18 @@
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import sys
 
 from kafka import KafkaClient
-
-from yelp_kafka_tool.util import print_json
-from .offset_manager import OffsetManagerBase
 from yelp_kafka.monitoring import get_consumer_offsets_metadata
+
+from .offset_manager import OffsetManagerBase
+from yelp_kafka_tool.util import print_json
 
 
 class OffsetGet(OffsetManagerBase):
+
     @classmethod
     def setup_subparser(cls, subparsers):
         parser_offset_get = subparsers.add_parser(

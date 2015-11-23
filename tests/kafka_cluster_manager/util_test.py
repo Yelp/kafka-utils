@@ -1,14 +1,14 @@
 from collections import OrderedDict
+
 from pytest import fixture
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    _validate_format,
-    _validate_assignment,
-    _validate_plan_base,
-    get_assignment_map,
-    get_plan,
-    get_reduced_proposed_plan,
-    validate_plan,
-)
+
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_assignment
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_format
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_plan_base
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_assignment_map
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_plan
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_reduced_proposed_plan
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import validate_plan
 
 
 @fixture

@@ -42,19 +42,18 @@ import logging
 import sys
 
 from yelp_kafka.config import ClusterConfig
-from yelp_kafka_tool.util import config
-from yelp_kafka_tool.util.zookeeper import ZK
+
 from .cluster_info.cluster_topology import ClusterTopology
 from .cluster_info.display import display_assignment_changes
-from .cluster_info.util import (
-    get_reduced_proposed_plan,
-    confirm_execution,
-    proposed_plan_json,
-    validate_plan,
-    get_plan,
-)
 from .cluster_info.stats import imbalance_value_all
+from .cluster_info.util import confirm_execution
+from .cluster_info.util import get_plan
+from .cluster_info.util import get_reduced_proposed_plan
+from .cluster_info.util import proposed_plan_json
+from .cluster_info.util import validate_plan
 from .util import KafkaInterface
+from yelp_kafka_tool.util import config
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 DEFAULT_MAX_CHANGES = 5

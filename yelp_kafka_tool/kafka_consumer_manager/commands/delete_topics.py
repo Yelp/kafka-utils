@@ -8,6 +8,7 @@ from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class DeleteTopics(OffsetWriter):
+
     @classmethod
     def setup_subparser(cls, subparsers):
         parser_delete_topics = subparsers.add_parser(

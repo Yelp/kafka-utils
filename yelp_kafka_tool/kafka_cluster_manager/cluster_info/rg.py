@@ -10,6 +10,7 @@ class ReplicationGroup(object):
     """Represent attributes and functions specific to replication-groups
     (Availability zones) abbreviated as rg.
     """
+
     def __init__(self, id, brokers=None):
         self._id = id
         self._brokers = brokers or set()

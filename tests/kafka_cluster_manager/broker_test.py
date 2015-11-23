@@ -1,4 +1,5 @@
-from mock import Mock, sentinel
+from mock import Mock
+from mock import sentinel
 from pytest import fixture
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker

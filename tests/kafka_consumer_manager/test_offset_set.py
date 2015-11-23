@@ -1,9 +1,9 @@
-from collections import defaultdict
 import contextlib
+import sys
+from collections import defaultdict
+
 import mock
 import pytest
-import sys
-
 from yelp_kafka.error import OffsetCommitError
 
 from yelp_kafka_tool.kafka_consumer_manager. \
