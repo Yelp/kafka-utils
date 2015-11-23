@@ -1,6 +1,7 @@
 import json
 import logging
-from collections import Counter, OrderedDict
+from collections import Counter
+from collections import OrderedDict
 
 _log = logging.getLogger('kafka-cluster-manager')
 

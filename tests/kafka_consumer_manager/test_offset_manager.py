@@ -1,8 +1,8 @@
 import contextlib
-import mock
-import pytest
 import sys
 
+import mock
+import pytest
 from kafka.client import KafkaClient
 
 from yelp_kafka_tool.kafka_consumer_manager. \

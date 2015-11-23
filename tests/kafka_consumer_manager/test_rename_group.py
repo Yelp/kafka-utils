@@ -1,7 +1,8 @@
 import contextlib
+import sys
+
 import mock
 import pytest
-import sys
 from kazoo.exceptions import ZookeeperError
 
 from yelp_kafka_tool.kafka_consumer_manager. \
@@ -14,6 +15,7 @@ from yelp_kafka_tool.kafka_consumer_manager. \
     autospec=True,
 )
 class TestRenameGroup(object):
+
     @contextlib.contextmanager
     def mock_kafka_info(self, topics_partitions):
         with contextlib.nested(

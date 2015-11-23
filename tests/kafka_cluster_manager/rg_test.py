@@ -1,21 +1,19 @@
 from collections import OrderedDict
-from mock import Mock, sentinel
 
+from mock import Mock
+from mock import sentinel
+
+from .cluster_topology_test import TestClusterToplogy as CT
+from .util_test import irange
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import calculate_partition_movement
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_partition_imbalance_stats
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import (
-    get_partition_imbalance_stats,
-    calculate_partition_movement,
-)
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    get_plan,
-    validate_plan,
-    _validate_plan_base,
-)
-from .cluster_topology_test import TestClusterToplogy as CT
-from .util_test import irange
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_plan_base
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_plan
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import validate_plan
 
 
 class TestReplicationGroup(object):

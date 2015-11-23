@@ -1,8 +1,6 @@
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import sys
 
@@ -13,6 +11,7 @@ from .offset_manager import OffsetWriter
 
 
 class OffsetRewind(OffsetWriter):
+
     @classmethod
     def setup_subparser(cls, subparsers):
         parser_offset_rewind = subparsers.add_parser(

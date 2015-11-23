@@ -8,6 +8,7 @@ from .offset_manager import OffsetManagerBase
 
 
 class ListTopics(OffsetManagerBase):
+
     @classmethod
     def setup_subparser(cls, subparsers):
         parser_list_topics = subparsers.add_parser(

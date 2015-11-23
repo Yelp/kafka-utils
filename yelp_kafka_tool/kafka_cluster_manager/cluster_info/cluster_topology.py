@@ -11,18 +11,16 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import logging
-
 from collections import OrderedDict
-from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
+
 from .broker import Broker
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
-from .util import (
-    compute_group_optimum,
-    separate_groups,
-    smart_separate_groups,
-)
+from .util import compute_group_optimum
+from .util import separate_groups
+from .util import smart_separate_groups
+from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
 
 class ClusterTopology(object):
@@ -31,6 +29,7 @@ class ClusterTopology(object):
     A Kafka cluster topology consists of:
     replication group (alias rg), broker, topic and partition.
     """
+
     def __init__(self, zk, script_path=None):
         self._name = zk.cluster_config.name
         self._zk = zk

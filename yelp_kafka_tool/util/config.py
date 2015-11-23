@@ -1,10 +1,8 @@
 from __future__ import print_function
 
 import yaml
-from yelp_kafka.discovery import (
-    get_cluster_by_name,
-    get_local_cluster,
-)
+from yelp_kafka.discovery import get_cluster_by_name
+from yelp_kafka.discovery import get_local_cluster
 
 
 conf = None  # The content of the config file

@@ -14,8 +14,8 @@ from fabric.api import hide
 from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
-from requests_futures.sessions import FuturesSession
 from requests.exceptions import RequestException
+from requests_futures.sessions import FuturesSession
 from yelp_kafka import discovery
 from yelp_kafka.error import ConfigurationError
 

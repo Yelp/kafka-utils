@@ -5,11 +5,11 @@ import logging
 import sys
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NodeExistsError, NoNodeError
+from kazoo.exceptions import NodeExistsError
+from kazoo.exceptions import NoNodeError
+
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import validate_plan
 from yelp_kafka_tool.util import config
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import (
-    validate_plan,
-)
 
 
 ADMIN_PATH = "/admin"

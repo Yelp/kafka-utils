@@ -4,17 +4,13 @@ cluster at any given time.
 from collections import defaultdict
 from math import sqrt
 
-from .util import (
-    get_partitions_per_broker,
-    get_leaders_per_broker,
-    compute_optimal_count,
-)
-from .display import (
-    display_leader_count_per_broker,
-    display_partition_count_per_broker,
-    display_same_replica_count_rg,
-    display_same_topic_partition_count_broker,
-)
+from .display import display_leader_count_per_broker
+from .display import display_partition_count_per_broker
+from .display import display_same_replica_count_rg
+from .display import display_same_topic_partition_count_broker
+from .util import compute_optimal_count
+from .util import get_leaders_per_broker
+from .util import get_partitions_per_broker
 
 
 # Get imbalance stats

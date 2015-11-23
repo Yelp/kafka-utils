@@ -1,5 +1,4 @@
 import mock
-
 from yelp_kafka.config import ClusterConfig
 
 from yelp_kafka_tool.util.zookeeper import ZK
