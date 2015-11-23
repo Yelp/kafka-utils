@@ -1,0 +1,34 @@
+-   repo: git@git.yelpcorp.com:mirrors/pre-commit/pre-commit-hooks
+    sha: 29bf11d13689a0a9a895c41eb3591c7e942d377d
+    hooks:
+    -   id: check-added-large-files
+        language_version: python2.7
+    -   id: check-merge-conflict
+        language_version: python2.7
+    -   id: trailing-whitespace
+        language_version: python2.7
+    -   id: end-of-file-fixer
+        language_version: python2.7
+    -   id: autopep8-wrapper
+        language_version: python2.7
+        args: [--ignore=E501, --in-place]
+    -   id: flake8
+        language_version: python2.7
+        args: [--ignore=E501]
+
+-   repo: git@git.yelpcorp.com:yelp_pre_commit_hooks
+    sha: ea3d27c150d98a6dcec8789fdba4f8aadf7fb116
+    hooks:
+    -   id: use-except-as
+    -   id: check-indentation
+        language_version: python2.7
+    -   id: check_mock_methods
+        files: ^tests.+\.py$
+        language_version: python2.7
+
+-   repo: git@git.yelpcorp.com:mirrors/asottile/reorder_python_imports
+    sha: f3dfe379d2ea341c6cf54d926d4585b35dea9251
+    hooks:
+    -   id: reorder-python-imports
+        files: .*\.py$
+        language_version: python2.7

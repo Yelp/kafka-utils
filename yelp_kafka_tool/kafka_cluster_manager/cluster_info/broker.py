@@ -6,6 +6,7 @@ class Broker(object):
         -id: Id of broker
         -partitions: partitions under a given broker
     """
+
     def __init__(self, id, partitions=None):
         self._id = id
         self._partitions = partitions or set()
