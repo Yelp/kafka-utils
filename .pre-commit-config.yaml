@@ -11,10 +11,10 @@
         language_version: python2.7
     -   id: autopep8-wrapper
         language_version: python2.7
-        args: [--max-line-length=120, --in-place]
+        args: [--ignore=E501, --in-place]
     -   id: flake8
         language_version: python2.7
-        args: [--max-line-length=120]
+        args: [--ignore=E501]
 
 -   repo: git@git.yelpcorp.com:yelp_pre_commit_hooks
     sha: ea3d27c150d98a6dcec8789fdba4f8aadf7fb116
