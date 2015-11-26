@@ -39,7 +39,7 @@ class WaitTimeoutException(Exception):
 
 def parse_opts():
     parser = argparse.ArgumentParser(
-        description=('Performs a rolling restart of the specified'
+        description=('Performs a rolling restart of the specified '
                      'kafka cluster.'))
     parser.add_argument(
         '--cluster-type',
