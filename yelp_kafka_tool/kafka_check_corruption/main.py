@@ -5,16 +5,14 @@ import argparse
 import itertools
 import logging
 import math
+import re
 import sys
 import time
 from operator import itemgetter
-
 from fabric.api import execute
 from fabric.api import hide
 from fabric.api import settings
 from fabric.api import run
-from fabric.tasks import Task
-from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 from yelp_kafka import discovery
@@ -27,13 +25,24 @@ DEFAULT_DATA_PATH = "/nail/var/kafka/md1/kafka-logs"
 DEFAULT_JAVA_HOME = "/usr/lib/jvm/java-8-oracle-1.8.0.20/"
 
 DEFAULT_MIN = 60  # Last hour
+DEFAULT_BATCH_SIZE = 5
 
-FIND_COMMAND = "find {data_path} -mtime -{min} -name '*.log'"
-CHECK_COMMAND = "JAVA_HOME=\"{java_home}\"kafka-run-class kafka.tools.DumpLogSegments --files {files}"
+FIND_REC_COMMAND = "find \"{data_path}\" -type f -mtime -{min} -name '*.log'"
+FIND_RANGE_COMMAND = "find \"{data_path}\" -type f -newermt \"{start_range}\" \\! -newermt \"{end_range}\" -name '*.log'"
+FIND_START+COMMAND = "find \"{data_path}\" -type f -newermt \"{start_range}\" -name '*.log'"
+CHECK_COMMAND = "JAVA_HOME=\"{java_home}\" kafka-run-class kafka.tools.DumpLogSegments --files \"{files}\""
+
+FILE_PATH_REGEX = re.compile("Dumping (.*)")
+INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
+INVALID_BYTES_REGEX = re.compile(".*invalid bytes")
+
+# TODO: check dump segments output
 
 
-class WaitTimeoutException(Exception):
-    pass
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
 
 
 def parse_opts():
@@ -118,8 +127,7 @@ def ask_confirmation():
             print("Please respond with 'yes' or 'no'")
 
 
-@task
-def find_files_task(data_path, min):
+def find_files_cmd(data_path, min):
     """Find the log files depending on their modification time.
 
     :param data_path: the path to the Kafka data directory
@@ -127,12 +135,11 @@ def find_files_task(data_path, min):
     :param min: return only files modified in the last 'min' minutes
     :type min: integer
     """
-    command = FIND_COMMAND.format(data_path=data_path, min=min)
-    run(command)
+    command = FIND_REC_COMMAND.format(data_path=data_path, min=min)
+    return run(command)
 
 
-@task
-def check_corrupted_files_task(java_home, files):
+def check_corrupted_files_cmd(java_home, files):
     """Check the file corruption of the specified files.
 
     :param java_home: the JAVA_HOME
@@ -142,7 +149,7 @@ def check_corrupted_files_task(java_home, files):
     """
     files_str = ",".join(files)
     command = CHECK_COMMAND.format(java_home=java_home, files=files_str)
-    run(command)
+    return run(command)
 
 
 def validate_opts(opts, brokers_num):
@@ -161,12 +168,59 @@ def validate_opts(opts, brokers_num):
     return False
 
 
-def check_cluster(brokers, min_minutes, verbose):
+def find_files(brokers, min_minutes, verbose):
+    files_by_host = {}
     hidden = [] if verbose else ['output', 'running']
     for broker_id, host in brokers:
-        print(broker_id, host)
+        files = []
         with settings(forward_agent=True, connection_attempts=3, timeout=2, host_string=host), hide(*hidden):
-            find_files_task(DEFAULT_DATA_PATH, min_minutes)
+            result = find_files_cmd(DEFAULT_DATA_PATH, min_minutes)
+            print(result.return_code)
+            for file_path in result.stdout.splitlines():
+                files.append(file_path)
+                print(file_path)
+        files_by_host[host] = files
+        return files_by_host   ## TODO REMOVE LIMIT
+
+
+def parse_output(host, output):
+    current_file = None
+    for line in output.splitlines():
+        file_name_search = FILE_PATH_REGEX.search(line)
+        if file_name_search:
+            current_file = file_name_search.group(1)
+            continue
+        if INVALID_MESSAGE_REGEX.match(line) or INVALID_BYTES_REGEX.match(line):
+            print(
+                "Host: {host}, File: {path}\n Output: {line}".format(
+                    host=host,
+                    path=current_file,
+                    line=line,
+                    )
+                )
+
+
+def check_files_on_host(host, files, verbose):
+    hidden = [] if verbose else ['output', 'running']
+    with settings(forward_agent=True, connection_attempts=3, timeout=2, host_string=host, warn_only=True), hide(*hidden):
+        for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
+            result = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
+            print(
+                "{host}: file {n_file} of {total}".format(
+                    host=host,
+                    n_file=(i * DEFAULT_BATCH_SIZE),
+                    total=len(files),
+                )
+            )
+            parse_output(host, result.stdout)
+
+
+def check_cluster(brokers, min_minutes, verbose):
+    files_by_host = find_files(brokers, min_minutes, verbose)
+    for host, files in files_by_host.iteritems():
+        print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
+        check_files_on_host(host, files, verbose)
+
 
 
 
@@ -180,5 +234,11 @@ def run_tool():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
+    check_files_on_host(
+        "10-40-11-219-uswest1adevc",
+        ["/nail/var/kafka/md1/kafka-logs/fgiraud.cli_test-1/00000000000000002367.log"],
+        False,
+    )
+    return
 #    print_brokers(cluster_config, brokers[opts.skip:])
     check_cluster(brokers, opts.min, opts.verbose)
