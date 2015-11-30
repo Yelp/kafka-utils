@@ -8,6 +8,8 @@ import math
 import re
 import sys
 import time
+from multiprocessing import Process, Queue
+import paramiko
 from operator import itemgetter
 from fabric.api import execute
 from fabric.api import hide
@@ -177,7 +179,7 @@ def check_corrupted_files_cmd(java_home, files):
     """
     files_str = ",".join(files)
     command = CHECK_COMMAND.format(java_home=java_home, files=files_str)
-    return run(command)
+    return command
 
 
 def validate_opts(opts, brokers_num):
@@ -223,14 +225,12 @@ def find_files(brokers, minutes, start_time, end_time, verbose):
                 files.append(file_path)
                 print(file_path)
         files_by_host[host] = files
-        print(host)
-        sys.exit(0)
-        return files_by_host   ## TODO REMOVE LIMIT
+    return files_by_host
 
 
 def parse_output(host, output):
     current_file = None
-    for line in output.splitlines():
+    for line in output.readlines():
         file_name_search = FILE_PATH_REGEX.search(line)
         if file_name_search:
             current_file = file_name_search.group(1)
@@ -245,26 +245,43 @@ def parse_output(host, output):
                 )
 
 
+def ssh_client(host):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(host)
+    return ssh
+
+
 def check_files_on_host(host, files, verbose):
     hidden = [] if verbose else ['output', 'running']
-    with settings(forward_agent=True, connection_attempts=3, timeout=2, host_string=host, warn_only=True), hide(*hidden):
-        for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
-            result = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
-            print(
-                "{host}: file {n_file} of {total}".format(
-                    host=host,
-                    n_file=(i * DEFAULT_BATCH_SIZE),
-                    total=len(files),
-                )
+    ssh = ssh_client(host)
+    for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
+        command = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
+        stdin, stdout, stderr = ssh.exec_command(command)
+        #print(stdout.readlines())
+        print(
+            "{host}: file {n_file} of {total}".format(
+                host=host,
+                n_file=(i * DEFAULT_BATCH_SIZE),
+                total=len(files),
             )
-            parse_output(host, result.stdout)
+        )
+        parse_output(host, stdout)
+    ssh.close()
 
 
 def check_cluster(brokers, minutes, start_time, end_time, verbose):
     files_by_host = find_files(brokers, minutes, start_time, end_time, verbose)
+    processes = []
+    print("Starting {n} parallel processes".format(n=len(files_by_host)))
     for host, files in files_by_host.iteritems():
         print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
-        check_files_on_host(host, files, verbose)
+        p = Process(target=check_files_on_host, args=(host, files, verbose))
+        p.start()
+        processes.append(p)
+    print("Processes running")
+    for process in processes:
+        process.join()
 
 
 
