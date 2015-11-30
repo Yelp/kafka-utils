@@ -24,13 +24,14 @@ from yelp_kafka_tool.util.zookeeper import ZK
 DEFAULT_DATA_PATH = "/nail/var/kafka/md1/kafka-logs"
 DEFAULT_JAVA_HOME = "/usr/lib/jvm/java-8-oracle-1.8.0.20/"
 
-DEFAULT_MIN = 60  # Last hour
 DEFAULT_BATCH_SIZE = 5
 
-FIND_REC_COMMAND = "find \"{data_path}\" -type f -mtime -{min} -name '*.log'"
-FIND_RANGE_COMMAND = "find \"{data_path}\" -type f -newermt \"{start_range}\" \\! -newermt \"{end_range}\" -name '*.log'"
-FIND_START+COMMAND = "find \"{data_path}\" -type f -newermt \"{start_range}\" -name '*.log'"
-CHECK_COMMAND = "JAVA_HOME=\"{java_home}\" kafka-run-class kafka.tools.DumpLogSegments --files \"{files}\""
+FIND_MINUTES_COMMAND = 'find "{data_path}" -type f -name "*.log" -mmin -{minutes}'
+FIND_START_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}"'
+FIND_RANGE_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}" \! -newermt "{end_time}"'
+CHECK_COMMAND = 'JAVA_HOME="{java_home}" kafka-run-class kafka.tools.DumpLogSegments --files "{files}"'
+
+TIME_FORMAT_REGEX = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$")
 
 FILE_PATH_REGEX = re.compile("Dumping (.*)")
 INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
@@ -59,11 +60,21 @@ def parse_opts():
         help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
     )
     parser.add_argument(
-        '--min',
-        help=('check all the log files modified in the last --min minutes'
-              'Default: %(default)s minutes'),
+        '--minutes',
+        help=('check all the log files modified in the last --minutes minutes'),
         type=int,
-        default=DEFAULT_MIN,
+    )
+    parser.add_argument(
+        '--start-time',
+        help=('check all the log files modified after --start-time. '
+              'Example format: --start-time "2015-11-26 11:00:00"'),
+        type=str,
+    )
+    parser.add_argument(
+        '--end-time',
+        help=('check all the log files modified before --end-time. '
+              'Example format: --start-time "2015-11-26 12:00:00"'),
+        type=str,
     )
     parser.add_argument(
         '--leader-only',
@@ -127,15 +138,32 @@ def ask_confirmation():
             print("Please respond with 'yes' or 'no'")
 
 
-def find_files_cmd(data_path, min):
+def find_files_cmd(data_path, minutes, start_time, end_time):
     """Find the log files depending on their modification time.
 
     :param data_path: the path to the Kafka data directory
     :type data_path: string
-    :param min: return only files modified in the last 'min' minutes
-    :type min: integer
+    :param minutes: return only files modified in the last 'minutes' minutes
+    :type minutes: integer
     """
-    command = FIND_REC_COMMAND.format(data_path=data_path, min=min)
+
+    if minutes:
+        command = FIND_MINUTES_COMMAND.format(
+            data_path=data_path,
+            minutes=minutes,
+        )
+    elif start_time:
+        if end_time:
+            command = FIND_RANGE_COMMAND.format(
+                data_path=data_path,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        else:
+            command = FIND_START_COMMAND.format(
+                data_path=data_path,
+                start_time=start_time,
+            )
     return run(command)
 
 
@@ -162,24 +190,41 @@ def validate_opts(opts, brokers_num):
     :type brokers_num: integer
     :returns: bool
     """
-    if opts.min <= 0:
-        print("Error: --min must be > 0")
+    if not opts.minutes and not opts.start_time:
+        print("Error: missing --minutes or --start-time")
+        return True
+    if opts.minutes and opts.start_time:
+        print("Error: --minutes shouldn't be specified if --start-time is used")
+        return True
+    if opts.end_time and not opts.start_time:
+        print("Error: --end-time can't be used without --start-time")
+        return True
+    if opts.minutes and opts.minutes <= 0:
+        print("Error: --minutes must be > 0")
+        return True
+    if opts.start_time and not TIME_FORMAT_REGEX.match(opts.start_time):
+        print("Error: --start-time format is not valid")
+        return True
+    if opts.end_time and not TIME_FORMAT_REGEX.match(opts.end_time):
+        print("Error: --end-time format is not valid")
         return True
     return False
 
 
-def find_files(brokers, min_minutes, verbose):
+def find_files(brokers, minutes, start_time, end_time, verbose):
     files_by_host = {}
     hidden = [] if verbose else ['output', 'running']
     for broker_id, host in brokers:
         files = []
         with settings(forward_agent=True, connection_attempts=3, timeout=2, host_string=host), hide(*hidden):
-            result = find_files_cmd(DEFAULT_DATA_PATH, min_minutes)
-            print(result.return_code)
+            result = find_files_cmd(DEFAULT_DATA_PATH, minutes, start_time, end_time)
+            print(result.return_code) ## TODO remove
             for file_path in result.stdout.splitlines():
                 files.append(file_path)
                 print(file_path)
         files_by_host[host] = files
+        print(host)
+        sys.exit(0)
         return files_by_host   ## TODO REMOVE LIMIT
 
 
@@ -215,8 +260,8 @@ def check_files_on_host(host, files, verbose):
             parse_output(host, result.stdout)
 
 
-def check_cluster(brokers, min_minutes, verbose):
-    files_by_host = find_files(brokers, min_minutes, verbose)
+def check_cluster(brokers, minutes, start_time, end_time, verbose):
+    files_by_host = find_files(brokers, minutes, start_time, end_time, verbose)
     for host, files in files_by_host.iteritems():
         print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
         check_files_on_host(host, files, verbose)
@@ -234,11 +279,17 @@ def run_tool():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    check_files_on_host(
-        "10-40-11-219-uswest1adevc",
-        ["/nail/var/kafka/md1/kafka-logs/fgiraud.cli_test-1/00000000000000002367.log"],
-        False,
-    )
-    return
+    #check_files_on_host(
+    #    "10-40-11-219-uswest1adevc",
+    #    ["/nail/var/kafka/md1/kafka-logs/fgiraud.cli_test-1/00000000000000002367.log"],
+    #    False,
+    #)
+    #return
 #    print_brokers(cluster_config, brokers[opts.skip:])
-    check_cluster(brokers, opts.min, opts.verbose)
+    check_cluster(
+        brokers,
+        opts.minutes,
+        opts.start_time,
+        opts.end_time,
+        opts.verbose,
+    )
