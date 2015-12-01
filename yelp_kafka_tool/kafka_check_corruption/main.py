@@ -32,6 +32,7 @@ FIND_MINUTES_COMMAND = 'find "{data_path}" -type f -name "*.log" -mmin -{minutes
 FIND_START_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}"'
 FIND_RANGE_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}" \! -newermt "{end_time}"'
 CHECK_COMMAND = 'JAVA_HOME="{java_home}" kafka-run-class kafka.tools.DumpLogSegments --files "{files}"'
+REDUCE_OUTPUT = 'grep -v "isvalid: true"'
 
 TIME_FORMAT_REGEX = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$")
 
@@ -178,7 +179,12 @@ def check_corrupted_files_cmd(java_home, files):
     :type files: list of string
     """
     files_str = ",".join(files)
-    command = CHECK_COMMAND.format(java_home=java_home, files=files_str)
+    check_command = CHECK_COMMAND.format(java_home=java_home, files=files_str)
+    command = "{check_command} | {reduce_output}".format(
+        check_command=check_command,
+        reduce_output=REDUCE_OUTPUT,
+    )
+    print(command)
     return command
 
 
