@@ -32,6 +32,7 @@ CHECK_COMMAND = 'JAVA_HOME="{java_home}" kafka-run-class kafka.tools.DumpLogSegm
 REDUCE_OUTPUT = 'grep -v "isvalid: true"'
 
 TIME_FORMAT_REGEX = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$")
+TP_FROM_FILE_REGEX = re.compile(".*\\/kafka-logs\\/([^-]*-[0-9]+).*")
 
 FILE_PATH_REGEX = re.compile("Dumping (.*)")
 INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
@@ -84,7 +85,7 @@ def parse_opts():
         type=str,
     )
     parser.add_argument(
-        '--leader-only',
+        '--leaders-only',
         help='only check current leader data. Default: %(default)s',
         action="store_true",
         default=True,
@@ -125,7 +126,7 @@ def get_broker_list(cluster_config):
     """
     with ZK(cluster_config) as zk:
         brokers = sorted(zk.get_brokers().items(), key=itemgetter(0))
-        return [(id, data['host']) for id, data in brokers]
+        return [(int(id), data['host']) for id, data in brokers]
 
 
 def ask_confirmation():
@@ -193,7 +194,118 @@ def check_corrupted_files_cmd(java_home, files):
     return command
 
 
-def validate_opts(opts, brokers_num):
+def find_files_on_broker(host, command):
+    ssh = ssh_client(host)
+    _, stdout, _ = ssh.exec_command(command)
+    lines = stdout.read().splitlines()
+    ssh.close()
+    return lines
+
+
+def find_files(brokers, minutes, start_time, end_time):
+    command = find_files_cmd(DEFAULT_DATA_PATH, minutes, start_time, end_time)
+    hosts = [host for broker, host in brokers]
+    pool = Pool(len(hosts))
+    result = pool.map(partial(find_files_on_broker, command=command), hosts)
+    return zip(brokers, result)
+
+
+def parse_output(host, output):
+    current_file = None
+    for line in output.readlines():
+        file_name_search = FILE_PATH_REGEX.search(line)
+        if file_name_search:
+            current_file = file_name_search.group(1)
+            continue
+        if INVALID_MESSAGE_REGEX.match(line) or INVALID_BYTES_REGEX.match(line):
+            print(
+                "Host: {host}, File: {path}\n Output: {line}".format(
+                    host=host,
+                    path=current_file,
+                    line=line,
+                    )
+                )
+
+
+def check_files_on_host(host, files):
+    ssh = ssh_client(host)
+    for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
+        command = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
+        stdin, stdout, stderr = ssh.exec_command(command)
+        print(
+            "{host}: file {n_file} of {total}".format(
+                host=host,
+                n_file=(i * DEFAULT_BATCH_SIZE),
+                total=len(files),
+            )
+        )
+        parse_output(host, stdout)
+    ssh.close()
+
+
+def get_partition_leaders(cluster_config):
+    print("Getting partition leaders...")
+    with ZK(cluster_config) as zk:
+        result = {}
+        topics = zk.get_topics(fetch_partition_state=True)
+        for topic, topic_data in topics.iteritems():
+            for partition, p_data in topic_data['partitions'].iteritems():
+                topic_partition = topic + "-" + partition
+                result[topic_partition] = p_data['leader']
+        return result
+
+
+def get_tp_from_file(file_path):
+    match = TP_FROM_FILE_REGEX.match(file_path)
+    if not match:
+        print("File path is not valid: " + file_path)
+        sys.exit(1)
+    return match.group(1)
+
+
+def filter_leader_files(cluster_config, broker_files):
+    partitions_of = get_partition_leaders(cluster_config)
+    result = []
+    for (broker, host), files in broker_files:
+        filtered = [file_path for file_path in files
+                    if partitions_of[get_tp_from_file(file_path)] == broker]
+        result.append(((broker, host), filtered))
+        print(
+            "Broker: {broker}, leader of {l_count} over {f_count} files".format(
+                broker=broker,
+                l_count=len(filtered),
+                f_count=len(files),
+            )
+        )
+    return result
+
+
+def check_cluster(cluster_config, leaders_only, minutes, start_time, end_time):
+    brokers = get_broker_list(cluster_config)
+    broker_files = find_files(brokers, minutes, start_time, end_time)
+    if leaders_only:
+        broker_files = filter_leader_files(cluster_config, broker_files)
+    processes = []
+    print("Starting {n} parallel processes".format(n=len(broker_files)))
+    try:
+        for (broker, host), files in broker_files:
+            print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
+            p = Process(target=check_files_on_host, args=(host, files))
+            p.start()
+            processes.append(p)
+        print("Processes running")
+        for process in processes:
+            process.join()
+    except KeyboardInterrupt:
+        print("Terminating all processes")
+        for process in processes:
+            process.terminate()
+            process.join()
+        print("All processes terminated")
+        sys.exit(1)
+
+
+def validate_opts(opts):
     """Basic option validation. Returns True if the options are not valid,
     False otherwise.
 
@@ -224,77 +336,6 @@ def validate_opts(opts, brokers_num):
     return False
 
 
-def find_files_on_broker(host, command):
-    ssh = ssh_client(host)
-    _, stdout, _ = ssh.exec_command(command)
-    lines = stdout.read().splitlines()
-    ssh.close()
-    return lines
-
-
-def find_files(brokers, minutes, start_time, end_time, output_queue):
-    command = find_files_cmd(DEFAULT_DATA_PATH, minutes, start_time, end_time)
-    hosts = [host for broker, host in brokers]
-    pool = Pool(len(hosts))
-    result = pool.map(partial(find_files_on_broker, command=command), hosts)
-    return {host: files for host, files in zip(hosts, result)}
-
-
-def parse_output(host, output):
-    current_file = None
-    for line in output.readlines():
-        file_name_search = FILE_PATH_REGEX.search(line)
-        if file_name_search:
-            current_file = file_name_search.group(1)
-            continue
-        if INVALID_MESSAGE_REGEX.match(line) or INVALID_BYTES_REGEX.match(line):
-            print(
-                "Host: {host}, File: {path}\n Output: {line}".format(
-                    host=host,
-                    path=current_file,
-                    line=line,
-                    )
-                )
-
-
-def check_files_on_host(host, files, verbose):
-    hidden = [] if verbose else ['output', 'running']
-    ssh = ssh_client(host)
-    for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
-        command = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
-        stdin, stdout, stderr = ssh.exec_command(command)
-        print(
-            "{host}: file {n_file} of {total}".format(
-                host=host,
-                n_file=(i * DEFAULT_BATCH_SIZE),
-                total=len(files),
-            )
-        )
-        parse_output(host, stdout)
-    ssh.close()
-
-
-def check_cluster(brokers, minutes, start_time, end_time, verbose):
-    files_by_host = find_files(brokers, minutes, start_time, end_time, verbose)
-    processes = []
-    print("Starting {n} parallel processes".format(n=len(files_by_host)))
-    try:
-        for host, files in files_by_host.iteritems():
-            print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
-            p = Process(target=check_files_on_host, args=(host, files, verbose))
-            p.start()
-            processes.append(p)
-        print("Processes running")
-        for process in processes:
-            process.join()
-    except KeyboardInterrupt:
-        print("Terminating all processes")
-        for process in processes:
-            process.terminate()
-        print("All processes terminated")
-        sys.exit(1)
-
-
 def run_tool():
     opts = parse_opts()
     if opts.verbose:
@@ -302,13 +343,12 @@ def run_tool():
     else:
         logging.basicConfig(level=logging.WARN)
     cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
-    brokers = get_broker_list(cluster_config)
-    if validate_opts(opts, len(brokers)):
+    if validate_opts(opts):
         sys.exit(1)
     check_cluster(
-        brokers,
+        cluster_config,
+        opts.leaders_only,
         opts.minutes,
         opts.start_time,
         opts.end_time,
-        opts.verbose,
     )
