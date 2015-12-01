@@ -20,8 +20,8 @@ from yelp_kafka.error import ConfigurationError
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-DEFAULT_DATA_PATH = "/nail/var/kafka/md1/kafka-logs"
-DEFAULT_JAVA_HOME = "/usr/lib/jvm/java-8-oracle-1.8.0.20/"
+DATA_PATH = "/nail/var/kafka/md1/kafka-logs"
+JAVA_HOME = "/usr/lib/jvm/java-8-oracle-1.8.0.20/"
 
 DEFAULT_BATCH_SIZE = 5
 
@@ -39,7 +39,6 @@ INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
 INVALID_BYTES_REGEX = re.compile(".*invalid bytes")
 
 # TODO: check dump segments output
-
 
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
@@ -85,10 +84,17 @@ def parse_opts():
         type=str,
     )
     parser.add_argument(
-        '--leaders-only',
-        help='only check current leader data. Default: %(default)s',
+        '--batch-size',
+        help=('Specify how many files to check in each run. '
+              'Default: %(default)'),
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+    )
+    parser.add_argument(
+        '--check-replicas',
+        help='check data in replicas. Default: %(default) (leaders only)',
         action="store_true",
-        default=True,
+        default=False,
     )
     parser.add_argument(
         '-v',
@@ -203,10 +209,11 @@ def find_files_on_broker(host, command):
 
 
 def find_files(brokers, minutes, start_time, end_time):
-    command = find_files_cmd(DEFAULT_DATA_PATH, minutes, start_time, end_time)
-    hosts = [host for broker, host in brokers]
-    pool = Pool(len(hosts))
-    result = pool.map(partial(find_files_on_broker, command=command), hosts)
+    command = find_files_cmd(DATA_PATH, minutes, start_time, end_time)
+    pool = Pool(len(brokers))
+    result = pool.map(
+        partial(find_files_on_broker, command=command),
+        [host for broker, host in brokers])
     return [(broker, host, files)
             for (broker, host), files
             in zip(brokers, result)]
@@ -226,13 +233,13 @@ def parse_output(host, output):
                     path=current_file,
                 )
             )
-            print(" EE Output: {line}".format(line=line))
+            print("EE Output: {line}".format(line=line))
 
 
-def check_files_on_host(host, files):
+def check_files_on_host(host, files, batch_size):
     ssh = ssh_client(host)
-    for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
-        command = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
+    for i, batch in enumerate(chunks(files, batch_size)):
+        command = check_corrupted_files_cmd(JAVA_HOME, batch)
         stdin, stdout, stderr = ssh.exec_command(command)
         print(
             "  {host}: file {n_file} of {total}".format(
@@ -282,17 +289,31 @@ def filter_leader_files(cluster_config, broker_files):
     return result
 
 
-def check_cluster(cluster_config, leaders_only, minutes, start_time, end_time):
+def check_cluster(
+    cluster_config,
+    check_replicas,
+    batch_size,
+    minutes,
+    start_time,
+    end_time,
+):
     brokers = get_broker_list(cluster_config)
     broker_files = find_files(brokers, minutes, start_time, end_time)
-    if leaders_only:
+    if not check_replicas:  # remove replicas
         broker_files = filter_leader_files(cluster_config, broker_files)
     processes = []
     print("Starting {n} parallel processes".format(n=len(broker_files)))
     try:
         for broker, host, files in broker_files:
-            print("  Broker: {host}, {n} files to check".format(host=host, n=len(files)))
-            p = Process(target=check_files_on_host, args=(host, files))
+            print(
+                "  Broker: {host}, {n} files to check".format(
+                    host=host,
+                    n=len(files)),
+            )
+            p = Process(
+                target=check_files_on_host,
+                args=(host, files, batch_size),
+            )
             p.start()
             processes.append(p)
         print("Processes running:")
@@ -335,6 +356,9 @@ def validate_opts(opts):
     if opts.end_time and not TIME_FORMAT_REGEX.match(opts.end_time):
         print("Error: --end-time format is not valid")
         return True
+    if opts.batch_size <= 0:
+        print("Error: --batch-size must be > 0")
+        return True
     return False
 
 
@@ -349,7 +373,8 @@ def run_tool():
         sys.exit(1)
     check_cluster(
         cluster_config,
-        opts.leaders_only,
+        opts.check_replicas,
+        opts.batch_size,
         opts.minutes,
         opts.start_time,
         opts.end_time,
