@@ -8,13 +8,10 @@ import math
 import re
 import sys
 import time
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Pool
 import paramiko
 from operator import itemgetter
-from fabric.api import execute
-from fabric.api import hide
-from fabric.api import settings
-from fabric.api import run
+from functools import partial
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 from yelp_kafka import discovery
@@ -47,6 +44,13 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
+
+
+def ssh_client(host):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(host)
+    return ssh
 
 
 def parse_opts():
@@ -167,7 +171,7 @@ def find_files_cmd(data_path, minutes, start_time, end_time):
                 data_path=data_path,
                 start_time=start_time,
             )
-    return run(command)
+    return command
 
 
 def check_corrupted_files_cmd(java_home, files):
@@ -180,11 +184,12 @@ def check_corrupted_files_cmd(java_home, files):
     """
     files_str = ",".join(files)
     check_command = CHECK_COMMAND.format(java_home=java_home, files=files_str)
+    # One line per message can generate several MB/s of data
+    # Use pre-filtering on the server side to reduce it
     command = "{check_command} | {reduce_output}".format(
         check_command=check_command,
         reduce_output=REDUCE_OUTPUT,
     )
-    print(command)
     return command
 
 
@@ -219,19 +224,20 @@ def validate_opts(opts, brokers_num):
     return False
 
 
-def find_files(brokers, minutes, start_time, end_time, verbose):
-    files_by_host = {}
-    hidden = [] if verbose else ['output', 'running']
-    for broker_id, host in brokers:
-        files = []
-        with settings(forward_agent=True, connection_attempts=3, timeout=2, host_string=host), hide(*hidden):
-            result = find_files_cmd(DEFAULT_DATA_PATH, minutes, start_time, end_time)
-            print(result.return_code) ## TODO remove
-            for file_path in result.stdout.splitlines():
-                files.append(file_path)
-                print(file_path)
-        files_by_host[host] = files
-    return files_by_host
+def find_files_on_broker(host, command):
+    ssh = ssh_client(host)
+    _, stdout, _ = ssh.exec_command(command)
+    lines = stdout.read().splitlines()
+    ssh.close()
+    return lines
+
+
+def find_files(brokers, minutes, start_time, end_time, output_queue):
+    command = find_files_cmd(DEFAULT_DATA_PATH, minutes, start_time, end_time)
+    hosts = [host for broker, host in brokers]
+    pool = Pool(len(hosts))
+    result = pool.map(partial(find_files_on_broker, command=command), hosts)
+    return {host: files for host, files in zip(hosts, result)}
 
 
 def parse_output(host, output):
@@ -251,20 +257,12 @@ def parse_output(host, output):
                 )
 
 
-def ssh_client(host):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host)
-    return ssh
-
-
 def check_files_on_host(host, files, verbose):
     hidden = [] if verbose else ['output', 'running']
     ssh = ssh_client(host)
     for i, batch in enumerate(chunks(files, DEFAULT_BATCH_SIZE)):
         command = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
         stdin, stdout, stderr = ssh.exec_command(command)
-        #print(stdout.readlines())
         print(
             "{host}: file {n_file} of {total}".format(
                 host=host,
@@ -280,16 +278,21 @@ def check_cluster(brokers, minutes, start_time, end_time, verbose):
     files_by_host = find_files(brokers, minutes, start_time, end_time, verbose)
     processes = []
     print("Starting {n} parallel processes".format(n=len(files_by_host)))
-    for host, files in files_by_host.iteritems():
-        print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
-        p = Process(target=check_files_on_host, args=(host, files, verbose))
-        p.start()
-        processes.append(p)
-    print("Processes running")
-    for process in processes:
-        process.join()
-
-
+    try:
+        for host, files in files_by_host.iteritems():
+            print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
+            p = Process(target=check_files_on_host, args=(host, files, verbose))
+            p.start()
+            processes.append(p)
+        print("Processes running")
+        for process in processes:
+            process.join()
+    except KeyboardInterrupt:
+        print("Terminating all processes")
+        for process in processes:
+            process.terminate()
+        print("All processes terminated")
+        sys.exit(1)
 
 
 def run_tool():
@@ -302,13 +305,6 @@ def run_tool():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    #check_files_on_host(
-    #    "10-40-11-219-uswest1adevc",
-    #    ["/nail/var/kafka/md1/kafka-logs/fgiraud.cli_test-1/00000000000000002367.log"],
-    #    False,
-    #)
-    #return
-#    print_brokers(cluster_config, brokers[opts.skip:])
     check_cluster(
         brokers,
         opts.minutes,
