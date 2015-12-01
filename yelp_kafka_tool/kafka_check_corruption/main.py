@@ -207,7 +207,9 @@ def find_files(brokers, minutes, start_time, end_time):
     hosts = [host for broker, host in brokers]
     pool = Pool(len(hosts))
     result = pool.map(partial(find_files_on_broker, command=command), hosts)
-    return zip(brokers, result)
+    return [(broker, host, files)
+            for (broker, host), files
+            in zip(brokers, result)]
 
 
 def parse_output(host, output):
@@ -219,12 +221,12 @@ def parse_output(host, output):
             continue
         if INVALID_MESSAGE_REGEX.match(line) or INVALID_BYTES_REGEX.match(line):
             print(
-                "Host: {host}, File: {path}\n Output: {line}".format(
+                "EE Host: {host}, File: {path}".format(
                     host=host,
                     path=current_file,
-                    line=line,
-                    )
                 )
+            )
+            print(" EE Output: {line}".format(line=line))
 
 
 def check_files_on_host(host, files):
@@ -233,7 +235,7 @@ def check_files_on_host(host, files):
         command = check_corrupted_files_cmd(DEFAULT_JAVA_HOME, batch)
         stdin, stdout, stderr = ssh.exec_command(command)
         print(
-            "{host}: file {n_file} of {total}".format(
+            "  {host}: file {n_file} of {total}".format(
                 host=host,
                 n_file=(i * DEFAULT_BATCH_SIZE),
                 total=len(files),
@@ -266,12 +268,12 @@ def get_tp_from_file(file_path):
 def filter_leader_files(cluster_config, broker_files):
     partitions_of = get_partition_leaders(cluster_config)
     result = []
-    for (broker, host), files in broker_files:
+    for broker, host, files in broker_files:
         filtered = [file_path for file_path in files
                     if partitions_of[get_tp_from_file(file_path)] == broker]
-        result.append(((broker, host), filtered))
+        result.append((broker, host, filtered))
         print(
-            "Broker: {broker}, leader of {l_count} over {f_count} files".format(
+            "  Broker: {broker}, leader of {l_count} over {f_count} files".format(
                 broker=broker,
                 l_count=len(filtered),
                 f_count=len(files),
@@ -288,12 +290,12 @@ def check_cluster(cluster_config, leaders_only, minutes, start_time, end_time):
     processes = []
     print("Starting {n} parallel processes".format(n=len(broker_files)))
     try:
-        for (broker, host), files in broker_files:
-            print("Broker: {host}, {n} files to check".format(host=host, n=len(files)))
+        for broker, host, files in broker_files:
+            print("  Broker: {host}, {n} files to check".format(host=host, n=len(files)))
             p = Process(target=check_files_on_host, args=(host, files))
             p.start()
             processes.append(p)
-        print("Processes running")
+        print("Processes running:")
         for process in processes:
             process.join()
     except KeyboardInterrupt:
