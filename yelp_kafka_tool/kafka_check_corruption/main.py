@@ -2,21 +2,18 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import itertools
 import logging
-import math
 import re
 import sys
-import time
-from multiprocessing import Process, Pool
-import paramiko
-from operator import itemgetter
 from functools import partial
-from requests.exceptions import RequestException
-from requests_futures.sessions import FuturesSession
+from multiprocessing import Pool
+from multiprocessing import Process
+from operator import itemgetter
+
+import paramiko
+from kafka import KafkaClient
 from yelp_kafka import discovery
 from yelp_kafka.error import ConfigurationError
-from kafka import KafkaClient
 
 from yelp_kafka_tool.util.zookeeper import ZK
 
@@ -37,6 +34,7 @@ TIME_FORMAT_REGEX = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0
 TP_FROM_FILE_REGEX = re.compile(".*\\/kafka-logs\\/(.*-[0-9]+).*")
 
 FILE_PATH_REGEX = re.compile("Dumping (.*)")
+VALID_MESSAGE_REGEX = re.compile(".* isvalid: true")
 INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
 INVALID_BYTES_REGEX = re.compile(".*invalid bytes")
 
@@ -52,7 +50,7 @@ def chunks(l, n):
     :rtype: generator
     """
     for i in xrange(0, len(l), n):
-        yield l[i:i+n]
+        yield l[i:i + n]
 
 
 def ssh_client(host):
@@ -270,6 +268,8 @@ def parse_output(host, output):
             continue
         if INVALID_MESSAGE_REGEX.match(line) or INVALID_BYTES_REGEX.match(line):
             print_line(host, current_file, line, "ERROR")
+        elif VALID_MESSAGE_REGEX.match(line):
+            continue
         else:
             print_line(host, current_file, line, "UNEXPECTED OUTPUT")
 
@@ -290,7 +290,7 @@ def print_line(host, path, line, line_type):
         "{ltype} Host: {host}, File: {path}".format(
             ltype=line_type,
             host=host,
-            path=current_file,
+            path=path,
         )
     )
     print("{ltype} Output: {line}".format(ltype=line_type, line=line))
@@ -363,16 +363,19 @@ def filter_leader_files(cluster_config, broker_files):
     :param cluster_config: the cluster
     :type cluster_config: yelp_kafka.config.ClusterConfig
     :param broker_files: the broker files
-    :type broker_files: list of (broker_id, host, file_path) tuples
+    :type broker_files: list of (b_id, host, [file_path, file_path ...]) tuples
     :returns: the filtered list
-    :rtype: list of (broker_id, host, file_path) tuples
+    :rtype: list of (broker_id, host, [file_path, file_path ...]) tuples
     """
     print("Filtering leaders")
-    partitions_of = get_partition_leaders(cluster_config)
+    leader_of = get_partition_leaders(cluster_config)
     result = []
     for broker, host, files in broker_files:
-        filtered = [file_path for file_path in files
-                    if partitions_of[get_tp_from_file(file_path)] == broker]
+        filtered = []
+        for file_path in files:
+            tp = get_tp_from_file(file_path)
+            if tp not in leader_of or leader_of[tp] == broker:
+                filtered.append(file_path)
         result.append((broker, host, filtered))
         print(
             "Broker: {broker}, leader of {l_count} over {f_count} files".format(
