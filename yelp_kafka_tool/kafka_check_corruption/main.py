@@ -16,6 +16,7 @@ from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 from yelp_kafka import discovery
 from yelp_kafka.error import ConfigurationError
+from kafka import KafkaClient
 
 from yelp_kafka_tool.util.zookeeper import ZK
 
@@ -32,7 +33,7 @@ CHECK_COMMAND = 'JAVA_HOME="{java_home}" kafka-run-class kafka.tools.DumpLogSegm
 REDUCE_OUTPUT = 'grep -v "isvalid: true"'
 
 TIME_FORMAT_REGEX = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$")
-TP_FROM_FILE_REGEX = re.compile(".*\\/kafka-logs\\/([^-]*-[0-9]+).*")
+TP_FROM_FILE_REGEX = re.compile(".*\\/kafka-logs\\/(.*-[0-9]+).*")
 
 FILE_PATH_REGEX = re.compile("Dumping (.*)")
 INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
@@ -253,15 +254,13 @@ def check_files_on_host(host, files, batch_size):
 
 
 def get_partition_leaders(cluster_config):
-    print("Getting partition leaders...")
-    with ZK(cluster_config) as zk:
-        result = {}
-        topics = zk.get_topics(fetch_partition_state=True)
-        for topic, topic_data in topics.iteritems():
-            for partition, p_data in topic_data['partitions'].iteritems():
-                topic_partition = topic + "-" + partition
-                result[topic_partition] = p_data['leader']
-        return result
+    client = KafkaClient(cluster_config.broker_list)
+    result = {}
+    for topic, topic_data in client.topic_partitions.iteritems():
+        for partition, p_data in topic_data.iteritems():
+            topic_partition = topic + "-" + str(partition)
+            result[topic_partition] = p_data.leader
+    return result
 
 
 def get_tp_from_file(file_path):
@@ -273,6 +272,7 @@ def get_tp_from_file(file_path):
 
 
 def filter_leader_files(cluster_config, broker_files):
+    print("Filtering leaders")
     partitions_of = get_partition_leaders(cluster_config)
     result = []
     for broker, host, files in broker_files:
@@ -280,7 +280,7 @@ def filter_leader_files(cluster_config, broker_files):
                     if partitions_of[get_tp_from_file(file_path)] == broker]
         result.append((broker, host, filtered))
         print(
-            "  Broker: {broker}, leader of {l_count} over {f_count} files".format(
+            "Broker: {broker}, leader of {l_count} over {f_count} files".format(
                 broker=broker,
                 l_count=len(filtered),
                 f_count=len(files),
