@@ -69,8 +69,8 @@ def ssh_client(host):
 
 def parse_opts():
     parser = argparse.ArgumentParser(
-        description=('Performs a rolling restart of the specified'
-                     'kafka cluster.'))
+        description=('Run a distributed check on all the brokers of a cluster, '
+                     'looking for data corruption.'))
     parser.add_argument(
         '--cluster-type',
         required=True,
@@ -100,13 +100,13 @@ def parse_opts():
     parser.add_argument(
         '--batch-size',
         help=('Specify how many files to check in each run. '
-              'Default: %(default)'),
+              'Default: %(default)s'),
         type=int,
         default=DEFAULT_BATCH_SIZE,
     )
     parser.add_argument(
         '--check-replicas',
-        help='check data in replicas. Default: %(default) (leaders only)',
+        help='check data in replicas. Default: %(default)s (leaders only)',
         action="store_true",
         default=False,
     )
@@ -220,6 +220,7 @@ def get_output_lines_from_command(host, command):
     :type commmand: str
     """
     ssh = ssh_client(host)
+    # TODO check stderr
     _, stdout, _ = ssh.exec_command(command)
     lines = stdout.read().splitlines()
     ssh.close()
@@ -252,7 +253,7 @@ def find_files(brokers, minutes, start_time, end_time):
 
 
 def parse_output(host, output):
-    """Parse the output of the dump tool and prints warnings or error messages
+    """Parse the output of the dump tool and print warnings or error messages
     accordingly.
 
     :param host: the source
@@ -311,7 +312,6 @@ def check_files_on_host(host, files, batch_size):
     """
     ssh = ssh_client(host)
     for i, batch in enumerate(chunks(files, batch_size)):
-        batch.append("/asfas/asdfasf/asfas.log")
         command = check_corrupted_files_cmd(JAVA_HOME, batch)
         # TODO: print stderr
         _, stdout, stderr = ssh.exec_command(command)
