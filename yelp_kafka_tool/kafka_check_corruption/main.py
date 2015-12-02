@@ -268,7 +268,8 @@ def parse_output(host, output):
             continue
         if INVALID_MESSAGE_REGEX.match(line) or INVALID_BYTES_REGEX.match(line):
             print_line(host, current_file, line, "ERROR")
-        elif VALID_MESSAGE_REGEX.match(line):
+        elif VALID_MESSAGE_REGEX.match(line) or \
+                line.startswith('Starting offset:'):
             continue
         else:
             print_line(host, current_file, line, "UNEXPECTED OUTPUT")
@@ -310,8 +311,10 @@ def check_files_on_host(host, files, batch_size):
     """
     ssh = ssh_client(host)
     for i, batch in enumerate(chunks(files, batch_size)):
+        batch.append("/asfas/asdfasf/asfas.log")
         command = check_corrupted_files_cmd(JAVA_HOME, batch)
-        stdin, stdout, stderr = ssh.exec_command(command)
+        # TODO: print stderr
+        _, stdout, stderr = ssh.exec_command(command)
         print(
             "  {host}: file {n_file} of {total}".format(
                 host=host,
