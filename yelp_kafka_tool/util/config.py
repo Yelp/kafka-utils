@@ -10,6 +10,16 @@ debug = False  # Set to true to print debug info
 
 
 def get_cluster_config(cluster_type, cluster_name=None):
+    """Return the cluster configuration, given cluster type and name.
+    Use the local cluster if cluster_name is not specified.
+
+    :param cluster_type: the type of the cluster
+    :type cluster_type: string
+    :param cluster_name: the name of the cluster
+    :type cluster_name: string
+    :returns: the cluster
+    :rtype: yelp_kafka.config.ClusterConfig
+    """
     if not cluster_name:
         return get_local_cluster(cluster_type)
     else:
