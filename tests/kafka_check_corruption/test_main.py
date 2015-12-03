@@ -11,10 +11,8 @@ INVALID_LINE = "offset: 2413 position: 173 isvalid: false payloadsize: 3 magic: 
 
 
 def mock_output(values):
-    m = mock.MagicMock()
-    m.__iter__.return_value = values
     output = mock.Mock()
-    output.readlines.return_value = m
+    output.readlines.return_value = values
     return output
 
 
@@ -58,9 +56,10 @@ def test_parse_output_invalid(mock_print):
 )
 def test_filter_leader_files(mock_get_partition):
     filtered = main.filter_leader_files(None, [(1, "host1", ["a/kafka-logs/t0-0/0123.log",
+                                                             "a/kafka-logs/t2-0/0123.log",
                                                              "a/kafka-logs/t0-1/0123.log"]),
                                                (2, "host2", ["a/kafka-logs/t0-0/0123.log",
                                                              "a/kafka-logs/t0-1/0123.log"])])
-    print(filtered)
-    assert filtered == [(1, 'host1', ['a/kafka-logs/t0-0/0123.log']),
+    assert filtered == [(1, 'host1', ['a/kafka-logs/t0-0/0123.log',
+                                      'a/kafka-logs/t2-0/0123.log']),
                         (2, 'host2', ['a/kafka-logs/t0-1/0123.log'])]

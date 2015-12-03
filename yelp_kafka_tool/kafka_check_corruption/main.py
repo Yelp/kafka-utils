@@ -5,6 +5,7 @@ import argparse
 import logging
 import re
 import sys
+from contextlib import closing
 from functools import partial
 from multiprocessing import Pool
 from multiprocessing import Process
@@ -12,9 +13,9 @@ from operator import itemgetter
 
 import paramiko
 from kafka import KafkaClient
-from yelp_kafka import discovery
 from yelp_kafka.error import ConfigurationError
 
+from yelp_kafka_tool.util.config import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -67,10 +68,26 @@ def ssh_client(host):
     return ssh
 
 
+def report_stderr(host, stderr):
+    """Take a stderr and print it's lines to output if lines are present.
+
+    :param host: the host where the process is running
+    :type host: str
+    :param stderr: the std error of that process
+    :type stderr: paramiko.channel.Channel
+    """
+    lines = stderr.readlines()
+    if lines:
+        print("STDERR from {host}:".format(host=host))
+        for line in lines:
+            print(line.rstrip(), file=sys.stderr)
+
+
 def parse_opts():
     parser = argparse.ArgumentParser(
         description=('Run a distributed check on all the brokers of a cluster, '
-                     'looking for data corruption.'))
+                     'looking for data corruption.')
+    )
     parser.add_argument(
         '--cluster-type',
         required=True,
@@ -119,27 +136,6 @@ def parse_opts():
     return parser.parse_args()
 
 
-def get_cluster(cluster_type, cluster_name):
-    """Return the cluster configuration, given cluster type and name.
-    Use the local cluster if cluster_name is not specified.
-
-    :param cluster_type: the type of the cluster
-    :type cluster_type: string
-    :param cluster_name: the name of the cluster
-    :type cluster_name: string
-    :returns: the cluster
-    :rtype: yelp_kafka.config.ClusterConfig
-    """
-    try:
-        if cluster_name:
-            return discovery.get_cluster_by_name(cluster_type, cluster_name)
-        else:
-            return discovery.get_local_cluster(cluster_type)
-    except ConfigurationError as e:
-        print(e, file=sys.stderr)
-        sys.exit(1)
-
-
 def get_broker_list(cluster_config):
     """Returns a dictionary of brokers in the form {id: host}
 
@@ -168,23 +164,22 @@ def find_files_cmd(data_path, minutes, start_time, end_time):
     :rtype: str
     """
     if minutes:
-        command = FIND_MINUTES_COMMAND.format(
+        return FIND_MINUTES_COMMAND.format(
             data_path=data_path,
             minutes=minutes,
         )
-    elif start_time:
+    if start_time:
         if end_time:
-            command = FIND_RANGE_COMMAND.format(
+            return FIND_RANGE_COMMAND.format(
                 data_path=data_path,
                 start_time=start_time,
                 end_time=end_time,
             )
         else:
-            command = FIND_START_COMMAND.format(
+            return FIND_START_COMMAND.format(
                 data_path=data_path,
                 start_time=start_time,
             )
-    return command
 
 
 def check_corrupted_files_cmd(java_home, files):
@@ -219,17 +214,19 @@ def get_output_lines_from_command(host, command):
     :param command: the command
     :type commmand: str
     """
-    ssh = ssh_client(host)
-    # TODO check stderr
-    _, stdout, _ = ssh.exec_command(command)
-    lines = stdout.read().splitlines()
-    ssh.close()
+    with closing(ssh_client(host)) as ssh:
+        _, stdout, stderr = ssh.exec_command(command)
+        lines = stdout.read().splitlines()
+        report_stderr(host, stderr)
     return lines
 
 
 def find_files(brokers, minutes, start_time, end_time):
     """Find all the Kafka log files on the broker that have been modified
     in the speficied time range.
+
+    start_time and end_time should be in the format specified
+    by TIME_FORMAT_REGEX.
 
     :param brokers: the brokers
     :type brokers: list of (broker_id, host) pairs
@@ -310,20 +307,19 @@ def check_files_on_host(host, files, batch_size):
     :param batch_size: the size of each batch
     :type batch_size: int
     """
-    ssh = ssh_client(host)
-    for i, batch in enumerate(chunks(files, batch_size)):
-        command = check_corrupted_files_cmd(JAVA_HOME, batch)
-        # TODO: print stderr
-        _, stdout, stderr = ssh.exec_command(command)
-        print(
-            "  {host}: file {n_file} of {total}".format(
-                host=host,
-                n_file=(i * DEFAULT_BATCH_SIZE),
-                total=len(files),
+    with closing(ssh_client(host)) as ssh:
+        for i, batch in enumerate(chunks(files, batch_size)):
+            command = check_corrupted_files_cmd(JAVA_HOME, batch)
+            _, stdout, stderr = ssh.exec_command(command)
+            report_stderr(host, stderr)
+            print(
+                "  {host}: file {n_file} of {total}".format(
+                    host=host,
+                    n_file=(i * DEFAULT_BATCH_SIZE),
+                    total=len(files),
+                )
             )
-        )
-        parse_output(host, stdout)
-    ssh.close()
+            parse_output(host, stdout)
 
 
 def get_partition_leaders(cluster_config):
@@ -400,6 +396,9 @@ def check_cluster(
 ):
     """Check the integrity of the Kafka log files in a cluster.
 
+    start_time and end_time should be in the format specified
+    by TIME_FORMAT_REGEX.
+
     :param check_replicas: also checks the replica files
     :type check_replicas: bool
     :param batch_size: the size of the batch
@@ -425,6 +424,7 @@ def check_cluster(
                     n=len(files)),
             )
             p = Process(
+                name="dump_process_" + host,
                 target=check_files_on_host,
                 args=(host, files, batch_size),
             )
@@ -443,8 +443,8 @@ def check_cluster(
 
 
 def validate_opts(opts):
-    """Basic option validation. Returns True if the options are not valid,
-    False otherwise.
+    """Basic option validation. Returns False if the options are not valid,
+    True otherwise.
 
     :param opts: the command line options
     :type opts: map
@@ -452,39 +452,45 @@ def validate_opts(opts):
     """
     if not opts.minutes and not opts.start_time:
         print("Error: missing --minutes or --start-time")
-        return True
+        return False
     if opts.minutes and opts.start_time:
         print("Error: --minutes shouldn't be specified if --start-time is used")
-        return True
+        return False
     if opts.end_time and not opts.start_time:
         print("Error: --end-time can't be used without --start-time")
-        return True
+        return False
     if opts.minutes and opts.minutes <= 0:
         print("Error: --minutes must be > 0")
-        return True
+        return False
     if opts.start_time and not TIME_FORMAT_REGEX.match(opts.start_time):
         print("Error: --start-time format is not valid")
-        return True
+        print("Example format: '2015-11-26 11:00:00'")
+        return False
     if opts.end_time and not TIME_FORMAT_REGEX.match(opts.end_time):
         print("Error: --end-time format is not valid")
-        return True
+        print("Example format: '2015-11-26 11:00:00'")
+        return False
     if opts.batch_size <= 0:
         print("Error: --batch-size must be > 0")
-        return True
-    return False
+        return False
+    return True
 
 
-def run_tool():
+def run():
     opts = parse_opts()
     if opts.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARN)
-    cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
-    if validate_opts(opts):
+    try:
+        cluster = get_cluster_config(opts.cluster_type, opts.cluster_name)
+    except ConfigurationError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+    if not validate_opts(opts):
         sys.exit(1)
     check_cluster(
-        cluster_config,
+        cluster,
         opts.check_replicas,
         opts.batch_size,
         opts.minutes,
