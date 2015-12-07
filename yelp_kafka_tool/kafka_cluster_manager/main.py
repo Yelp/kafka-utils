@@ -18,21 +18,21 @@ Example:
     will be moved to new broker-id '2' and similarly for others.
 
 Attributes:
-    --cluster-type:     Type of cluster for example 'scribe', 'spam'
-    --cluster-name:     Cluster name over which the reassignment will be done
-    --zookeeper:        Zookeeper hostname
-    rebalance:          Indicates that given request is for partition
-                        reassignment
-    --leader:           Re-balance broker as leader count
-    --brokers:          Re-balance partition-count per broker
-    --replication-groups: Re-balance replica and partition-count per replication-group
-    --max-changes:      Maximum number of actions as part of single execution
-                        of the tool
-    --apply:            On True execute proposed assignment after execution,
-                        display proposed-plan otherwise
-    --no-confirm:       Execute the plan without asking for confirmation.
-    --log-file:         Export logs to given file
-    --json:             Export proposed-plan to .json format
+    --cluster-type:             Type of cluster for example 'scribe', 'spam'
+    --cluster-name:             Cluster name over which the reassignment will be done
+    --zookeeper:                Zookeeper hostname
+    rebalance:                  Indicates that given request is for partition
+                                reassignment
+    --leader:                   Re-balance broker as leader count
+    --brokers:                  Re-balance partition-count per broker
+    --replication-groups:       Re-balance replica and partition-count per replication-group
+    --max-partition-movements:  Maximum number of partition-movements as part of final actions
+    --max-leader-only-changes:  Maximum number of actions with leader only changes
+    --apply:                    On True execute proposed assignment after execution,
+                                display proposed-plan otherwise
+    --no-confirm:               Execute the plan without asking for confirmation.
+    --log-file:                 Export logs to given file
+    --proposed-file-json:       Export proposed-plan to .json format
 """
 from __future__ import absolute_import
 from __future__ import unicode_literals
@@ -56,7 +56,8 @@ from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-DEFAULT_MAX_CHANGES = 5
+DEFAULT_MAX_PARTITION_MOVEMENTS = 1
+DEFAULT_MAX_LEADER_ONLY_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 
 _log = logging.getLogger('kafka-cluster-manager')
@@ -66,7 +67,6 @@ def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
     """Save proposed-plan and execute the same if requested."""
     # Execute proposed-plan
     if to_execute(to_apply, no_confirm):
-        _log.info('Executing Proposed Plan')
         status = KafkaInterface(script_path).execute_plan(
             zk,
             proposed_plan,
@@ -80,7 +80,7 @@ def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
             _log.info('Plan sent to zookeeper for reassignment successfully.')
 
     else:
-        _log.info('Proposed Plan won\'t be executed.')
+        _log.info('Proposed plan won\'t be executed.')
 
 
 def to_execute(to_apply, no_confirm):
@@ -312,7 +312,8 @@ def reassign_partitions(cluster_config, args):
         result = get_reduced_proposed_plan(
             ct.initial_assignment,
             ct.assignment,
-            args.max_changes,
+            args.max_partition_movements,
+            args.max_leader_only_changes,
         )
         if result:
             # Display or store plan
@@ -353,7 +354,7 @@ def reassign_partitions(cluster_config, args):
                 ])
                 _log.info(
                     'Proposed-plan description: Action(s): {actions}, '
-                    'Partition-movement(s): {movements}, Leader-only '
+                    'Partition-movements: {movements}, Leader-only '
                     'change(s): {leader_changes}'.format(
                         actions=len(proposed_plan['partitions']),
                         movements=net_partition_movements,
@@ -384,7 +385,7 @@ def parse_args():
         dest='cluster_type',
         help='Type of cluster',
         type=str,
-        default=None
+        default=None,
     )
     parser.add_argument(
         '--zookeeper',
@@ -409,20 +410,17 @@ def parse_args():
     )
     parser_rebalance.add_argument(
         '--replication-groups',
-        dest='replication_groups',
         action='store_true',
         help='Evenly distributes replicas over replication-groups.',
     )
     parser_rebalance.add_argument(
         '--use-kafka-script',
-        dest='use_kafka_script',
         action='store_true',
         help='Use kafka-cli scripts to access zookeeper.'
         ' Use --script-path to provide path for script.',
     )
     parser_rebalance.add_argument(
         '--script-path',
-        dest='script_path',
         type=str,
         default=KAFKA_SCRIPT_PATH,
         help='Path of kafka-cli scripts to be used to access zookeeper.'
@@ -430,40 +428,42 @@ def parse_args():
     )
     parser_rebalance.add_argument(
         '--leaders',
-        dest='leaders',
         action='store_true',
         help='Evenly distributes leaders optimally over brokers.',
     )
     parser_rebalance.add_argument(
         '--brokers',
-        dest='brokers',
         action='store_true',
         help='Evenly distributes partitions optimally over brokers'
         ' with minimal movements for each replication-group.',
     )
     parser_rebalance.add_argument(
-        '--max-changes',
-        dest='max_changes',
+        '--max-partition-movements',
         type=int,
-        default=DEFAULT_MAX_CHANGES,
-        help='Maximum number of actions executed from proposed assignment'
-             ' DEFAULT: %(default)s'
+        default=DEFAULT_MAX_PARTITION_MOVEMENTS,
+        help='Maximum number of partition-movements in final set of actions'
+             ' DEFAULT: %(default)s',
+    )
+    parser_rebalance.add_argument(
+        '--max-leader-only-changes',
+        type=int,
+        default=DEFAULT_MAX_LEADER_ONLY_CHANGES,
+        help='Maximum number of actions with leader-only changes'
+             ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
         '--apply',
-        dest='apply',
         action='store_true',
-        help='Proposed-plan will be executed on confirmation.'
+        help='Proposed-plan will be executed on confirmation.',
     )
     parser_rebalance.add_argument(
         '--no-confirm',
-        dest='no_confirm',
         action='store_true',
         help='Proposed-plan will be executed without confirmation.'
-             ' --apply flag also required.'
+             ' --apply flag also required.',
     )
     parser_rebalance.add_argument(
-        '--json',
+        '--proposed-plan-json',
         dest='proposed_plan_file',
         metavar='<reassignment-plan-file-path>',
         type=str,
@@ -495,11 +495,20 @@ def validate_args(args):
             'of zookeeper or cluster-type argument',
         )
         result = False
-    if args.max_changes <= 0:
+
+    if args.max_partition_movements < 0:
         _log.error(
-            'max-changes should be greater than 0: '
-            '{max_changes} found. Aborting...'
-            .format(max_changes=args.max_changes)
+            '--max-partition-movements should not be negative: '
+            '{max_partition_movements} found. Aborting...'
+            .format(max_partition_movements=args.max_partition_movements),
+        )
+        result = False
+
+    if args.max_leader_only_changes < 0:
+        _log.error(
+            '--max-leader-only-changes should not be negative'
+            '{max_leader_only_changes} found. Aborting...'
+            .format(max_leader_only_changes=args.max_leader_only_changes),
         )
         result = False
     rebalance_options = [args.replication_groups, args.leaders, args.brokers]
@@ -531,9 +540,13 @@ def run():
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:
+        if args.cluster_name is None:
+            cluster_name = 'Unknown'
+        else:
+            cluster_name = args.cluster_name
         cluster_config = ClusterConfig(
             type=None,
-            name=args.cluster_name,
+            name=cluster_name,
             broker_list=[],
             zookeeper=args.zookeeper,
         )

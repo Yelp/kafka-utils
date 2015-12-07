@@ -179,7 +179,7 @@ def get_partition_imbalance_stats(brokers):
 def calculate_partition_movement(prev_assignment, curr_assignment):
     """Calculate the partition movements from initial to current assignment.
     Algorithm:
-        For each partition in initital assignment
+        For each partition in initial assignment
             # If replica set different in current assignment:
                 # Get Difference in sets
     :rtype: tuple
@@ -187,7 +187,7 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
     """
     total_movements = 0
     movements = {}
-    for prev_partition, prev_replicas in prev_assignment.items():
+    for prev_partition, prev_replicas in prev_assignment.iteritems():
         curr_replicas = curr_assignment[prev_partition]
         diff = len(set(curr_replicas) - set(prev_replicas))
         if diff:

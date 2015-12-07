@@ -1,6 +1,7 @@
 import json
 import logging
 from collections import Counter
+from collections import defaultdict
 from collections import OrderedDict
 
 _log = logging.getLogger('kafka-cluster-manager')
@@ -55,7 +56,12 @@ def get_assignment_map(assignment_json):
     return assignment
 
 
-def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
+def get_reduced_proposed_plan(
+    original_assignment,
+    new_assignment,
+    max_partition_movements,
+    max_leader_only_changes,
+):
     """Return new plan with upper limit on total actions.
 
     These actions involve actual partition movement
@@ -65,24 +71,88 @@ def get_reduced_proposed_plan(original_assignment, new_assignment, max_changes):
     Convert the resultant assignment into json format and return.
 
     Argument(s):
-    original_assignment: Current assignment of cluster in zookeeper
-    new_assignment:     New proposed-assignment of cluster
-    max_changes:        Maximum number of actions allowed
+    original_assignment:    Current assignment of cluster in zookeeper
+    new_assignment:         New proposed-assignment of cluster
+    max_partition_movements:Maximum number of partition-movements in
+                            final set of actions
+    max_leader_only_changes:Maximum number of actions with leader only changes
     """
     if original_assignment == new_assignment or \
-            max_changes < 1 or not original_assignment or not new_assignment:
+            (max_partition_movements + max_leader_only_changes) < 1 or \
+            not original_assignment or not new_assignment:
         return {}
     # Get change-list for given assignments
-    proposed_assignment = [
+    proposed_assignment_leaders = [
         (t_p_key, new_assignment[t_p_key])
         for t_p_key, replica in original_assignment.iteritems()
-        if replica != new_assignment[t_p_key]
+        if replica != new_assignment[t_p_key] and
+        set(replica) == set(new_assignment[t_p_key])
     ]
-    tot_actions = len(proposed_assignment)
-    red_proposed_plan_list = proposed_assignment[:max_changes]
-    red_curr_plan_list = [(tp_repl[0], original_assignment[tp_repl[0]])
-                          for tp_repl in red_proposed_plan_list]
-    return red_curr_plan_list, red_proposed_plan_list, tot_actions
+    proposed_assignment_part = [
+        (
+            t_p_key,
+            new_assignment[t_p_key],
+            len(set(replica) - set(new_assignment[t_p_key])),
+        )
+        for t_p_key, replica in original_assignment.iteritems()
+        if replica != new_assignment[t_p_key] and
+        set(replica) != set(new_assignment[t_p_key])
+    ]
+    tot_actions = len(proposed_assignment_part) + len(proposed_assignment_leaders)
+    # Extract reduced plan maximizing uniqueness of topics
+    red_proposed_plan_partitions = extract_actions_unique_topics(
+        proposed_assignment_part,
+        max_partition_movements,
+    )
+    red_proposed_plan_leaders = proposed_assignment_leaders[:max_leader_only_changes]
+    red_proposed_plan = red_proposed_plan_partitions + red_proposed_plan_leaders
+    red_curr_plan = [
+        (tp_repl[0], original_assignment[tp_repl[0]])
+        for tp_repl in red_proposed_plan
+    ]
+    return red_curr_plan, red_proposed_plan, tot_actions
+
+
+def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
+    """Extract actions limiting to given max value such that
+       the resultant has minimum possible set of duplicate topics.
+
+       Algorithm:
+       1. Return given assignment if number of actions < max_partition_movements
+       2. Group actions by by topic-name: {topic: action-list}
+       3. Iterate through the dictionary in circular fashion and keep
+          extracting actions with until max_partition_movements
+          are reached.
+    """
+    total_partition_movements = sum(action[2] for action in proposed_assignment)
+    if total_partition_movements <= max_partition_movements:
+        return proposed_assignment
+
+    # Group actions by topic
+    topic_actions = defaultdict(list)
+    for action in proposed_assignment:
+        topic_actions[action[0][0]].append(action)
+
+    # Create reduced assignment minimizing duplication of topics
+    red_proposed_plan = []
+    curr_partition_movements = 0
+    prev_partition_movements = -1
+    while curr_partition_movements < max_partition_movements and \
+            prev_partition_movements < curr_partition_movements:
+        prev_partition_movements = curr_partition_movements
+        for topic in topic_actions.iterkeys():
+            if topic_actions[topic]:
+                # If current action increases current partiton-movements
+                # skip the action
+                if curr_partition_movements + topic_actions[topic][0][2] > \
+                        max_partition_movements:
+                    continue
+                red_proposed_plan.append(topic_actions[topic][0][0:2])
+                curr_partition_movements += topic_actions[topic][0][2]
+                topic_actions[topic].remove(topic_actions[topic][0])
+                if curr_partition_movements == max_partition_movements:
+                    break
+    return sorted(red_proposed_plan)
 
 
 def get_plan(proposed_assignment):
