@@ -76,6 +76,14 @@ def get_reduced_proposed_plan(
     max_partition_movements:Maximum number of partition-movements in
                             final set of actions
     max_leader_only_changes:Maximum number of actions with leader only changes
+    :return:
+    :red_curr_plan:         Original replicas of final set of actions
+    :type:                  List of tuple (topic-partition, replica)
+    :red_proposed_plan:     Final proposed plan for execution
+    :type:                  List of tuple (topic-partition, replica)
+    :tot_actions:           Total actions to be executed
+    :type:                  integer
+
     """
     if original_assignment == new_assignment or \
             (max_partition_movements + max_leader_only_changes) < 1 or \
@@ -123,6 +131,10 @@ def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
        3. Iterate through the dictionary in circular fashion and keep
           extracting actions with until max_partition_movements
           are reached.
+       :proposed_assignment: Final plan with set of actions and changes
+       :type:                Tuple (topic-partition, proposed-replica, replica-change count
+       :max_partition_movements: Maximum set of partition-movements allowed
+       :type:                    integer
     """
     total_partition_movements = sum(action[2] for action in proposed_assignment)
     if total_partition_movements <= max_partition_movements:
@@ -130,28 +142,30 @@ def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
 
     # Group actions by topic
     topic_actions = defaultdict(list)
-    for action in proposed_assignment:
-        topic_actions[action[0][0]].append(action)
+    for t_p, replica, replica_change_cnt in proposed_assignment:
+        topic_actions[t_p[0]].append((t_p, replica, replica_change_cnt))
 
     # Create reduced assignment minimizing duplication of topics
     red_proposed_plan = []
-    curr_partition_movements = 0
-    prev_partition_movements = -1
-    while curr_partition_movements < max_partition_movements and \
-            prev_partition_movements < curr_partition_movements:
-        prev_partition_movements = curr_partition_movements
-        for topic in topic_actions.iterkeys():
-            if topic_actions[topic]:
-                # If current action increases current partiton-movements
-                # skip the action
-                if curr_partition_movements + topic_actions[topic][0][2] > \
-                        max_partition_movements:
-                    continue
-                red_proposed_plan.append(topic_actions[topic][0][0:2])
-                curr_partition_movements += topic_actions[topic][0][2]
-                topic_actions[topic].remove(topic_actions[topic][0])
-                if curr_partition_movements == max_partition_movements:
-                    break
+    curr_partition_cnt = 0
+    prev_partition_cnt = -1
+    while curr_partition_cnt < max_partition_movements and \
+            prev_partition_cnt < curr_partition_cnt:
+        prev_partition_cnt = curr_partition_cnt
+        for topic, actions in topic_actions.iteritems():
+            if not actions:
+                continue
+            action = actions[0]
+            # If current action increases current partiton-movements
+            # skip the action
+            if curr_partition_cnt + action[2] > \
+                    max_partition_movements:
+                continue
+            red_proposed_plan.append(action[0:2])
+            curr_partition_cnt += action[2]
+            actions.remove(action)
+            if curr_partition_cnt == max_partition_movements:
+                break
     return sorted(red_proposed_plan)
 
 
