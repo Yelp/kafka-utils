@@ -439,14 +439,14 @@ def parse_args():
     )
     parser_rebalance.add_argument(
         '--max-partition-movements',
-        type=int,
+        type=postive_int,
         default=DEFAULT_MAX_PARTITION_MOVEMENTS,
         help='Maximum number of partition-movements in final set of actions'
              ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
         '--max-leader-only-changes',
-        type=int,
+        type=postive_int,
         default=DEFAULT_MAX_LEADER_ONLY_CHANGES,
         help='Maximum number of actions with leader-only changes'
              ' DEFAULT: %(default)s',
@@ -495,22 +495,6 @@ def validate_args(args):
             'of zookeeper or cluster-type argument',
         )
         result = False
-
-    if args.max_partition_movements < 0:
-        _log.error(
-            '--max-partition-movements should not be negative: '
-            '{max_partition_movements} found. Aborting...'
-            .format(max_partition_movements=args.max_partition_movements),
-        )
-        result = False
-
-    if args.max_leader_only_changes < 0:
-        _log.error(
-            '--max-leader-only-changes should not be negative'
-            '{max_leader_only_changes} found. Aborting...'
-            .format(max_leader_only_changes=args.max_leader_only_changes),
-        )
-        result = False
     rebalance_options = [args.replication_groups, args.leaders, args.brokers]
     if not any(rebalance_options):
         _log.error(
@@ -522,6 +506,18 @@ def validate_args(args):
         _log.error('--apply required with --no-confirm flag.')
         result = False
     return result
+
+
+def postive_int(string):
+    """Verifies if given integer is positive or exists with error message."""
+    error_msg = 'Positive integer required, {string} given. Exiting...'.format(string=string)
+    try:
+        value = int(string)
+    except ValueError:
+        raise argparse.ArgumentTypeError(error_msg)
+    if value < 0:
+        raise argparse.ArgumentTypeError(error_msg)
+    return int(value)
 
 
 def run():
