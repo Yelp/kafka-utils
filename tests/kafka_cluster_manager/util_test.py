@@ -5,6 +5,7 @@ from pytest import fixture
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_assignment
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_format
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_plan_base
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import extract_actions_unique_topics
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_assignment_map
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_plan
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_reduced_proposed_plan
@@ -38,11 +39,206 @@ def test_reduced_proposed_plan_no_change(orig_assignment):
     proposed_assignment = get_reduced_proposed_plan(
         original_assignment=orig_assignment,
         new_assignment=orig_assignment,
-        max_changes=1,
+        max_partition_movements=1,
+        max_leader_only_changes=1,
     )
 
     # Verify no proposed plan
     assert proposed_assignment == {}
+
+
+def test_extract_actions_unique_topics_limited_actions():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 1),
+        ((u'T0', 1), [2, 1], 1),
+        ((u'T1', 0), [0, 1], 1),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        3,
+    )
+
+    assert len(red_proposed_assignment) == 3
+    topics = [action[0][0] for action in red_proposed_assignment]
+    # Verify that all actions have unique topic
+    assert sorted(topics) == sorted(list(set(topics)))
+
+
+def test_extract_actions_partition_movement_no_action():
+    # In case max-allowed partition-movements is less than replication-factor
+    # there is a possibility it will never converge
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 2),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        1,
+    )
+
+    # All actions have minimum of 2 movements
+    # so reduced proposed-plan is empty
+    assert red_proposed_assignment == []
+
+
+def test_extract_actions_partition_movements_only():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 1),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        10,
+    )
+
+    # Total movements as in proposed-plan is 6 (2+1+2+1)
+    # max partition-movements allowed is 10, so all 6 partition-movements
+    # allowed
+    assert len(red_proposed_assignment) == 4
+
+
+def test_extract_actions_no_movements():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 1),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        0,
+    )
+
+    # Total movements as in proposed-plan is 6 (2+1+2+1)
+    # max partition-movements allowed is 10, so all 6 partition-movements
+    # allowed
+    assert red_proposed_assignment == []
+
+
+def test_extract_actions_unique_topics_limited_actions_2():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 1),
+        ((u'T0', 1), [2, 1], 1),
+        ((u'T1', 0), [0, 1], 1),
+        ((u'T1', 1), [0, 1], 1),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        4,
+    )
+
+    total_movements = sum([
+        action[2]
+        for action in proposed_assignment
+        if action[0:2] in red_proposed_assignment
+    ])
+    assert total_movements == 4
+    topics = [action[0][0] for action in red_proposed_assignment]
+    # Verify that only topic is non-unique
+    assert len(sorted(topics)) - 1 == len(sorted(list(set(topics))))
+
+
+def test_extract_actions_unique_topics_all_actions():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 1),
+        ((u'T1', 1), [2, 3], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 1),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        7,
+    )
+
+    # assert final assignment is same as original assignment
+    expected_assignment = [action[0:2] for action in proposed_assignment]
+    assert sorted(red_proposed_assignment) == sorted(expected_assignment)
+
+
+def test_extract_actions_unique_topics_some_actions():
+    # Complex case
+    # Total proposed-movements: 2*4 + 1 = 10
+    # Max allowed movements: 5
+    # Total actions in proposed_assignment: 5
+    # Expected: Final assignment should have all 3 actions
+    # all 3 unique topics
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T1', 1), [2, 3], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        5,
+    )
+
+    assert len(red_proposed_assignment) == 3
+    assert ((u'T2', 0), [1, 3]) in red_proposed_assignment
+    # Verify only 1 action for T1 and T2
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T1') == 1
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T2') == 1
+
+
+def test_extract_actions_final_movements_lesser_than_max():
+    # Complex case
+    # Total proposed-movements: 2*4 + 1 = 10
+    # Max allowed movements: 6
+    # Total actions in proposed_assignment: 5
+    # Expected: Final assignment should have all 3 actions
+    # all 3 unique topics
+    # Also, final movements will be 5 instead of max-allowed 6
+    # This is done, since keeping the uniqueness of topic is more important than
+    # getting max-possible partition-movements.
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T1', 1), [2, 3], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        6,
+    )
+
+    assert len(red_proposed_assignment) == 3
+    assert ((u'T2', 0), [1, 3]) in red_proposed_assignment
+    # Verify only 1 action for T1 and T2
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T1') == 1
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T2') == 1
+    # Verify final movements will be 5 instead of max allowed 6
+    assert sum(
+        action[2]
+        for action in proposed_assignment
+        if action[0:2] in red_proposed_assignment
+    ) == 5
+
+
+def test_extract_actions_unique_topics_lesser_actions():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 2),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        3,
+    )
+
+    assert len(red_proposed_assignment) == 1
+    topics = [action[0][0] for action in red_proposed_assignment]
+    # Verify that all actions have unique topic
+    assert sorted(topics) == sorted(list(set(topics)))
 
 
 def test_reduced_proposed_plan_max_invalid(orig_assignment, new_assignment):
@@ -50,7 +246,8 @@ def test_reduced_proposed_plan_max_invalid(orig_assignment, new_assignment):
     proposed_assignment = get_reduced_proposed_plan(
         orig_assignment,
         new_assignment,
-        0,
+        max_partition_movements=0,
+        max_leader_only_changes=0,
     )
 
     # Verify no proposed plan
@@ -59,7 +256,18 @@ def test_reduced_proposed_plan_max_invalid(orig_assignment, new_assignment):
     proposed_assignment = get_reduced_proposed_plan(
         orig_assignment,
         new_assignment,
-        -1,
+        max_partition_movements=-1,
+        max_leader_only_changes=0,
+    )
+
+    # Verify no proposed plan
+    assert proposed_assignment == {}
+
+    proposed_assignment = get_reduced_proposed_plan(
+        orig_assignment,
+        new_assignment,
+        max_partition_movements=0,
+        max_leader_only_changes=-1,
     )
 
     # Verify no proposed plan
@@ -71,7 +279,8 @@ def test_reduced_proposed_plan_empty(orig_assignment):
     proposed_assignment = get_reduced_proposed_plan(
         orig_assignment,
         new_assignment=None,
-        max_changes=1,
+        max_partition_movements=1,
+        max_leader_only_changes=1,
     )
 
     # Verify no proposed plan
@@ -80,7 +289,8 @@ def test_reduced_proposed_plan_empty(orig_assignment):
     proposed_assignment = get_reduced_proposed_plan(
         original_assignment=None,
         new_assignment=orig_assignment,
-        max_changes=1,
+        max_partition_movements=1,
+        max_leader_only_changes=1,
     )
 
     # Verify no proposed plan
@@ -92,7 +302,8 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
     result = get_reduced_proposed_plan(
         orig_assignment,
         new_assignment,
-        2,
+        max_partition_movements=2,
+        max_leader_only_changes=0,
     )
 
     # Verify that result is not None
@@ -104,7 +315,8 @@ def test_reduced_proposed_plan(orig_assignment, new_assignment):
     result = get_reduced_proposed_plan(
         orig_assignment,
         new_assignment,
-        5,
+        max_partition_movements=5,
+        max_leader_only_changes=5,
     )
 
     red_proposed_assignment = dict((ele[0], ele[1]) for ele in result[1])
