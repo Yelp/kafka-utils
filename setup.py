@@ -23,6 +23,7 @@ setup(
         "scripts/kafka-cluster-manager",
         "scripts/yelpkafka",
         "scripts/kafka-check",
+        "scripts/kafka-check-corruption",
         "scripts/kafka-rolling-restart",
     ],
     install_requires=[
