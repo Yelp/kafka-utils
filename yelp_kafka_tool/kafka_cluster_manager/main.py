@@ -179,10 +179,8 @@ def pre_balancing_imbalance_stats(ct, display):
         initial_imbal['partition_cnt'] +
         initial_imbal['leader_cnt']
     )
-    # TODO: remove
-    total_imbal = 0
     if total_imbal == 0:
-        _log.info('Cluster is perfectly balanced!')
+        _log.info('Cluster is currently balanced!')
     return initial_imbal
 
 
