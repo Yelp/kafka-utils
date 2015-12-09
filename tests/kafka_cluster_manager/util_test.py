@@ -67,7 +67,7 @@ def test_extract_actions_unique_topics_limited_actions():
 
 def test_extract_actions_partition_movement_no_action():
     # In case max-allowed partition-movements is less than replication-factor
-    # there is a possibilty it will never converge
+    # there is a possibility it will never converge
     proposed_assignment = [
         ((u'T0', 0), [2, 0], 2),
         ((u'T0', 1), [2, 1], 2),
