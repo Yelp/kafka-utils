@@ -172,6 +172,17 @@ def pre_balancing_imbalance_stats(ct, display):
     _log.info('Calculating initial rebalance imbalance statistics...')
     initial_imbal = imbalance_value_all(ct, display=display)
     log_imbalance_stats(initial_imbal)
+    total_imbal = (
+        initial_imbal['replica_cnt'] +
+        initial_imbal['net_part_cnt_per_rg'] +
+        initial_imbal['topic_partition_cnt'] +
+        initial_imbal['partition_cnt'] +
+        initial_imbal['leader_cnt']
+    )
+    # TODO: remove
+    total_imbal = 0
+    if total_imbal == 0:
+        _log.info('Cluster is perfectly balanced!')
     return initial_imbal
 
 
@@ -439,14 +450,14 @@ def parse_args():
     )
     parser_rebalance.add_argument(
         '--max-partition-movements',
-        type=postive_int,
+        type=positive_int,
         default=DEFAULT_MAX_PARTITION_MOVEMENTS,
         help='Maximum number of partition-movements in final set of actions'
              ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
         '--max-leader-only-changes',
-        type=postive_int,
+        type=positive_int,
         default=DEFAULT_MAX_LEADER_ONLY_CHANGES,
         help='Maximum number of actions with leader-only changes'
              ' DEFAULT: %(default)s',
@@ -508,7 +519,7 @@ def validate_args(args):
     return result
 
 
-def postive_int(string):
+def positive_int(string):
     """Verifies if given integer is positive or exists with error message."""
     error_msg = 'Positive integer required, {string} given. Exiting...'.format(string=string)
     try:
@@ -517,7 +528,7 @@ def postive_int(string):
         raise argparse.ArgumentTypeError(error_msg)
     if value < 0:
         raise argparse.ArgumentTypeError(error_msg)
-    return int(value)
+    return value
 
 
 def run():

@@ -65,6 +65,42 @@ def test_extract_actions_unique_topics_limited_actions():
     assert sorted(topics) == sorted(list(set(topics)))
 
 
+def test_extract_actions_partition_movements_only():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 1),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        10,
+    )
+
+    # Total movements as in proposed-plan is 6 (2+1+2+1)
+    # max partition-movements allowed is 10, so all 6 partition-movements
+    # allowed
+    assert len(red_proposed_assignment) == 4
+
+
+def test_extract_actions_no_movements():
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 1),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        0,
+    )
+
+    # Total movements as in proposed-plan is 6 (2+1+2+1)
+    # max partition-movements allowed is 10, so all 6 partition-movements
+    # allowed
+    assert red_proposed_assignment == []
+
+
 def test_extract_actions_unique_topics_limited_actions_2():
     proposed_assignment = [
         ((u'T0', 0), [2, 0], 1),
@@ -103,7 +139,69 @@ def test_extract_actions_unique_topics_all_actions():
     )
 
     # assert final assignment is same as original assignment
-    assert red_proposed_assignment == proposed_assignment
+    expected_assignment = [action[0:2] for action in proposed_assignment]
+    assert sorted(red_proposed_assignment) == sorted(expected_assignment)
+
+
+def test_extract_actions_unique_topics_some_actions():
+    # Complex case
+    # Total proposed-movements: 2*4 + 1 = 10
+    # Max allowed movements: 5
+    # Total actions in proposed_assignment: 5
+    # Expected: Final assignment should have all 3 actions
+    # all 3 unique topics
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T1', 1), [2, 3], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        5,
+    )
+
+    assert len(red_proposed_assignment) == 3
+    assert ((u'T2', 0), [1, 3]) in red_proposed_assignment
+    # Verify only 1 action for T1 and T2
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T1') == 1
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T2') == 1
+
+
+def test_extract_actions_final_movements_lesser_than_max():
+    # Complex case
+    # Total proposed-movements: 2*4 + 1 = 10
+    # Max allowed movements: 6
+    # Total actions in proposed_assignment: 5
+    # Expected: Final assignment should have all 3 actions
+    # all 3 unique topics
+    # Also, final movements will be 5 instead of max-allowed 6
+    # This is done, since keeping the uniqueness of topic is more important than
+    # getting max-possible partition-movements.
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T1', 1), [2, 3], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 1),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        6,
+    )
+
+    assert len(red_proposed_assignment) == 3
+    assert ((u'T2', 0), [1, 3]) in red_proposed_assignment
+    # Verify only 1 action for T1 and T2
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T1') == 1
+    assert sum(1 for action in red_proposed_assignment if action[0][0] == 'T2') == 1
+    # Verify final movements will be 5 instead of max allowed 6
+    assert sum(
+        action[2]
+        for action in proposed_assignment
+        if action[0:2] in red_proposed_assignment
+    ) == 5
 
 
 def test_extract_actions_unique_topics_lesser_actions():

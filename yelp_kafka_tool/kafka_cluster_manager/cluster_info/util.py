@@ -85,9 +85,12 @@ def get_reduced_proposed_plan(
     :type:                  integer
 
     """
-    if original_assignment == new_assignment or \
-            (max_partition_movements + max_leader_only_changes) < 1 or \
-            not original_assignment or not new_assignment:
+    if (
+        original_assignment == new_assignment or
+        max_partition_movements + max_leader_only_changes < 1 or
+        not original_assignment or
+        not new_assignment
+    ):
         return {}
     # Get change-list for given assignments
     proposed_assignment_leaders = [
@@ -103,10 +106,10 @@ def get_reduced_proposed_plan(
             len(set(replica) - set(new_assignment[t_p_key])),
         )
         for t_p_key, replica in original_assignment.iteritems()
-        if replica != new_assignment[t_p_key] and
-        set(replica) != set(new_assignment[t_p_key])
+        if set(replica) != set(new_assignment[t_p_key])
     ]
     tot_actions = len(proposed_assignment_part) + len(proposed_assignment_leaders)
+
     # Extract reduced plan maximizing uniqueness of topics
     red_proposed_plan_partitions = extract_actions_unique_topics(
         proposed_assignment_part,
@@ -136,10 +139,6 @@ def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
        :max_partition_movements: Maximum set of partition-movements allowed
        :type:                    integer
     """
-    total_partition_movements = sum(action[2] for action in proposed_assignment)
-    if total_partition_movements <= max_partition_movements:
-        return proposed_assignment
-
     # Group actions by topic
     topic_actions = defaultdict(list)
     for t_p, replica, replica_change_cnt in proposed_assignment:
