@@ -451,7 +451,8 @@ def parse_args():
         type=positive_int,
         default=DEFAULT_MAX_PARTITION_MOVEMENTS,
         help='Maximum number of partition-movements in final set of actions'
-             ' DEFAULT: %(default)s',
+             ' DEFAULT: %(default)s. RECOMMENDATION: Should be atleast max '
+             'replication-factor across the cluster.',
     )
     parser_rebalance.add_argument(
         '--max-leader-only-changes',

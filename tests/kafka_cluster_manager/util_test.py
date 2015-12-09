@@ -65,6 +65,25 @@ def test_extract_actions_unique_topics_limited_actions():
     assert sorted(topics) == sorted(list(set(topics)))
 
 
+def test_extract_actions_partition_movement_no_action():
+    # In case max-allowed partition-movements is less than replication-factor
+    # there is a possibilty it will never converge
+    proposed_assignment = [
+        ((u'T0', 0), [2, 0], 2),
+        ((u'T0', 1), [2, 1], 2),
+        ((u'T1', 0), [0, 1], 2),
+        ((u'T2', 0), [1, 3], 2),
+    ]
+    red_proposed_assignment = extract_actions_unique_topics(
+        proposed_assignment,
+        1,
+    )
+
+    # All actions have minimum of 2 movements
+    # so reduced proposed-plan is empty
+    assert red_proposed_assignment == []
+
+
 def test_extract_actions_partition_movements_only():
     proposed_assignment = [
         ((u'T0', 0), [2, 0], 2),
