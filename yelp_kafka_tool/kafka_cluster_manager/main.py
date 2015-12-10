@@ -41,6 +41,7 @@ import argparse
 import logging
 import sys
 
+from logging.config import fileConfig
 from yelp_kafka.config import ClusterConfig
 
 from .cluster_info.cluster_topology import ClusterTopology
@@ -60,7 +61,8 @@ DEFAULT_MAX_PARTITION_MOVEMENTS = 1
 DEFAULT_MAX_LEADER_ONLY_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 
-_log = logging.getLogger('kafka-cluster-manager')
+_log = logging.getLogger('simple_handler')
+simple_handler = logging.
 
 
 def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
@@ -362,9 +364,9 @@ def reassign_partitions(cluster_config, args):
                     replicas[0] != red_proposed_assignment[p_name][0]
                 ])
                 _log.info(
-                    'Proposed-plan description: Action(s): {actions}, '
+                    'Proposed-plan description: Actions: {actions}, '
                     'Partition-movements: {movements}, Leader-only '
-                    'change(s): {leader_changes}'.format(
+                    'changes: {leader_changes}'.format(
                         actions=len(proposed_plan['partitions']),
                         movements=net_partition_movements,
                         leader_changes=net_leader_only_changes,
@@ -450,15 +452,15 @@ def parse_args():
         '--max-partition-movements',
         type=positive_int,
         default=DEFAULT_MAX_PARTITION_MOVEMENTS,
-        help='Maximum number of partition-movements in final set of actions'
-             ' DEFAULT: %(default)s. RECOMMENDATION: Should be atleast max '
+        help='Maximum number of partition-movements in final set of actions.'
+             ' DEFAULT: %(default)s. RECOMMENDATION: Should be at least max '
              'replication-factor across the cluster.',
     )
     parser_rebalance.add_argument(
         '--max-leader-only-changes',
         type=positive_int,
         default=DEFAULT_MAX_LEADER_ONLY_CHANGES,
-        help='Maximum number of actions with leader-only changes'
+        help='Maximum number of actions with leader-only changes.'
              ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
