@@ -39,10 +39,10 @@ from __future__ import unicode_literals
 
 import argparse
 import ConfigParser
-import logging
 import sys
-
+from logging import getLogger
 from logging.config import fileConfig
+
 from yelp_kafka.config import ClusterConfig
 
 from .cluster_info.cluster_topology import ClusterTopology
@@ -62,7 +62,7 @@ DEFAULT_MAX_PARTITION_MOVEMENTS = 1
 DEFAULT_MAX_LEADER_ONLY_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 
-_log = logging.getLogger()
+_log = getLogger()
 
 
 def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
@@ -488,12 +488,6 @@ def parse_args():
         required=True,
         help='Path to logging configuration file.',
     )
-    parser_rebalance.add_argument(
-        '--debug',
-        dest='debug',
-        action='store_true',
-        help='Get debug level logs.',
-    )
     parser_rebalance.set_defaults(command=reassign_partitions)
     return parser.parse_args()
 
@@ -536,13 +530,9 @@ def positive_int(string):
 def run():
     """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
-    if args.debug:
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
     # Load logging configuration from file
     try:
-        logging.config.fileConfig(args.logconf)
+        fileConfig(args.logconf)
     except ConfigParser.NoSectionError:
         _log.error(
             'Failed to load {logconf} file. Exiting...'
