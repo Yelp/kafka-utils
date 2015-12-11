@@ -31,7 +31,8 @@ Attributes:
     --apply:                    On True execute proposed assignment after execution,
                                 display proposed-plan otherwise
     --no-confirm:               Execute the plan without asking for confirmation.
-    --log-file:                 Export logs to given file
+    --log-file:                 Export logs to given file, if no logging configuration given.
+    --logconf:                  Provide logging configuration file path.
     --proposed-file-json:       Export proposed-plan to .json format
 """
 from __future__ import absolute_import
@@ -61,8 +62,7 @@ DEFAULT_MAX_PARTITION_MOVEMENTS = 1
 DEFAULT_MAX_LEADER_ONLY_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 
-_log = logging.getLogger('simple_handler')
-simple_handler = logging.
+_log = logging.getLogger()
 
 
 def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
@@ -485,7 +485,12 @@ def parse_args():
     parser_rebalance.add_argument(
         '--log-file',
         type=str,
-        help='Write logs to specified file',
+        help='Write logs to specified file, if no logging configuration given.',
+    )
+    parser_rebalance.add_argument(
+        '--logconf',
+        type=str,
+        help='Path to logging configuration file.',
     )
     parser_rebalance.add_argument(
         '--debug',
@@ -517,6 +522,10 @@ def validate_args(args):
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
         result = False
+
+    if args.logconf and args.log_file:
+        _log.error('Only one of --log-file and --logconf can be given.')
+        result = False
     return result
 
 
@@ -540,11 +549,22 @@ def run():
     else:
         level = logging.INFO
     # Re-direct logs to file or stdout
-    logging.basicConfig(
-        level=level,
-        filename=args.log_file,
-        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
-    )
+    try:
+        logging.config.fileConfig(args.logconf)
+    except:
+        logging.basicConfig(
+            level=level,
+            filename=args.log_file,
+            format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
+        )
+        if args.logconf:
+            _log.warning(
+                'Failed to load {logconf} file, setting basic configuration.'
+                .format(logconf=args.logconf),
+            )
+        else:
+            _log.info('Setting basic logging configuration.')
+
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:
