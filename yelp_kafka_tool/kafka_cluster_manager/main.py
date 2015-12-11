@@ -31,7 +31,6 @@ Attributes:
     --apply:                    On True execute proposed assignment after execution,
                                 display proposed-plan otherwise
     --no-confirm:               Execute the plan without asking for confirmation.
-    --log-file:                 Export logs to given file, if no logging configuration given.
     --logconf:                  Provide logging configuration file path.
     --proposed-file-json:       Export proposed-plan to .json format
 """
@@ -39,6 +38,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import ConfigParser
 import logging
 import sys
 
@@ -483,13 +483,9 @@ def parse_args():
              'to given json file.',
     )
     parser_rebalance.add_argument(
-        '--log-file',
-        type=str,
-        help='Write logs to specified file, if no logging configuration given.',
-    )
-    parser_rebalance.add_argument(
         '--logconf',
         type=str,
+        required=True,
         help='Path to logging configuration file.',
     )
     parser_rebalance.add_argument(
@@ -522,10 +518,6 @@ def validate_args(args):
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
         result = False
-
-    if args.logconf and args.log_file:
-        _log.error('Only one of --log-file and --logconf can be given.')
-        result = False
     return result
 
 
@@ -551,19 +543,12 @@ def run():
     # Re-direct logs to file or stdout
     try:
         logging.config.fileConfig(args.logconf)
-    except:
-        logging.basicConfig(
-            level=level,
-            filename=args.log_file,
-            format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
+    except ConfigParser.NoSectionError:
+        _log.error(
+            'Failed to load {logconf} file. Exiting...'
+            .format(logconf=args.logconf),
         )
-        if args.logconf:
-            _log.warning(
-                'Failed to load {logconf} file, setting basic configuration.'
-                .format(logconf=args.logconf),
-            )
-        else:
-            _log.info('Setting basic logging configuration.')
+        sys.exit(1)
 
     if not validate_args(args):
         sys.exit(1)
