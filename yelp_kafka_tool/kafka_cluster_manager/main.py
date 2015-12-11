@@ -540,7 +540,7 @@ def run():
         level = logging.DEBUG
     else:
         level = logging.INFO
-    # Re-direct logs to file or stdout
+    # Load logging configuration from file
     try:
         logging.config.fileConfig(args.logconf)
     except ConfigParser.NoSectionError:
@@ -548,7 +548,6 @@ def run():
             'Failed to load {logconf} file. Exiting...'
             .format(logconf=args.logconf),
         )
-        sys.exit(1)
 
     if not validate_args(args):
         sys.exit(1)
