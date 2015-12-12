@@ -94,19 +94,19 @@ def get_reduced_proposed_plan(
         return {}
     # Get change-list for given assignments
     proposed_assignment_leaders = [
-        (t_p_key, new_assignment[t_p_key])
-        for t_p_key, replica in original_assignment.iteritems()
-        if replica != new_assignment[t_p_key] and
-        set(replica) == set(new_assignment[t_p_key])
+        (t_p, new_assignment[t_p])
+        for t_p, replica in original_assignment.iteritems()
+        if replica != new_assignment[t_p] and
+        set(replica) == set(new_assignment[t_p])
     ]
     proposed_assignment_part = [
         (
-            t_p_key,
-            new_assignment[t_p_key],
-            len(set(replica) - set(new_assignment[t_p_key])),
+            t_p,
+            new_assignment[t_p],
+            len(set(replica) - set(new_assignment[t_p])),
         )
-        for t_p_key, replica in original_assignment.iteritems()
-        if set(replica) != set(new_assignment[t_p_key])
+        for t_p, replica in original_assignment.iteritems()
+        if set(replica) != set(new_assignment[t_p])
     ]
     tot_actions = len(proposed_assignment_part) + len(proposed_assignment_leaders)
 
@@ -134,8 +134,8 @@ def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
        3. Iterate through the dictionary in circular fashion and keep
           extracting actions with until max_partition_movements
           are reached.
-       :proposed_assignment: Final plan with set of actions and changes
-       :type:                Tuple (topic-partition, proposed-replica, replica-change count
+       :return:     Final reduced proposed-plan with set of actions and changes
+       :type:       Tuple (topic-partition, proposed-replica, replica-change count
        :max_partition_movements: Maximum set of partition-movements allowed
        :type:                    integer
     """
@@ -157,8 +157,7 @@ def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
             action = actions[0]
             # If current action increases current partiton-movements
             # skip the action
-            if curr_partition_cnt + action[2] > \
-                    max_partition_movements:
+            if curr_partition_cnt + action[2] > max_partition_movements:
                 continue
             red_proposed_plan.append(action[0:2])
             curr_partition_cnt += action[2]
@@ -172,10 +171,10 @@ def get_plan(proposed_assignment):
     return {
         'version': 1,
         'partitions':
-        [{'topic': t_p_key[0],
-          'partition': t_p_key[1],
+        [{'topic': t_p[0],
+          'partition': t_p[1],
           'replicas': replica
-          } for t_p_key, replica in proposed_assignment.iteritems()]
+          } for t_p, replica in proposed_assignment.iteritems()]
     }
 
 

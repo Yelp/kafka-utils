@@ -31,15 +31,17 @@ Attributes:
     --apply:                    On True execute proposed assignment after execution,
                                 display proposed-plan otherwise
     --no-confirm:               Execute the plan without asking for confirmation.
-    --log-file:                 Export logs to given file
+    --logconf:                  Provide logging configuration file path.
     --proposed-file-json:       Export proposed-plan to .json format
 """
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
-import logging
+import ConfigParser
 import sys
+from logging import getLogger
+from logging.config import fileConfig
 
 from yelp_kafka.config import ClusterConfig
 
@@ -60,7 +62,7 @@ DEFAULT_MAX_PARTITION_MOVEMENTS = 1
 DEFAULT_MAX_LEADER_ONLY_CHANGES = 5
 KAFKA_SCRIPT_PATH = '/usr/bin/kafka-reassign-partitions.sh'
 
-_log = logging.getLogger('kafka-cluster-manager')
+_log = getLogger()
 
 
 def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
@@ -362,9 +364,9 @@ def reassign_partitions(cluster_config, args):
                     replicas[0] != red_proposed_assignment[p_name][0]
                 ])
                 _log.info(
-                    'Proposed-plan description: Action(s): {actions}, '
+                    'Proposed-plan description: Actions: {actions}, '
                     'Partition-movements: {movements}, Leader-only '
-                    'change(s): {leader_changes}'.format(
+                    'changes: {leader_changes}'.format(
                         actions=len(proposed_plan['partitions']),
                         movements=net_partition_movements,
                         leader_changes=net_leader_only_changes,
@@ -450,15 +452,15 @@ def parse_args():
         '--max-partition-movements',
         type=positive_int,
         default=DEFAULT_MAX_PARTITION_MOVEMENTS,
-        help='Maximum number of partition-movements in final set of actions'
-             ' DEFAULT: %(default)s. RECOMMENDATION: Should be atleast max '
+        help='Maximum number of partition-movements in final set of actions.'
+             ' DEFAULT: %(default)s. RECOMMENDATION: Should be at least max '
              'replication-factor across the cluster.',
     )
     parser_rebalance.add_argument(
         '--max-leader-only-changes',
         type=positive_int,
         default=DEFAULT_MAX_LEADER_ONLY_CHANGES,
-        help='Maximum number of actions with leader-only changes'
+        help='Maximum number of actions with leader-only changes.'
              ' DEFAULT: %(default)s',
     )
     parser_rebalance.add_argument(
@@ -481,15 +483,10 @@ def parse_args():
              'to given json file.',
     )
     parser_rebalance.add_argument(
-        '--log-file',
+        '--logconf',
         type=str,
-        help='Write logs to specified file',
-    )
-    parser_rebalance.add_argument(
-        '--debug',
-        dest='debug',
-        action='store_true',
-        help='Get debug level logs.',
+        required=True,
+        help='Path to logging configuration file.',
     )
     parser_rebalance.set_defaults(command=reassign_partitions)
     return parser.parse_args()
@@ -533,16 +530,15 @@ def positive_int(string):
 def run():
     """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
-    if args.debug:
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
-    # Re-direct logs to file or stdout
-    logging.basicConfig(
-        level=level,
-        filename=args.log_file,
-        format='[%(asctime)s] [%(levelname)s:%(module)s] %(message)s',
-    )
+    # Load logging configuration from file
+    try:
+        fileConfig(args.logconf)
+    except ConfigParser.NoSectionError:
+        _log.error(
+            'Failed to load {logconf} file. Exiting...'
+            .format(logconf=args.logconf),
+        )
+
     if not validate_args(args):
         sys.exit(1)
     if args.zookeeper:
