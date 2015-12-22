@@ -38,6 +38,7 @@ class RenameGroup(OffsetManagerBase):
 
     @classmethod
     def run(cls, args, cluster_config):
+        print('testing rename-group group ids', args.old_groupid, args.new_groupid)
         if args.old_groupid == args.new_groupid:
             print(
                 "Error: Old group ID and new group ID are the same.",
