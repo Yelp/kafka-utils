@@ -4,6 +4,9 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
+import sys
+
+from yelp_kafka.error import ConfigurationError
 
 from .commands.copy_group import CopyGroup
 from .commands.delete_topics import DeleteTopics
@@ -23,8 +26,8 @@ def parse_args():
     )
     parser.add_argument(
         '--cluster-type', dest='cluster_type', required=True,
-        help='Type of Kafka cluster. This is a mandatory option',
-        choices=['scribe', 'standard', 'spam'],
+        help='Type of Kafka cluster. This is a mandatory option. Examples:'
+        ' ["datapipe", "scribe", "standard", "spam"].',
     )
     parser.add_argument(
         '--cluster-name', dest='cluster_name',
@@ -48,5 +51,9 @@ def parse_args():
 def run():
     logging.basicConfig(level=logging.ERROR)
     args = parse_args()
-    conf = get_cluster_config(args.cluster_type, args.cluster_name)
+    try:
+        conf = get_cluster_config(args.cluster_type, args.cluster_name)
+    except ConfigurationError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
     args.command(args, conf)
