@@ -107,10 +107,11 @@ class TestOffsetManagerBase(object):
             topic="topic34",
             partitions=None
         )
-        with contextlib.nested(
-            self.mock_get_topics(),
-            mock.patch.object(sys, "exit", autospec=True),
-        ) as (mock_get_topics, mock_exit):
+        with self.mock_get_topics() as mock_get_topics, mock.patch.object(
+            sys,
+            "exit",
+            autospec=True,
+        ) as mock_exit:
             OffsetManagerBase.preprocess_args(
                 args.groupid,
                 args.topic,
@@ -128,10 +129,12 @@ class TestOffsetManagerBase(object):
             partitions=[0, 1, 2]
         )
 
-        with contextlib.nested(
-            self.mock_get_topics(),
-            mock.patch.object(sys, "exit", autospec=True),
-        ) as (mock_get_topics, mock_exit):
+        with self.mock_get_topics() as mock_get_topics, mock.patch.object(
+            sys,
+            "exit",
+            autospec=True,
+        ) as mock_exit:
+            mock_get_topics
             OffsetManagerBase.preprocess_args(
                 args.groupid,
                 args.topic,

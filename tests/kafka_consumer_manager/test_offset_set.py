@@ -1,4 +1,3 @@
-import contextlib
 import sys
 from collections import defaultdict
 
@@ -58,19 +57,16 @@ class TestOffsetTest(object):
             },
         }
 
-        with contextlib.nested(
-            mock.patch.object(
-                OffsetSet,
-                'get_topics_from_consumer_group_id',
-                spec=OffsetSet.get_topics_from_consumer_group_id,
-            ),
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_set.set_consumer_offsets",
-                return_value=[],
-                autospec=True
-            ),
-        ) as (mock_get_topics, mock_set_offsets):
+        with mock.patch.object(
+            OffsetSet,
+            'get_topics_from_consumer_group_id',
+            spec=OffsetSet.get_topics_from_consumer_group_id,
+        ) as _, mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager."
+            "commands.offset_set.set_consumer_offsets",
+            return_value=[],
+            autospec=True
+        ) as mock_set_offsets:
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,
@@ -102,23 +98,23 @@ class TestOffsetTest(object):
             },
         }
 
-        with contextlib.nested(
-            mock.patch.object(
-                OffsetSet,
-                'get_topics_from_consumer_group_id',
-                spec=OffsetSet.get_topics_from_consumer_group_id,
-            ),
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_set.set_consumer_offsets",
-                return_value=[
-                    OffsetCommitError("topic1", 1, "my_error 1"),
-                    OffsetCommitError("topic2", 0, "my_error 2"),
-                ],
-                autospec=True
-            ),
-            mock.patch.object(sys, "exit", autospec=True),
-        ) as (mock_get_topics, mock_set_offsets, mock_exit):
+        with mock.patch.object(
+            OffsetSet,
+            'get_topics_from_consumer_group_id',
+            spec=OffsetSet.get_topics_from_consumer_group_id,
+        ) as _, mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager."
+            "commands.offset_set.set_consumer_offsets",
+            return_value=[
+                OffsetCommitError("topic1", 1, "my_error 1"),
+                OffsetCommitError("topic2", 0, "my_error 2"),
+            ],
+            autospec=True
+        ) as mock_set_offsets, mock.patch.object(
+            sys,
+            "exit",
+            autospec=True,
+        ) as mock_exit:
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,

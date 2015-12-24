@@ -1,5 +1,3 @@
-import contextlib
-
 import mock
 import pytest
 
@@ -16,19 +14,16 @@ class TestOffsetAdvance(object):
     }
 
     def test_run(self, mock_client):
-        with contextlib.nested(
-            mock.patch.object(
-                OffsetAdvance,
-                "preprocess_args",
-                spec=OffsetAdvance.preprocess_args,
-                return_value=self.topics_partitions,
-            ),
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_advance.advance_consumer_offsets",
-                autospec=True
-            )
-        ) as (mock_writer_process_args, mock_advance):
+        with mock.patch.object(
+            OffsetAdvance,
+            "preprocess_args",
+            spec=OffsetAdvance.preprocess_args,
+            return_value=self.topics_partitions,
+        ) as _, mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager."
+            "commands.offset_advance.advance_consumer_offsets",
+            autospec=True
+        ) as mock_advance:
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,

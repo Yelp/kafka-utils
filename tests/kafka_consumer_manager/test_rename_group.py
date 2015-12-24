@@ -18,24 +18,20 @@ class TestRenameGroup(object):
 
     @contextlib.contextmanager
     def mock_kafka_info(self, topics_partitions):
-        with contextlib.nested(
-            mock.patch.object(
-                RenameGroup,
-                "preprocess_args",
-                spec=RenameGroup.preprocess_args,
-                return_value=topics_partitions,
-            ),
-            mock.patch.object(
-                RenameGroup,
-                "prompt_user_input",
-                spec=RenameGroup.prompt_user_input,
-            ),
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.rename_group.ZK",
-                autospec=True
-            ),
-        ) as (mock_process_args, mock_user_confirm, mock_ZK):
+        with mock.patch.object(
+            RenameGroup,
+            "preprocess_args",
+            spec=RenameGroup.preprocess_args,
+            return_value=topics_partitions,
+        ) as mock_process_args, mock.patch.object(
+            RenameGroup,
+            "prompt_user_input",
+            spec=RenameGroup.prompt_user_input,
+        ) as mock_user_confirm, mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager."
+            "commands.rename_group.ZK",
+            autospec=True
+        ) as mock_ZK:
             mock_ZK.return_value.__enter__.return_value = mock_ZK
             yield mock_process_args, mock_user_confirm, mock_ZK
 
