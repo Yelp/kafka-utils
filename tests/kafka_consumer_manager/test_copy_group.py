@@ -61,9 +61,6 @@ class TestCopyGroup(object):
                 mock.call("/consumers/old_group/offsets/topic2/0"),
                 mock.call("/consumers/old_group/offsets/topic2/1"),
             ]
-            zk_old_group_delete_calls = [
-                mock.call("/consumers/old_group", recursive=True),
-            ]
             zk_new_group_calls = [
                 mock.call(
                     "/consumers/new_group/offsets/topic1/0",
@@ -96,7 +93,6 @@ class TestCopyGroup(object):
 
             assert mock_user_confirm.call_count == 1
             obj.get.call_args_list == zk_old_group_get_calls
-            obj.delete.call_args_list == zk_old_group_delete_calls
             obj.create.call_args_list == zk_new_group_calls
 
     def test_run_same_groupids(self, mock_client):
