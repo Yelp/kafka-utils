@@ -30,6 +30,19 @@ class CopyGroup(OffsetManagerBase):
             'dest_groupid',
             help="New name for the consumer group being copied to.",
         )
+        parser_copy_group.add_argument(
+            "--topic",
+            help="Kafka topic whose offsets will be copied into destination group"
+            " If no topic is specificed all topic offsets will be copied.",
+        )
+        parser_copy_group.add_argument(
+            "--partitions",
+            nargs='+',
+            type=int,
+            help="List of partitions within the topic. If no partitions are "
+            "specified, offsets from all partitions of the topic shall "
+            "be copied.",
+        )
         parser_copy_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -43,11 +56,10 @@ class CopyGroup(OffsetManagerBase):
         # Setup the Kafka client
         client = KafkaClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
-
         source_topics = cls.preprocess_args(
             args.source_groupid,
-            None,
-            None,
+            args.topic,
+            args.partitions,
             cluster_config,
             client,
         )
@@ -64,7 +76,7 @@ class CopyGroup(OffsetManagerBase):
             else:
                 preprocess_topics(
                     cls,
-                    args.source_group_id,
+                    args.source_groupid,
                     source_topics.keys(),
                     args.dest_groupid,
                     topics_dest_group,
