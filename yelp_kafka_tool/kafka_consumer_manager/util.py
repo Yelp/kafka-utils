@@ -8,7 +8,7 @@ from collections import defaultdict
 from kazoo.exceptions import NodeExistsError
 
 
-def preprocess_topics(cls, source_groupid, source_topics, dest_groupid, topics_dest_group):
+def preprocess_topics(source_groupid, source_topics, dest_groupid, topics_dest_group):
     """Pre-process the topics in source and destination group for duplicates."""
     # Is the new consumer already subscribed to any of these topics?
     common_topics = [topic for topic in topics_dest_group if topic in source_topics]
@@ -38,10 +38,19 @@ def preprocess_topics(cls, source_groupid, source_topics, dest_groupid, topics_d
                 dest_group_topics=topics_dest_group,
             )
         )
-        cls.prompt_user_input(in_str)
+        prompt_user_input(in_str)
 
 
 def create_offsets(zk, consumer_group, offsets):
+    """Create path with offset value for each topic-partition of given consumer
+    group.
+
+    :param zk: Zookeeper client
+    :param consumer_group: Consumer group id for given offsets
+    :type consumer_group: int
+    :param offsets: Offsets of all topic-partitions
+    :type offsets: dict(topic, dict(partition, offset))
+    """
     # Create new offsets
     for topic, partition_offsets in offsets.iteritems():
         for partition, offset in partition_offsets.iteritems():
@@ -62,6 +71,13 @@ def create_offsets(zk, consumer_group, offsets):
 
 
 def fetch_offsets(zk, consumer_group, topics):
+    """Fetch offsets for given topics of given consumer group.
+
+    :param zk: Zookeeper client
+    :param consumer_group: Consumer group id for given offsets
+    :type consumer_group: int
+    :rtype: dict(topic, dict(partition, offset))
+    """
     source_offsets = defaultdict(dict)
     for topic, partitions in topics.iteritems():
         for partition in partitions:
@@ -74,3 +90,12 @@ def fetch_offsets(zk, consumer_group, topics):
             )
             source_offsets[topic][partition] = offset
     return source_offsets
+
+
+def prompt_user_input(in_str):
+    while(True):
+        answer = raw_input(in_str + ' ')
+        if answer == "n" or answer == "no":
+            sys.exit(0)
+        if answer == "y" or answer == "yes":
+            return

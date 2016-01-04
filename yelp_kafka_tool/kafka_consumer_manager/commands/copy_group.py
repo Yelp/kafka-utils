@@ -75,7 +75,6 @@ class CopyGroup(OffsetManagerBase):
                 pass
             else:
                 preprocess_topics(
-                    cls,
                     args.source_groupid,
                     source_topics.keys(),
                     args.dest_groupid,

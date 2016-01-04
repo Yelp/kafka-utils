@@ -6,6 +6,7 @@ import sys
 
 from kazoo.exceptions import NoNodeError
 
+from yelp_kafka_tool.kafka_consumer_manager.util import prompt_user_input
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -110,15 +111,6 @@ class OffsetManagerBase(object):
     def add_parser(cls, subparsers):
         cls.setup_subparser(subparsers)
 
-    @classmethod
-    def prompt_user_input(cls, in_str):
-        while(True):
-            answer = raw_input(in_str + ' ')
-            if answer == "n" or answer == "no":
-                sys.exit(0)
-            if answer == "y" or answer == "yes":
-                return
-
 
 class OffsetWriter(OffsetManagerBase):
 
@@ -149,6 +141,6 @@ class OffsetWriter(OffsetManagerBase):
                 "shall be modified:\n{topics}\nIs this what you really "
                 "intend? (y/n)".format(topics=topics_str)
             )
-            cls.prompt_user_input(in_str)
+            prompt_user_input(in_str)
 
         return topics_dict

@@ -65,7 +65,6 @@ class RenameGroup(OffsetManagerBase):
                 pass
             else:
                 preprocess_topics(
-                    cls,
                     args.old_groupid,
                     topics_dict.keys(),
                     args.new_groupid,

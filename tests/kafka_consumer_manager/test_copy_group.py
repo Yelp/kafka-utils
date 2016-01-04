@@ -23,10 +23,9 @@ class TestCopyGroup(object):
             "preprocess_args",
             spec=CopyGroup.preprocess_args,
             return_value=topics_partitions,
-        ) as mock_process_args, mock.patch.object(
-            CopyGroup,
-            "prompt_user_input",
-            spec=CopyGroup.prompt_user_input,
+        ) as mock_process_args, mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager.util.prompt_user_input",
+            autospec=True,
         ) as mock_user_confirm, mock.patch(
             "yelp_kafka_tool.kafka_consumer_manager."
             "commands.copy_group.ZK",
@@ -88,8 +87,8 @@ class TestCopyGroup(object):
             CopyGroup.run(args, cluster_config)
 
             assert mock_user_confirm.call_count == 1
-            obj.get.call_args_list == zk_old_group_get_calls
-            obj.create.call_args_list == zk_new_group_calls
+            sorted(obj.get.call_args_list) == sorted(zk_old_group_get_calls)
+            sorted(obj.create.call_args_list) == sorted(zk_new_group_calls)
 
     def test_run_same_groupids(self, mock_client):
         topics_partitions = {}
@@ -115,7 +114,7 @@ class TestCopyGroup(object):
         with self.mock_kafka_info(
             topics_partitions
         ) as (mock_process_args, mock_user_confirm, mock_ZK):
-            with mock.patch.object(sys, "exit", autospec=True) as mock_exit:
+            with pytest.raises(SystemExit):
                 obj = mock_ZK.return_value.__enter__.return_value
                 cluster_config = mock.Mock(zookeeper='some_ip')
                 args = mock.Mock(
@@ -126,8 +125,6 @@ class TestCopyGroup(object):
                 obj.get.return_value = (0, 0)
 
                 CopyGroup.run(args, cluster_config)
-
-                mock_exit.assert_called_once_with(1)
 
     def test_run_create_zknode_error(self, mock_client):
         topics_partitions = {

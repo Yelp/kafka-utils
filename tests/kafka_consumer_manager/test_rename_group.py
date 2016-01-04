@@ -23,14 +23,13 @@ class TestRenameGroup(object):
             "preprocess_args",
             spec=RenameGroup.preprocess_args,
             return_value=topics_partitions,
-        ) as mock_process_args, mock.patch.object(
-            RenameGroup,
-            "prompt_user_input",
-            spec=RenameGroup.prompt_user_input,
+        ) as mock_process_args, mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager.util.prompt_user_input",
+            autospec=True,
         ) as mock_user_confirm, mock.patch(
             "yelp_kafka_tool.kafka_consumer_manager."
             "commands.rename_group.ZK",
-            autospec=True
+            autospec=True,
         ) as mock_ZK:
             mock_ZK.return_value.__enter__.return_value = mock_ZK
             yield mock_process_args, mock_user_confirm, mock_ZK
@@ -91,9 +90,9 @@ class TestRenameGroup(object):
             RenameGroup.run(args, cluster_config)
 
             assert mock_user_confirm.call_count == 1
-            obj.get.call_args_list == zk_old_group_get_calls
-            obj.delete.call_args_list == zk_old_group_delete_calls
-            obj.create.call_args_list == zk_new_group_calls
+            sorted(obj.get.call_args_list) == sorted(zk_old_group_get_calls)
+            sorted(obj.delete.call_args_list) == sorted(zk_old_group_delete_calls)
+            sorted(obj.create.call_args_list) == sorted(zk_new_group_calls)
 
     def test_run_same_groupids(self, mock_client):
         topics_partitions = {}
