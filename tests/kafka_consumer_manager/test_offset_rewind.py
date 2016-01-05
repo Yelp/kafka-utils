@@ -19,7 +19,7 @@ class TestOffsetRewind(object):
             "preprocess_args",
             spec=OffsetRewind.preprocess_args,
             return_value=self.topics_partitions,
-        ) as _, mock.patch(
+        ), mock.patch(
             "yelp_kafka_tool.kafka_consumer_manager."
             "commands.offset_rewind.rewind_consumer_offsets",
             autospec=True

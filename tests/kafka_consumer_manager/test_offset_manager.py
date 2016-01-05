@@ -129,12 +129,11 @@ class TestOffsetManagerBase(object):
             partitions=[0, 1, 2]
         )
 
-        with self.mock_get_topics() as mock_get_topics, mock.patch.object(
+        with self.mock_get_topics(), mock.patch.object(
             sys,
             "exit",
             autospec=True,
         ) as mock_exit:
-            mock_get_topics
             OffsetManagerBase.preprocess_args(
                 args.groupid,
                 args.topic,

@@ -1,5 +1,4 @@
 import contextlib
-import sys
 
 import mock
 import pytest
@@ -95,7 +94,7 @@ class TestCopyGroup(object):
         with self.mock_kafka_info(
             topics_partitions
         ) as (mock_process_args, mock_user_confirm, mock_ZK):
-            with mock.patch.object(sys, "exit", autospec=True) as mock_exit:
+            with pytest.raises(SystemExit) as ex:
                 cluster_config = mock.Mock(zookeeper='some_ip')
                 args = mock.Mock(
                     source_groupid='my_group',
@@ -104,7 +103,7 @@ class TestCopyGroup(object):
 
                 CopyGroup.run(args, cluster_config)
 
-                mock_exit.assert_called_once_with(1)
+                assert ex.value.code == 1
 
     def test_run_topic_already_subscribed_to_error(self, mock_client):
         topics_partitions = {
@@ -114,7 +113,7 @@ class TestCopyGroup(object):
         with self.mock_kafka_info(
             topics_partitions
         ) as (mock_process_args, mock_user_confirm, mock_ZK):
-            with pytest.raises(SystemExit):
+            with pytest.raises(SystemExit) as ex:
                 obj = mock_ZK.return_value.__enter__.return_value
                 cluster_config = mock.Mock(zookeeper='some_ip')
                 args = mock.Mock(
@@ -125,6 +124,8 @@ class TestCopyGroup(object):
                 obj.get.return_value = (0, 0)
 
                 CopyGroup.run(args, cluster_config)
+
+                assert ex.value.code == 1
 
     def test_run_create_zknode_error(self, mock_client):
         topics_partitions = {

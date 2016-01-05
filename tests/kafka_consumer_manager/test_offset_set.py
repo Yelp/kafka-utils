@@ -61,7 +61,7 @@ class TestOffsetTest(object):
             OffsetSet,
             'get_topics_from_consumer_group_id',
             spec=OffsetSet.get_topics_from_consumer_group_id,
-        ) as _, mock.patch(
+        ), mock.patch(
             "yelp_kafka_tool.kafka_consumer_manager."
             "commands.offset_set.set_consumer_offsets",
             return_value=[],
@@ -102,7 +102,7 @@ class TestOffsetTest(object):
             OffsetSet,
             'get_topics_from_consumer_group_id',
             spec=OffsetSet.get_topics_from_consumer_group_id,
-        ) as _, mock.patch(
+        ), mock.patch(
             "yelp_kafka_tool.kafka_consumer_manager."
             "commands.offset_set.set_consumer_offsets",
             return_value=[

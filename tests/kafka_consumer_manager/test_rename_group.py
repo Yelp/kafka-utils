@@ -1,5 +1,4 @@
 import contextlib
-import sys
 
 import mock
 import pytest
@@ -99,7 +98,7 @@ class TestRenameGroup(object):
         with self.mock_kafka_info(
             topics_partitions
         ) as (mock_process_args, mock_user_confirm, mock_ZK):
-            with mock.patch.object(sys, "exit", autospec=True) as mock_exit:
+            with pytest.raises(SystemExit) as ex:
                 cluster_config = mock.Mock(zookeeper='some_ip')
                 args = mock.Mock(
                     old_groupid='my_group',
@@ -108,7 +107,7 @@ class TestRenameGroup(object):
 
                 RenameGroup.run(args, cluster_config)
 
-                mock_exit.assert_called_once_with(1)
+                ex.value.code == 1
 
     def test_run_topic_already_subscribed_to_error(self, mock_client):
         topics_partitions = {
@@ -118,7 +117,7 @@ class TestRenameGroup(object):
         with self.mock_kafka_info(
             topics_partitions
         ) as (mock_process_args, mock_user_confirm, mock_ZK):
-            with mock.patch.object(sys, "exit", autospec=True) as mock_exit:
+            with pytest.raises(SystemExit) as ex:
                 obj = mock_ZK.return_value.__enter__.return_value
                 cluster_config = mock.Mock(zookeeper='some_ip')
                 args = mock.Mock(
@@ -130,7 +129,7 @@ class TestRenameGroup(object):
 
                 RenameGroup.run(args, cluster_config)
 
-                mock_exit.assert_called_once_with(1)
+                assert ex.value.code == 1
 
     def test_run_create_zknode_error(self, mock_client):
         topics_partitions = {
