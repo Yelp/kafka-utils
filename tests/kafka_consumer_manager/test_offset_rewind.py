@@ -1,5 +1,3 @@
-import contextlib
-
 import mock
 import pytest
 
@@ -16,19 +14,16 @@ class TestOffsetRewind(object):
     @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
                 'commands.offset_rewind.KafkaClient')
     def test_run(self, mock_client):
-        with contextlib.nested(
-            mock.patch.object(
-                OffsetRewind,
-                "preprocess_args",
-                spec=OffsetRewind.preprocess_args,
-                return_value=self.topics_partitions,
-            ),
-            mock.patch(
-                "yelp_kafka_tool.kafka_consumer_manager."
-                "commands.offset_rewind.rewind_consumer_offsets",
-                autospec=True
-            )
-        ) as (mock_writer_process_args, mock_rewind):
+        with mock.patch.object(
+            OffsetRewind,
+            "preprocess_args",
+            spec=OffsetRewind.preprocess_args,
+            return_value=self.topics_partitions,
+        ), mock.patch(
+            "yelp_kafka_tool.kafka_consumer_manager."
+            "commands.offset_rewind.rewind_consumer_offsets",
+            autospec=True
+        ) as mock_rewind:
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,

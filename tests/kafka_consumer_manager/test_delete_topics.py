@@ -19,19 +19,16 @@ class TestDeleteTopics(object):
 
     @contextlib.contextmanager
     def mock_kafka_info(self):
-        with contextlib.nested(
-            mock.patch.object(
-                DeleteTopics,
-                "preprocess_args",
-                spec=DeleteTopics.preprocess_args,
-                return_value=self.topics_partitions,
-            ),
-            mock.patch(
-                'yelp_kafka_tool.kafka_consumer_manager.'
-                'commands.delete_topics.ZK',
-                autospec=True
-            )
-        ) as (mock_writer_process_args, mock_ZK):
+        with mock.patch.object(
+            DeleteTopics,
+            "preprocess_args",
+            spec=DeleteTopics.preprocess_args,
+            return_value=self.topics_partitions,
+        )as mock_writer_process_args, mock.patch(
+            'yelp_kafka_tool.kafka_consumer_manager.'
+            'commands.delete_topics.ZK',
+            autospec=True
+        ) as mock_ZK:
             mock_ZK.return_value.__enter__.return_value = mock_ZK.return_value
             yield mock_writer_process_args, mock_ZK
 

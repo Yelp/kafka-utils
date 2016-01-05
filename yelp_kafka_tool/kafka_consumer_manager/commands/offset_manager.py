@@ -6,6 +6,7 @@ import sys
 
 from kazoo.exceptions import NoNodeError
 
+from yelp_kafka_tool.kafka_consumer_manager.util import prompt_user_input
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -49,40 +50,55 @@ class OffsetManagerBase(object):
         if (partitions and (not topic)):
             print(
                 "Error: Cannot specify partitions without topic name.",
-                file=sys.stderr
+                file=sys.stderr,
             )
             sys.exit(1)
 
         # Get all the topics that this consumer is subscribed to.
         topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
-            groupid, fail_on_error
+            groupid,
+            fail_on_error,
         )
         topics_dict = {}
         if topic:
             if topic not in topics:
                 print(
-                    "Error: Consumer {groupid} is not subscribed to topic: "
+                    "Error: Consumer {groupid} is not subscribed to topic:"
                     " {topic}.".format(
                         groupid=groupid,
-                        topic=topic
-                    ), file=sys.stderr
+                        topic=topic,
+                    ),
+                    file=sys.stderr,
                 )
                 if fail_on_error:
                     sys.exit(1)
                 else:
                     return {}
 
+            complete_partitions_list = client.get_partition_ids_for_topic(topic)
             if partitions:
                 # If the user specified a topic and partition, just fetch those
                 # offsets.
-                partitions_list = partitions
+                if not set(partitions).issubset(complete_partitions_list):
+                    print(
+                        "Error: Some partitions amongst {partitions} are not "
+                        "part of complete partition list {complete_list} for "
+                        "topic: {topic}.".format(
+                            partitions=', '.join(str(p) for p in partitions),
+                            complete_list=', '.join(str(p) for p in complete_partitions_list),
+                            topic=topic,
+                        ),
+                        file=sys.stderr,
+                    )
+                    if fail_on_error:
+                        sys.exit(1)
+                    else:
+                        return {}
+                topics_dict[topic] = partitions
             else:
                 # If the user just gave us a topic, get offsets from all partitions.
-                partitions_list = client.get_partition_ids_for_topic(topic)
-
-            topics_dict[topic] = partitions_list
-
+                topics_dict[topic] = complete_partitions_list
         else:
             for topic in topics:
                 # Get all the partitions for this topic
@@ -94,15 +110,6 @@ class OffsetManagerBase(object):
     @classmethod
     def add_parser(cls, subparsers):
         cls.setup_subparser(subparsers)
-
-    @classmethod
-    def prompt_user_input(cls, in_str):
-        while(True):
-            answer = raw_input(in_str + ' ')
-            if answer == "n" or answer == "no":
-                sys.exit(0)
-            if answer == "y" or answer == "yes":
-                return
 
 
 class OffsetWriter(OffsetManagerBase):
@@ -134,6 +141,6 @@ class OffsetWriter(OffsetManagerBase):
                 "shall be modified:\n{topics}\nIs this what you really "
                 "intend? (y/n)".format(topics=topics_str)
             )
-            cls.prompt_user_input(in_str)
+            prompt_user_input(in_str)
 
         return topics_dict

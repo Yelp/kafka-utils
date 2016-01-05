@@ -3,12 +3,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import sys
-from collections import defaultdict
 
 from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
 from .offset_manager import OffsetManagerBase
+from yelp_kafka_tool.kafka_consumer_manager.util import create_offsets
+from yelp_kafka_tool.kafka_consumer_manager.util import fetch_offsets
+from yelp_kafka_tool.kafka_consumer_manager.util import preprocess_topics
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -41,7 +43,7 @@ class RenameGroup(OffsetManagerBase):
         if args.old_groupid == args.new_groupid:
             print(
                 "Error: Old group ID and new group ID are the same.",
-                file=sys.stderr
+                file=sys.stderr,
             )
             sys.exit(1)
         # Setup the Kafka client
@@ -62,69 +64,19 @@ class RenameGroup(OffsetManagerBase):
                 # Consumer Group ID doesn't exist.
                 pass
             else:
-                # Is the new consumer already subscribed to any of these topics?
-                for topic in topics:
-                    if topic in topics_dict:
-                        print(
-                            "Error: Consumer Group ID: {groupid} is already "
-                            "subscribed to topic: {topic}.\nPlease delete this "
-                            "topic from either group before re-running the "
-                            "command.".format(
-                                groupid=args.new_groupid,
-                                topic=topic
-                            ),
-                            file=sys.stderr
-                        )
-                        sys.exit(1)
-                # Let's confirm what the user intends to do.
-                if topics:
-                    in_str = (
-                        "Consumer Group: {new_groupid} already exists.\nTopics "
-                        "subscribed to by the consumer groups are listed "
-                        "below:\n{old_groupid}: {old_group_topics}\n"
-                        "{new_groupid}: {new_group_topics}\nDo you intend to merge "
-                        "the two consumer groups? (y/n)".format(
-                            old_groupid=args.old_groupid,
-                            old_group_topics=topics_dict.keys(),
-                            new_groupid=args.new_groupid,
-                            new_group_topics=topics
-                        )
-                    )
-                    cls.prompt_user_input(in_str)
+                preprocess_topics(
+                    args.old_groupid,
+                    topics_dict.keys(),
+                    args.new_groupid,
+                    topics,
+                )
 
-            old_offsets = defaultdict(dict)
-            for topic, partitions in topics_dict.iteritems():
-                for partition in partitions:
-                    node_info = zk.get(
-                        "/consumers/{groupid}/offsets/{topic}/{partition}".format(
-                            groupid=args.old_groupid,
-                            topic=topic,
-                            partition=partition
-                        )
-                    )
-                    offset, _ = node_info
-                    old_offsets[topic][partition] = offset
-
-            old_base_path = "/consumers/{groupid}".format(
-                groupid=args.old_groupid,
-            )
-            for topic, partition_offsets in old_offsets.iteritems():
-                for partition, offset in partition_offsets.iteritems():
-                    new_path = "/consumers/{groupid}/offsets/{topic}/{partition}".format(
-                        groupid=args.new_groupid,
-                        topic=topic,
-                        partition=partition
-                    )
-                    try:
-                        zk.create(new_path, value=bytes(offset), makepath=True)
-                    except:
-                        print(
-                            "Error: Unable to migrate all metadata in Zookeeper. "
-                            "Please re-run the command.",
-                            file=sys.stderr
-                        )
-                        raise
+            old_offsets = fetch_offsets(zk, args.old_groupid, topics_dict)
+            create_offsets(zk, args.new_groupid, old_offsets)
             try:
+                old_base_path = "/consumers/{groupid}".format(
+                    groupid=args.old_groupid,
+                )
                 zk.delete(old_base_path, recursive=True)
             except:
                 print(
