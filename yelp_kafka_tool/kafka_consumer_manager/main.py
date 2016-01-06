@@ -13,6 +13,7 @@ from .commands.delete_topics import DeleteTopics
 from .commands.list_topics import ListTopics
 from .commands.offset_advance import OffsetAdvance
 from .commands.offset_get import OffsetGet
+from .commands.offset_restore import OffsetRestore
 from .commands.offset_rewind import OffsetRewind
 from .commands.offset_set import OffsetSet
 from .commands.rename_group import RenameGroup
@@ -44,8 +45,8 @@ def parse_args():
     DeleteTopics.add_parser(subparsers)
     CopyGroup.add_parser(subparsers)
     RenameGroup.add_parser(subparsers)
-    args = parser.parse_args()
-    return args
+    OffsetRestore.add_parser(subparsers)
+    return parser.parse_args()
 
 
 def run():

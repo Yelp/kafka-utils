@@ -82,11 +82,9 @@ class OffsetGet(OffsetManagerBase):
             if topic not in consumer_offsets_metadata:
                 print(
                     "Warning: Topic {topic} or one or more of it's partitions "
-                    "do not exist in Kafka".format(
-                        topic=topic
-                    ), file=sys.stderr
+                    "do not exist in Kafka".format(topic=topic),
+                    file=sys.stderr,
                 )
-
         client.close()
         if args.json:
             print_json(consumer_offsets_metadata)
