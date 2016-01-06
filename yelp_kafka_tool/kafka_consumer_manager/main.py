@@ -15,6 +15,7 @@ from .commands.offset_advance import OffsetAdvance
 from .commands.offset_get import OffsetGet
 from .commands.offset_restore import OffsetRestore
 from .commands.offset_rewind import OffsetRewind
+from .commands.offset_save import OffsetSave
 from .commands.offset_set import OffsetSet
 from .commands.rename_group import RenameGroup
 from yelp_kafka_tool.util.config import get_cluster_config
@@ -38,6 +39,7 @@ def parse_args():
     subparsers = parser.add_subparsers()
 
     OffsetGet.add_parser(subparsers)
+    OffsetSave.add_parser(subparsers)
     OffsetSet.add_parser(subparsers)
     OffsetAdvance.add_parser(subparsers)
     OffsetRewind.add_parser(subparsers)
