@@ -7,6 +7,7 @@ import sys
 from collections import defaultdict
 
 from kafka import KafkaClient
+from kafka.common import KafkaUnavailableError
 from yelp_kafka.monitoring import get_consumer_offsets_metadata
 
 from .offset_manager import OffsetManagerBase
@@ -47,8 +48,7 @@ class OffsetSave(OffsetManagerBase):
             "be fetched.",
         )
         parser_offset_save.add_argument(
-            "--json-file",
-            required=True,
+            "json_file",
             type=str,
             help="Export data in json format in the given file.",
         )
@@ -74,7 +74,7 @@ class OffsetSave(OffsetManagerBase):
                 topics_dict,
                 False,
             )
-        except:
+        except KafkaUnavailableError:
             print(
                 "Error: Encountered error with Kafka, please try again later.",
                 file=sys.stderr,
@@ -86,8 +86,8 @@ class OffsetSave(OffsetManagerBase):
         for topic in topics_dict:
             if topic not in consumer_offsets_metadata:
                 print(
-                    "Warning: Topic {topic} or one or more of it's partitions "
-                    "do not exist in Kafka".format(topic=topic),
+                    "Warning: Topic {topic} does not exist in Kafka"
+                    .format(topic=topic),
                     file=sys.stderr,
                 )
 
