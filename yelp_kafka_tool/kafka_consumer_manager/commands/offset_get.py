@@ -67,7 +67,7 @@ class OffsetGet(OffsetManagerBase):
         )
         try:
             consumer_offsets_metadata = get_consumer_offsets_metadata(
-                client, args.groupid, topics_dict, False
+                client, args.groupid, topics_dict, False,
             )
         except:
             print(

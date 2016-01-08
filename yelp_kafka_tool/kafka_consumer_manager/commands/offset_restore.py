@@ -50,11 +50,7 @@ class OffsetRestore(OffsetManagerBase):
                 raise
 
     @classmethod
-    def fetch_offsets_kafka(
-        cls,
-        client,
-        consumer_offsets_data,
-    ):
+    def fetch_offsets_kafka(cls, client, consumer_offsets_data):
         consumer_group = consumer_offsets_data.keys()[0]
         topics_offset_data = consumer_offsets_data.values()[0]
         topic_partitions = dict(
@@ -78,12 +74,13 @@ class OffsetRestore(OffsetManagerBase):
             for topic, offset_data in topics_offset_data.iteritems()
         )
         for topic, partitions in topic_partitions.iteritems():
-            cls.validate_topic_partitions(
+            if not cls.validate_topic_partitions(
                 client,
                 topic,
                 partitions,
                 current_offsets,
-            )
+            ):
+                sys.exit(1)
             # Validate current offsets in range of low and highmarks
             # Currently we only validate for positive offsets and warn
             # if out of range of low and highmarks
@@ -117,13 +114,17 @@ class OffsetRestore(OffsetManagerBase):
 
     @classmethod
     def run(cls, args, cluster_config):
-
         # Fetch offsets from given json-file
         consumer_offsets_data = cls.parse_consumer_offsets(args.json_file)
         # Setup the Kafka client
         client = KafkaClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
+        cls.restore_offsets(client, consumer_offsets_data)
+        client.close()
+
+    @classmethod
+    def restore_offsets(cls, client, consumer_offsets_data):
         try:
             # Fetch current offsets
             current_offsets = cls.fetch_offsets_kafka(
@@ -143,12 +144,11 @@ class OffsetRestore(OffsetManagerBase):
             set_consumer_offsets(client, consumer_group, new_offsets)
         except IndexError:
             print(
-                "Error: Given consumer-offset data file {file} could not parsed"
-                .format(file=args.json_file),
+                "Error: Given parsed consumer-offset data {consumer_offsets} could not parsed"
+                .format(consumer_offsets=consumer_offsets_data),
                 file=sys.stderr,
             )
             raise
-        client.close()
 
     @classmethod
     def validate_topic_partitions(cls, client, topic, partitions, consumer_offsets_metadata):
@@ -159,13 +159,13 @@ class OffsetRestore(OffsetManagerBase):
                 .format(topic=topic),
                 file=sys.stderr,
             )
-            sys.exit(1)
+            return False
 
         # Validate partition-list
         complete_partitions_list = client.get_partition_ids_for_topic(topic)
         if not set(partitions).issubset(complete_partitions_list):
             print(
-                "Error: Some partitions amongst {partitions} in json file doesn't"
+                "Error: Some partitions amongst {partitions} in json file doesn't "
                 "exist in the cluster partitions:{complete_list} for "
                 "topic: {topic}.".format(
                     partitions=', '.join(str(p) for p in partitions),
@@ -174,4 +174,5 @@ class OffsetRestore(OffsetManagerBase):
                 ),
                 file=sys.stderr,
             )
-            sys.exit(1)
+            return False
+        return True
