@@ -106,6 +106,14 @@ class OffsetSave(OffsetManagerBase):
         json_file,
         groupid,
     ):
+        """Built offsets for given topic-partitions in required format from current
+        offsets metadata and write to given json-file.
+
+        :param consumer_offsets_metadata: Fetched consumer offsets from kafka.
+        :param topics_dict: Dictionary of topic-partitions.
+        :param json_file: Filename to store consumer-offsets.
+        :param groupid: Current consumer-group.
+        """
         # Build consumer-offset data in desired format
         current_consumer_offsets = defaultdict(dict)
         for topic, topic_offsets in consumer_offsets_metadata.iteritems():
@@ -118,6 +126,7 @@ class OffsetSave(OffsetManagerBase):
 
     @classmethod
     def write_offsets_to_file(cls, json_file_name, consumer_offsets_data):
+        """Save built consumer-offsets data to given json file."""
         # Save consumer-offsets to file
         with open(json_file_name, "w") as json_file:
             try:
