@@ -158,11 +158,11 @@ class OffsetRestore(OffsetManagerBase):
             # Commit offsets
             consumer_group = parsed_consumer_offsets.keys()[0]
             set_consumer_offsets(client, consumer_group, new_offsets)
-            print("Restored to new offsets {offsets}".format(offsets=new_offsets))
+            print("Restored to new offsets {offsets}".format(offsets=dict(new_offsets)))
         except IndexError:
             print(
-                "Error: Given parsed consumer-offset data {consumer_offsets} could not parsed"
-                .format(consumer_offsets=parsed_consumer_offsets),
+                "Error: Given parsed consumer-offset data {consumer_offsets} "
+                "could not parsed".format(consumer_offsets=parsed_consumer_offsets),
                 file=sys.stderr,
             )
             raise
