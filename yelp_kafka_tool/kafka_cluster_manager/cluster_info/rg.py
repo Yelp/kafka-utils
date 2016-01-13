@@ -235,6 +235,12 @@ class ReplicationGroup(object):
                     # If no eligible partition continue with next broker
                     if best_fit_partition is None:
                         continue
+                    else:
+                        return (source, dest, best_fit_partition)
+                    # Quick fix to handle delay in broker rebalancing
+                    # Only downside is that it may not implicity balance
+                    # topic-partition imbalance
+                    '''
                     sibling_cnt = best_fit_partition.count_siblings(dest.partitions)
                     if sibling_cnt < min_sibling_partition_cnt \
                             or min_sibling_partition_cnt == -1:
@@ -243,6 +249,7 @@ class ReplicationGroup(object):
                         if min_sibling_partition_cnt == 0:
                             # Minimum possible sibling-count
                             break
+                    '''
                 else:
                     # If relatively-unbalanced then all brokers in destination
                     # will be thereafter, return from here

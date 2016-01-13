@@ -98,13 +98,17 @@ class Broker(object):
         # Get best fit partition, based on avoiding partition from same topic
         # and partition with least siblings in destination-broker.
         eligible_partitions = self.partitions - broker.partitions
+        # Temporary: This might take long time
         if eligible_partitions:
+            return eligible_partitions[0]
+            '''
             pref_partition = min(
                 eligible_partitions,
                 key=lambda source_partition:
                     source_partition.count_siblings(broker.partitions),
             )
             return pref_partition
+            '''
         else:
             return None
 
