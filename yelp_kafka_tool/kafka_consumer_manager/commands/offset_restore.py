@@ -67,36 +67,59 @@ class OffsetRestore(OffsetManagerBase):
         and lowmarks and highmarks from current-offsets for.
         """
         new_offsets = defaultdict(dict)
-        for topic, partitions in topic_partitions.iteritems():
-            # Validate current offsets in range of low and highmarks
-            # Currently we only validate for positive offsets and warn
-            # if out of range of low and highmarks
-            for topic_partition_offsets in current_offsets[topic]:
-                partition = topic_partition_offsets.partition
-                if partition not in topic_partitions[topic]:
-                    continue
-                lowmark = topic_partition_offsets.lowmark
-                highmark = topic_partition_offsets.highmark
-                new_offset = topics_offset_data[topic][partition]
-                if new_offset < 0:
+        try:
+            for topic, partitions in topic_partitions.iteritems():
+                # Validate current offsets in range of low and highmarks
+                # Currently we only validate for positive offsets and warn
+                # if out of range of low and highmarks
+                valid_partitions = set([])
+                for topic_partition_offsets in current_offsets[topic]:
+                    partition = topic_partition_offsets.partition
+                    valid_partitions.add(partition)
+                    # Skip the partition not present in list
+                    if partition not in topic_partitions[topic]:
+                        continue
+                    lowmark = topic_partition_offsets.lowmark
+                    highmark = topic_partition_offsets.highmark
+                    new_offset = topics_offset_data[topic][partition]
+                    if new_offset < 0:
+                        print(
+                            "Error: Given offset: {offset} is negative"
+                            .format(offset=new_offset),
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+                    if new_offset < lowmark or new_offset > highmark:
+                        print(
+                            "Warning: Given offset {offset} for topic-partition "
+                            "{topic}:{partition} is outside the range of lowmark "
+                            "{lowmark} and highmark {highmark}".format(
+                                offset=new_offset,
+                                topic=topic,
+                                partition=partition,
+                                lowmark=lowmark,
+                                highmark=highmark,
+                            )
+                        )
+                    new_offsets[topic][partition] = new_offset
+                if not set(partitions).issubset(valid_partitions):
                     print(
-                        "Error: Given offset: {offset} is negative".format(offset=new_offset),
+                        "Error: Some invalid partitions {partitions} for topic "
+                        "{topic} found. Valid partition-list {valid_partitions}. "
+                        "Exiting...".format(
+                            partitions=', '.join([str(p) for p in partitions]),
+                            valid_partitions=', '.join([str(p) for p in valid_partitions]),
+                            topic=topic,
+                        ),
                         file=sys.stderr,
                     )
                     sys.exit(1)
-                if new_offset < lowmark or new_offset > highmark:
-                    print(
-                        "Warning: Given offset {offset} for topic-partition "
-                        "{topic}:{partition} is outside the range of lowmark "
-                        "{lowmark} and highmark {highmark}".format(
-                            offset=new_offset,
-                            topic=topic,
-                            partition=partition,
-                            lowmark=lowmark,
-                            highmark=highmark,
-                        )
-                    )
-                new_offsets[topic][partition] = new_offset
+        except KeyError as ex:
+            print(
+                "Error: Possible invalid topic or partition. Error msg: {ex}. "
+                "Exiting...".format(ex=ex),
+            )
+            sys.exit(1)
         return new_offsets
 
     @classmethod
