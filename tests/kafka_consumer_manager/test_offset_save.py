@@ -18,7 +18,7 @@ class TestOffsetSave(object):
             ConsumerPartitionOffsets(topic='topic1', partition=1, current=20, highmark=655, lowmark=655),
         ]
     }
-    parsed_consumer_offsets = {'group1': {'topic1': {'0': 10, '1': 20}}}
+    parsed_consumer_offsets = {'groupid': 'group1', 'offsets': {'topic1': {'0': 10, '1': 20}}}
 
     @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
                 'commands.offset_save.KafkaClient')
