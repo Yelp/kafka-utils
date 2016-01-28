@@ -32,7 +32,7 @@ Attributes:
                                 display proposed-plan otherwise
     --no-confirm:               Execute the plan without asking for confirmation.
     --logconf:                  Provide logging configuration file path.
-    --proposed-file-json:       Export proposed-plan to .json format
+    --proposed-plan-json:       Export proposed-plan to .json format
 """
 from __future__ import absolute_import
 from __future__ import unicode_literals

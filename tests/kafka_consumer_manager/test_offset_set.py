@@ -9,7 +9,7 @@ from yelp_kafka_tool.kafka_consumer_manager. \
     commands.offset_set import OffsetSet
 
 
-class TestOffsetTest(object):
+class TestOffsetSet(object):
 
     def test_topics_dict(self):
         offset_update_tuple = "topic1.23=1000"
