@@ -18,7 +18,8 @@ class TestOffsetSave(object):
             ConsumerPartitionOffsets(topic='topic1', partition=1, current=20, highmark=655, lowmark=655),
         ]
     }
-    parsed_consumer_offsets = {'groupid': 'group1', 'offsets': {'topic1': {'0': 10, '1': 20}}}
+    offset_data_file = {'groupid': 'group1', 'offsets': {'topic1': {0: 10, 1: 20}}}
+    json_data = {'groupid': 'group1', 'offsets': {'topic1': {'0': 10, '1': 20}}}
 
     @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
                 'commands.offset_save.KafkaClient')
@@ -35,12 +36,12 @@ class TestOffsetSave(object):
                 self.consumer_offsets_metadata,
                 self.topics_partitions,
                 filename,
-                consumer_group
+                consumer_group,
             )
 
             ordered_args, _ = mock_write_offsets.call_args
             assert ordered_args[0] == filename
-            assert ordered_args[1] == self.parsed_consumer_offsets
+            assert ordered_args[1] == self.offset_data_file
 
     @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
                 'commands.offset_save.KafkaClient')
@@ -73,4 +74,4 @@ class TestOffsetSave(object):
             mock_client.return_value.close.assert_called_once_with()
             ordered_args, _ = mock_write_offsets.call_args
             assert ordered_args[0] == "some_file"
-            assert ordered_args[1] == self.parsed_consumer_offsets
+            assert ordered_args[1] == self.offset_data_file

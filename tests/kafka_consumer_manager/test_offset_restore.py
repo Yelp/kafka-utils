@@ -28,21 +28,13 @@ class TestOffsetRestore(object):
         ConsumerPartitionOffsets(topic='topic1', partition=1, current=20, highmark=40, lowmark=10),
     ]}
 
-    def _get_partition_ids_for_topic(self, topic):
-        try:
-            return self.topics_partitions[topic]
-        # Since we patch sys.exit, let's mask this exception since this call
-        # is triggered after the call to sys.exit
-        except KeyError:
-            pass
-
     @pytest.fixture
     def mock_kafka_client(self):
         mock_kafka_client = mock.MagicMock(
             spec=KafkaClient
         )
         mock_kafka_client.get_partition_ids_for_topic. \
-            side_effect = self._get_partition_ids_for_topic
+            side_effect = self.topics_partitions
         return mock_kafka_client
 
     def test_restore_offsets(self, mock_kafka_client):

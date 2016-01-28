@@ -118,7 +118,7 @@ class OffsetSave(OffsetManagerBase):
         current_consumer_offsets = defaultdict(dict)
         for topic, topic_offsets in consumer_offsets_metadata.iteritems():
             for partition_offset in topic_offsets:
-                current_consumer_offsets[topic][str(partition_offset.partition)] = \
+                current_consumer_offsets[topic][partition_offset.partition] = \
                     partition_offset.current
         consumer_offsets_data = {'groupid': groupid, 'offsets': current_consumer_offsets}
 

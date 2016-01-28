@@ -47,8 +47,7 @@ class OffsetRestore(OffsetManagerBase):
                 # Create new dict with partition-keys as integers
                 parsed_offsets['groupid'] = parsed_offsets_data['groupid']
                 parsed_offsets['offsets'] = {}
-                offset_data = parsed_offsets_data['offsets']
-                for topic, topic_data in offset_data.iteritems():
+                for topic, topic_data in parsed_offsets_data['offsets'].iteritems():
                     parsed_offsets['offsets'][topic] = {}
                     for partition, offset in topic_data.iteritems():
                         parsed_offsets['offsets'][topic][int(partition)] = offset
@@ -72,7 +71,7 @@ class OffsetRestore(OffsetManagerBase):
                 # Validate current offsets in range of low and highmarks
                 # Currently we only validate for positive offsets and warn
                 # if out of range of low and highmarks
-                valid_partitions = set([])
+                valid_partitions = set()
                 for topic_partition_offsets in current_offsets[topic]:
                     partition = topic_partition_offsets.partition
                     valid_partitions.add(partition)
