@@ -61,11 +61,6 @@ class TestOffsetRestore(object):
             "commands.offset_restore.get_consumer_offsets_metadata",
             return_value=self.consumer_offsets_metadata,
             autospec=True,
-        ), mock.patch(
-            'yelp_kafka_tool.kafka_consumer_manager.'
-            'commands.offset_restore.KafkaClient',
-            spec=KafkaClient.get_partition_ids_for_topic,
-            side_effect=self._get_partition_ids_for_topic,
         ):
             OffsetRestore.restore_offsets(mock_kafka_client, self.parsed_consumer_offsets)
 
