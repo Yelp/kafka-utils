@@ -147,6 +147,52 @@ class ZK:
             topics_data[topic_id] = topic_data
         return topics_data
 
+    def get_consumer_groups(self, consumer_group_id=None, names_only=False):
+        """Get information on all the available consumer-groups.
+
+        :rtype : dict of consumer-group offset details
+        """
+        if consumer_group_id is None:
+            group_ids = self.get_children("/consumers")
+        else:
+            group_ids = [consumer_group_id]
+
+        # Return consumer-group-ids only
+        if names_only:
+            return {g_id: None for g_id in group_ids}
+
+        consumer_offsets = {}
+        for g_id in group_ids:
+            consumer_offsets[g_id] = {}
+            # Get topics
+            try:
+                topics = self.get_my_subscribed_topics(g_id)
+            except NoNodeError:
+                # No offset information of given consumer-group
+                continue
+            for topic in topics:
+                consumer_offsets[g_id][topic] = {}
+                # Get partitions
+                try:
+                    partitions = self.get_my_subscribed_partitions(g_id, topic)
+                except NoNodeError:
+                    # Continue with next topic
+                    continue
+                for partition in partitions:
+                    path = "/consumers/{group_id}/offsets/{topic}/{partition}".format(
+                        group_id=g_id,
+                        topic=topic,
+                        partition=partition,
+                    )
+                    try:
+                        # Get current offset
+                        offset_json, _ = self.get(path)
+                        consumer_offsets[g_id][topic][int(partition)] = json.loads(offset_json)
+                    except NoNodeError:
+                        _log.error("Path {path} not found".format(path=path))
+                        sys.exit(1)
+        return consumer_offsets
+
     def _fetch_partition_state(self, topic_id, partition_id):
         """Fetch partition-state for given topic-partition."""
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
