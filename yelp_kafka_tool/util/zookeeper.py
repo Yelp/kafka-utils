@@ -150,7 +150,24 @@ class ZK:
     def get_consumer_groups(self, consumer_group_id=None, names_only=False):
         """Get information on all the available consumer-groups.
 
-        :rtype : dict of consumer-group offset details
+        If names_only is False, only list of consumer-group ids are sent.
+        If names_only is True, Consumer group offset details are returned
+        for all consumer-groups or given consumer-group if given in dict
+        format as:-
+
+        {
+            'group-id':
+            {
+                'topic':
+                {
+                    'partition': offset-value,
+                    ...
+                    ...
+                }
+            }
+        }
+
+        :rtype: dict of consumer-group offset details
         """
         if consumer_group_id is None:
             group_ids = self.get_children("/consumers")
@@ -164,11 +181,14 @@ class ZK:
         consumer_offsets = {}
         for g_id in group_ids:
             consumer_offsets[g_id] = {}
-            # Get topics
             try:
                 topics = self.get_my_subscribed_topics(g_id)
             except NoNodeError:
                 # No offset information of given consumer-group
+                _log.warning(
+                    "No topics subscribed to consumer-group {g_id} "
+                    "Continuing with next consumer group...".format(g_id=g_id),
+                )
                 continue
             for topic in topics:
                 consumer_offsets[g_id][topic] = {}
@@ -176,7 +196,10 @@ class ZK:
                 try:
                     partitions = self.get_my_subscribed_partitions(g_id, topic)
                 except NoNodeError:
-                    # Continue with next topic
+                    _log.warning(
+                        "No partition offsets found for topic {topic}. "
+                        "Continuing to next one...".format(topic=topic),
+                    )
                     continue
                 for partition in partitions:
                     path = "/consumers/{group_id}/offsets/{topic}/{partition}".format(
@@ -371,7 +394,7 @@ class ZK:
         }
 
     def get_in_progress_plan(self):
-        """Read the currently runnign plan on reassign_partitions node."""
+        """Read the currently running plan on reassign_partitions node."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         try:
