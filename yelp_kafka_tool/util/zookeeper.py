@@ -180,41 +180,74 @@ class ZK:
 
         consumer_offsets = {}
         for g_id in group_ids:
-            consumer_offsets[g_id] = {}
-            try:
-                topics = self.get_my_subscribed_topics(g_id)
-            except NoNodeError:
-                # No offset information of given consumer-group
-                _log.warning(
-                    "No topics subscribed to consumer-group {g_id} "
-                    "Continuing with next consumer group...".format(g_id=g_id),
+            consumer_offsets[g_id] = self.get_group_offsets(g_id)
+        return consumer_offsets
+
+    def get_group_offsets(self, group, topic=None):
+        """Fetch group offsets for given topic and partition otherwise all topics
+        and partitions otherwise.
+
+
+        {
+            'topic':
+            {
+                'partition': offset-value,
+                ...
+                ...
+            }
+        }
+        """
+        group_offsets = {}
+        try:
+            all_topics = self.get_my_subscribed_topics(group)
+        except NoNodeError:
+            # No offset information of given consumer-group
+            _log.error(
+                "No topics subscribed to consumer-group {group}.".format(
+                    group=group,
+                ),
+            )
+            return {}
+        if topic:
+            if topic in all_topics:
+                topics = [topic]
+            else:
+                _log.error(
+                    "Topic {topic} not found in topic list {topics} for consumer"
+                    "-group {consumer_group}".format(
+                        topic=topic,
+                        topics=', '.join(topic for topic in all_topics),
+                        consumer_group=group,
+                    ),
                 )
-                continue
+                raise
+        else:
+            topics = all_topics
             for topic in topics:
-                consumer_offsets[g_id][topic] = {}
-                # Get partitions
+                group_offsets[topic] = {}
                 try:
-                    partitions = self.get_my_subscribed_partitions(g_id, topic)
+                    partitions = self.get_my_subscribed_partitions(group, topic)
                 except NoNodeError:
                     _log.warning(
                         "No partition offsets found for topic {topic}. "
                         "Continuing to next one...".format(topic=topic),
                     )
                     continue
+                # Fetch offsets for each partition
                 for partition in partitions:
                     path = "/consumers/{group_id}/offsets/{topic}/{partition}".format(
-                        group_id=g_id,
+                        group_id=group,
                         topic=topic,
                         partition=partition,
                     )
                     try:
                         # Get current offset
                         offset_json, _ = self.get(path)
-                        consumer_offsets[g_id][topic][int(partition)] = json.loads(offset_json)
+                        group_offsets[topic][partition] = json.loads(offset_json)
                     except NoNodeError:
                         _log.error("Path {path} not found".format(path=path))
-                        sys.exit(1)
-        return consumer_offsets
+                        raise
+        return group_offsets
 
     def _fetch_partition_state(self, topic_id, partition_id):
         """Fetch partition-state for given topic-partition."""
