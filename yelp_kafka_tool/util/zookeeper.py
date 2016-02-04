@@ -220,33 +220,33 @@ class ZK:
                         consumer_group=group,
                     ),
                 )
-                raise
+                sys.exit(1)
         else:
             topics = all_topics
-            for topic in topics:
-                group_offsets[topic] = {}
+        for topic in topics:
+            group_offsets[topic] = {}
+            try:
+                partitions = self.get_my_subscribed_partitions(group, topic)
+            except NoNodeError:
+                _log.warning(
+                    "No partition offsets found for topic {topic}. "
+                    "Continuing to next one...".format(topic=topic),
+                )
+                continue
+            # Fetch offsets for each partition
+            for partition in partitions:
+                path = "/consumers/{group_id}/offsets/{topic}/{partition}".format(
+                    group_id=group,
+                    topic=topic,
+                    partition=partition,
+                )
                 try:
-                    partitions = self.get_my_subscribed_partitions(group, topic)
+                    # Get current offset
+                    offset_json, _ = self.get(path)
+                    group_offsets[topic][partition] = json.loads(offset_json)
                 except NoNodeError:
-                    _log.warning(
-                        "No partition offsets found for topic {topic}. "
-                        "Continuing to next one...".format(topic=topic),
-                    )
-                    continue
-                # Fetch offsets for each partition
-                for partition in partitions:
-                    path = "/consumers/{group_id}/offsets/{topic}/{partition}".format(
-                        group_id=group,
-                        topic=topic,
-                        partition=partition,
-                    )
-                    try:
-                        # Get current offset
-                        offset_json, _ = self.get(path)
-                        group_offsets[topic][partition] = json.loads(offset_json)
-                    except NoNodeError:
-                        _log.error("Path {path} not found".format(path=path))
-                        raise
+                    _log.error("Path {path} not found".format(path=path))
+                    raise
         return group_offsets
 
     def _fetch_partition_state(self, topic_id, partition_id):
