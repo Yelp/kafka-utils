@@ -202,7 +202,7 @@ class ZK:
             all_topics = self.get_my_subscribed_topics(group)
         except NoNodeError:
             # No offset information of given consumer-group
-            _log.error(
+            _log.warning(
                 "No topics subscribed to consumer-group {group}.".format(
                     group=group,
                 ),
@@ -214,7 +214,7 @@ class ZK:
             else:
                 _log.error(
                     "Topic {topic} not found in topic list {topics} for consumer"
-                    "-group {consumer_group}".format(
+                    "-group {consumer_group}. Exiting...".format(
                         topic=topic,
                         topics=', '.join(topic for topic in all_topics),
                         consumer_group=group,
