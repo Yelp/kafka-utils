@@ -207,20 +207,20 @@ class ZK:
                     group=group,
                 ),
             )
-            return {}
+            return group_offsets
         if topic:
             if topic in all_topics:
                 topics = [topic]
             else:
                 _log.error(
                     "Topic {topic} not found in topic list {topics} for consumer"
-                    "-group {consumer_group}. Exiting...".format(
+                    "-group {consumer_group}.".format(
                         topic=topic,
                         topics=', '.join(topic for topic in all_topics),
                         consumer_group=group,
                     ),
                 )
-                sys.exit(1)
+                return group_offsets
         else:
             topics = all_topics
         for topic in topics:
