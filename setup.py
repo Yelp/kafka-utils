@@ -25,6 +25,7 @@ setup(
         "scripts/kafka-check",
         "scripts/kafka-check-corruption",
         "scripts/kafka-rolling-restart",
+        "scripts/reset-cg-offset",
     ],
     install_requires=[
         "argcomplete",
