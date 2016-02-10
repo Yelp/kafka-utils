@@ -27,7 +27,7 @@ class TestOffsetAdvance(object):
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,
-                partitions=None
+                partitions=None,
             )
             cluster_config = mock.Mock()
             OffsetAdvance.run(args, cluster_config)
