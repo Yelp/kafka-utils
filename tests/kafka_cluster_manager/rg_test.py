@@ -261,8 +261,9 @@ class TestReplicationGroup(object):
             rg1 = ct.rgs['rg1']
             over_loaded = [ct.brokers[0]]
             under_loaded = [ct.brokers[1]]
-            b_source, b_dest, victim_partition = \
-                rg1._get_target_brokers(over_loaded, under_loaded)
+            sibling_info = rg1.partitions_sib_info(over_loaded, under_loaded)
+            (b_source, b_dest, victim_partition), _ = \
+                rg1._get_target_brokers(over_loaded, under_loaded, sibling_info)
 
             # Assert source-broker is 0 and destination-broker is 1
             assert b_source.id == 0
@@ -290,8 +291,9 @@ class TestReplicationGroup(object):
             rg1 = ct.rgs['rg1']
             over_loaded = [ct.brokers[1], ct.brokers[0]]
             under_loaded = [ct.brokers[4]]
-            b_source, b_dest, victim_partition = \
-                rg1._get_target_brokers(over_loaded, under_loaded)
+            sibling_info = rg1.partitions_sib_info(over_loaded, under_loaded)
+            (b_source, b_dest, victim_partition), _ = \
+                rg1._get_target_brokers(over_loaded, under_loaded, sibling_info)
 
             # Verify destination-broker is 4
             assert b_dest.id == 4
@@ -329,8 +331,9 @@ class TestReplicationGroup(object):
             rg1 = ct.rgs['rg1']
             over_loaded = [ct.brokers[0], ct.brokers[1]]
             under_loaded = [ct.brokers[4]]
-            b_source, b_dest, victim_partition = \
-                rg1._get_target_brokers(over_loaded, under_loaded)
+            sibling_info = rg1.partitions_sib_info(over_loaded, under_loaded)
+            (b_source, b_dest, victim_partition), _ = \
+                rg1._get_target_brokers(over_loaded, under_loaded, sibling_info)
 
             # Verify destination broker is 4 (only option)
             assert b_dest.id == 4
