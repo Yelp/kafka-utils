@@ -261,11 +261,7 @@ class ReplicationGroup(object):
                     # If no eligible partition continue with next broker
                     if best_fit_partition is None:
                         continue
-                    if sibling_info:
-                        try:
-                            sibling_cnt = sibling_info[best_fit_partition][dest]
-                        except:
-                            sibling_cnt = best_fit_partition.count_siblings(dest.partitions)
+                    sibling_cnt = sibling_info[best_fit_partition][dest]
                     assert(sibling_cnt >= 0)
                     if sibling_cnt < min_sibling_partition_cnt \
                             or min_sibling_partition_cnt == -1:
@@ -288,7 +284,7 @@ class ReplicationGroup(object):
             for sibling in set(partition.topic.partitions):
                 try:
                     sibling_info[sibling][broker] += 1
-                except:
+                except KeyError:
                     # If there wasn't any sibling before
                     sibling_info[sibling][broker] = 1
         return sibling_info

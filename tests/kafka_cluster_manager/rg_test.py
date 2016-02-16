@@ -610,3 +610,34 @@ class TestReplicationGroup(object):
             new_plan = get_plan(ct.assignment)
             original_plan = get_plan(ct.initial_assignment)
             assert validate_plan(new_plan, original_plan, irange(6)) is True
+
+    def test_partitions_sib_info(self):
+        test_ct = CT()
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), [0, 2]),
+                ((u'T1', 0), [0, 1, 2]),
+                ((u'T1', 1), [0, 2]),
+            ]
+        )
+        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
+            rg1 = ct.rgs['rg1']
+            b0 = [broker for broker in ct.brokers.values() if broker.id == 0][0]
+            b1 = [broker for broker in ct.brokers.values() if broker.id == 1][0]
+            b2 = [broker for broker in ct.brokers.values() if broker.id == 2][0]
+            over_loaded = [b0]
+            under_loaded = [b1, b2]
+            sib_info = rg1.partitions_sib_info(over_loaded, under_loaded)
+
+            p1 = [p for p in b0.partitions if p.name == (u'T0', 0)][0]
+            p2 = [p for p in b0.partitions if p.name == (u'T1', 0)][0]
+            p3 = [p for p in b0.partitions if p.name == (u'T1', 1)][0]
+
+            # Verify sibling count of partitions of b1 in b2 and b3
+            assert sib_info[p1][b1] == 0
+            assert sib_info[p1][b2] == 1
+            assert sib_info[p2][b1] == 1
+            assert sib_info[p2][b2] == 2
+            assert sib_info[p3][b1] == 1
+            assert sib_info[p3][b2] == 2
+            assert len(sib_info) == 3
