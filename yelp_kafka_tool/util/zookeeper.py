@@ -50,6 +50,13 @@ class ZK:
         )
         return self.zk.get(path, watch)
 
+    def set(self, path, value):
+        """Sets and returns new data for the specified node."""
+        _log.debug(
+            "ZK: Setting {path} to {value}".format(path=path, value=value)
+        )
+        return self.zk.set(path, value)
+
     def get_json(self, path, watch=None):
         """Reads the data of the specified node and converts it to json."""
         data, _ = self.get(path, watch)
@@ -83,6 +90,54 @@ class ZK:
             broker = json.loads(broker_json)
             brokers[b_id] = broker
         return brokers
+
+    def get_topic_config(
+        self,
+        topic
+    ):
+        """Get configuration information for specified topic.
+
+        :rtype : dict of configuration"""
+        try:
+            config_data = json.loads(
+                self.get(
+                    "/config/topics/{topic}".format(topic=topic)
+                )[0]
+            )
+        except NoNodeError:
+            _log.error(
+                "topic {topic} not found.".format(topic=topic)
+            )
+            sys.exit(1)
+        return config_data
+
+    def set_topic_config(
+        self,
+        topic,
+        value
+    ):
+        """Set configuration information for specified topic.
+
+        :rtype : dict of new configuration"""
+        try:
+            config_data = json.dumps(value)
+            # Change value
+            return_value = self.set(
+                "/config/topics/{topic}".format(topic=topic),
+                config_data
+            )
+            # Create change
+            self.create(
+                '/config/changes/config_change_',
+                topic,
+                sequence=True
+            )
+        except NoNodeError:
+            _log.error(
+                "topic {topic} not found.".format(topic=topic)
+            )
+            sys.exit(1)
+        return return_value
 
     def get_topics(
         self,
