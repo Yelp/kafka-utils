@@ -47,6 +47,21 @@ class ClusterTopology(object):
         self._build_replication_groups()
         self._build_partitions()
         self.log.debug('Cluster-topology object created.')
+        self.log.info(
+            'Total partitions in cluster {partitions}'.format(
+                partitions=len(self.partitions),
+            ),
+        )
+        self.log.info(
+            'Total replication-groups in cluster {rgs}'.format(
+                rgs=len(self.rgs),
+            ),
+        )
+        self.log.info(
+            'Total brokers in cluster {brokers}'.format(
+                brokers=len(self.brokers),
+            ),
+        )
 
     def _build_topics(self, topic_ids):
         """List of topic objects from topic-ids."""
