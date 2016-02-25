@@ -35,8 +35,8 @@ def parse_args():
         ' Default to local cluster)',
     )
     parser.add_argument(
-        '--topology-base-path',
-        dest='topology_base_path',
+        '--discovery-base-path',
+        dest='discovery_base_path',
         type=str,
         help='Path of the directory containing the <cluster_type>.yaml config',
     )
@@ -85,12 +85,8 @@ def validate_args(args):
         sys.exit(1)
 
 
-def run():
-    """Verify command-line arguments and run reassignment functionalities."""
-    args = parse_args()
-
-    # Try to load logging configuration from file
-    if args.logconf:
+def configure_logging(log_conf=None):
+    if log_conf:
         try:
             fileConfig(args.logconf)
         except ConfigParser.NoSectionError:
@@ -102,21 +98,17 @@ def run():
     else:
         logging.basicConfig(level=logging.WARNING)
 
+
+def run():
+    """Verify command-line arguments and run reassignment functionalities."""
+    args = parse_args()
+
+    configure_logging(args.logconf)
     validate_args(args)
-    if args.zookeeper:
-        if args.cluster_name is None:
-            cluster_name = 'Unknown'
-        else:
-            cluster_name = args.cluster_name
-        cluster_config = ClusterConfig(
-            type=None,
-            name=cluster_name,
-            broker_list=[],
-            zookeeper=args.zookeeper,
-        )
-    else:
-        cluster_config = config.get_cluster_config(
+
+    cluster_config = config.get_cluster_config(
             args.cluster_type,
             args.cluster_name,
-        )
+            args.discovery_base_path,
+    )
     args.command(cluster_config, args)
