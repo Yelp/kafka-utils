@@ -1,5 +1,9 @@
 import argparse
 import logging
+import sys
+
+from ..cluster_info.util import confirm_execution
+from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
 
 class ClusterManagerCmd(object):
@@ -7,7 +11,31 @@ class ClusterManagerCmd(object):
 
     log = logging.getLogger("ClusterManager")
 
-    def add_subparser(self, subparser):
+    def execute_plan(self, ct, zk, proposed_plan, to_apply, no_confirm):
+        """Save proposed-plan and execute the same if requested."""
+        # Execute proposed-plan
+        if self.to_execute(to_apply, no_confirm):
+            result = KafkaInterface().execute_plan(
+                zk,
+                proposed_plan,
+                ct.brokers.values(),
+                ct.topics.values(),
+            )
+            if not result:
+                self.log.error('Plan execution unsuccessful. Exiting...')
+                sys.exit(1)
+            else:
+                self.log.info('Plan sent to zookeeper for reassignment successfully.')
+        else:
+            self.log.info('Proposed plan won\'t be executed.')
+
+    def to_execute(self, to_apply, no_confirm):
+        """Confirm if proposed-plan should be executed."""
+        if to_apply and (no_confirm or confirm_execution()):
+            return True
+        return False
+
+    def add_subparser(self, subparsers):
         """Configure the subparser of the command
 
         :param subparser: argpars subparser

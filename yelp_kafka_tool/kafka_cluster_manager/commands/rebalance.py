@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from .commands.command import ClusterManagerCmd
+from .command import ClusterManagerCmd
 
 
 DEFAULT_MAX_PARTITION_MOVEMENTS = 1
@@ -14,7 +14,7 @@ class RebalanceCmd(ClusterManagerCmd):
         super(RebalanceCmd, self).__init__()
         self.log = logging.getLogger('ClusterRebalance')
 
-    def add_subparser(self, subparser):
+    def add_subparser(self, subparsers):
         subparser = subparsers.add_parser(
             'rebalance',
             description='Re-assign partitions over brokers.',
@@ -68,7 +68,8 @@ class RebalanceCmd(ClusterManagerCmd):
                 sys.exit(1)
 
             ct = ClusterTopology(zk=zk)
-            # TODO: We should get rid of initial_assignment in ClusterTopology
+
+            # TODO: We could get rid of initial_assignment in ClusterTopology
             base_assignment = ct.initial_assignment
 
             new_assignment = self.build_balanced_assignment(ct, args)
@@ -90,9 +91,6 @@ class RebalanceCmd(ClusterManagerCmd):
                 args.max_leader_changes,
             )
 
-            # TODO: go through this part. This should probably just return a
-            # reduced plan and then main should take care of writing to file or
-            # executing it for real.
             if result:
                 # Display or store plan
                 display_assignment_changes(result, args.no_confirm)
@@ -106,44 +104,34 @@ class RebalanceCmd(ClusterManagerCmd):
                         .format(file=args.proposed_plan_file),
                     )
                     proposed_plan_json(proposed_plan, args.proposed_plan_file)
-                # Validate and execute plan
-                base_plan = get_plan(ct.initial_assignment)
-                self.log.info(
-                    'Original plan before assignment {plan}'
-                    .format(plan=get_plan(red_original_assignment)),
-                )
+
                 self.log.info(
                     'Proposed plan assignment {plan}'
                     .format(plan=get_plan(red_proposed_assignment)),
                 )
-
-                # TODO: why do we need to validate again??
-                if validate_plan(proposed_plan, base_plan):
-                    # Actual movement of partitions in new-plan
-                    net_partition_movements = sum([
-                        len(set(replicas) - set(red_proposed_assignment[p_name]))
-                        for p_name, replicas in red_original_assignment.iteritems()
-                    ])
-                    # Net leader changes only
-                    net_leader_only_changes = sum([
-                        1
-                        for p_name, replicas in red_original_assignment.iteritems()
-                        if set(replicas) == set(red_proposed_assignment[p_name]) and
-                        replicas[0] != red_proposed_assignment[p_name][0]
-                    ])
-                    self.log.info(
-                        'Proposed-plan description: Actions: {actions}, '
-                        'Partition-movements: {movements}, Leader-only '
-                        'changes: {leader_changes}'.format(
-                            actions=len(proposed_plan['partitions']),
-                            movements=net_partition_movements,
-                            leader_changes=net_leader_only_changes,
-                        ),
-                    )
-                    execute_plan(ct, zk, proposed_plan, args.apply, args.no_confirm, script_path)
-                else:
-                    self.log.error('Invalid proposed-plan. Execution Unsuccessful. Exiting...')
-                    sys.exit(1)
+                # TODO: Consider to remove this if duplicate
+                # Actual movement of partitions in new-plan
+                net_partition_movements = sum([
+                    len(set(replicas) - set(red_proposed_assignment[p_name]))
+                    for p_name, replicas in red_original_assignment.iteritems()
+                ])
+                # Net leader changes only
+                net_leader_only_changes = sum([
+                    1
+                    for p_name, replicas in red_original_assignment.iteritems()
+                    if set(replicas) == set(red_proposed_assignment[p_name]) and
+                    replicas[0] != red_proposed_assignment[p_name][0]
+                ])
+                self.log.info(
+                    'Proposed-plan description: Actions: {actions}, '
+                    'Partition-movements: {movements}, Leader-only '
+                    'changes: {leader_changes}'.format(
+                        actions=len(proposed_plan['partitions']),
+                        movements=net_partition_movements,
+                        leader_changes=net_leader_only_changes,
+                    ),
+                )
+                self.execute_plan(ct, zk, proposed_plan, args.apply, args.no_confirm)
 
     def build_balanced_assignment(self, ct, args):
         # Get initial imbalance statistics
@@ -178,16 +166,7 @@ class RebalanceCmd(ClusterManagerCmd):
 
             final_rebalance_stats(ct, initial_imbal, display, rebalance_leaders)
 
-            # TODO: Confirmation should be done at the end
-            else:
-                # No new-plan
-                msg_str = 'No topic-partition layout changes proposed.'
-                if args.no_confirm:
-                    self.log.info(msg_str)
-                else:
-                    print(msg_str)
-            self.log.info('Kafka-cluster-manager tool execution completed.')
-
+        return ct.assignment
 
 # Imbalance statistics evaluation and reporting
 def pre_balancing_imbalance_stats(ct, display):

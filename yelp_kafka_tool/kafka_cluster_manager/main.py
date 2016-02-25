@@ -9,10 +9,8 @@ from logging.config import fileConfig
 
 from yelp_kafka.config import ClusterConfig
 
-from .cluster_info.util import confirm_execution
-from .util import KafkaInterface
 from yelp_kafka_tool.util import config
-from yelp_kafka_tool.kafka_cluster_manager.rebalance import RebalanceCmd
+from yelp_kafka_tool.kafka_cluster_manager.commands.rebalance import RebalanceCmd
 
 
 _log = getLogger()
