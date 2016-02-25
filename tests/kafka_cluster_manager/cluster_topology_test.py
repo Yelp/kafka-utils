@@ -118,7 +118,8 @@ class TestClusterToplogy(object):
             )
 
             # Verify that rg-group-balanced
-            assert(net_imbal, 0)
+            assert net_imbal == 0
+
             # Verify that new-assignment is valid
             self.assert_valid(
                 ct.assignment,

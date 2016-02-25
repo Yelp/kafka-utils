@@ -147,6 +147,108 @@ class ZK:
             topics_data[topic_id] = topic_data
         return topics_data
 
+    def get_consumer_groups(self, consumer_group_id=None, names_only=False):
+        """Get information on all the available consumer-groups.
+
+        If names_only is False, only list of consumer-group ids are sent.
+        If names_only is True, Consumer group offset details are returned
+        for all consumer-groups or given consumer-group if given in dict
+        format as:-
+
+        {
+            'group-id':
+            {
+                'topic':
+                {
+                    'partition': offset-value,
+                    ...
+                    ...
+                }
+            }
+        }
+
+        :rtype: dict of consumer-group offset details
+        """
+        if consumer_group_id is None:
+            group_ids = self.get_children("/consumers")
+        else:
+            group_ids = [consumer_group_id]
+
+        # Return consumer-group-ids only
+        if names_only:
+            return {g_id: None for g_id in group_ids}
+
+        consumer_offsets = {}
+        for g_id in group_ids:
+            consumer_offsets[g_id] = self.get_group_offsets(g_id)
+        return consumer_offsets
+
+    def get_group_offsets(self, group, topic=None):
+        """Fetch group offsets for given topic and partition otherwise all topics
+        and partitions otherwise.
+
+
+        {
+            'topic':
+            {
+                'partition': offset-value,
+                ...
+                ...
+            }
+        }
+        """
+        group_offsets = {}
+        try:
+            all_topics = self.get_my_subscribed_topics(group)
+        except NoNodeError:
+            # No offset information of given consumer-group
+            _log.warning(
+                "No topics subscribed to consumer-group {group}.".format(
+                    group=group,
+                ),
+            )
+            return group_offsets
+        if topic:
+            if topic in all_topics:
+                topics = [topic]
+            else:
+                _log.error(
+                    "Topic {topic} not found in topic list {topics} for consumer"
+                    "-group {consumer_group}.".format(
+                        topic=topic,
+                        topics=', '.join(topic for topic in all_topics),
+                        consumer_group=group,
+                    ),
+                )
+                return group_offsets
+        else:
+            topics = all_topics
+        for topic in topics:
+            group_offsets[topic] = {}
+            try:
+                partitions = self.get_my_subscribed_partitions(group, topic)
+            except NoNodeError:
+                _log.warning(
+                    "No partition offsets found for topic {topic}. "
+                    "Continuing to next one...".format(topic=topic),
+                )
+                continue
+            # Fetch offsets for each partition
+            for partition in partitions:
+                path = "/consumers/{group_id}/offsets/{topic}/{partition}".format(
+                    group_id=group,
+                    topic=topic,
+                    partition=partition,
+                )
+                try:
+                    # Get current offset
+                    offset_json, _ = self.get(path)
+                    group_offsets[topic][partition] = json.loads(offset_json)
+                except NoNodeError:
+                    _log.error("Path {path} not found".format(path=path))
+                    raise
+        return group_offsets
+
     def _fetch_partition_state(self, topic_id, partition_id):
         """Fetch partition-state for given topic-partition."""
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
@@ -325,7 +427,7 @@ class ZK:
         }
 
     def get_in_progress_plan(self):
-        """Read the currently runnign plan on reassign_partitions node."""
+        """Read the currently running plan on reassign_partitions node."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         try:
