@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 
 import argparse
 import ConfigParser
+import logging
 import sys
-from logging import getLogger
 from logging.config import fileConfig
 
 from yelp_kafka.config import ClusterConfig
@@ -13,34 +13,7 @@ from yelp_kafka_tool.util import config
 from yelp_kafka_tool.kafka_cluster_manager.commands.rebalance import RebalanceCmd
 
 
-_log = getLogger()
-
-
-def execute_plan(ct, zk, proposed_plan, to_apply, no_confirm, script_path):
-    """Save proposed-plan and execute the same if requested."""
-    # Execute proposed-plan
-    if to_execute(to_apply, no_confirm):
-        status = KafkaInterface(script_path).execute_plan(
-            zk,
-            proposed_plan,
-            ct.brokers.values(),
-            ct.topics.values(),
-        )
-        if not status:
-            _log.error('Plan execution unsuccessful. Exiting...')
-            sys.exit(1)
-        else:
-            _log.info('Plan sent to zookeeper for reassignment successfully.')
-
-    else:
-        _log.info('Proposed plan won\'t be executed.')
-
-
-def to_execute(to_apply, no_confirm):
-    """Confirm if proposed-plan should be executed."""
-    if to_apply and (no_confirm or confirm_execution()):
-        return True
-    return False
+_log = logging.getLogger()
 
 
 def parse_args():
@@ -100,41 +73,36 @@ def parse_args():
 
 def validate_args(args):
     """Validate relevant arguments. Exit on failure."""
-    result = True
-    params = [args.zookeeper, args.cluster_type]
-    if all(params) or not any(params):
-        _log.error(
-            'Command must include exactly one '
-            'of zookeeper or cluster-type argument',
-        )
-        result = False
     rebalance_options = [args.replication_groups, args.leaders, args.brokers]
     if not any(rebalance_options):
         _log.error(
             'At least one of --replication-groups, --leaders, --brokers flag required.',
         )
-        result = False
+        sys.exit(1)
 
     if args.no_confirm and not args.apply:
         _log.error('--apply required with --no-confirm flag.')
-        result = False
-    return result
+        sys.exit(1)
 
 
 def run():
     """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
-    # Load logging configuration from file
-    try:
-        fileConfig(args.logconf)
-    except ConfigParser.NoSectionError:
-        _log.error(
-            'Failed to load {logconf} file. Exiting...'
-            .format(logconf=args.logconf),
-        )
 
-    if not validate_args(args):
-        sys.exit(1)
+    # Try to load logging configuration from file
+    if args.logconf:
+        try:
+            fileConfig(args.logconf)
+        except ConfigParser.NoSectionError:
+            logging.basicConfig(level=logging.WARNING)
+            _log.error(
+                'Failed to load {logconf} file.'
+                .format(logconf=args.logconf),
+            )
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
+    validate_args(args)
     if args.zookeeper:
         if args.cluster_name is None:
             cluster_name = 'Unknown'
