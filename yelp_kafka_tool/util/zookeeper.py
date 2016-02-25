@@ -91,10 +91,7 @@ class ZK:
             brokers[b_id] = broker
         return brokers
 
-    def get_topic_config(
-        self,
-        topic
-    ):
+    def get_topic_config(self, topic):
         """Get configuration information for specified topic.
 
         :rtype : dict of configuration"""
@@ -104,18 +101,14 @@ class ZK:
                     "/config/topics/{topic}".format(topic=topic)
                 )[0]
             )
-        except NoNodeError:
+        except NoNodeError as e:
             _log.error(
                 "topic {topic} not found.".format(topic=topic)
             )
-            sys.exit(1)
+            raise e
         return config_data
 
-    def set_topic_config(
-        self,
-        topic,
-        value
-    ):
+    def set_topic_config(self, topic, value):
         """Set configuration information for specified topic.
 
         :rtype : dict of new configuration"""
@@ -132,11 +125,11 @@ class ZK:
                 topic,
                 sequence=True
             )
-        except NoNodeError:
+        except NoNodeError as e:
             _log.error(
                 "topic {topic} not found.".format(topic=topic)
             )
-            sys.exit(1)
+            raise e
         return return_value
 
     def get_topics(
