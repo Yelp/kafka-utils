@@ -102,14 +102,19 @@ class TestBroker(object):
 
         # Case:1  No such partition due to presence of all replicas
         b3 = Broker('b3', set([p2, p4]))
-        pref_partition = b2.get_preferred_partition(b3)
+        sibling_info = {
+            p1: {b1: 2, b2: 1, b3: 1},
+            p2: {b1: 2, b2: 1, b3: 1},
+            p3: {b1: 1, b2: 0, b3: 1},
+        }
+        pref_partition = b2.get_preferred_partition(b3, sibling_info)
 
         # Verify that pref-partition is None since b3 has only p2
         # and has its replica in b2
         assert pref_partition is None
 
         # Case:2 Multiple solutions
-        pref_partition = b1.get_preferred_partition(b3)
+        pref_partition = b1.get_preferred_partition(b3, sibling_info)
 
         # Verify preferred partition for source-broker b1 to be sent to
         # destination broker-b3
@@ -118,7 +123,7 @@ class TestBroker(object):
         assert pref_partition in [p1, p3]
 
         # Case:3: Unique solution
-        pref_partition = b1.get_preferred_partition(b2)
+        pref_partition = b1.get_preferred_partition(b2, sibling_info)
 
         # Verify preferred-partition from source-broker b1
         # p2: not possible since its replica is in destination broker b2
