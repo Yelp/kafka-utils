@@ -104,7 +104,7 @@ def get_reduced_assignment(
         if set(replica) != set(new_assignment[t_p])
     ]
     # TODO: consider to remove this
-    tot_actions = len(partitions_chages) + len(leaders_chages)
+    tot_actions = len(partitions_changes) + len(leaders_changes)
 
     # Extract reduced plan maximizing uniqueness of topics
     reduced_partitions_changes = extract_actions_unique_topics(
@@ -121,10 +121,10 @@ def get_reduced_assignment(
     reduced_assignment = {
         t_p: replicas
         for t_p, replicas in (
-            partitions_assignment + leaders_chages[:max_leader_only_changes]
+            reduced_partitions_changes + leaders_changes[:max_leader_only_changes]
         )
     }
-    return red_assignment, tot_actions
+    return reduced_assignment, tot_actions
 
 
 def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
