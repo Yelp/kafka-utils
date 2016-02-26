@@ -10,7 +10,7 @@ from logging.config import fileConfig
 from yelp_kafka.config import ClusterConfig
 
 from yelp_kafka_tool.util import config
-from yelp_kafka_tool.kafka_cluster_manager.commands.rebalance import RebalanceCmd
+from yelp_kafka_tool.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 
 
 _log = logging.getLogger()
@@ -88,12 +88,12 @@ def validate_args(args):
 def configure_logging(log_conf=None):
     if log_conf:
         try:
-            fileConfig(args.logconf)
+            fileConfig(log_conf)
         except ConfigParser.NoSectionError:
             logging.basicConfig(level=logging.DEBUG)
             _log.error(
                 'Failed to load {logconf} file.'
-                .format(logconf=args.logconf),
+                .format(logconf=log_conf),
             )
     else:
         logging.basicConfig(level=logging.DEBUG)
