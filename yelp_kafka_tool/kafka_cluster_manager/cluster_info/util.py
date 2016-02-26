@@ -56,7 +56,7 @@ def get_assignment_map(assignment_json):
     return assignment
 
 
-def get_reduced_proposed_plan(
+def get_reduced_assignment(
     original_assignment,
     new_assignment,
     max_partition_movements,
@@ -64,11 +64,10 @@ def get_reduced_proposed_plan(
 ):
     """Return new plan with upper limit on total actions.
 
-    These actions involve actual partition movement
+    Actions represent actual partition movement
     and/or change in preferred leader.
     Get the difference of current and new proposed plan
     and take the subset of this plan for given limit.
-    Convert the resultant assignment into json format and return.
 
     Argument(s):
     original_assignment:    Current assignment of cluster in zookeeper
@@ -77,29 +76,25 @@ def get_reduced_proposed_plan(
                             final set of actions
     max_leader_only_changes:Maximum number of actions with leader only changes
     :return:
-    :red_curr_plan:         Original replicas of final set of actions
-    :type:                  List of tuple (topic-partition, replica)
     :red_proposed_plan:     Final proposed plan for execution
     :type:                  List of tuple (topic-partition, replica)
     :tot_actions:           Total actions to be executed
     :type:                  integer
 
     """
-    if (
-        original_assignment == new_assignment or
-        max_partition_movements + max_leader_only_changes < 1 or
-        not original_assignment or
-        not new_assignment
-    ):
+    if original_assignment == new_assignment:
         return {}
-    # Get change-list for given assignments
-    proposed_assignment_leaders = [
+
+    # The replica set stays same when for leaders only changes
+    leaders_changes = [
         (t_p, new_assignment[t_p])
         for t_p, replica in original_assignment.iteritems()
         if replica != new_assignment[t_p] and
         set(replica) == set(new_assignment[t_p])
     ]
-    proposed_assignment_part = [
+
+    # The replica set is different for partitions changes
+    partitions_changes = [
         (
             t_p,
             new_assignment[t_p],
@@ -108,20 +103,22 @@ def get_reduced_proposed_plan(
         for t_p, replica in original_assignment.iteritems()
         if set(replica) != set(new_assignment[t_p])
     ]
-    tot_actions = len(proposed_assignment_part) + len(proposed_assignment_leaders)
+    # TODO: consider to remove this
+    tot_actions = len(partitions_chages) + len(leaders_chages)
 
     # Extract reduced plan maximizing uniqueness of topics
-    red_proposed_plan_partitions = extract_actions_unique_topics(
-        proposed_assignment_part,
+    reduced_partitions_changes = extract_actions_unique_topics(
+        partitions_changes,
         max_partition_movements,
     )
-    red_proposed_plan_leaders = proposed_assignment_leaders[:max_leader_only_changes]
-    red_proposed_plan = red_proposed_plan_partitions + red_proposed_plan_leaders
-    red_curr_plan = [
-        (tp_repl[0], original_assignment[tp_repl[0]])
-        for tp_repl in red_proposed_plan
-    ]
-    return red_curr_plan, red_proposed_plan, tot_actions
+    # Merge leaders and partition changes and generate the assignment
+    reduced_assignment = {
+        t_p, replicas
+        for t_p, replicas in (
+            partitions_assignment + leaders_chages[:max_leader_only_changes]
+        )
+    }
+    return red_assignment, tot_actions
 
 
 def extract_actions_unique_topics(proposed_assignment, max_partition_movements):
@@ -189,7 +186,7 @@ def confirm_execution():
         return False
 
 
-def proposed_plan_json(proposed_layout, proposed_plan_file):
+def write_json_plan(proposed_layout, proposed_plan_file):
     """Dump proposed json plan to given output file for future usage."""
     with open(proposed_plan_file, 'w') as output:
         json.dump(proposed_layout, output)

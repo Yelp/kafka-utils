@@ -11,16 +11,11 @@ class ClusterManagerCmd(object):
 
     log = logging.getLogger("ClusterManager")
 
-    def execute_plan(self, ct, zk, proposed_plan, to_apply, no_confirm):
+    def execute_plan(self, zk, plan, to_apply, no_confirm):
         """Save proposed-plan and execute the same if requested."""
         # Execute proposed-plan
-        if self.to_execute(to_apply, no_confirm):
-            result = KafkaInterface().execute_plan(
-                zk,
-                proposed_plan,
-                ct.brokers.values(),
-                ct.topics.values(),
-            )
+        if self.should_execute(to_apply, no_confirm):
+            result = KafkaInterface().execute_plan(zk, plan)
             if not result:
                 self.log.error('Plan execution unsuccessful. Exiting...')
                 sys.exit(1)
@@ -29,7 +24,7 @@ class ClusterManagerCmd(object):
         else:
             self.log.info('Proposed plan won\'t be executed.')
 
-    def to_execute(self, to_apply, no_confirm):
+    def should_execute(self, to_apply, no_confirm):
         """Confirm if proposed-plan should be executed."""
         if to_apply and (no_confirm or confirm_execution()):
             return True
@@ -72,5 +67,5 @@ class ClusterManagerCmd(object):
                     'Previous re-assignment in progress. In progress partitions'
                     ' could not be fetched',
                 )
-            return False
-        return True
+            return True
+        return False

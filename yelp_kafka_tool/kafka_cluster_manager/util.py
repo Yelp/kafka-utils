@@ -99,7 +99,7 @@ class KafkaInterface(object):
                         result,
                     )
 
-    def execute_plan(self, zk, proposed_layout, brokers, topics):
+    def execute_plan(self, zk, proposed_layout):
         """Execute the proposed plan.
 
         Execute the given proposed plan over given
@@ -108,18 +108,4 @@ class KafkaInterface(object):
         Arguments:
         proposed_plan:   Proposed plan in json format
         """
-        if not self._kafka_script_path:
-            return zk.execute_assignment(proposed_layout)
-        else:
-            self.log.info('Sending plan to zookeeper using kafka-scripts...')
-            with tempfile.NamedTemporaryFile() as temp_reassignment_file:
-                json.dump(proposed_layout, temp_reassignment_file)
-                temp_reassignment_file.flush()
-                zookeeper = zk.cluster_config.zookeeper
-                self.run_repartition_cmd(
-                    zookeeper,
-                    brokers,
-                    temp_reassignment_file.name,
-                    True,
-                )
-                return True
+        return zk.execute_assignment(proposed_layout)
