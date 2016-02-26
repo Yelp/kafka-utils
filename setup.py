@@ -20,6 +20,7 @@ setup(
         "scripts/kafka-reassignment",
         "scripts/kafka-topic-autopartition",
         "scripts/kafka-partition-manager",
+        "scripts/kafka-compaction-setter",
         "scripts/kafka-consumer-manager",
         "scripts/kafka-cluster-manager",
         "scripts/yelpkafka",
@@ -31,7 +32,6 @@ setup(
     ],
     install_requires=[
         "argcomplete",
-        "data_pipeline>=0.1.39",
         "kazoo>=2.0.post2,<3.0.0",
         "fabric>=1.8.0,<1.11.0",
         "PyYAML<4.0.0",

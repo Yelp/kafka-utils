@@ -3,7 +3,6 @@ PyYAML==3.11
 argcomplete==0.8.1
 cffi==1.1.2
 cryptography==0.8.2
-data_pipeline>=0.1.39
 enum34==1.0.4
 fabric==1.8.1
 jsonschema==2.4.0
