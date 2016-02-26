@@ -83,7 +83,7 @@ def get_reduced_assignment(
 
     """
     if original_assignment == new_assignment:
-        return {}
+        return {}, 0
 
     # The replica set stays same when for leaders only changes
     leaders_changes = [
@@ -111,9 +111,15 @@ def get_reduced_assignment(
         partitions_changes,
         max_partition_movements,
     )
+    _log.info(
+        "Number of partition changes: %s."
+        " Number of leader changes: %s",
+        len(reduced_partitions_changes),
+        min(max_leader_only_changes, len(leaders_changes)),
+    )
     # Merge leaders and partition changes and generate the assignment
     reduced_assignment = {
-        t_p, replicas
+        t_p: replicas
         for t_p, replicas in (
             partitions_assignment + leaders_chages[:max_leader_only_changes]
         )

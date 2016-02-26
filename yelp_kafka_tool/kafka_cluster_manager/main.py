@@ -57,11 +57,11 @@ def parse_args():
              ' --apply flag also required.',
     )
     parser.add_argument(
-        '--dump-to-file',
+        '--write-to-file',
         dest='proposed_plan_file',
         metavar='<reassignment-plan-file-path>',
         type=str,
-        help='Dump the partition reassignment plan '
+        help='Write the partition reassignment plan '
              'to a json file.',
     )
 
@@ -90,13 +90,13 @@ def configure_logging(log_conf=None):
         try:
             fileConfig(args.logconf)
         except ConfigParser.NoSectionError:
-            logging.basicConfig(level=logging.WARNING)
+            logging.basicConfig(level=logging.DEBUG)
             _log.error(
                 'Failed to load {logconf} file.'
                 .format(logconf=args.logconf),
             )
     else:
-        logging.basicConfig(level=logging.WARNING)
+        logging.basicConfig(level=logging.DEBUG)
 
 
 def run():

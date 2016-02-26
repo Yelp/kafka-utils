@@ -98,7 +98,7 @@ class RebalanceCmd(ClusterManagerCmd):
             # and max_leader_changes
             reduced_assignment, total_changes = get_reduced_assignment(
                 base_assignment,
-                new_assignment,
+                assignment,
                 args.max_partition_movements,
                 args.max_leader_changes,
             )
@@ -107,7 +107,7 @@ class RebalanceCmd(ClusterManagerCmd):
             # TODO: temporary disable this function
             # display_assignment_changes(assignment)
             # Export proposed-plan to json file
-            plan = get_plan(assignment)
+            plan = get_plan(reduced_assignment)
             if args.proposed_plan_file:
                 self.log.info(
                     'Storing proposed-plan in json file, {file}'
@@ -124,7 +124,7 @@ class RebalanceCmd(ClusterManagerCmd):
                     actions=len(plan['partitions']),
                 ),
             )
-            self.execute_plan(zk, proposed_plan, args.apply, args.no_confirm)
+            self.execute_plan(zk, plan, args.apply, args.no_confirm)
 
     def build_balanced_assignment(self, ct, args):
         # Get initial imbalance statistics
@@ -157,7 +157,7 @@ class RebalanceCmd(ClusterManagerCmd):
             )
             ct.rebalance_leaders()
 
-            self.final_rebalance_stats(ct, initial_imbal, self.leaders)
+            self.final_rebalance_stats(ct, initial_imbal, args.leaders)
 
         return ct.assignment
 
