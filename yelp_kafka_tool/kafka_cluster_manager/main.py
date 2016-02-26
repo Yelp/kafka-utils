@@ -7,8 +7,6 @@ import logging
 import sys
 from logging.config import fileConfig
 
-from yelp_kafka.config import ClusterConfig
-
 from yelp_kafka_tool.util import config
 from yelp_kafka_tool.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 
