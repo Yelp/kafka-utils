@@ -2,19 +2,14 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
-from yelp_kafka_tool.util.zookeeper import ZK
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.stats import imbalance_value_all
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.util import validate_plan
-from yelp_kafka_tool.kafka_cluster_manager. \
-    cluster_info.util import get_plan
-from yelp_kafka_tool.kafka_cluster_manager. \
-    cluster_info.util import get_reduced_assignment
-from yelp_kafka_tool.kafka_cluster_manager. \
-    cluster_info.util import write_json_plan
+from yelp_kafka_tool.kafka_cluster_manager.util import get_plan
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 DEFAULT_MAX_PARTITION_MOVEMENTS = 1
@@ -96,7 +91,7 @@ class RebalanceCmd(ClusterManagerCmd):
 
             # Reduce the proposed assignment based on max_partition_movements
             # and max_leader_changes
-            reduced_assignment, total_changes = get_reduced_assignment(
+            reduced_assignment, total_changes = self.get_reduced_assignment(
                 base_assignment,
                 assignment,
                 args.max_partition_movements,
@@ -113,7 +108,7 @@ class RebalanceCmd(ClusterManagerCmd):
                     'Storing proposed-plan in json file, {file}'
                     .format(file=args.proposed_plan_file),
                 )
-                write_json_plan(plan, args.proposed_plan_file)
+                self.write_json_plan(plan, args.proposed_plan_file)
 
             self.log.info(
                 'Proposed plan assignment {plan}'

@@ -10,6 +10,17 @@ import tempfile
 from .cluster_info.util import get_assignment_map
 
 
+def get_plan(proposed_assignment):
+    return {
+        'version': 1,
+        'partitions':
+        [{'topic': t_p[0],
+          'partition': t_p[1],
+          'replicas': replica
+          } for t_p, replica in proposed_assignment.iteritems()]
+    }
+
+
 class KafkaInterface(object):
     """This class acts as an interface to interact with kafka-scripts."""
 

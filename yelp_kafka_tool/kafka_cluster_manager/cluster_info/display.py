@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import logging
 
-from .util import get_plan
+from yelp_kafka_tool.kafka_cluster_manager.util import get_plan
 _log = logging.getLogger('kafka-cluster-manager')
 
 
