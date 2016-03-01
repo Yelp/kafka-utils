@@ -96,8 +96,9 @@ class ClusterManagerCmd(object):
         :tot_actions:           Total actions to be executed
         :type:                  integer
         """
-        if original_assignment == new_assignment:
-            return {}, 0
+        if (not original_assignment or not new_assignment or
+                max_partition_movements < 0 or max_leader_only_changes < 0):
+            return {}
 
         # The replica set stays the same for leaders only changes
         leaders_changes = [
