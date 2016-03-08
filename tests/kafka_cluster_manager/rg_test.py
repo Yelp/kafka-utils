@@ -12,8 +12,8 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import calculate_p
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_partition_imbalance_stats
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_plan_base
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import get_plan
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import validate_plan
+from yelp_kafka_tool.kafka_cluster_manager.util import get_plan
 
 
 class TestReplicationGroup(object):

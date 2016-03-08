@@ -7,8 +7,8 @@ import logging
 import sys
 from logging.config import fileConfig
 
-from yelp_kafka_tool.util import config
 from yelp_kafka_tool.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
+from yelp_kafka_tool.util import config
 
 
 _log = logging.getLogger()
@@ -105,8 +105,8 @@ def run():
     validate_args(args)
 
     cluster_config = config.get_cluster_config(
-            args.cluster_type,
-            args.cluster_name,
-            args.discovery_base_path,
+        args.cluster_type,
+        args.cluster_name,
+        args.discovery_base_path,
     )
     args.command(cluster_config, args)
