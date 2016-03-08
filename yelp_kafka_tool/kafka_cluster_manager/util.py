@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import json
 import logging
 import os
 import subprocess
-import tempfile
-
-from .cluster_info.util import get_assignment_map
+from collections import OrderedDict
 
 
 def get_plan(proposed_assignment):
@@ -67,7 +64,7 @@ class KafkaInterface(object):
             cmd_params['file_flag'],
             temp_file_name,
             '--broker-list',
-            brokers_str
+            brokers_str,
         ]
         return subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
 
@@ -75,42 +72,17 @@ class KafkaInterface(object):
         """Generate the reassignment plan for given zookeeper
         configuration, brokers and topics.
         """
-        topic_data = {
-            'topics': [{'topic': topic_id} for topic_id in topic_ids],
-            'version': 1
-        }
-        if not self._kafka_script_path:
-            assignment = zk.get_cluster_assignment()
-            return get_assignment_map(assignment)
-        else:
-            zookeeper = zk.cluster_config.zookeeper
-            self.log.info('Fetching plan from zookeeper using kafka-scripts...')
-            with tempfile.NamedTemporaryFile() as temp_topic_file:
-                temp_topic_file.write(json.dumps(topic_data))
-                temp_topic_file.flush()
-                result = self.run_repartition_cmd(
-                    zookeeper,
-                    brokers,
-                    temp_topic_file.name
-                )
-                try:
-                    json_result_list = result[0].split('\n')
-                    curr_layout = json.loads(json_result_list[-5])
-                    if curr_layout:
-                        return get_assignment_map(curr_layout)
-                    else:
-                        raise ValueError(
-                            'Output: {output} Plan Generation Error: {error}'
-                            .format(output=result[0], error=result[1])
-                        )
-                except ValueError as error:
-                    self.log.error('%s', error)
-                    raise ValueError(
-                        'Could not parse output of kafka-executable script %s',
-                        result,
-                    )
+        plan = zk.get_cluster_plan()
+        assignment = {}
+        for elem in plan['partitions']:
+            assignment[
+                (elem['topic'], elem['partition'])
+            ] = elem['replicas']
+        # assignment map created in sorted order for deterministic solution
+        assignment = OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
+        return assignment
 
-    def execute_plan(self, zk, proposed_layout):
+    def execute_plan(self, zk, plan):
         """Execute the proposed plan.
 
         Execute the given proposed plan over given
@@ -119,4 +91,4 @@ class KafkaInterface(object):
         Arguments:
         proposed_plan:   Proposed plan in json format
         """
-        return zk.execute_assignment(proposed_layout)
+        return zk.execute_plan(plan)

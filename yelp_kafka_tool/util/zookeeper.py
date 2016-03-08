@@ -345,12 +345,11 @@ class ZK:
         )
         self.delete(path)
 
-    def execute_assignment(self, assignment):
-        """Executing plan directly sending it to zookeeper nodes.
+    def execute_plan(self, plan):
+        """Executing plan sending it to zookeeper nodes.
         Algorithm:
-        1. Verification:
-        2. TODO:Save current assignment for future?
-        3. Re-assign:
+        - Verification:
+        - Re-assign:
             * Send command to zookeeper to re-assign and create parent-node
               if missing.
             Exceptions:
@@ -360,35 +359,34 @@ class ZK:
         """
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
-        plan = json.dumps(assignment)
-        # Final plan validation against latest assignment in zookeeper
+        plan_json = json.dumps(plan)
+        # Final plan validation against latest plan in zookeeper
         _log.info(
             'Validating proposed cluster-layout with current layout before '
             'sending to zookeeper...',
         )
-        base_assignment = self.get_cluster_assignment()
-        brokers = [int(b_id) for b_id in self.get_brokers(names_only=True)]
-        if not validate_plan(assignment, base_assignment, brokers):
+        base_plan = self.get_cluster_plan()
+        if not validate_plan(plan, base_plan):
             _log.error('Given plan is invalid. ABORTING reassignment...')
             return False
         # Send proposed-plan to zookeeper
         try:
-            _log.info('Sending assignment to Zookeeper...')
-            self.create(reassignment_path, plan, makepath=True)
+            _log.info('Sending plan to Zookeeper...')
+            self.create(reassignment_path, plan_json, makepath=True)
             _log.info(
                 'Re-assign partitions node in Zookeeper updated successfully '
-                'with {assignment}'.format(assignment=assignment),
+                'with {plan}'.format(plan=plan),
             )
             return True
         except NodeExistsError:
-            _log.warning('Previous assignment in progress. Exiting..')
-            in_progress_assignment = json.loads(self.get(reassignment_path)[0])
+            _log.warning('Previous plan in progress. Exiting..')
+            in_progress_plan = json.loads(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
                     topic=p_data['topic'],
                     p_id=str(p_data['partition']),
                 )
-                for p_data in in_progress_assignment['partitions']
+                for p_data in in_progress_plan['partitions']
             ]
             _log.warning(
                 '{count} partition(s) reassignment currently in progress:-'
@@ -407,8 +405,9 @@ class ZK:
             )
             return False
 
-    def get_cluster_assignment(self):
-        """Fetch cluster assignment directly from zookeeper."""
+    def get_cluster_plan(self):
+        """Fetch cluster plan from zookeeper."""
+
         _log.info('Fetching current cluster-topology from Zookeeper...')
         cluster_layout = self.get_topics(fetch_partition_state=False)
         # Re-format cluster-layout

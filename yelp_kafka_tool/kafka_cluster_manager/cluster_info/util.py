@@ -1,7 +1,5 @@
-import json
 import logging
 from collections import Counter
-from collections import OrderedDict
 
 _log = logging.getLogger('kafka-cluster-manager')
 
@@ -36,23 +34,6 @@ def compute_optimal_count(total_elements, total_groups):
     opt_element_cnt = total_elements // total_groups
     extra_elements_allowed_cnt = total_elements % total_groups
     return opt_element_cnt, extra_elements_allowed_cnt
-
-
-def get_assignment_map(assignment_json):
-    """Convert given assignment from json format to partition-replica map.
-
-    Arguments:
-    assignment_json: Given unordered assignment in json format
-    :return:         Return assignment ordered over topic, partition tuple
-    """
-    assignment = {}
-    for ele_curr in assignment_json['partitions']:
-        assignment[
-            (ele_curr['topic'], ele_curr['partition'])
-        ] = ele_curr['replicas']
-    # assignment map created in sorted order for deterministic solution
-    assignment = OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
-    return assignment
 
 
 def compute_group_optimum(groups, key):
@@ -123,39 +104,31 @@ def separate_groups(groups, key):
 
 
 def validate_plan(
-    curr_assignment_str,
-    base_assignment_str=None,
-    active_brokers=None,
+    new_plan,
+    base_plan=None,
     is_partition_subset=True,
 ):
-    """Verify that the curr-assignment is valid for execution.
+    """Verify that the new plan is valid for execution.
 
     Given kafka-reassignment plan should affirm with following rules:
-    a) Format of plan is expected format for reassignment to zookeeper
-    b) Plan should have at least one  partition for re-assignment
-    c) Partition-name list should be subset of base-plan partition-list
-    d) Replication-factor for each partition of same topic is same
-    e) Replication-factor for each partition remains unchanged
-    f) No duplicate broker-ids in each replicas
-    g) Broker-ids in replicas be subset of brokers of base-plan
+    - Plan should have at least one partition for re-assignment
+    - Partition-name list should be subset of base-plan partition-list
+    - Replication-factor for each partition of same topic is same
+    - Replication-factor for each partition remains unchanged
+    - No duplicate broker-ids in each replicas
     """
-    # Get correct json formatted assignment
-    curr_assignment = json.loads(json.dumps(curr_assignment_str))
-    # Standard individual validation of given assignment
-    if not _validate_assignment(curr_assignment):
+    if not _validate_plan(new_plan):
         _log.error('Invalid proposed-plan.')
         return False
 
     # Validate given plan in reference to base-plan
-    if base_assignment_str:
-        base_assignment = json.loads(json.dumps(base_assignment_str))
-        if not _validate_assignment(base_assignment):
+    if base_plan:
+        if not _validate_plan(base_plan):
             _log.error('Invalid assignment from cluster.')
             return False
         if not _validate_plan_base(
-            curr_assignment,
-            base_assignment,
-            active_brokers,
+            new_plan,
+            base_plan,
             is_partition_subset,
         ):
             return False
@@ -164,36 +137,34 @@ def validate_plan(
 
 
 def _validate_plan_base(
-    curr_assignment,
-    base_assignment,
-    active_brokers=None,
+    new_plan,
+    base_plan,
     is_partition_subset=True,
 ):
-    """Validate if given assignment is valid comparing with given base-assignment.
+    """Validate if given plan is valid comparing with given base-plan.
 
     Validate following assertions:
-    a) Validate format of given assignments
-    b) Partition-check: New partition-set should be subset of base-partition set
-    c) Replica-count check: Replication-factor for each partition remains same
-    d) Broker-check: New broker-set should be subset of base broker-set
+    - Partition-check: New partition-set should be subset of base-partition set
+    - Replica-count check: Replication-factor for each partition remains same
+    - Broker-check: New broker-set should be subset of base broker-set
     """
 
-    # Verify that assignment-partitions are subset of base-assignment
-    curr_partitions = set([
+    # Verify that partitions in plan are subset of base plan.
+    new_partitions = set([
         (p_data['topic'], p_data['partition'])
-        for p_data in curr_assignment['partitions']
+        for p_data in new_plan['partitions']
     ])
     base_partitions = set([
         (p_data['topic'], p_data['partition'])
-        for p_data in base_assignment['partitions']
+        for p_data in base_plan['partitions']
     ])
     if is_partition_subset:
-        invalid_partitions = list(curr_partitions - base_partitions)
+        invalid_partitions = list(new_partitions - base_partitions)
     else:
         # partition set should be equal
         invalid_partitions = list(
-            curr_partitions.union(base_partitions) -
-            curr_partitions.intersection(base_partitions),
+            new_partitions.union(base_partitions) -
+            new_partitions.intersection(base_partitions),
         )
     if invalid_partitions:
         _log.error(
@@ -206,66 +177,42 @@ def _validate_plan_base(
     # Verify replication-factor remains consistent
     base_partition_replicas = {
         (p_data['topic'], p_data['partition']): p_data['replicas']
-        for p_data in base_assignment['partitions']
+        for p_data in base_plan['partitions']
     }
-    curr_partition_replicas = {
+    new_partition_replicas = {
         (p_data['topic'], p_data['partition']): p_data['replicas']
-        for p_data in curr_assignment['partitions']
+        for p_data in new_plan['partitions']
     }
     invalid_replication_factor = False
-    for curr_partition, replicas in curr_partition_replicas.iteritems():
-        base_replica_cnt = len(base_partition_replicas[curr_partition])
+    for new_partition, replicas in new_partition_replicas.iteritems():
+        base_replica_cnt = len(base_partition_replicas[new_partition])
         if len(replicas) != base_replica_cnt:
             invalid_replication_factor = True
             _log.error(
                 'Replication-factor Mismatch: Partition: {partition}: '
                 'Base-replicas: {expected}, Proposed-replicas: {actual}'.format(
-                    partition=curr_partition,
-                    expected=base_partition_replicas[curr_partition],
+                    partition=new_partition,
+                    expected=base_partition_replicas[new_partition],
                     actual=replicas,
                 ),
             )
     if invalid_replication_factor:
         return False
 
-    # Verify that replicas-brokers of new-assignment are subset of brokers
-    # in base-assignment
-    curr_brokers = set([
-        broker
-        for replicas in curr_partition_replicas.itervalues()
-        for broker in replicas
-    ])
-    if active_brokers:
-        base_brokers = set(active_brokers)
-    else:
-        # If active brokers not given should be checked against base-assignment
-        base_brokers = set([
-            broker
-            for replicas in base_partition_replicas.itervalues()
-            for broker in replicas
-        ])
-    invalid_brokers = list(curr_brokers - base_brokers)
-    if invalid_brokers:
-        _log.error(
-            'Invalid brokers in assignment found {brokers}'
-            .format(brokers=invalid_brokers),
-        )
-        return False
-
     # Validation successful
     return True
 
 
-def _validate_format(assignment):
-    """Validate if the format of the assignment as expected.
+def _validate_format(plan):
+    """Validate if the format of the plan as expected.
 
-    Validate format of assignment on following rules:
+    Validate format of plan on following rules:
     a) Verify if it ONLY and MUST have keys and value, 'version' and 'partitions'
     b) Verify if each value of 'partitions' ONLY and MUST have keys 'replicas',
         'partition', 'topic'
     c) Verify desired type of each value
     d) Verify non-empty partitions and replicas
-    Sample-assignment format:
+    Sample-plan format:
     {
         "version": 1,
         "partitions": [
@@ -274,102 +221,97 @@ def _validate_format(assignment):
             ...
         ]}
     """
-    try:
-        assignment = json.loads(json.dumps(assignment))
-        # Verify presence of required keys
-        if sorted(assignment.keys()) != sorted(['version', 'partitions']):
+    # Verify presence of required keys
+    if set(plan.keys()) != set(['version', 'partitions']):
+        _log.error(
+            'Invalid or incomplete keys in given plan. Expected: "version", '
+            '"partitions". Found:{keys}'
+            .format(keys=', '.join(plan.keys())),
+        )
+        return False
+
+    # Invalid version
+    if plan['version'] != 1:
+        _log.error(
+            'Invalid version of plan {version}'
+            .format(version=plan['version']),
+        )
+        return False
+
+    # Empty partitions
+    if not plan['partitions']:
+        _log.error(
+            '"partitions" list found empty"'
+            .format(version=plan['partitions']),
+        )
+        return False
+
+    # Invalid partitions type
+    if not isinstance(plan['partitions'], list):
+        _log.error('"partitions" of type list expected.')
+        return False
+
+    # Invalid partition-data
+    for p_data in plan['partitions']:
+        if set(p_data.keys()) != set(['topic', 'partition', 'replicas']):
             _log.error(
-                'Invalid or incomplete keys in given plan. Expected: "version", '
-                '"partitions". Found:{keys}'
-                .format(keys=', '.join(assignment.keys())),
+                'Invalid keys in partition-data {keys}'
+                .format(keys=', '.join(p_data.keys())),
             )
             return False
-
-        # Invalid version
-        if assignment['version'] != 1:
+        # Check types
+        if not isinstance(p_data['topic'], unicode):
             _log.error(
-                'Invalid version of assignment {version}'
-                .format(version=assignment['version']),
+                '"topic" of type unicode expected {p_data}, found {t_type}'
+                .format(p_data=p_data, t_type=type(p_data['topic'])),
             )
             return False
-
-        # Empty partitions
-        if not assignment['partitions']:
+        if not isinstance(p_data['partition'], int):
             _log.error(
-                '"partitions" list found empty"'
-                .format(version=assignment['partitions']),
+                '"partition" of type int expected {p_data}, found {p_type}'
+                .format(p_data=p_data, p_type=type(p_data['partition'])),
             )
             return False
-
-        # Invalid partitions type
-        if not isinstance(assignment['partitions'], list):
-            _log.error('"partitions" of type list expected.')
+        if not isinstance(p_data['replicas'], list):
+            _log.error(
+                '"replicas" of type list expected {p_data}, found {r_type}'
+                .format(p_data=p_data, r_type=type(p_data['replicas'])),
+            )
             return False
-
-        # Invalid partition-data
-        for p_data in assignment['partitions']:
-            if sorted(p_data.keys()) != sorted(['topic', 'partition', 'replicas']):
+        if not p_data['replicas']:
+            _log.error(
+                'Non-empty "replicas" expected: {p_data}'
+                .format(p_data=p_data),
+            )
+            return False
+        # Invalid broker-type
+        for broker in p_data['replicas']:
+            if not isinstance(broker, int):
                 _log.error(
-                    'Invalid keys in partition-data {keys}'
-                    .format(keys=', '.join(p_data.keys())),
-                )
-                return False
-            # Check types of keys
-            if not isinstance(p_data['topic'], unicode):
-                _log.error(
-                    '"topic" of type unicode expected {p_data}, found {t_type}'
-                    .format(p_data=p_data, t_type=type(p_data['topic'])),
-                )
-                return False
-            if not isinstance(p_data['partition'], int):
-                _log.error(
-                    '"partition" of type int expected {p_data}, found {p_type}'
-                    .format(p_data=p_data, p_type=type(p_data['partition'])),
-                )
-                return False
-            if not isinstance(p_data['replicas'], list):
-                _log.error(
-                    '"replicas" of type list expected {p_data}, found {r_type}'
-                    .format(p_data=p_data, r_type=type(p_data['replicas'])),
-                )
-                return False
-            if not p_data['replicas']:
-                _log.error(
-                    'Non-empty "replicas" expected: {p_data}'
+                    '"replicas" of type integer list expected {p_data}'
                     .format(p_data=p_data),
                 )
                 return False
-            # Invalid broker-type
-            for broker in p_data['replicas']:
-                if not isinstance(broker, int):
-                    _log.error(
-                        '"replicas" of type integer list expected {p_data}'
-                        .format(p_data=p_data),
-                    )
-                    return False
-    except KeyError as e:
-        _log.exception('Invalid given plan format: {e}'.format(e=e))
-        return False
     return True
 
 
-def _validate_assignment(assignment):
-    """Validate if given assignment is valid based on kafka-cluster-assignment protocols.
+def _validate_plan(plan):
+    """Validate if given plan is valid based on kafka-cluster-assignment protocols.
 
     Validate following parameters:
-    a) Correct format of assignment
-    b) Partition-list should be unique
-    c) Every partition of a topic should have same replication-factor
-    d) Replicas of a partition should have unique broker-set
+    - Correct format of plan
+    - Partition-list should be unique
+    - Every partition of a topic should have same replication-factor
+    - Replicas of a partition should have unique broker-set
     """
-    # Validate format of assignment
-    if not _validate_format(assignment):
+    # Validate format of plan
+    if not _validate_format(plan):
         return False
 
     # Verify no duplicate partitions
     partition_names = [
         (p_data['topic'], p_data['partition'])
-        for p_data in assignment['partitions']
+        for p_data in plan['partitions']
     ]
     duplicate_partitions = [
         partition for partition, count in Counter(partition_names).iteritems()
@@ -377,14 +319,14 @@ def _validate_assignment(assignment):
     ]
     if duplicate_partitions:
         _log.error(
-            'Duplicate partitions in assignment {p_list}'
+            'Duplicate partitions in plan {p_list}'
             .format(p_list=duplicate_partitions),
         )
         return False
 
     # Verify no duplicate brokers in partition-replicas
     dup_replica_brokers = []
-    for p_data in assignment['partitions']:
+    for p_data in plan['partitions']:
         dup_replica_brokers = [
             broker
             for broker, count in Counter(p_data['replicas']).items()
@@ -403,7 +345,7 @@ def _validate_assignment(assignment):
 
     # Verify same replication-factor for every topic
     topic_replication_factor = {}
-    for partition_info in assignment['partitions']:
+    for partition_info in plan['partitions']:
         topic = partition_info['topic']
         replication_factor = len(partition_info['replicas'])
         if topic in topic_replication_factor.keys():
