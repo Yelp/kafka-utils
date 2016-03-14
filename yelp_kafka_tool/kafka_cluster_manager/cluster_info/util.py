@@ -22,11 +22,6 @@ def get_leaders_per_broker(brokers):
     )
 
 
-def get_per_topic_partitions_count(broker):
-    """Return partition-count of each topic on given broker."""
-    return Counter((partition.topic for partition in broker.partitions))
-
-
 def compute_optimal_count(total_elements, total_groups):
     """Return optimal count and extra-elements allowed based on base
     total count of elements and groups.
