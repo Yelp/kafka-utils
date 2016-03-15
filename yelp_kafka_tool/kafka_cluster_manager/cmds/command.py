@@ -27,9 +27,7 @@ class ClusterManagerCmd(object):
 
     def should_execute(self, to_apply, no_confirm):
         """Confirm if proposed-plan should be executed."""
-        if to_apply and (no_confirm or self.confirm_execution()):
-            return True
-        return False
+        return to_apply and (no_confirm or self.confirm_execution())
 
     def add_subparser(self, subparsers):
         """Configure the subparser of the command
@@ -51,25 +49,20 @@ class ClusterManagerCmd(object):
 
     def is_reassignment_pending(self, zk):
         """Return True if there are no reassignment tasks pending."""
-        if zk.reassignment_in_progress():
-            in_progress_plan = zk.get_in_progress_plan()
-            if in_progress_plan:
-                in_progress_partitions = in_progress_plan['partitions']
-                self.log.info(
-                    'Previous re-assignment in progress for {count} partitions.'
-                    ' Current partitions in re-assignment queue: {partitions}'
-                    .format(
-                        count=len(in_progress_partitions),
-                        partitions=in_progress_partitions,
-                    )
+        in_progress_plan = zk.get_pending_plan()
+        if in_progress_plan:
+            in_progress_partitions = in_progress_plan['partitions']
+            self.log.info(
+                'Previous re-assignment in progress for {count} partitions.'
+                ' Current partitions in re-assignment queue: {partitions}'
+                .format(
+                    count=len(in_progress_partitions),
+                    partitions=in_progress_partitions,
                 )
-            else:
-                self.log.warning(
-                    'Previous re-assignment in progress. In progress partitions'
-                    ' could not be fetched',
-                )
+            )
             return True
-        return False
+        else:
+            return False
 
     def get_reduced_assignment(
         self,

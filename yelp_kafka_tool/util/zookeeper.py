@@ -425,7 +425,7 @@ class ZK:
             'partitions': partitions
         }
 
-    def get_in_progress_plan(self):
+    def get_pending_plan(self):
         """Read the currently running plan on reassign_partitions node."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
@@ -435,21 +435,3 @@ class ZK:
         except NoNodeError:
             _log.error('{path} node not present.'.format(path=reassignment_path))
             return {}
-        except IndexError:
-            _log.error(
-                'Content of node {path} could not be parsed. {content}'
-                .format(path=reassignment_path, content=result),
-            )
-            return {}
-
-    def reassignment_in_progress(self):
-        """Returns true if reassignment-node is present."""
-        try:
-            if REASSIGNMENT_NODE in self.get_children(ADMIN_PATH):
-                return True
-            else:
-                return False
-        except NoNodeError:
-            # If node is not present, we can safely assume
-            # that reassignment-node is not present as well
-            return True

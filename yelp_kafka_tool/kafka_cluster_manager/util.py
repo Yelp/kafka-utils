@@ -89,6 +89,6 @@ class KafkaInterface(object):
         brokers and zookeeper configuration
 
         Arguments:
-        proposed_plan:   Proposed plan in json format
+        plan:   Proposed plan in json format
         """
         return zk.execute_plan(plan)
