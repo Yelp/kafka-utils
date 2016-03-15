@@ -39,7 +39,7 @@ class ClusterTopology(object):
             int(broker) for broker in self._zk.get_brokers().iterkeys()
         ]
         topic_ids = sorted(self._zk.get_topics(names_only=True))
-        self._fetch_initial_assignment(broker_ids, topic_ids)
+        self._fetch_initial_assignment()
         # Sequence of building objects
         self._build_topics(topic_ids)
         self._build_brokers(broker_ids)
@@ -120,17 +120,13 @@ class ClusterTopology(object):
             # replication-factor is updated once partition is updated.
             topic.add_partition(partition)
 
-    def _fetch_initial_assignment(self, broker_ids, topic_ids):
+    def _fetch_initial_assignment(self):
         """Fetch initial assignment from zookeeper.
 
         Assignment is ordered by partition name tuple.
         """
         kafka = KafkaInterface()
-        self._initial_assignment = kafka.get_cluster_assignment(
-            self._zk,
-            broker_ids,
-            topic_ids,
-        )
+        self._initial_assignment = kafka.get_cluster_assignment(self._zk)
 
     def _get_replication_group_id(self, broker):
         """Fetch replication-group to broker map from zookeeper."""

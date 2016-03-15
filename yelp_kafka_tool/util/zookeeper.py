@@ -346,25 +346,10 @@ class ZK:
         self.delete(path)
 
     def execute_plan(self, plan):
-        """Executing plan sending it to zookeeper nodes.
-        Algorithm:
-        - Verification:
-        - Re-assign:
-            * Send command to zookeeper to re-assign and create parent-node
-              if missing.
-            Exceptions:
-            * NodeExists error: Assignment already in progress
-            * Raise any other exception
-
-        """
+        """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         plan_json = json.dumps(plan)
-        # Final plan validation against latest plan in zookeeper
-        _log.info(
-            'Validating proposed cluster-layout with current layout before '
-            'sending to zookeeper...',
-        )
         base_plan = self.get_cluster_plan()
         if not validate_plan(plan, base_plan):
             _log.error('Given plan is invalid. ABORTING reassignment...')
