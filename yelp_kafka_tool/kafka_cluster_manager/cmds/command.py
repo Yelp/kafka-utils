@@ -159,20 +159,20 @@ class ClusterManagerCmd(object):
 
         # Create reduced assignment minimizing duplication of topics
         extracted_actions = []
-        curr_partition_cnt = 0
+        curr_movements = 0
         action_available = True
-        while curr_partition_cnt < max_movements and action_available:
+        while curr_movements < max_movements and action_available:
             action_available = False
             for topic, actions in topic_actions.iteritems():
                 for action in actions:
-                    if curr_partition_cnt + action[1] > max_movements:
+                    if curr_movements + action[1] > max_movements:
                         # Remove action since it won't be possible to use it
                         actions.remove(action)
                     else:
                         # Append (topic, partition) to the list of movements
                         action_available = True
                         extracted_actions.append(action[0])
-                        curr_partition_cnt += action[1]
+                        curr_movements += action[1]
                         actions.remove(action)
                         break
         return extracted_actions
