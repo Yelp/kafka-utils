@@ -16,7 +16,7 @@ class ListGroups(OffsetManagerBase):
         parser_list_groups = subparsers.add_parser(
             "list_groups",
             description="List consumer groups.",
-            add_help=False
+            add_help=False,
         )
         parser_list_groups.add_argument(
             "-h", "--help", action="help",
@@ -31,10 +31,18 @@ class ListGroups(OffsetManagerBase):
                 groupids = zk.get_children("/consumers")
             except NoNodeError:
                 print(
-                    "Error: No no zookeeper node.",
+                    "Error: No consumers node found in zookeeper",
                     file=sys.stderr,
                 )
             else:
                 print("Consumer Groups:")
                 for groupid in groupids:
-                    print("\tGroup ID: {groupid}".format(groupid=groupid))
+                    print("\t{groupid}".format(groupid=groupid))
+                print(
+                    "{num_groups} groups found for cluster {cluster_name} "
+                    "of type {cluster_type}".format(
+                        num_groups=len(groupids),
+                        cluster_name=cluster_config.name,
+                        cluster_type=cluster_config.type,
+                    ),
+                )
