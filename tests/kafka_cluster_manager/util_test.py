@@ -384,16 +384,16 @@ def test_validate_plan_incomplete_partition_subset():
     complete_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
-            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": u't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
-            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": u't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
         ]
     }
 
