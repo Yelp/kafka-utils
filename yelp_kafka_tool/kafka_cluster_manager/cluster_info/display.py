@@ -4,12 +4,12 @@ from __future__ import print_function
 
 import logging
 
-from yelp_kafka_tool.kafka_cluster_manager.util import get_plan
+from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
 _log = logging.getLogger('kafka-cluster-manager')
 
 
 def display_cluster_topology(cluster_topology):
-    print(get_plan(cluster_topology.assignment))
+    print(assignment_to_plan(cluster_topology.assignment))
 
 
 def display_same_replica_count_rg(

@@ -8,7 +8,7 @@ from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.stats import imbalance_value_all
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.util import validate_plan
-from yelp_kafka_tool.kafka_cluster_manager.util import get_plan
+from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -85,7 +85,7 @@ class RebalanceCmd(ClusterManagerCmd):
             # assume that the rebalance is safe and it doesn't need any extra
             # validation.
             self.log.info('Validating current cluster-topology against initial cluster-topology...')
-            if not validate_plan(get_plan(assignment), get_plan(base_assignment)):
+            if not validate_plan(assignment_to_plan(assignment), assignment_to_plan(base_assignment)):
                 self.log.error('Invalid latest-cluster assignment. Exiting...')
                 sys.exit(1)
 
@@ -102,7 +102,7 @@ class RebalanceCmd(ClusterManagerCmd):
             # TODO: temporary disable this function
             # display_assignment_changes(assignment)
             # Export proposed-plan to json file
-            plan = get_plan(reduced_assignment)
+            plan = assignment_to_plan(reduced_assignment)
             if args.proposed_plan_file:
                 self.log.info(
                     'Storing proposed-plan in json file, {file}'
