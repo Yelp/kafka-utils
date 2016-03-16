@@ -10,6 +10,7 @@ from yelp_kafka.error import ConfigurationError
 
 from .commands.copy_group import CopyGroup
 from .commands.delete_topics import DeleteTopics
+from .commands.list_groups import ListGroups
 from .commands.list_topics import ListTopics
 from .commands.offset_advance import OffsetAdvance
 from .commands.offset_get import OffsetGet
@@ -44,6 +45,7 @@ def parse_args():
     OffsetAdvance.add_parser(subparsers)
     OffsetRewind.add_parser(subparsers)
     ListTopics.add_parser(subparsers)
+    ListGroups.add_parser(subparsers)
     DeleteTopics.add_parser(subparsers)
     CopyGroup.add_parser(subparsers)
     RenameGroup.add_parser(subparsers)
