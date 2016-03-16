@@ -103,7 +103,7 @@ class ClusterManagerCmd(object):
 
         # The replica set is different for partitions changes
         # Here we create a list of tuple ((topic, partion), # replica movements)
-        partitions_changes = [
+        partition_change_count = [
             (
                 t_p,
                 len(set(replica) - set(new_assignment[t_p])),
@@ -114,27 +114,27 @@ class ClusterManagerCmd(object):
 
         self.log.info(
             "Total number of actions before reduction: %s.",
-            len(partitions_changes) + len(leaders_changes)
+            len(partition_change_count) + len(leaders_changes),
         )
         # Extract reduced plan maximizing uniqueness of topics
         reduced_actions = self._extract_actions_unique_topics(
-            partitions_changes,
+            partition_change_count,
             max_partition_movements,
         )
-        reduced_partitions_changes = [
+        reduced_partition_changes = [
             (t_p, new_assignment[t_p]) for t_p in reduced_actions
         ]
         self.log.info(
             "Number of partition changes: %s."
-            " Number of leader changes: %s",
-            len(reduced_partitions_changes),
+            " Number of leader-only changes: %s",
+            len(reduced_partition_changes),
             min(max_leader_only_changes, len(leaders_changes)),
         )
         # Merge leaders and partition changes and generate the assignment
         reduced_assignment = {
             t_p: replicas
             for t_p, replicas in (
-                reduced_partitions_changes + leaders_changes[:max_leader_only_changes]
+                reduced_partition_changes + leaders_changes[:max_leader_only_changes]
             )
         }
         return reduced_assignment

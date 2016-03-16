@@ -115,7 +115,7 @@ class RebalanceCmd(ClusterManagerCmd):
                 .format(plan=plan),
             )
             self.log.info(
-                'Proposed-plan actions: {actions}, '.format(
+                'Proposed-plan actions count: {actions}, '.format(
                     actions=len(plan['partitions']),
                 ),
             )

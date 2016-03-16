@@ -24,9 +24,9 @@ class KafkaInterface(object):
         self._kafka_script_path = script_path
         self.log = logging.getLogger(self.__class__.__name__)
 
-    def get_cluster_assignment(self, zk, brokers, topic_ids):
+    def get_cluster_assignment(self, zk):
         """Generate the reassignment plan for given zookeeper
-        configuration, brokers and topics.
+        configuration.
         """
         plan = zk.get_cluster_plan()
         assignment = {}
@@ -35,14 +35,13 @@ class KafkaInterface(object):
                 (elem['topic'], elem['partition'])
             ] = elem['replicas']
         # assignment map created in sorted order for deterministic solution
-        assignment = OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
-        return assignment
+        return OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
 
     def execute_plan(self, zk, plan):
         """Execute the proposed plan.
 
         Execute the given proposed plan over given
-        brokers and zookeeper configuration
+        zookeeper configuration
 
         Arguments:
         plan:   Proposed plan in json format

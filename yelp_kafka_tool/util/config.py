@@ -8,7 +8,11 @@ conf = None  # The content of the config file
 debug = False  # Set to true to print debug info
 
 
-def get_cluster_config(cluster_type, cluster_name=None, kafka_topology_base_path=None):
+def get_cluster_config(
+    cluster_type,
+    cluster_name=None,
+    kafka_topology_base_path=None,
+):
     """Return the cluster configuration.
     Use the local cluster if cluster_name is not specified.
 
@@ -26,10 +30,10 @@ def get_cluster_config(cluster_type, cluster_name=None, kafka_topology_base_path
     else:
         topology = TopologyConfiguration(cluster_type)
 
-    if not cluster_name:
-        return topology.get_local_cluster()
-    else:
+    if cluster_name:
         return topology.get_cluster_by_name(cluster_name)
+    else:
+        return topology.get_local_cluster()
 
 
 def load(path):
