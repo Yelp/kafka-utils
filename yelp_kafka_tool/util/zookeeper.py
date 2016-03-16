@@ -418,5 +418,4 @@ class ZK:
             result = self.get(reassignment_path)
             return json.loads(result[0])
         except NoNodeError:
-            _log.error('{path} node not present.'.format(path=reassignment_path))
             return {}

@@ -91,13 +91,12 @@ class RebalanceCmd(ClusterManagerCmd):
 
             # Reduce the proposed assignment based on max_partition_movements
             # and max_leader_changes
-            reduced_assignment, total_changes = self.get_reduced_assignment(
+            reduced_assignment = self.get_reduced_assignment(
                 base_assignment,
                 assignment,
                 args.max_partition_movements,
                 args.max_leader_changes,
             )
-            self.log.info("Total changes before reduction: {0}".format(total_changes))
             # Display or store plan
             # TODO: temporary disable this function
             # display_assignment_changes(assignment)

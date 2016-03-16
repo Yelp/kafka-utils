@@ -86,8 +86,6 @@ class ClusterManagerCmd(object):
         max_leader_only_changes:Maximum number of actions with leader only changes
         :return:
         :reduced_assignment:    Final reduced assignment
-        :tot_actions:           Total actions to be executed
-        :type:                  integer
         """
         if (not original_assignment or not new_assignment or
                 max_partition_movements < 0 or max_leader_only_changes < 0):
