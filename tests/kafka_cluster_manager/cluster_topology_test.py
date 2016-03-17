@@ -16,7 +16,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_leader_
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_replication_group_imbalance_stats
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import compute_optimal_count
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import separate_groups
-from yelp_kafka_tool.kafka_cluster_manager.main import ZK
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class TestClusterToplogy(object):

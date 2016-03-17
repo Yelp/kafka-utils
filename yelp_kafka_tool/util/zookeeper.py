@@ -393,50 +393,33 @@ class ZK:
         )
         self.delete(path)
 
-    def execute_assignment(self, assignment):
-        """Executing plan directly sending it to zookeeper nodes.
-        Algorithm:
-        1. Verification:
-        2. TODO:Save current assignment for future?
-        3. Re-assign:
-            * Send command to zookeeper to re-assign and create parent-node
-              if missing.
-            Exceptions:
-            * NodeExists error: Assignment already in progress
-            * Raise any other exception
-
-        """
+    def execute_plan(self, plan):
+        """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
-        plan = json.dumps(assignment)
-        # Final plan validation against latest assignment in zookeeper
-        _log.info(
-            'Validating proposed cluster-layout with current layout before '
-            'sending to zookeeper...',
-        )
-        base_assignment = self.get_cluster_assignment()
-        brokers = [int(b_id) for b_id in self.get_brokers(names_only=True)]
-        if not validate_plan(assignment, base_assignment, brokers):
+        plan_json = json.dumps(plan)
+        base_plan = self.get_cluster_plan()
+        if not validate_plan(plan, base_plan):
             _log.error('Given plan is invalid. ABORTING reassignment...')
             return False
         # Send proposed-plan to zookeeper
         try:
-            _log.info('Sending assignment to Zookeeper...')
-            self.create(reassignment_path, plan, makepath=True)
+            _log.info('Sending plan to Zookeeper...')
+            self.create(reassignment_path, plan_json, makepath=True)
             _log.info(
                 'Re-assign partitions node in Zookeeper updated successfully '
-                'with {assignment}'.format(assignment=assignment),
+                'with {plan}'.format(plan=plan),
             )
             return True
         except NodeExistsError:
-            _log.warning('Previous assignment in progress. Exiting..')
-            in_progress_assignment = json.loads(self.get(reassignment_path)[0])
+            _log.warning('Previous plan in progress. Exiting..')
+            in_progress_plan = json.loads(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
                     topic=p_data['topic'],
                     p_id=str(p_data['partition']),
                 )
-                for p_data in in_progress_assignment['partitions']
+                for p_data in in_progress_plan['partitions']
             ]
             _log.warning(
                 '{count} partition(s) reassignment currently in progress:-'
@@ -455,8 +438,9 @@ class ZK:
             )
             return False
 
-    def get_cluster_assignment(self):
-        """Fetch cluster assignment directly from zookeeper."""
+    def get_cluster_plan(self):
+        """Fetch cluster plan from zookeeper."""
+
         _log.info('Fetching current cluster-topology from Zookeeper...')
         cluster_layout = self.get_topics(fetch_partition_state=False)
         # Re-format cluster-layout
@@ -474,7 +458,7 @@ class ZK:
             'partitions': partitions
         }
 
-    def get_in_progress_plan(self):
+    def get_pending_plan(self):
         """Read the currently running plan on reassign_partitions node."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
@@ -482,23 +466,4 @@ class ZK:
             result = self.get(reassignment_path)
             return json.loads(result[0])
         except NoNodeError:
-            _log.error('{path} node not present.'.format(path=reassignment_path))
             return {}
-        except IndexError:
-            _log.error(
-                'Content of node {path} could not be parsed. {content}'
-                .format(path=reassignment_path, content=result),
-            )
-            return {}
-
-    def reassignment_in_progress(self):
-        """Returns true if reassignment-node is present."""
-        try:
-            if REASSIGNMENT_NODE in self.get_children(ADMIN_PATH):
-                return True
-            else:
-                return False
-        except NoNodeError:
-            # If node is not present, we can safely assume
-            # that reassignment-node is not present as well
-            return True
