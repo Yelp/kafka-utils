@@ -20,6 +20,7 @@ setup(
         "scripts/kafka-reassignment",
         "scripts/kafka-topic-autopartition",
         "scripts/kafka-partition-manager",
+        "scripts/kafka-compaction-setter",
         "scripts/kafka-consumer-manager",
         "scripts/kafka-cluster-manager",
         "scripts/yelpkafka",

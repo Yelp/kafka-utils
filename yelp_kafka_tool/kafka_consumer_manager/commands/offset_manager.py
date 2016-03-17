@@ -55,6 +55,12 @@ class OffsetManagerBase(object):
             sys.exit(1)
 
         # Get all the topics that this consumer is subscribed to.
+        print(
+            "Cluster name: {cluster_name}, consumer group: {groupid}".format(
+                cluster_name=cluster_config.name,
+                groupid=groupid,
+            ),
+        )
         topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,

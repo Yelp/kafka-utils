@@ -1,3 +1,5 @@
+import json
+
 import mock
 from yelp_kafka.config import ClusterConfig
 
@@ -51,6 +53,28 @@ class TestZK(object):
                 ),
             ]
             assert mock_client.return_value.create.call_args_list == call_list
+
+    def test_set(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.set(
+                'config/topics/some_topic',
+                'some_val'
+            )
+            zk.set(
+                'brokers/topics/some_topic',
+                '{"name": "some_topic", "more": "properties"}'
+            )
+            call_list = [
+                mock.call(
+                    'config/topics/some_topic',
+                    'some_val'
+                ),
+                mock.call(
+                    'brokers/topics/some_topic',
+                    '{"name": "some_topic", "more": "properties"}'
+                )
+            ]
+            assert mock_client.return_value.set.call_args_list == call_list
 
     def test_delete(self, mock_client):
         with ZK(self.cluster_config) as zk:
@@ -132,3 +156,42 @@ class TestZK(object):
                     zk,
                     '/consumers/some_group/offsets/some_topic',
                 )
+
+    def test_get_topic_config(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.zk.get = mock.Mock(
+                return_value=(
+                    '{"version": 1, "config": {"cleanup.policy": "compact"}}',
+                    "Random node info that doesn't matter"
+                )
+            )
+            actual = zk.get_topic_config("some_topic")
+            expected = {"version": 1, "config": {"cleanup.policy": "compact"}}
+            assert actual == expected
+
+    def test_set_topic_config(self, mock_client):
+        with mock.patch.object(
+            ZK,
+            'set',
+            autospec=True
+        ) as mock_set:
+            with ZK(self.cluster_config) as zk:
+                zk.set_topic_config(
+                    "some_topic",
+                    {"version": 1, "config": {"cleanup.policy": "compact"}}
+                )
+                mock_set.assert_called_once_with(
+                    zk,
+                    '/config/topics/some_topic',
+                    json.dumps({"version": 1, "config": {"cleanup.policy": "compact"}})
+                )
+
+                expected_create_call = mock.call(
+                    '/config/changes/config_change_',
+                    "some_topic",
+                    None,
+                    False,
+                    True,
+                    False
+                )
+                assert mock_client.return_value.create.call_args_list == [expected_create_call]
