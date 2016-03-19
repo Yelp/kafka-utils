@@ -18,10 +18,6 @@ class ListGroups(OffsetManagerBase):
             description="List consumer groups.",
             add_help=False,
         )
-        parser_list_groups.add_argument(
-            "-h", "--help", action="help",
-            help="Show this help message and exit."
-        )
         parser_list_groups.set_defaults(command=cls.run)
 
     @classmethod
