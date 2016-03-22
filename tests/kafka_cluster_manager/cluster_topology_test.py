@@ -740,7 +740,7 @@ class TestClusterToplogy(object):
             _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
             assert leader_imbal == 0
 
-    def test_rebalance_groups_partition_cnt_case1(self):
+    def test__rebalance_groups_partition_cnt_case1(self):
         # rg1 has 6 partitions
         # rg2 has 2 partitions
         # Both rg's are balanced(based on replica-count) initially
@@ -755,7 +755,7 @@ class TestClusterToplogy(object):
         )
         with self.build_cluster_topology(assignment, self.srange(4)) as ct:
             # Re-balance replication-groups for partition-count
-            ct.rebalance_groups_partition_cnt()
+            ct._rebalance_groups_partition_cnt()
 
             # Verify both replication-groups have same partition-count
             assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
@@ -770,7 +770,7 @@ class TestClusterToplogy(object):
             # Verify replica-count imbalance remains unaltered
             assert net_imbal == 0
 
-    def test_rebalance_groups_partition_cnt_case2(self):
+    def test__rebalance_groups_partition_cnt_case2(self):
         # 1 over-balanced, 2 under-balanced replication-groups
         # rg1 has 4 partitions
         # rg2 has 1 partition
@@ -787,7 +787,7 @@ class TestClusterToplogy(object):
         )
         with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
             # Re-balance brokers
-            ct.rebalance_groups_partition_cnt()
+            ct._rebalance_groups_partition_cnt()
 
             # Verify all replication-groups have same partition-count
             assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
@@ -803,7 +803,7 @@ class TestClusterToplogy(object):
             # Verify replica-count imbalance remains 0
             assert net_imbal == 0
 
-    def test_rebalance_groups_partition_cnt_case3(self):
+    def test__rebalance_groups_partition_cnt_case3(self):
         # 1 over-balanced, 1 under-balanced, 1 opt-balanced replication-group
         # rg1 has 3 partitions
         # rg2 has 2 partitions
@@ -820,7 +820,7 @@ class TestClusterToplogy(object):
         )
         with self.build_cluster_topology(assignment, ['0', '2', '5']) as ct:
             # Re-balance brokers across replication-groups
-            ct.rebalance_groups_partition_cnt()
+            ct._rebalance_groups_partition_cnt()
 
             # Verify all replication-groups have same partition-count
             assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)

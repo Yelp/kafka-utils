@@ -260,7 +260,7 @@ class ClusterTopology(object):
         return None
 
     # Re-balancing partition count across brokers
-    def rebalance_groups_partition_cnt(self):
+    def _rebalance_groups_partition_cnt(self):
         """Re-balance partition-count across replication-groups.
 
         Algorithm:
