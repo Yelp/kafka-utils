@@ -1,0 +1,11 @@
+kafka:
+  build: docker/kafka_${KAFKA_VERSION}
+  expose:
+    - "9092"
+  links:
+    - zookeeper
+
+zookeeper:
+  build: docker/zookeeper
+  expose:
+    - "2181"
