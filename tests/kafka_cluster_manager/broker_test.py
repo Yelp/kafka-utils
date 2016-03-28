@@ -130,3 +130,19 @@ class TestBroker(object):
         # Between p1 and p3: p1 has 1 sibling (p2) in b2 and p3 has 1 sibling
         # So preferred partition should be p3
         assert pref_partition == p3
+
+    def test_mark_decommissioned(self):
+        broker = Broker('test-broker')
+        broker.mark_decommissioned()
+
+        assert broker.decommissioned
+
+    def test_empty(self):
+        broker = Broker('test-broker')
+        # No partitions for this broker
+        assert broker.empty()
+
+    def test_not_empty(self, partition):
+        broker = Broker('test-broker', partitions=set([partition]))
+
+        assert not broker.empty()

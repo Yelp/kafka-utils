@@ -1,6 +1,7 @@
 import logging
 from collections import Counter
 
+
 _log = logging.getLogger('kafka-cluster-manager')
 
 
@@ -22,7 +23,7 @@ def get_leaders_per_broker(brokers):
     )
 
 
-def compute_optimum(elements, groups):
+def compute_optimum(groups, elements):
     """Compute the number of elements per group and the reminder.
 
         :param elements: total number of elements
@@ -81,7 +82,7 @@ def separate_groups(groups, key, total):
     between these two groups to transfer the element to 'd'.
     """
     optimum, _ = compute_optimum(len(groups), total)
-    over_loaded, under_loaded, optimal = _smart_separate_groups(groups, key)
+    over_loaded, under_loaded, optimal = _smart_separate_groups(groups, key, total)
     # If every group is optimal return
     if not over_loaded:
         return over_loaded, under_loaded

@@ -20,7 +20,7 @@ class DecommissionCmd(ClusterManagerCmd):
         super(DecommissionCmd, self).__init__()
         self.log = logging.getLogger('BrokerDecommission')
 
-    def add_subparser(self, subparsers):
+    def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
             'decommission',
             description='Decommission one or more brokers of the cluster.',
@@ -49,19 +49,15 @@ class DecommissionCmd(ClusterManagerCmd):
             help='Maximum number of actions with leader-only changes.'
                  ' DEFAULT: %(default)s',
         )
-        subparser.set_defaults(command=self.decommission)
+        return subparser
 
-    def decommission(self, cluster_config, args):
-        with ZK(cluster_config) as zk:
+    def command(self):
+        with ZK(self.cluster_config) as zk:
             ct = ClusterTopology(zk)
             # TODO: We could get rid of initial_assignment in ClusterTopology
             base_assignment = ct.initial_assignment
-            ct.decommission_brokers(args.broker_ids)
+            ct.decommission_brokers(self.args.broker_ids)
 
-            # TODO: Get rid of validate_plan in the future. We should
-            # assume that the rebalance is safe and it doesn't need any extra
-            # validation.
-            self.log.info('Validating current cluster-topology against initial cluster-topology...')
             if not validate_plan(
                 assignment_to_plan(ct.assignment),
                 assignment_to_plan(base_assignment),
@@ -74,25 +70,13 @@ class DecommissionCmd(ClusterManagerCmd):
             reduced_assignment = self.get_reduced_assignment(
                 base_assignment,
                 ct.assignment,
-                args.max_partition_movements,
-                args.max_leader_changes,
+                self.args.max_partition_movements,
+                self.args.max_leader_changes,
             )
-            # Export proposed-plan to json file
-            plan = assignment_to_plan(reduced_assignment)
-            if args.proposed_plan_file:
+            if reduced_assignment:
+                self.process_assignment(reduced_assignment)
+            else:
                 self.log.info(
-                    'Storing proposed-plan in json file, {file}'
-                    .format(file=args.proposed_plan_file),
+                    "Cluster already balanced. No more replicas in "
+                    "decommissioned brokers."
                 )
-                self.write_json_plan(plan, args.proposed_plan_file)
-
-            self.log.info(
-                'Proposed plan assignment {plan}'
-                .format(plan=plan),
-            )
-            self.log.info(
-                'Proposed-plan actions count: {actions}, '.format(
-                    actions=len(plan['partitions']),
-                ),
-            )
-            self.execute_plan(zk, plan, args.apply, args.no_confirm)

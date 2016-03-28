@@ -57,6 +57,7 @@ class Broker(object):
         return set([partition.topic for partition in self._partitions])
 
     def empty(self):
+        """Return true if the broker has no replicas assigned"""
         return len(self.partitions) == 0
 
     def remove_partition(self, partition):
