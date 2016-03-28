@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 import argparse
 import ConfigParser
 import logging
-import sys
 from logging.config import fileConfig
 
+from yelp_kafka_tool.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 from yelp_kafka_tool.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 from yelp_kafka_tool.util import config
 
@@ -65,22 +65,9 @@ def parse_args():
 
     subparsers = parser.add_subparsers()
     RebalanceCmd().add_subparser(subparsers)
+    DecommissionCmd().add_subparser(subparsers)
 
     return parser.parse_args()
-
-
-def validate_args(args):
-    """Validate relevant arguments. Exit on failure."""
-    rebalance_options = [args.replication_groups, args.leaders, args.brokers]
-    if not any(rebalance_options):
-        _log.error(
-            'At least one of --replication-groups, --leaders, --brokers flag required.',
-        )
-        sys.exit(1)
-
-    if args.no_confirm and not args.apply:
-        _log.error('--apply required with --no-confirm flag.')
-        sys.exit(1)
 
 
 def configure_logging(log_conf=None):
@@ -102,7 +89,6 @@ def run():
     args = parse_args()
 
     configure_logging(args.logconf)
-    validate_args(args)
 
     cluster_config = config.get_cluster_config(
         args.cluster_type,

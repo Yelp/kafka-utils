@@ -189,19 +189,29 @@ class ReplicationGroup(object):
         )
         return min_count_pair[0]
 
+    def _extract_decommissioned(self):
+        return set([b for b in self.brokers if b.decommissioned])
+
     # Re-balancing brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers."""
+        total_partitions = sum(len(b.partitions) for b in self.brokers)
+        blacklist = self._extract_decommissioned()
+        active_brokers = [b for b in self.brokers if b not in blacklist]
         # Separate brokers based on partition count
         over_loaded_brokers, under_loaded_brokers = separate_groups(
-            self.brokers,
+            active_brokers,
             lambda b: len(b.partitions),
+            total_partitions,
         )
-        # Report and return if nothing to be balanced
+        # Decommissioned brokers are considered overloaded until they have
+        # no more partitions assigned.
+        over_loaded_brokers += [b for b in blacklist if not b.empty()]
         if not over_loaded_brokers and not under_loaded_brokers:
             self.log.info(
-                'Brokers of replication-group: {rg} already balanced for '
-                'partition-count'.format(rg=self.id),
+                'Brokers of replication-group: %s already balanced for '
+                'partition-count.',
+                self._id,
             )
             return
 
@@ -231,9 +241,12 @@ class ReplicationGroup(object):
                 break
             # Re-evaluate under and over-loaded brokers
             over_loaded_brokers, under_loaded_brokers = separate_groups(
-                self.brokers,
+                active_brokers,
                 lambda b: len(b.partitions),
+                total_partitions,
             )
+            # As before add brokers to decommission.
+            over_loaded_brokers += [b for b in blacklist if not b.empty()]
 
     def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_info):
         """Pick best-suitable source-broker, destination-broker and partition to
@@ -256,7 +269,8 @@ class ReplicationGroup(object):
         min_sibling_partition_cnt = -1
         for source in over_loaded_brokers:
             for dest in under_loaded_brokers:
-                if len(source.partitions) - len(dest.partitions) > 1:
+                if (len(source.partitions) - len(dest.partitions) > 1 or
+                        source.decommissioned):
                     best_fit_partition = source.get_preferred_partition(
                         dest,
                         sibling_info,

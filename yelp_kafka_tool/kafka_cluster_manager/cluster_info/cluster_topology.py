@@ -14,6 +14,7 @@ import logging
 from collections import OrderedDict
 
 from .broker import Broker
+from .error import InvalidBrokerIdError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
@@ -82,6 +83,7 @@ class ClusterTopology(object):
             if rg_id not in self.rgs:
                 self.rgs[rg_id] = ReplicationGroup(rg_id)
             self.rgs[rg_id].add_broker(broker)
+            broker.replication_group = self.rgs[rg_id]
 
     def _build_partitions(self):
         """Builds all partition objects and update corresponding broker and
@@ -187,7 +189,30 @@ class ClusterTopology(object):
             self._rebalance_partition(partition)
 
         # Balance partition-count over replication-groups
-        self.rebalance_groups_partition_cnt()
+        self._rebalance_groups_partition_cnt()
+
+    def decommission_brokers(self, broker_ids):
+        """Decommission a list of brokers trying to keep the replication group
+        the brokers belong to balanced.
+
+        :param broker_ids: list of string representing valid broker ids in the cluster
+        :raises: InvalidBrokerIdError when the id is invalid.
+        """
+        groups = set()
+        for b_id in broker_ids:
+            try:
+                broker = self.brokers[b_id]
+                broker.mark_decommissioned()
+                groups.add(broker.replication_group)
+            except KeyError:
+                self.log.error("Invalid broker id %s.", b_id)
+                # Raise an error for now. As alternative we may ignore the
+                # invalid id and continue with the others.
+                raise InvalidBrokerIdError(
+                    "Broker id {} does not exist in cluster".format(b_id),
+                )
+        for group in groups:
+            group.rebalance_brokers()
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""

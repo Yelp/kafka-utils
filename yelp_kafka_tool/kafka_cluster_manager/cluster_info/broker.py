@@ -7,10 +7,13 @@ class Broker(object):
         -partitions: partitions under a given broker
     """
 
+    log = logging.getLogger(__name__)
+
     def __init__(self, id, partitions=None):
         self._id = id
         self._partitions = partitions or set()
-        self.log = logging.getLogger(self.__class__.__name__)
+        self._decommissioned = False
+        self._replication_group = None
 
     def get_hostname(self, zk):
         """Get hostname of broker from zookeeper."""
@@ -25,6 +28,21 @@ class Broker(object):
             result = 'localhost'
         return result
 
+    def mark_decommissioned(self):
+        self._decommissioned = True
+
+    @property
+    def replication_group(self):
+        return self._replication_group
+
+    @replication_group.setter
+    def replication_group(self, group):
+        self._replication_group = group
+
+    @property
+    def decommissioned(self):
+        return self._decommissioned
+
     @property
     def partitions(self):
         return self._partitions
@@ -37,6 +55,9 @@ class Broker(object):
     def topics(self):
         """Return the set of topics current in broker."""
         return set([partition.topic for partition in self._partitions])
+
+    def empty(self):
+        return len(self.partitions) == 0
 
     def remove_partition(self, partition):
         """Remove partition from partition list."""
