@@ -22,34 +22,31 @@ def get_leaders_per_broker(brokers):
     )
 
 
-def compute_optimal_count(total_elements, total_groups):
-    """Return optimal count and extra-elements allowed based on base
-    total count of elements and groups.
+def compute_optimum(elements, groups):
+    """Compute the number of elements per group and the reminder.
+
+        :param elements: total number of elements
+        :param groups: total number of groups
     """
-    opt_element_cnt = total_elements // total_groups
-    extra_elements_allowed_cnt = total_elements % total_groups
-    return opt_element_cnt, extra_elements_allowed_cnt
+    return elements // groups, elements % groups
 
 
-def compute_group_optimum(groups, key):
-    total = sum(key(g) for g in groups)
-    return total // len(groups), total % len(groups)
-
-
-def smart_separate_groups(groups, key):
+def _smart_separate_groups(groups, key, total):
     """Given a list of group objects, and a function to extract the number of
     elements for each of them, return the list of groups that have an excessive
     number of elements (when compared to a uniform distribution), a list of
     groups with insufficient elements, and a list of groups that already have
     the optimal number of elements.
 
-    Examples:
-        smart_separate_groups([12, 10, 10, 11], lambda g: g) => ([12], [10], [11, 10])
-        smart_separate_groups([12,  8, 12, 11], lambda g: g) => ([12, 12], [8], [11])
-        smart_separate_groups([14,  9,  6, 14], lambda g: g) => ([14, 14], [9, 6], [])
-        smart_separate_groups([11,  9, 10, 14], lambda g: g) => ([14], [10, 9], [11])
+    :param list groups: list of group objects
+    :param func key: function to retrieve the current number of elements from the group object
+    :param int total: total number of elements to distribute
+
+    Example:
+        .. code-block:: python
+           smart_separate_groups([11,  9, 10, 14], lambda g: g) => ([14], [10, 9], [11])
     """
-    optimum, extra = compute_group_optimum(groups, key)
+    optimum, extra = compute_optimum(len(groups), total)
     over_loaded, under_loaded, optimal = [], [], []
     for group in sorted(groups, key=key, reverse=True):
         n_elements = key(group)
@@ -64,27 +61,27 @@ def smart_separate_groups(groups, key):
     return over_loaded, under_loaded, optimal
 
 
-def separate_groups(groups, key):
+def separate_groups(groups, key, total):
     """Separate the group into all potentially overloaded, optimal and
     under-loaded groups.
 
     The revised over-loaded groups increases the choice space for future
-    selection of most suitable group based on on search criteria.
+    selection of most suitable group based on search criteria.
 
     If all groups from smart-separate are optimal, return the original groups,
     since there's no use of creating potential over-loaded-groups.
 
     For example:
-    Consider, replication-group to replica-count map: (a:4, b:4, c:3, d:2)
+    Given the groups (a:4, b:4, c:3, d:2) where the number represents the number
+    of elements for each group.
     smart_separate_groups sets 'a' and 'c' as optimal, 'b' as over-loaded
-    and 'd' as under-loaded, so we transfer the partition from group 'b' to 'd'.
+    and 'd' as under-loaded.
 
     separate-groups combines 'a' with 'b' as over-loaded, allowing to select
-    between these two groups (based on total-partition-count), to transfer the
-    partition to 'd'.
+    between these two groups to transfer the element to 'd'.
     """
-    optimum, _ = compute_group_optimum(groups, key)
-    over_loaded, under_loaded, optimal = smart_separate_groups(groups, key)
+    optimum, _ = compute_optimum(len(groups), total)
+    over_loaded, under_loaded, optimal = _smart_separate_groups(groups, key)
     # If every group is optimal return
     if not over_loaded:
         return over_loaded, under_loaded

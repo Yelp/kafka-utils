@@ -17,9 +17,8 @@ from .broker import Broker
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
-from .util import compute_group_optimum
+from .util import compute_optimum
 from .util import separate_groups
-from .util import smart_separate_groups
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
 
@@ -281,9 +280,11 @@ class ClusterTopology(object):
         6) Repeat steps 1) to 5) until groups are balanced or cannot be balanced further.
         """
         # Segregate replication-groups based on partition-count
-        over_loaded_rgs, under_loaded_rgs, _ = smart_separate_groups(
+        total_elements = sum(len(rg.partitions) for rg in self.rgs)
+        over_loaded_rgs, under_loaded_rgs = separate_groups(
             self.rgs.values(),
             lambda rg: len(rg.partitions),
+            total_elements,
         )
         if over_loaded_rgs and under_loaded_rgs:
             self.log.info(
@@ -299,9 +300,9 @@ class ClusterTopology(object):
             return
 
         # Get optimal partition-count per replication-group
-        opt_partition_cnt, _ = compute_group_optimum(
-            self.rgs.values(),
-            lambda rg: len(rg.partitions),
+        opt_partition_cnt, _ = compute_optimum(
+            len(self.rgs.values()),
+            total_elements,
         )
         # Balance replication-groups
         for over_loaded_rg in over_loaded_rgs:

@@ -8,7 +8,7 @@ from .display import display_leader_count_per_broker
 from .display import display_partition_count_per_broker
 from .display import display_same_replica_count_rg
 from .display import display_same_topic_partition_count_broker
-from .util import compute_optimal_count
+from .util import compute_optimum
 from .util import get_leaders_per_broker
 from .util import get_partitions_per_broker
 
@@ -36,7 +36,7 @@ def get_net_imbalance(count_per_broker):
     """
     net_imbalance = 0
     opt_count, extra_allowed = \
-        compute_optimal_count(sum(count_per_broker), len(count_per_broker))
+        compute_optimum(sum(count_per_broker), len(count_per_broker))
     for count in count_per_broker:
         extra_cnt, extra_allowed = \
             get_extra_element_count(count, opt_count, extra_allowed)
@@ -81,7 +81,7 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     for partition in partitions:
         # Get optimal replica-count for each partition
         opt_replica_cnt, extra_replicas_allowed = \
-            compute_optimal_count(partition.replication_factor, tot_rgs)
+            compute_optimum(partition.replication_factor, tot_rgs)
 
         # Extra replica count for each rg
         for rg in rgs:
@@ -141,7 +141,7 @@ def get_topic_imbalance_stats(brokers, topics):
         total_partition_replicas = \
             len(topic.partitions) * topic.replication_factor
         opt_partition_cnt, extra_partitions_allowed = \
-            compute_optimal_count(total_partition_replicas, tot_brokers)
+            compute_optimum(total_partition_replicas, tot_brokers)
         # Get extra-partition count per broker for each topic
         for broker in brokers:
             partition_cnt_broker = broker.count_partitions(topic)

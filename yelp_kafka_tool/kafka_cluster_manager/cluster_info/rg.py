@@ -12,10 +12,13 @@ class ReplicationGroup(object):
     (Availability zones) abbreviated as rg.
     """
 
+    log = logging.getLogger(__name__)
+
     def __init__(self, id, brokers=None):
         self._id = id
+        if brokers and not isinstance(brokers, set):
+            raise TypeError("brokers has to be a set but type is {}".format(type(brokers)))
         self._brokers = brokers or set()
-        self.log = logging.getLogger(self.__class__.__name__)
 
     @property
     def id(self):
@@ -42,7 +45,7 @@ class ReplicationGroup(object):
 
     @property
     def brokers(self):
-        """Return list of brokers."""
+        """Return set of brokers."""
         return self._brokers
 
     def add_broker(self, broker):
