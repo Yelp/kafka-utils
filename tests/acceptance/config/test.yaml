@@ -1,0 +1,8 @@
+---
+  clusters:
+    test_cluster:
+      broker_list:
+        - "kafka:9092"
+      zookeeper: "zookeeper:2181"
+  local_config:
+    cluster: test_cluster

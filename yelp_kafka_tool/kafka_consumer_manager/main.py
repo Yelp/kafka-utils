@@ -37,6 +37,12 @@ def parse_args():
         help='Kafka Cluster Name. If not specified, this defaults to the '
         'local cluster.'
     )
+    parser.add_argument(
+        '--discovery-base-path',
+        dest='discovery_base_path',
+        type=str,
+        help='Path of the directory containing the <cluster_type>.yaml config',
+    )
     subparsers = parser.add_subparsers()
 
     OffsetGet.add_parser(subparsers)
@@ -57,7 +63,11 @@ def run():
     logging.basicConfig(level=logging.ERROR)
     args = parse_args()
     try:
-        conf = get_cluster_config(args.cluster_type, args.cluster_name)
+        conf = get_cluster_config(
+            args.cluster_type,
+            args.cluster_name,
+            args.discovery_base_path,
+        )
     except ConfigurationError as e:
         print(e, file=sys.stderr)
         sys.exit(1)
