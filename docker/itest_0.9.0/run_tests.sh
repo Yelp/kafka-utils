@@ -4,8 +4,8 @@ set -e
 
 function do_at_exit {
   exit_status=$?
-  rm -rf build/ dist/ yelp_kafka.egg-info/
-  rm -rf .tox/log .tox/dist
+  rm -rf build/ dist/ yelp_kafka_tool.egg-info/
+  rm -rf .tox/log .tox/dist .tox/acceptance
   find . -name '*.pyc' -delete
   find . -name '__pycache__' -delete
   exit $exit_status

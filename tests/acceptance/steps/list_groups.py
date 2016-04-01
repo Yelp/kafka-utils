@@ -20,7 +20,7 @@ def step_impl1(context):
     context.topic = topic
 
 
-def call_list_groups(topic_name):
+def call_list_groups():
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -35,7 +35,7 @@ def call_list_groups(topic_name):
 
 @when('we call the list_groups command')
 def step_impl2(context):
-    context.output = call_list_groups(context.topic)
+    context.output = call_list_groups()
 
 
 @then('the groups will be listed')

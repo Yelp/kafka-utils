@@ -41,7 +41,6 @@ def create_consumer_group(topic, group_name):
         auto_commit_enable=False,
         bootstrap_servers=[KAFKA_URL],
         auto_offset_reset='smallest')
-    for message in consumer:
-        consumer.task_done(message)
-        break
+    message = consumer.next()
+    consumer.task_done(message)
     consumer.commit()
