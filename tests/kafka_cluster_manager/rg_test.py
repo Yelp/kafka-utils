@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+import pytest
 from mock import Mock
 from mock import sentinel
 
@@ -16,11 +17,152 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import validate_pla
 from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
 
 
+@pytest.fixture
+def rg_unbalanced():
+    # Broker Topics:Partition
+    #   1    topic1:0, topic1:1, topic4:0
+    #   2    topic1:2, topic1:3, topic2:0, topic2:1, topic3:0
+    #   3    topic4:0
+    # total partitions: 9
+    b1 = Broker('1')
+    t1 = Topic('topic1', 1)
+    t2 = Topic('topic2', 1)
+    t3 = Topic('topic3', 1)
+    t4 = Topic('topic4', 2)
+    p = Partition(t1, '0', [b1])
+    t1.add_partition(p)
+    b1.add_partition(p)
+    p = Partition(t1, '1', [b1])
+    t1.add_partition(p)
+    b1.add_partition(p)
+
+    b2 = Broker('2')
+    p = Partition(t1, '2', [b2])
+    t2.add_partition(p)
+    b2.add_partition(p)
+    p = Partition(t1, '3', [b2])
+    t2.add_partition(p)
+    b2.add_partition(p)
+    p = Partition(t2, '0', [b2])
+    t2.add_partition(p)
+    b2.add_partition(p)
+    p = Partition(t2, '1', [b2])
+    t2.add_partition(p)
+    b2.add_partition(p)
+    p = Partition(t3, '0', [b2])
+    t3.add_partition(p)
+    b2.add_partition(p)
+
+    b3 = Broker('3')
+    p = Partition(t4, '0', [b3, b1])
+    t4.add_partition(p)
+    b1.add_partition(p)
+    b3.add_partition(p)
+    return ReplicationGroup('test_rg', set([b1, b2, b3]))
+
+
+@pytest.fixture
+def rg_balanced():
+    # Broker Topics:Partition
+    #   1    topic1:0, topic1:1, topic2:0, topic4:0
+    #   2    topic1:2, topic1:3, topic2:1
+    #   3    topic2:1, topic3:0, topic4:0
+    # total partitions: 9
+    b1 = Broker('1')
+    t1 = Topic('topic1', 1)
+    t2 = Topic('topic2', 1)
+    t3 = Topic('topic3', 1)
+    t4 = Topic('topic4', 2)
+    p = Partition(t1, '0', [b1])  # t1: 0
+    t1.add_partition(p)
+    b1.add_partition(p)
+    p = Partition(t1, '1', [b1])  # t1: 1
+    t1.add_partition(p)
+    b1.add_partition(p)
+    p = Partition(t2, '0', [b1])  # t2: 0
+    t2.add_partition(p)
+    b1.add_partition(p)
+
+    b2 = Broker('2')
+    p = Partition(t1, '2', [b2])  # t1: 2
+    t2.add_partition(p)
+    b2.add_partition(p)
+    p = Partition(t1, '3', [b2])  # t1: 3
+    t2.add_partition(p)
+    b2.add_partition(p)
+    p = Partition(t2, '1', [b2])  # t2: 1
+    t2.add_partition(p)
+    b2.add_partition(p)
+
+    b3 = Broker('3')
+    p = Partition(t2, '1', [b2])  # t2:1
+    t2.add_partition(p)
+    b3.add_partition(p)
+    p = Partition(t3, '0', [b2])  # t3:0
+    t3.add_partition(p)
+    b3.add_partition(p)
+    p = Partition(t4, '0', [b3, b1])  # t4:0
+    t4.add_partition(p)
+    b1.add_partition(p)
+    b3.add_partition(p)
+    return ReplicationGroup('test_rg', set([b1, b2, b3]))
+
+
+def assert_rg_balanced(rg):
+    expected_count = len(rg.partitions) // len(rg.brokers)
+    for broker in rg.brokers:
+        if not broker.decommissioned:
+            assert len(broker.partitions) in (expected_count, expected_count + 1)
+
+
 class TestReplicationGroup(object):
 
     def create_partition(self, t_id='t1', p_id=0):
         mock_topic = Mock(spec=Topic, id=t_id)
         return Partition(mock_topic, p_id)
+
+    def test_rebalance_brokers(self, rg_unbalanced):
+        orig_partitions = rg_unbalanced.partitions
+
+        rg_unbalanced.rebalance_brokers()
+
+        # No partitions are missing
+        assert sorted(orig_partitions) == sorted(rg_unbalanced.partitions)
+        assert_rg_balanced(rg_unbalanced)
+
+    def test_rebalance_brokers_balanced(self, rg_balanced):
+        orig_partitions = rg_balanced.partitions
+
+        rg_balanced.rebalance_brokers()
+
+        # The list of total partitions is exactly the same
+        assert orig_partitions == rg_balanced.partitions
+        assert_rg_balanced(rg_balanced)
+
+    def test_rebalance_decommissioned_broker(self, rg_balanced):
+        # rg_balanced is supposed to have 3 brokers with 3 partitions each. We
+        # add another broker with 3 more partitions
+        broker = Broker('4')
+        topic = Topic('5', 1)
+        p = Partition(topic, '0', [broker])
+        topic.add_partition(p)
+        broker.add_partition(p)
+        p = Partition(topic, '1', [broker])
+        topic.add_partition(p)
+        broker.add_partition(p)
+        p = Partition(topic, '2', [broker])
+        topic.add_partition(p)
+        broker.add_partition(p)
+        rg_balanced.add_broker(broker)
+
+        broker.mark_decommissioned()
+        orig_partitions = rg_balanced.partitions
+
+        rg_balanced.rebalance_brokers()
+
+        assert broker.empty()
+        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        assert_rg_balanced(rg_balanced)
 
     # Initial broker-set empty
     def test_add_broker_empty(self):
@@ -28,6 +170,10 @@ class TestReplicationGroup(object):
         rg.add_broker(sentinel.broker)
 
         assert set([sentinel.broker]) == rg.brokers
+
+    def test_invalid_brokers_type_list(self):
+        with pytest.raises(TypeError):
+            ReplicationGroup('test_rg', [sentinel.broker1, sentinel.broker2])
 
     def test_add_broker(self):
         rg = ReplicationGroup(
@@ -44,10 +190,10 @@ class TestReplicationGroup(object):
         assert 'test_rg' == rg.id
 
     def test_partitions(self):
-        mock_brokers = [
+        mock_brokers = set([
             Mock(spec=Broker, partitions=set([sentinel.p1, sentinel.p2])),
             Mock(spec=Broker, partitions=set([sentinel.p3, sentinel.p1])),
-        ]
+        ])
         rg = ReplicationGroup('test_rg', mock_brokers)
         expected = [
             sentinel.p1,

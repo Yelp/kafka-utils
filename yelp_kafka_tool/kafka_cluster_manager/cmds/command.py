@@ -28,15 +28,15 @@ class ClusterManagerCmd(object):
         if self.should_execute(to_apply, no_confirm):
             # Exit if there is an on-going reassignment
             if self.is_reassignment_pending(zk):
-                self.log.error('Previous reassignment pending. Exiting...')
+                self.log.error('Previous reassignment pending.')
                 sys.exit(1)
             result = KafkaInterface().execute_plan(zk, plan)
             if not result:
-                self.log.error('Plan execution unsuccessful. Exiting...')
+                self.log.error('Plan execution unsuccessful.')
                 sys.exit(1)
             else:
                 self.log.info(
-                    'Plan sent to zookeeper for reassignment successfully.'
+                    'Plan sent to zookeeper for reassignment successfully.',
                 )
         else:
             self.log.info('Proposed plan won\'t be executed.')

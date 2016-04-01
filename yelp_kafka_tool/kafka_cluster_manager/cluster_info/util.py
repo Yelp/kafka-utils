@@ -63,14 +63,10 @@ def _smart_separate_groups(groups, key, total):
 
 
 def separate_groups(groups, key, total):
-    """Separate the group into all potentially overloaded, optimal and
-    under-loaded groups.
+    """Separate the group into overloaded and under-loaded groups.
 
     The revised over-loaded groups increases the choice space for future
     selection of most suitable group based on search criteria.
-
-    If all groups from smart-separate are optimal, return the original groups,
-    since there's no use of creating potential over-loaded-groups.
 
     For example:
     Given the groups (a:4, b:4, c:3, d:2) where the number represents the number
@@ -86,8 +82,8 @@ def separate_groups(groups, key, total):
     # If every group is optimal return
     if not over_loaded:
         return over_loaded, under_loaded
-    # Potential-over-loaded groups also have potential to be categorised
-    # into over-loaded groups
+    # Some groups in optimal may have a number of elements that is optimum + 1.
+    # In this case they should be considered over_loaded.
     potential_over_loaded = [
         group for group in optimal
         if key(group) > optimum

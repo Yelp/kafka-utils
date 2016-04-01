@@ -18,7 +18,7 @@ class DecommissionCmd(ClusterManagerCmd):
 
     def __init__(self):
         super(DecommissionCmd, self).__init__()
-        self.log = logging.getLogger('BrokerDecommission')
+        self.log = logging.getLogger(self.__class__.__name__)
 
     def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
@@ -26,7 +26,7 @@ class DecommissionCmd(ClusterManagerCmd):
             description='Decommission one or more brokers of the cluster.',
             help='This command is used to move all the replica assigned to a '
             'broker and redistribute them across all the other brokers while '
-            'trying to keep the cluster balanced.'
+            'trying to keep the cluster balanced.',
         )
         subparser.add_argument(
             'broker_ids',

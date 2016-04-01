@@ -17,7 +17,9 @@ class ReplicationGroup(object):
     def __init__(self, id, brokers=None):
         self._id = id
         if brokers and not isinstance(brokers, set):
-            raise TypeError("brokers has to be a set but type is {}".format(type(brokers)))
+            raise TypeError(
+                "brokers has to be a set but type is {0}".format(type(brokers)),
+            )
         self._brokers = brokers or set()
 
     @property
@@ -269,6 +271,9 @@ class ReplicationGroup(object):
         min_sibling_partition_cnt = -1
         for source in over_loaded_brokers:
             for dest in under_loaded_brokers:
+                # A decommissioned broker can have less partitions than
+                # destination. We consider it a valid source because we want to
+                # move all the partitions out from it.
                 if (len(source.partitions) - len(dest.partitions) > 1 or
                         source.decommissioned):
                     best_fit_partition = source.get_preferred_partition(
