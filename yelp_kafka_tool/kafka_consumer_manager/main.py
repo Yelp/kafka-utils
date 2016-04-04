@@ -9,7 +9,6 @@ import sys
 from yelp_kafka.error import ConfigurationError
 
 from .commands.copy_group import CopyGroup
-from .commands.delete_topics import DeleteTopics
 from .commands.list_groups import ListGroups
 from .commands.list_topics import ListTopics
 from .commands.offset_advance import OffsetAdvance
@@ -19,6 +18,7 @@ from .commands.offset_rewind import OffsetRewind
 from .commands.offset_save import OffsetSave
 from .commands.offset_set import OffsetSet
 from .commands.rename_group import RenameGroup
+from .commands.unsubscribe_topics import UnsubscribeTopics
 from yelp_kafka_tool.util.config import get_cluster_config
 
 
@@ -46,7 +46,7 @@ def parse_args():
     OffsetRewind.add_parser(subparsers)
     ListTopics.add_parser(subparsers)
     ListGroups.add_parser(subparsers)
-    DeleteTopics.add_parser(subparsers)
+    UnsubscribeTopics.add_parser(subparsers)
     CopyGroup.add_parser(subparsers)
     RenameGroup.add_parser(subparsers)
     OffsetRestore.add_parser(subparsers)
