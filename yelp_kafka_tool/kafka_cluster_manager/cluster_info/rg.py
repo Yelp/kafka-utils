@@ -257,7 +257,7 @@ class ReplicationGroup(object):
         # Set result in format: (source, dest, preferred-partition)
         target = (None, None, None)
         min_distance = sys.maxint
-        best_fit_partition = None
+        best_partition = None
         for source in over_loaded_brokers:
             for dest in under_loaded_brokers:
                 # A decommissioned broker can have less partitions than
@@ -265,17 +265,17 @@ class ReplicationGroup(object):
                 # move all the partitions out from it.
                 if (len(source.partitions) - len(dest.partitions) > 1 or
                         source.decommissioned):
-                    best_fit_partition = source.get_preferred_partition(
+                    best_partition = source.get_preferred_partition(
                         dest,
-                        sibling_distance,
+                        sibling_distance[dest][source],
                     )
                     # If no eligible partition continue with next broker.
-                    if best_fit_partition is None:
+                    if best_partition is None:
                         continue
-                    distance = sibling_distance[best_fit_partition.topic][dest][source]
+                    distance = sibling_distance[dest][source][best_partition.topic]
                     if distance < min_distance:
                         min_distance = distance
-                        target = (source, dest, best_fit_partition)
+                        target = (source, dest, best_partition)
                 else:
                     # If relatively-unbalanced then all brokers in destination
                     # will be thereafter, return from here.
@@ -287,20 +287,23 @@ class ReplicationGroup(object):
         in number of partitions of each topic from under_loaded_brokers
         to over_loaded_brokers.
 
-        returns: dict {topic: {dest: {source: distance}}}
+        Negative distance means that the destination broker has got less
+        partitions of a certain topic than the source broker.
+
+        returns: dict {dest: {source: {topic: distance}}}
         """
         sibling_distance = defaultdict(lambda: defaultdict(dict))
         for source in over_loaded_brokers:
-            for topic in source.topics:
-                for dest in under_loaded_brokers:
-                    sibling_distance[topic][dest][source] = \
+            for dest in under_loaded_brokers:
+                for topic in source.topics:
+                    sibling_distance[dest][source][topic] = \
                         dest.count_partitions(topic) - \
                         source.count_partitions(topic)
         return sibling_distance
 
     def update_sibling_distance(self, sibling_distance, dest, topic):
         """Update the sibling distance for topic and destination broker."""
-        for source in sibling_distance[topic][dest].iterkeys():
+        for source in sibling_distance[dest][topic].iterkeys():
             sibling_distance[topic][dest][source] += 1
         return sibling_distance
 

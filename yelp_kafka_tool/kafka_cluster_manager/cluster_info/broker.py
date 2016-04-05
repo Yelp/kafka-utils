@@ -108,13 +108,10 @@ class Broker(object):
         """Get partition from given source-partitions with least siblings in
         given destination broker-partitions and sibling count.
 
-        :key_term:
-        siblings: Partitions belonging to same topic
-        source-partitions: Partitions of current object
-
-        :params:
-        broker:   Destination broker where siblings for given source
-                  partitions are analysed
+        :param broker:  Destination broker
+        :param sibling_distance: dict {topic: distance} negative distance should
+            mean that destination broker has got less partition of a certain topic
+            than source self.
         """
         # Only partitions not having replica in broker are valid
         # Get best fit partition, based on avoiding partition from same topic
@@ -124,7 +121,7 @@ class Broker(object):
             pref_partition = min(
                 eligible_partitions,
                 key=lambda source_partition:
-                    sibling_distance[source_partition.topic][broker][self],
+                    sibling_distance[source_partition.topic],
             )
             return pref_partition
         else:

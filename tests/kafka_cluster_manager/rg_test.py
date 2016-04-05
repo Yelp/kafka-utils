@@ -2,42 +2,12 @@ import pytest
 from mock import Mock
 from mock import sentinel
 
+from .helper import create_and_attach_partition
+from .helper import create_broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import EmptyReplicationGroupError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
-
-
-def create_broker(broker_id, partitions):
-    b = Broker(broker_id, set(partitions))
-    for p in partitions:
-        p.add_replica(b)
-    return b
-
-
-@pytest.fixture
-def create_partition():
-    topics = {}
-
-    def add_topic(topic_id, partition_id, replication_factor=1):
-        if topic_id not in topics:
-            topics[topic_id] = Topic(topic_id, replication_factor)
-        topic = topics[topic_id]
-        partition = Partition(topic, partition_id)
-        topic.add_partition(partition)
-        return partition
-
-    return add_topic
-
-
-@pytest.fixture
-def rg_single_broker(create_partition):
-    p10 = create_partition('topic1', 0)
-    p11 = create_partition('topic1', 1)
-    p20 = create_partition('topic2', 0)
-    b1 = create_broker('b1', [p10, p11, p20])
-    return ReplicationGroup('test_rg', set([b1]))
 
 
 @pytest.fixture
@@ -141,11 +111,16 @@ class TestReplicationGroup(object):
         assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
         assert_rg_balanced(rg_balanced)
 
-    def test_decommission_no_remaining_brokers(self, rg_single_broker):
-        list(rg_single_broker.brokers)[0].mark_decommissioned()
+    def test_decommission_no_remaining_brokers(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p11 = create_partition('topic1', 1)
+        p20 = create_partition('topic2', 0)
+        b1 = create_broker('b1', [p10, p11, p20])
+        rg = ReplicationGroup('rg', set([b1]))
+        b1.mark_decommissioned()
 
         with pytest.raises(EmptyReplicationGroupError):
-            rg_single_broker.rebalance_brokers()
+            rg.rebalance_brokers()
 
     def test_rebalance_empty_replication_group(self):
         rg = ReplicationGroup('empty_rg')
@@ -453,22 +428,14 @@ class TestReplicationGroup(object):
         t1 = Topic('topic1', 1)
         t2 = Topic('topic2', 1)
         t3 = Topic('topic3', 1)
-        p10 = Partition(t1, 0)
-        t1.add_partition(p10)
-        p11 = Partition(t1, 1)
-        t1.add_partition(p11)
-        p12 = Partition(t1, 2)
-        t1.add_partition(p12)
-        p20 = Partition(t2, 0)
-        t2.add_partition(p20)
-        p21 = Partition(t2, 1)
-        t2.add_partition(p21)
-        p22 = Partition(t2, 2)
-        t2.add_partition(p22)
-        p30 = Partition(t3, 0)
-        t3.add_partition(p30)
-        p31 = Partition(t3, 1)
-        t3.add_partition(p31)
+        p10 = create_and_attach_partition(t1, 0)
+        p11 = create_and_attach_partition(t1, 1)
+        p12 = create_and_attach_partition(t1, 2)
+        p20 = create_and_attach_partition(t2, 0)
+        p21 = create_and_attach_partition(t2, 1)
+        p22 = create_and_attach_partition(t2, 2)
+        p30 = create_and_attach_partition(t3, 0)
+        p31 = create_and_attach_partition(t3, 1)
         b1 = create_broker('b1', [p10, p11, p20])
         b2 = create_broker('b2', [p12, p21, p22, p30, p31])
         rg = ReplicationGroup('rg', set([b1, b2]))
@@ -476,8 +443,4 @@ class TestReplicationGroup(object):
         over_loaded = [b2]
         under_loaded = [b1]
         actual = rg.generate_sibling_distance(over_loaded, under_loaded)
-        assert dict(actual) == {
-            t1: {b1: {b2: 1}},
-            t2: {b1: {b2: -1}},
-            t3: {b1: {b2: -2}},
-        }
+        assert dict(actual) == {b1: {b2: {t1: 1, t2: -1, t3: -2}}}
