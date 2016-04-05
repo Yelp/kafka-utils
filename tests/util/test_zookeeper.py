@@ -139,7 +139,7 @@ class TestZK(object):
                 mock_delete.assert_called_once_with(
                     zk,
                     '/consumers/some_group/offsets/some_topic',
-                    False,
+                    True,
                 )
 
     def test_get_my_subscribed_partitions(self, _):

@@ -386,12 +386,12 @@ class ZK:
             )
             self.delete(path)
 
-    def delete_topic(self, groupid, topic, recursive=False):
+    def delete_topic(self, groupid, topic):
         path = "/consumers/{groupid}/offsets/{topic}".format(
             groupid=groupid,
             topic=topic,
         )
-        self.delete(path, recursive)
+        self.delete(path, True)
 
     def execute_plan(self, plan):
         """Submit reassignment plan for execution."""

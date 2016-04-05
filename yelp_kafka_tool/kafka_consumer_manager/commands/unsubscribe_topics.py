@@ -53,7 +53,7 @@ class UnsubscribeTopics(OffsetWriter):
         )
         with ZK(cluster_config) as zk:
             if not args.partitions:
-                zk.delete_topic(args.groupid, args.topic, True)
+                zk.delete_topic(args.groupid, args.topic)
             else:
                 for topic, partitions in topics_dict.iteritems():
                     try:

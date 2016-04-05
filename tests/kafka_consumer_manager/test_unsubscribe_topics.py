@@ -103,7 +103,7 @@ class TestUnsubscribeTopics(object):
             obj = mock_ZK.return_value
             assert obj.delete_topic_partitions.call_args_list == calls
             assert obj.delete_topic.call_args_list == [
-                mock.call(args.groupid, "topic1", True),
+                mock.call(args.groupid, "topic1"),
             ]
 
     def test_run_no_node_error(self, mock_client):
