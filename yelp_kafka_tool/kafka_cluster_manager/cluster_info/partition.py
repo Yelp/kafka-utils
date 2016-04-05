@@ -76,3 +76,9 @@ class Partition(object):
             for partition in partitions
         )
         return count
+
+    def __str__(self):
+        return "Partition {name}, replica list: {replicas}".format(
+            name=self._name,
+            replicas=", ".join(self._replicas)
+        )

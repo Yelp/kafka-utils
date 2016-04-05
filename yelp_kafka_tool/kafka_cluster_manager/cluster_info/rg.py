@@ -2,8 +2,10 @@
 (Availability-zones) in our case.
 """
 import logging
+import sys
 from collections import defaultdict
 
+from .error import EmptyReplicationGroupError
 from .util import separate_groups
 
 
@@ -21,29 +23,12 @@ class ReplicationGroup(object):
                 "brokers has to be a set but type is {0}".format(type(brokers)),
             )
         self._brokers = brokers or set()
+        self._sibling_distance = None
 
     @property
     def id(self):
         """Return name of replication-groups."""
         return self._id
-
-    def partitions_sib_info(self, over_loaded_brokers, under_loaded_brokers):
-        """Count number of siblings of partitions of over_loaded_brokers
-        in brokers of under_loaded_brokers.
-
-        Key-term:
-        sibling of partition p: Any partition with same topic as p
-
-        rtype: dict((partition, broker): sibling-count of partition in broker)
-        """
-        sib_count = defaultdict(dict)
-        for source_b in over_loaded_brokers:
-            for partition_s in source_b.partitions:
-                for dest_b in under_loaded_brokers:
-                    sib_count[partition_s][dest_b] = partition_s.count_siblings(
-                        dest_b.partitions,
-                    )
-        return sib_count
 
     @property
     def brokers(self):
@@ -124,7 +109,7 @@ class ReplicationGroup(object):
             victim_partition,
         )
         # Get underloaded brokers in destination replication-group
-        under_loaded_brokers = rg_destination.select_under_loaded_brokers(
+        under_loaded_brokers = rg_destination._select_under_loaded_brokers(
             victim_partition,
         )
         broker_source = self._elect_source_broker(over_loaded_brokers, victim_partition)
@@ -149,7 +134,7 @@ class ReplicationGroup(object):
             reverse=True,
         )
 
-    def select_under_loaded_brokers(self, victim_partition):
+    def _select_under_loaded_brokers(self, victim_partition):
         """Get brokers in ascending sorted order of partition-count
         not containing victim-partition.
         """
@@ -184,6 +169,7 @@ class ReplicationGroup(object):
         broker_topic_partition_cnt = [
             (broker, broker.count_partitions(victim_partition.topic))
             for broker in under_loaded_brokers
+            if victim_partition not in broker.partitions
         ]
         min_count_pair = min(
             broker_topic_partition_cnt,
@@ -200,6 +186,8 @@ class ReplicationGroup(object):
         total_partitions = sum(len(b.partitions) for b in self.brokers)
         blacklist = self._extract_decommissioned()
         active_brokers = [b for b in self.brokers if b not in blacklist]
+        if not active_brokers:
+            raise EmptyReplicationGroupError("No active brokers in %s", self.id)
         # Separate brokers based on partition count
         over_loaded_brokers, under_loaded_brokers = separate_groups(
             active_brokers,
@@ -217,14 +205,14 @@ class ReplicationGroup(object):
             )
             return
 
-        sibling_info = self.partitions_sib_info(
+        sibling_distance = self.generate_sibling_distance(
             over_loaded_brokers,
             under_loaded_brokers,
         )
         while under_loaded_brokers and over_loaded_brokers:
             # Get best-fit source-broker, destination-broker and partition
-            (broker_source, broker_destination, victim_partition), sibling_info = \
-                self._get_target_brokers(over_loaded_brokers, under_loaded_brokers, sibling_info)
+            (broker_source, broker_destination, victim_partition), sibling_distance = \
+                self._get_target_brokers(over_loaded_brokers, under_loaded_brokers, sibling_distance)
             # No valid source or target brokers found
             if broker_source and broker_destination:
                 # Move partition
@@ -250,7 +238,7 @@ class ReplicationGroup(object):
             # As before add brokers to decommission.
             over_loaded_brokers += [b for b in blacklist if not b.empty()]
 
-    def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_info):
+    def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_distance):
         """Pick best-suitable source-broker, destination-broker and partition to
         balance partition-count over brokers in given replication-group.
         """
@@ -268,7 +256,8 @@ class ReplicationGroup(object):
         # minimum same-partition-count
         # Set result in format: (source, dest, preferred-partition)
         target = (None, None, None)
-        min_sibling_partition_cnt = -1
+        min_distance = sys.maxint
+        best_fit_partition = None
         for source in over_loaded_brokers:
             for dest in under_loaded_brokers:
                 # A decommissioned broker can have less partitions than
@@ -278,38 +267,42 @@ class ReplicationGroup(object):
                         source.decommissioned):
                     best_fit_partition = source.get_preferred_partition(
                         dest,
-                        sibling_info,
+                        sibling_distance,
                     )
-                    # If no eligible partition continue with next broker
+                    # If no eligible partition continue with next broker.
                     if best_fit_partition is None:
                         continue
-                    sibling_cnt = sibling_info[best_fit_partition][dest]
-                    assert(sibling_cnt >= 0)
-                    if sibling_cnt < min_sibling_partition_cnt \
-                            or min_sibling_partition_cnt == -1:
-                        min_sibling_partition_cnt = sibling_cnt
+                    distance = sibling_distance[best_fit_partition.topic][dest][source]
+                    if distance < min_distance:
+                        min_distance = distance
                         target = (source, dest, best_fit_partition)
-                        if min_sibling_partition_cnt == 0:
-                            # Minimum possible sibling-count
-                            break
                 else:
                     # If relatively-unbalanced then all brokers in destination
-                    # will be thereafter, return from here
+                    # will be thereafter, return from here.
                     break
-        return target, self.update_sibling_info(sibling_info, target[1], target[2])
+        return target, self.update_sibling_distance(sibling_distance, target[1], target[2])
 
-    def update_sibling_info(self, sibling_info, broker, partition):
-        """Update the sibling-info for all siblings of partition after it has been
-        moved to destination broker.
+    def generate_sibling_distance(self, over_loaded_brokers, under_loaded_brokers):
+        """Generate a dict containing the distance computed as difference in
+        in number of partitions of each topic from under_loaded_brokers
+        to over_loaded_brokers.
+
+        returns: dict {topic: {dest: {source: distance}}}
         """
-        if partition is not None:
-            for sibling in set(partition.topic.partitions):
-                try:
-                    sibling_info[sibling][broker] += 1
-                except KeyError:
-                    # If there wasn't any sibling before
-                    sibling_info[sibling][broker] = 1
-        return sibling_info
+        sibling_distance = defaultdict(lambda: defaultdict(dict))
+        for source in over_loaded_brokers:
+            for topic in source.topics:
+                for dest in under_loaded_brokers:
+                    sibling_distance[topic][dest][source] = \
+                        dest.count_partitions(topic) - \
+                        source.count_partitions(topic)
+        return sibling_distance
+
+    def update_sibling_distance(self, sibling_distance, dest, topic):
+        """Update the sibling distance for topic and destination broker."""
+        for source in sibling_distance[topic][dest].iterkeys():
+            sibling_distance[topic][dest][source] += 1
+        return sibling_distance
 
     def move_partition_replica(self, under_loaded_rg, eligible_partition):
         """Move partition to under-loaded replication-group if possible."""

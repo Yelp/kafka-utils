@@ -104,7 +104,7 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
-    def get_preferred_partition(self, broker, sibling_info):
+    def get_preferred_partition(self, broker, sibling_distance):
         """Get partition from given source-partitions with least siblings in
         given destination broker-partitions and sibling count.
 
@@ -124,7 +124,7 @@ class Broker(object):
             pref_partition = min(
                 eligible_partitions,
                 key=lambda source_partition:
-                    sibling_info[source_partition][broker],
+                    sibling_distance[source_partition.topic][broker][self],
             )
             return pref_partition
         else:
@@ -261,3 +261,6 @@ class Broker(object):
                         else:
                             # Try next-partition, not another follower
                             break
+
+    def __str__(self):
+        return "Broker {id}".format(id=self._id)
