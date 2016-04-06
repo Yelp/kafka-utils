@@ -303,8 +303,10 @@ class ReplicationGroup(object):
 
     def update_sibling_distance(self, sibling_distance, dest, topic):
         """Update the sibling distance for topic and destination broker."""
-        for source in sibling_distance[dest][topic].iterkeys():
-            sibling_distance[topic][dest][source] += 1
+        for source in sibling_distance[dest].iterkeys():
+            sibling_distance[dest][source][topic] = \
+                dest.count_partitions(topic) - \
+                source.count_partitions(topic)
         return sibling_distance
 
     def move_partition_replica(self, under_loaded_rg, eligible_partition):

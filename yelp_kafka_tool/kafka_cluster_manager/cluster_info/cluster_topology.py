@@ -171,7 +171,7 @@ class ClusterTopology(object):
         """
         return [
             partition
-            for rg in self.rgs.values()
+            for rg in self.rgs.itervalues()
             for partition in rg.partitions
         ]
 
@@ -217,9 +217,14 @@ class ClusterTopology(object):
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
         # Separate replication-groups into under and over replicated
+        total = sum(
+            group.count_replica(partition)
+            for group in self.rgs.itervalues()
+        )
         over_replicated_rgs, under_replicated_rgs = separate_groups(
             self.rgs.values(),
             lambda g: g.count_replica(partition),
+            total,
         )
         # Move replicas from over-replicated to under-replicated groups
         while under_replicated_rgs and over_replicated_rgs:
@@ -251,6 +256,7 @@ class ClusterTopology(object):
             over_replicated_rgs, under_replicated_rgs = separate_groups(
                 self.rgs.values(),
                 lambda g: g.count_replica(partition),
+                total,
             )
 
     def _elect_source_replication_group(
@@ -305,7 +311,7 @@ class ClusterTopology(object):
         6) Repeat steps 1) to 5) until groups are balanced or cannot be balanced further.
         """
         # Segregate replication-groups based on partition-count
-        total_elements = sum(len(rg.partitions) for rg in self.rgs)
+        total_elements = sum(len(rg.partitions) for rg in self.rgs.itervalues())
         over_loaded_rgs, under_loaded_rgs = separate_groups(
             self.rgs.values(),
             lambda rg: len(rg.partitions),
@@ -326,7 +332,7 @@ class ClusterTopology(object):
 
         # Get optimal partition-count per replication-group
         opt_partition_cnt, _ = compute_optimum(
-            len(self.rgs.values()),
+            len(self.rgs),
             total_elements,
         )
         # Balance replication-groups
@@ -360,7 +366,7 @@ class ClusterTopology(object):
     # Re-balancing partition count across brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers within each replication-group."""
-        for rg in self.rgs.values():
+        for rg in self.rgs.itervalues():
             rg.rebalance_brokers()
 
     # Re-balancing leaders
@@ -395,7 +401,7 @@ class ClusterTopology(object):
         """
         under_brokers = filter(
             lambda b: b.count_preferred_replica() < opt_cnt,
-            self.brokers.values(),
+            self.brokers.itervalues(),
         )
         if under_brokers:
             skip_brokers, skip_partitions = [], []
@@ -405,7 +411,7 @@ class ClusterTopology(object):
 
         over_brokers = filter(
             lambda b: b.count_preferred_replica() > opt_cnt + 1,
-            self.brokers.values(),
+            self.brokers.itervalues(),
         )
         # Any over-balanced brokers tries to donate their leadership to followers
         if over_brokers:

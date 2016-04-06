@@ -397,7 +397,7 @@ class TestReplicationGroup(object):
         # already in b3.
         assert target == (b1, b3, p10) or target == (b1, b3, p11)
 
-    def test_get_target_brokers_case3(self, create_partition):
+    def test_get_target_brokers_3(self, create_partition):
         p10 = create_partition('topic1', 0)
         p11 = create_partition('topic1', 1)
         p12 = create_partition('topic1', 2)
@@ -424,9 +424,9 @@ class TestReplicationGroup(object):
         # already in b3.
         assert target == (b2, b3, p30) or target == (b2, b3, p31)
 
-    def test_generate_sibling_count(self, create_partition):
-        t1 = Topic('topic1', 1)
-        t2 = Topic('topic2', 1)
+    def test_generate_sibling_count(self):
+        t1 = Topic('topic1', 2)
+        t2 = Topic('topic2', 2)
         t3 = Topic('topic3', 1)
         p10 = create_and_attach_partition(t1, 0)
         p11 = create_and_attach_partition(t1, 1)
@@ -436,11 +436,53 @@ class TestReplicationGroup(object):
         p22 = create_and_attach_partition(t2, 2)
         p30 = create_and_attach_partition(t3, 0)
         p31 = create_and_attach_partition(t3, 1)
-        b1 = create_broker('b1', [p10, p11, p20])
-        b2 = create_broker('b2', [p12, p21, p22, p30, p31])
-        rg = ReplicationGroup('rg', set([b1, b2]))
+        b1 = create_broker('b1', [p10, p11, p20, p21, p30, p31])
+        b2 = create_broker('b2', [p12, p21, p22])
+        b3 = create_broker('b3', [p10, p11, p22])
+        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        over_loaded = [b1]
+        under_loaded = [b2, b3]
 
-        over_loaded = [b2]
-        under_loaded = [b1]
+        expected = {
+            b2: {b1: {t1: -1, t2: 0, t3: -2}},
+            b3: {b1: {t1: 0, t2: -1, t3: -2}},
+        }
         actual = rg.generate_sibling_distance(over_loaded, under_loaded)
-        assert dict(actual) == {b1: {b2: {t1: 1, t2: -1, t3: -2}}}
+
+        assert dict(actual) == expected
+
+    def test_update_sibling_count(self):
+        t1 = Topic('topic1', 2)
+        t2 = Topic('topic2', 2)
+        t3 = Topic('topic3', 1)
+        p10 = create_and_attach_partition(t1, 0)
+        p11 = create_and_attach_partition(t1, 1)
+        p12 = create_and_attach_partition(t1, 2)
+        p20 = create_and_attach_partition(t2, 0)
+        p21 = create_and_attach_partition(t2, 1)
+        p22 = create_and_attach_partition(t2, 2)
+        p30 = create_and_attach_partition(t3, 0)
+        p31 = create_and_attach_partition(t3, 1)
+        b1 = create_broker('b1', [p10, p11, p20, p21, p30, p31])
+        b2 = create_broker('b2', [p12, p21, p22])
+        b3 = create_broker('b3', [p10, p11, p22])
+        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        sibling_distance = {
+            b2: {
+                b1: {t1: -1, t2: 0, t3: -2},
+                b3: {t1: 1, t2: -1, t3: -2}
+            },
+        }
+        # Move a p10 from b1 to b2
+        b1.move_partition(p10, b2)
+
+        # NOTE: b2: b1: t1: -1 -> 1 and b2: b3: t1: 1 -> 0
+        expected = {
+            b2: {
+                b1: {t1: 1, t2: 0, t3: -2},
+                b3: {t1: 0, t2: -1, t3: -2},
+            },
+        }
+        actual = rg.update_sibling_distance(sibling_distance, b2, t1)
+
+        assert dict(actual) == expected
