@@ -76,6 +76,12 @@ def separate_groups(groups, key, total):
 
     separate-groups combines 'a' with 'b' as over-loaded, allowing to select
     between these two groups to transfer the element to 'd'.
+
+    :param groups: list of groups
+    :param key: function to retrieve element count from group
+    :param total: total number of elements to distribute
+    :returns: sorted lists of over loaded (descending) and under
+        loaded (ascending) group
     """
     optimum, _ = compute_optimum(len(groups), total)
     over_loaded, under_loaded, optimal = _smart_separate_groups(groups, key, total)
@@ -89,7 +95,10 @@ def separate_groups(groups, key, total):
         if key(group) > optimum
     ]
     revised_over_loaded = over_loaded + potential_over_loaded
-    return revised_over_loaded, under_loaded
+    return (
+        sorted(revised_over_loaded, key=key, reverse=True),
+        sorted(under_loaded, key=key),
+    )
 
 
 def validate_plan(
