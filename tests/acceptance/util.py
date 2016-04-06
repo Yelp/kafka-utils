@@ -22,8 +22,9 @@ def create_topic(topic_name, replication_factor, partitions):
     time.sleep(1)
 
 
-def create_random_topic(replication_factor, partitions):
-    topic_name = str(uuid.uuid1())
+def create_random_topic(replication_factor, partitions, topic_name=None):
+    if not topic_name:
+        topic_name = str(uuid.uuid1())
     create_topic(topic_name, replication_factor, partitions)
     return topic_name
 

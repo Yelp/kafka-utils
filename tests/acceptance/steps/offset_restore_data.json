@@ -1,0 +1,8 @@
+{
+    "groupid": "test_group",
+    "offsets": {
+	"restore_test_topic": {
+	    "0": 66
+	}
+    }
+}
