@@ -28,7 +28,7 @@ def consume_and_set_offset(consumer):
     consumer.commit()
 
 
-@given(u'we have an existing consumer group for a topic in the kafka cluster')
+@given(u'we have an existing consumer group and topic in the kafka cluster')
 def step_impl1(context):
     topic = create_random_topic(1, 1)
     for i in xrange(MSG_COUNT):
@@ -59,7 +59,7 @@ def step_impl2(context):
     context.output = call_offset_get()
 
 
-@then(u'the correct offset  will be shown')
+@then(u'the correct offset will be shown')
 def step_impl3(context):
     offsets = context.consumer.offsets(group='commit')
     key = (context.topic, 0)

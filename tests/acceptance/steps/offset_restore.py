@@ -43,13 +43,13 @@ def get_cluster_config():
     )
 
 
-@given(u'we have a kafka cluster and a json file describing offset information')
+@given(u'we have a kafka cluster and a json offsets file')
 def step_impl1(context):
     context.topic = create_random_topic(1, 1, TEST_TOPIC)
     assert os.path.isfile(offsets_file_path())
 
 
-@when(u'we call the offset_restore command')
+@when(u'we call the offset_restore command with the offsets file')
 def step_impl2(context):
     context.output = call_offset_restore()
 
