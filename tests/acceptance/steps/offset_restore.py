@@ -59,4 +59,4 @@ def step_impl3(context):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
         offsets = zk.get_group_offsets(TEST_GROUP)
-        assert offsets[TEST_TOPIC]["0"] == RESTORED_OFFSET
+    assert offsets[TEST_TOPIC]["0"] == RESTORED_OFFSET
