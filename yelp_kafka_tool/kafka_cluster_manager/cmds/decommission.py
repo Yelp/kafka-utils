@@ -24,8 +24,8 @@ class DecommissionCmd(ClusterManagerCmd):
         subparser = subparsers.add_parser(
             'decommission',
             description='Decommission one or more brokers of the cluster.',
-            help='This command is used to move all the replica assigned to a '
-            'broker and redistribute them across all the other brokers while '
+            help='This command is used to move all the replicas assigned to given '
+            'brokers and redistribute them across all the other brokers while '
             'trying to keep the cluster balanced.',
         )
         subparser.add_argument(

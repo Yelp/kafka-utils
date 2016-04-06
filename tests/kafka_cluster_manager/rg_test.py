@@ -5,8 +5,12 @@ from mock import sentinel
 from .helper import create_and_attach_partition
 from .helper import create_broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import EmptyReplicationGroupError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+    BrokerDecommissionError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+    EmptyReplicationGroupError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import \
+    ReplicationGroup
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
 
 
@@ -120,6 +124,18 @@ class TestReplicationGroup(object):
         b1.mark_decommissioned()
 
         with pytest.raises(EmptyReplicationGroupError):
+            rg.rebalance_brokers()
+
+    def test_decommission_not_enough_replicas(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p11 = create_partition('topic1', 1)
+        p20 = create_partition('topic2', 0, replication_factor=2)
+        b1 = create_broker('b1', [p10, p11, p20])
+        b2 = create_broker('b1', [p20])
+        rg = ReplicationGroup('rg', set([b1, b2]))
+        b2.mark_decommissioned()
+
+        with pytest.raises(BrokerDecommissionError):
             rg.rebalance_brokers()
 
     def test_rebalance_empty_replication_group(self):

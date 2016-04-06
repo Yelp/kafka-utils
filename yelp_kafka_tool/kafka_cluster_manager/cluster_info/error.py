@@ -4,4 +4,10 @@ class InvalidBrokerIdError(Exception):
 
 
 class EmptyReplicationGroupError(Exception):
+    """Raised when there are no brokers in a replication group"""
+    pass
+
+
+class BrokerDecommissionError(Exception):
+    """Raised it is not possible to move partition out from decommissioned brokers"""
     pass

@@ -78,7 +78,4 @@ class Partition(object):
         return count
 
     def __str__(self):
-        return "Partition {name}, replica list: {replicas}".format(
-            name=self._name,
-            replicas=", ".join(self._replicas)
-        )
+        return "Partition {name}".format(name=self._name)

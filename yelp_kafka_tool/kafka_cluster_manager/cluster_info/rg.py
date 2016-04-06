@@ -5,6 +5,7 @@ import logging
 import sys
 from collections import defaultdict
 
+from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
 from .util import separate_groups
 
@@ -237,6 +238,25 @@ class ReplicationGroup(object):
             )
             # As before add brokers to decommission.
             over_loaded_brokers += [b for b in blacklist if not b.empty()]
+        # Check if decommissioned brokers are empty. Decommission can't happen
+        # if the replication factor is higher than the available brokers in the
+        # replication group.
+        if not all(broker.empty() for broker in blacklist):
+            raise BrokerDecommissionError(
+                "Impossible to decommission brokers: {0}".format(
+                    ", ".join(
+                        "{broker}:{partitions};".format(
+                            broker=b,
+                            partitions=",".join(
+                                "{partition}".format(
+                                    partition=p
+                                ) for p in b.partitions
+                            )
+                        )
+                        for b in blacklist if not b.empty()
+                    )
+                )
+            )
 
     def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_distance):
         """Pick best-suitable source-broker, destination-broker and partition to
