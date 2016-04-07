@@ -98,6 +98,7 @@ class TestBroker(object):
         t1 = Topic('t1', 1)
         t2 = Topic('t2', 1)
         t3 = Topic('t3', 1)
+        # Naming convention: p10 -> topic t1 partition 0
         p10 = create_and_attach_partition(t1, 0)
         p11 = create_and_attach_partition(t1, 1)
         p20 = create_and_attach_partition(t2, 0)

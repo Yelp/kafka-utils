@@ -186,7 +186,7 @@ class ReplicationGroup(object):
         """Rebalance partition-count across brokers."""
         total_partitions = sum(len(b.partitions) for b in self.brokers)
         blacklist = self._extract_decommissioned()
-        active_brokers = [b for b in self.brokers if b not in blacklist]
+        active_brokers = self.brokers - blacklist
         if not active_brokers:
             raise EmptyReplicationGroupError("No active brokers in %s", self.id)
         # Separate brokers based on partition count

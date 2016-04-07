@@ -75,12 +75,12 @@ class TestReplicationGroup(object):
         assert_rg_balanced(rg_unbalanced)
 
     def test_rebalance_brokers_balanced(self, rg_balanced):
-        orig_partitions = rg_balanced.partitions
+        expected = {b: b.partitions for b in rg_balanced.brokers}
 
         rg_balanced.rebalance_brokers()
 
-        # The list of total partitions is exactly the same
-        assert orig_partitions == rg_balanced.partitions
+        # there shouldn't be any partition movement
+        assert expected == {b: b.partitions for b in rg_balanced.brokers}
         assert_rg_balanced(rg_balanced)
 
     def test_rebalance_decommissioned_broker(self, rg_balanced, create_partition):
@@ -209,26 +209,29 @@ class TestReplicationGroup(object):
         b2 = create_broker('b2', [p10, p30])  # b2 -> t1: 0, t3: 0
         rg = ReplicationGroup('test_rg', set([b1, b2]))
 
-        # Since p5 is already in b2 so the preferred destination should be b1
+        # Since p30 is already in b2 so the preferred destination will be b1
+        # although b2 has less partitions.
         under_loaded_brokers = [b1, b2]
         victim_partition = p30
         actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition)
         assert actual == b1
 
     def test__elect_dest_broker_(self, create_partition):
-        p1 = create_partition('t1', 0)
-        p2 = create_partition('t2', 0)
-        p3 = create_partition('t1', 1)
-        b1 = create_broker('b1', [p1, p2, p3])  # b1 -> t1: {0,1}, t2: 0
-        p5 = create_partition('t3', 0)
-        b2 = create_broker('b2', [p1, p5])  # b2 -> t1: 0, t3: 0
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        b1 = create_broker('b1', [p10, p11, p20])  # b1 -> t1: {0,1}, t2: 0
+        p30 = create_partition('t3', 0)
+        p31 = create_partition('t3', 1)
+        p32 = create_partition('t3', 2)
+        b2 = create_broker('b2', [p10, p30, p31, p32])  # b2 -> t1: 0, t3: 0
         rg = ReplicationGroup('test_rg', set([b1, b2]))
 
         # Since t1 has two partitions in b1 but only one in b2,
         # the preferred destination should be b2
         under_loaded_brokers = [b1, b2]
-        victim_partition = create_partition('t1', 2)
-        actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition)
+        victim_partition_p12 = create_partition('t1', 2)
+        actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition_p12)
         assert actual == b2
 
     def test__elect_dest_broker_partition_conflict(self, create_partition):
@@ -333,12 +336,12 @@ class TestReplicationGroup(object):
         # Select best-suitable brokers for moving partition 'p10'
         broker_source, broker_dest = rg_source._select_broker_pair(rg_dest, p10)
 
-        # source-broker can't be b2 since it doesn't have p1
+        # source-broker can't be b2 since it doesn't have p10
         # source-broker shouldn't be b1 since it has lesser partitions
         # than b3 and b0
         assert broker_source in [b0, b3]
         # dest-broker shouldn't be b4 since it has more partitions than b4
-        # dest-broker can't be b6 since it has already partition p1
+        # dest-broker can't be b6 since it has already partition p10
         assert broker_dest in [b5, b7]
 
     def test_move_partition(self, create_partition):

@@ -202,8 +202,6 @@ class ClusterTopology(object):
         for b_id in broker_ids:
             try:
                 broker = self.brokers[b_id]
-                broker.mark_decommissioned()
-                groups.add(broker.replication_group)
             except KeyError:
                 self.log.error("Invalid broker id %s.", b_id)
                 # Raise an error for now. As alternative we may ignore the
@@ -211,6 +209,8 @@ class ClusterTopology(object):
                 raise InvalidBrokerIdError(
                     "Broker id {} does not exist in cluster".format(b_id),
                 )
+            broker.mark_decommissioned()
+            groups.add(broker.replication_group)
         for group in groups:
             group.rebalance_brokers()
 

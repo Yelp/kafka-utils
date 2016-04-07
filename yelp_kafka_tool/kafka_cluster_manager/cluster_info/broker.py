@@ -105,13 +105,14 @@ class Broker(object):
         )
 
     def get_preferred_partition(self, broker, sibling_distance):
-        """Get partition from given source-partitions with least siblings in
-        given destination broker-partitions and sibling count.
+        """The preferred partition belongs to the topic with the minimum
+        (also negative) distance between destination and source.
 
         :param broker:  Destination broker
         :param sibling_distance: dict {topic: distance} negative distance should
             mean that destination broker has got less partition of a certain topic
             than source self.
+        :returns: A partition or None if no eligible partitions are available
         """
         # Only partitions not having replica in broker are valid
         # Get best fit partition, based on avoiding partition from same topic

@@ -9,7 +9,7 @@ def create_partition():
     """Fixture to create a partition and attach it to a topic"""
     topics = {}
 
-    def add_topic(topic_id, partition_id, replication_factor=1):
+    def _add_partition(topic_id, partition_id, replication_factor=1):
         if topic_id not in topics:
             topics[topic_id] = Topic(topic_id, replication_factor)
         topic = topics[topic_id]
@@ -17,4 +17,4 @@ def create_partition():
         topic.add_partition(partition)
         return partition
 
-    return add_topic
+    return _add_partition
