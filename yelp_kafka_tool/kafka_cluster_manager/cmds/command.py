@@ -4,24 +4,40 @@ import logging
 import sys
 from collections import defaultdict
 
+from yelp_kafka_tool.kafka_cluster_manager. \
+    cluster_info.cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class ClusterManagerCmd(object):
-    """Interface used by all kafka_cluster_manager commands"""
+    """Interface used by all kafka_cluster_manager commands
+    The attributes cluster_config, args and zk are initialized on run().
+    """
 
     log = logging.getLogger("ClusterManager")
 
+    def __init__(self):
+        self.cluster_config = None
+        self.args = None
+        self.zk = None
+
     def execute_plan(self, zk, plan, to_apply, no_confirm):
         """Save proposed-plan and execute the same if requested."""
-        # Execute proposed-plan
         if self.should_execute(to_apply, no_confirm):
+            # Exit if there is an on-going reassignment
+            if self.is_reassignment_pending(zk):
+                self.log.error('Previous reassignment pending.')
+                sys.exit(1)
             result = KafkaInterface().execute_plan(zk, plan)
             if not result:
-                self.log.error('Plan execution unsuccessful. Exiting...')
+                self.log.error('Plan execution unsuccessful.')
                 sys.exit(1)
             else:
-                self.log.info('Plan sent to zookeeper for reassignment successfully.')
+                self.log.info(
+                    'Plan sent to zookeeper for reassignment successfully.',
+                )
         else:
             self.log.info('Proposed plan won\'t be executed.')
 
@@ -29,12 +45,36 @@ class ClusterManagerCmd(object):
         """Confirm if proposed-plan should be executed."""
         return to_apply and (no_confirm or self.confirm_execution())
 
-    def add_subparser(self, subparsers):
-        """Configure the subparser of the command
+    def build_subparser(self, subparsers):
+        """Build the command subparser.
 
-        :param subparser: argpars subparser
+        :param subparsers: argpars subparsers
+        :returns: subparser
         """
         raise NotImplementedError("Implement in subclass")
+
+    def add_subparser(self, subparsers):
+        self.build_subparser(subparsers).set_defaults(command=self.run)
+
+    def run_command(self, cluster_topology):
+        """Implement the command logic.
+        When run_command is called cluster_config, args, and zk are already
+        initialized.
+        """
+        raise NotImplementedError("Implement in subclass")
+
+    def run(self, cluster_config, args):
+        self.cluster_config = cluster_config
+        self.args = args
+        with ZK(self.cluster_config) as self.zk:
+            self.log.debug(
+                'Starting %s for cluster: %s and zookeeper: %s',
+                self.__class__.__name__,
+                self.cluster_config.name,
+                self.cluster_config.zookeeper,
+            )
+            ct = ClusterTopology(zk=self.zk)
+            self.run_command(ct)
 
     def positive_int(self, string):
         """Convert string to positive integer."""
@@ -63,6 +103,24 @@ class ClusterManagerCmd(object):
             return True
         else:
             return False
+
+    def process_assignment(self, assignment):
+        plan = assignment_to_plan(assignment)
+        if self.args.proposed_plan_file:
+            self.log.info(
+                'Storing proposed-plan in %s',
+                self.args.proposed_plan_file,
+            )
+            self.write_json_plan(plan, self.args.proposed_plan_file)
+        self.log.info(
+            'Proposed plan assignment %s',
+            plan,
+        )
+        self.log.info(
+            'Proposed-plan actions count: %s',
+            len(plan['partitions']),
+        )
+        self.execute_plan(self.zk, plan, self.args.apply, self.args.no_confirm)
 
     def get_reduced_assignment(
         self,

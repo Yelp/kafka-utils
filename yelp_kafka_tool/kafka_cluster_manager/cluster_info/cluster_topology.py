@@ -14,12 +14,12 @@ import logging
 from collections import OrderedDict
 
 from .broker import Broker
+from .error import InvalidBrokerIdError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
-from .util import compute_group_optimum
+from .util import compute_optimum
 from .util import separate_groups
-from .util import smart_separate_groups
 from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
 
@@ -83,6 +83,7 @@ class ClusterTopology(object):
             if rg_id not in self.rgs:
                 self.rgs[rg_id] = ReplicationGroup(rg_id)
             self.rgs[rg_id].add_broker(broker)
+            broker.replication_group = self.rgs[rg_id]
 
     def _build_partitions(self):
         """Builds all partition objects and update corresponding broker and
@@ -170,7 +171,7 @@ class ClusterTopology(object):
         """
         return [
             partition
-            for rg in self.rgs.values()
+            for rg in self.rgs.itervalues()
             for partition in rg.partitions
         ]
 
@@ -188,14 +189,42 @@ class ClusterTopology(object):
             self._rebalance_partition(partition)
 
         # Balance partition-count over replication-groups
-        self.rebalance_groups_partition_cnt()
+        self._rebalance_groups_partition_cnt()
+
+    def decommission_brokers(self, broker_ids):
+        """Decommission a list of brokers trying to keep the replication group
+        the brokers belong to balanced.
+
+        :param broker_ids: list of string representing valid broker ids in the cluster
+        :raises: InvalidBrokerIdError when the id is invalid.
+        """
+        groups = set()
+        for b_id in broker_ids:
+            try:
+                broker = self.brokers[b_id]
+            except KeyError:
+                self.log.error("Invalid broker id %s.", b_id)
+                # Raise an error for now. As alternative we may ignore the
+                # invalid id and continue with the others.
+                raise InvalidBrokerIdError(
+                    "Broker id {} does not exist in cluster".format(b_id),
+                )
+            broker.mark_decommissioned()
+            groups.add(broker.replication_group)
+        for group in groups:
+            group.rebalance_brokers()
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
         # Separate replication-groups into under and over replicated
+        total = sum(
+            group.count_replica(partition)
+            for group in self.rgs.itervalues()
+        )
         over_replicated_rgs, under_replicated_rgs = separate_groups(
             self.rgs.values(),
             lambda g: g.count_replica(partition),
+            total,
         )
         # Move replicas from over-replicated to under-replicated groups
         while under_replicated_rgs and over_replicated_rgs:
@@ -227,6 +256,7 @@ class ClusterTopology(object):
             over_replicated_rgs, under_replicated_rgs = separate_groups(
                 self.rgs.values(),
                 lambda g: g.count_replica(partition),
+                total,
             )
 
     def _elect_source_replication_group(
@@ -260,7 +290,7 @@ class ClusterTopology(object):
         return None
 
     # Re-balancing partition count across brokers
-    def rebalance_groups_partition_cnt(self):
+    def _rebalance_groups_partition_cnt(self):
         """Re-balance partition-count across replication-groups.
 
         Algorithm:
@@ -281,9 +311,11 @@ class ClusterTopology(object):
         6) Repeat steps 1) to 5) until groups are balanced or cannot be balanced further.
         """
         # Segregate replication-groups based on partition-count
-        over_loaded_rgs, under_loaded_rgs, _ = smart_separate_groups(
+        total_elements = sum(len(rg.partitions) for rg in self.rgs.itervalues())
+        over_loaded_rgs, under_loaded_rgs = separate_groups(
             self.rgs.values(),
             lambda rg: len(rg.partitions),
+            total_elements,
         )
         if over_loaded_rgs and under_loaded_rgs:
             self.log.info(
@@ -299,9 +331,9 @@ class ClusterTopology(object):
             return
 
         # Get optimal partition-count per replication-group
-        opt_partition_cnt, _ = compute_group_optimum(
-            self.rgs.values(),
-            lambda rg: len(rg.partitions),
+        opt_partition_cnt, _ = compute_optimum(
+            len(self.rgs),
+            total_elements,
         )
         # Balance replication-groups
         for over_loaded_rg in over_loaded_rgs:
@@ -334,7 +366,7 @@ class ClusterTopology(object):
     # Re-balancing partition count across brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers within each replication-group."""
-        for rg in self.rgs.values():
+        for rg in self.rgs.itervalues():
             rg.rebalance_brokers()
 
     # Re-balancing leaders
@@ -369,7 +401,7 @@ class ClusterTopology(object):
         """
         under_brokers = filter(
             lambda b: b.count_preferred_replica() < opt_cnt,
-            self.brokers.values(),
+            self.brokers.itervalues(),
         )
         if under_brokers:
             skip_brokers, skip_partitions = [], []
@@ -379,7 +411,7 @@ class ClusterTopology(object):
 
         over_brokers = filter(
             lambda b: b.count_preferred_replica() > opt_cnt + 1,
-            self.brokers.values(),
+            self.brokers.itervalues(),
         )
         # Any over-balanced brokers tries to donate their leadership to followers
         if over_brokers:

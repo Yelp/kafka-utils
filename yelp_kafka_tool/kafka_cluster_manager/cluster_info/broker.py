@@ -7,10 +7,13 @@ class Broker(object):
         -partitions: partitions under a given broker
     """
 
+    log = logging.getLogger(__name__)
+
     def __init__(self, id, partitions=None):
         self._id = id
         self._partitions = partitions or set()
-        self.log = logging.getLogger(self.__class__.__name__)
+        self._decommissioned = False
+        self._replication_group = None
 
     def get_hostname(self, zk):
         """Get hostname of broker from zookeeper."""
@@ -25,6 +28,21 @@ class Broker(object):
             result = 'localhost'
         return result
 
+    def mark_decommissioned(self):
+        self._decommissioned = True
+
+    @property
+    def replication_group(self):
+        return self._replication_group
+
+    @replication_group.setter
+    def replication_group(self, group):
+        self._replication_group = group
+
+    @property
+    def decommissioned(self):
+        return self._decommissioned
+
     @property
     def partitions(self):
         return self._partitions
@@ -37,6 +55,10 @@ class Broker(object):
     def topics(self):
         """Return the set of topics current in broker."""
         return set([partition.topic for partition in self._partitions])
+
+    def empty(self):
+        """Return true if the broker has no replicas assigned"""
+        return len(self.partitions) == 0
 
     def remove_partition(self, partition):
         """Remove partition from partition list."""
@@ -82,17 +104,15 @@ class Broker(object):
             [1 for partition in self.partitions if partition.leader == self],
         )
 
-    def get_preferred_partition(self, broker, sibling_info):
-        """Get partition from given source-partitions with least siblings in
-        given destination broker-partitions and sibling count.
+    def get_preferred_partition(self, broker, sibling_distance):
+        """The preferred partition belongs to the topic with the minimum
+        (also negative) distance between destination and source.
 
-        :key_term:
-        siblings: Partitions belonging to same topic
-        source-partitions: Partitions of current object
-
-        :params:
-        broker:   Destination broker where siblings for given source
-                  partitions are analysed
+        :param broker:  Destination broker
+        :param sibling_distance: dict {topic: distance} negative distance should
+            mean that destination broker has got less partition of a certain topic
+            than source self.
+        :returns: A partition or None if no eligible partitions are available
         """
         # Only partitions not having replica in broker are valid
         # Get best fit partition, based on avoiding partition from same topic
@@ -102,7 +122,7 @@ class Broker(object):
             pref_partition = min(
                 eligible_partitions,
                 key=lambda source_partition:
-                    sibling_info[source_partition][broker],
+                    sibling_distance[source_partition.topic],
             )
             return pref_partition
         else:
@@ -239,3 +259,6 @@ class Broker(object):
                         else:
                             # Try next-partition, not another follower
                             break
+
+    def __str__(self):
+        return "Broker {id}".format(id=self._id)

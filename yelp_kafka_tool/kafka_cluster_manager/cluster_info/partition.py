@@ -76,3 +76,6 @@ class Partition(object):
             for partition in partitions
         )
         return count
+
+    def __str__(self):
+        return "Partition {name}".format(name=self._name)

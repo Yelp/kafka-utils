@@ -1,33 +1,158 @@
-from collections import OrderedDict
-
+import pytest
 from mock import Mock
 from mock import sentinel
 
-from .cluster_topology_test import TestClusterToplogy as CT
-from .util_test import irange
+from .helper import create_and_attach_partition
+from .helper import create_broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import calculate_partition_movement
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_partition_imbalance_stats
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+    BrokerDecommissionError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+    EmptyReplicationGroupError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import \
+    ReplicationGroup
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import _validate_plan_base
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import validate_plan
-from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
+
+
+@pytest.fixture
+def rg_unbalanced(create_partition):
+    # Broker Topics:Partition
+    #   1    topic1:0, topic1:1, topic4:0
+    #   2    topic1:2, topic1:3, topic2:0, topic2:1, topic3:0
+    #   3    topic4:0
+    # total partitions: 9
+    p10 = create_partition('topic1', 0)
+    p11 = create_partition('topic1', 1)
+    p12 = create_partition('topic1', 2)
+    p13 = create_partition('topic1', 3)
+    p20 = create_partition('topic2', 0)
+    p21 = create_partition('topic2', 1)
+    p30 = create_partition('topic3', 0)
+    p40 = create_partition('topic4', 0, replication_factor=2)
+    b1 = create_broker('b1', [p10, p11, p40])
+    b2 = create_broker('b2', [p12, p13, p20, p21, p30])
+    b3 = create_broker('b3', [p40])
+    return ReplicationGroup('test_rg', set([b1, b2, b3]))
+
+
+@pytest.fixture
+def rg_balanced(create_partition):
+    # Broker Topics:Partition
+    #   1    topic1:0, topic1:1, topic2:0, topic4:0
+    #   2    topic1:2, topic1:3, topic2:1
+    #   3    topic2:1, topic3:0, topic4:0
+    # total partitions: 9
+    p10 = create_partition('topic1', 0)
+    p11 = create_partition('topic1', 1)
+    p12 = create_partition('topic1', 2)
+    p13 = create_partition('topic1', 3)
+    p20 = create_partition('topic2', 0)
+    p21 = create_partition('topic2', 1)
+    p30 = create_partition('topic3', 0)
+    p40 = create_partition('topic4', 0, replication_factor=2)
+    b1 = create_broker('b1', [p10, p11, p20, p40])
+    b2 = create_broker('b2', [p12, p13, p21])
+    b3 = create_broker('b3', [p21, p30, p40])
+    return ReplicationGroup('test_rg', set([b1, b2, b3]))
+
+
+def assert_rg_balanced(rg):
+    expected_count = len(rg.partitions) // len(rg.brokers)
+    for broker in rg.brokers:
+        if not broker.decommissioned:
+            assert len(broker.partitions) in (expected_count, expected_count + 1)
 
 
 class TestReplicationGroup(object):
 
-    def create_partition(self, t_id='t1', p_id=0):
-        mock_topic = Mock(spec=Topic, id=t_id)
-        return Partition(mock_topic, p_id)
+    def test_rebalance_brokers(self, rg_unbalanced):
+        orig_partitions = rg_unbalanced.partitions
 
-    # Initial broker-set empty
+        rg_unbalanced.rebalance_brokers()
+
+        # No partitions are missing
+        assert sorted(orig_partitions) == sorted(rg_unbalanced.partitions)
+        assert_rg_balanced(rg_unbalanced)
+
+    def test_rebalance_brokers_balanced(self, rg_balanced):
+        expected = {b: b.partitions for b in rg_balanced.brokers}
+
+        rg_balanced.rebalance_brokers()
+
+        # there shouldn't be any partition movement
+        assert expected == {b: b.partitions for b in rg_balanced.brokers}
+        assert_rg_balanced(rg_balanced)
+
+    def test_rebalance_decommissioned_broker(self, rg_balanced, create_partition):
+        # rg_balanced is supposed to have 3 brokers with 3 partitions each. We
+        # add another broker with 3 more partitions
+        broker_count = len(rg_balanced.brokers)
+        p50 = create_partition('topic5', 0)
+        p51 = create_partition('topic5', 1)
+        p52 = create_partition('topic5', 2)
+        broker = create_broker('broker4', [p50, p51, p52])
+        rg_balanced.add_broker(broker)
+
+        broker.mark_decommissioned()
+        orig_partitions = rg_balanced.partitions
+
+        rg_balanced.rebalance_brokers()
+
+        assert broker.empty() is True
+        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        expected_count = len(rg_balanced.partitions) // broker_count
+        for broker in rg_balanced.brokers:
+            if not broker.decommissioned:
+                assert len(broker.partitions) in (expected_count, expected_count + 1)
+
+    def test_rebalance_new_empty_broker(self, rg_balanced):
+        broker = Broker('4')
+        rg_balanced.add_broker(broker)
+        orig_partitions = rg_balanced.partitions
+
+        rg_balanced.rebalance_brokers()
+
+        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        assert_rg_balanced(rg_balanced)
+
+    def test_decommission_no_remaining_brokers(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p11 = create_partition('topic1', 1)
+        p20 = create_partition('topic2', 0)
+        b1 = create_broker('b1', [p10, p11, p20])
+        rg = ReplicationGroup('rg', set([b1]))
+        b1.mark_decommissioned()
+
+        with pytest.raises(EmptyReplicationGroupError):
+            rg.rebalance_brokers()
+
+    def test_decommission_not_enough_replicas(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p11 = create_partition('topic1', 1)
+        p20 = create_partition('topic2', 0, replication_factor=2)
+        b1 = create_broker('b1', [p10, p11, p20])
+        b2 = create_broker('b1', [p20])
+        rg = ReplicationGroup('rg', set([b1, b2]))
+        b2.mark_decommissioned()
+
+        with pytest.raises(BrokerDecommissionError):
+            rg.rebalance_brokers()
+
+    def test_rebalance_empty_replication_group(self):
+        rg = ReplicationGroup('empty_rg')
+
+        with pytest.raises(EmptyReplicationGroupError):
+            rg.rebalance_brokers()
+
     def test_add_broker_empty(self):
         rg = ReplicationGroup('test_rg', None)
         rg.add_broker(sentinel.broker)
 
         assert set([sentinel.broker]) == rg.brokers
+
+    def test_invalid_brokers_type_list(self):
+        with pytest.raises(TypeError):
+            ReplicationGroup('test_rg', [sentinel.broker1, sentinel.broker2])
 
     def test_add_broker(self):
         rg = ReplicationGroup(
@@ -44,10 +169,10 @@ class TestReplicationGroup(object):
         assert 'test_rg' == rg.id
 
     def test_partitions(self):
-        mock_brokers = [
+        mock_brokers = set([
             Mock(spec=Broker, partitions=set([sentinel.p1, sentinel.p2])),
             Mock(spec=Broker, partitions=set([sentinel.p3, sentinel.p1])),
-        ]
+        ])
         rg = ReplicationGroup('test_rg', mock_brokers)
         expected = [
             sentinel.p1,
@@ -58,89 +183,105 @@ class TestReplicationGroup(object):
 
         assert sorted(expected) == sorted(rg.partitions)
 
-    def test_brokers(self):
-        rg = ReplicationGroup(
-            'test_rg',
-            set([sentinel.broker1, sentinel.broker2]),
-        )
-        expected = set([sentinel.broker1, sentinel.broker2])
+    def test__elect_source_broker(self, create_partition):
+        p1 = create_partition('t1', 0)
+        p2 = create_partition('t2', 0)
+        p3 = create_partition('t1', 1)
+        b1 = create_broker('b1', [p1, p3])  # b1 -> t1: {0,1}, t2: 0
+        p4 = create_partition('t3', 0)
+        b2 = create_broker('b2', [p1, p2, p4])  # b2 -> t1: 0, t2: 1, t3: 0
+        rg = ReplicationGroup('test_rg', set([b1, b2]))
 
-        assert expected == rg.brokers
-
-    def test_elect_source_broker(self):
-        # Creating 2 partitions with topic:t1 for broker: b1
-        p1 = self.create_partition('t1', 0)
-        p2 = self.create_partition('t2', 0)
-        p3 = self.create_partition('t1', 1)
-        b1 = Broker('b1', set([p1, p3]))
-
-        p4 = self.create_partition('t3', 0)
-        b2 = Broker('b2', set([p1, p2, p4]))
-
-        # Creating replication-group with above brokers
-        rg = ReplicationGroup('test_rg', set([b1, b2, sentinel.b3]))
-
-        over_loaded_brokers = [b1, b2]
         # Since p1.topic is t1 and b1 has 2 partitions (p1 and p3) for same topic
         # t1 and b2 has only 1 partition with topic t2, even though it has more
         # partition, so b1 is preferred (To reduce topic-partition imbalance).
+        over_loaded_brokers = [b1, b2]
         victim_partition = p1
         actual = rg._elect_source_broker(over_loaded_brokers, victim_partition)
         assert actual == b1
 
-    def test_elect_dest_broker(self):
-        # Creating 2 partitions with topic:t1 for broker: b1
-        p1 = self.create_partition('t1', 0)
-        p2 = self.create_partition('t2', 0)
-        p3 = self.create_partition('t1', 1)
-        b1 = Broker('b1', set([p1, p2, p3]))
+    def test__elect_dest_broker(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        p30 = create_partition('t3', 0)
+        b1 = create_broker('b1', [p10, p20, p11])  # b1 -> t1: {0,1}, t2: 0
+        b2 = create_broker('b2', [p10, p30])  # b2 -> t1: 0, t3: 0
+        rg = ReplicationGroup('test_rg', set([b1, b2]))
 
-        # Creating 1 partition with topic:t2 for broker: b2
-        # and 1 partition with topic:t3 for broker:b2
-        p4 = self.create_partition('t1', 0)
-        p5 = self.create_partition('t3', 0)
-        b2 = Broker('b2', set([p4, p5]))
-
-        # Creating replication-group with above brokers
-        rg = ReplicationGroup('test_rg', set([b1, b2, sentinel.b3]))
-
+        # Since p30 is already in b2 so the preferred destination will be b1
+        # although b2 has less partitions.
         under_loaded_brokers = [b1, b2]
-        # Since p5.topic is t3 and b1 doesn't have any partition with
-        # topic: t3 but b2 has it, preferred destination should be 'b1'
-        victim_partition = p5
+        victim_partition = p30
         actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition)
         assert actual == b1
 
-        # Since p1.topic is t1 and b2 has lesser partitions with topic t1
-        # (i.e. 1) compared to 2-partitions in b1 with topic:t1
-        # preferred destination should be 'b2'
-        victim_partition = p1
-        actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition)
+    def test__elect_dest_broker_(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        b1 = create_broker('b1', [p10, p11, p20])  # b1 -> t1: {0,1}, t2: 0
+        p30 = create_partition('t3', 0)
+        p31 = create_partition('t3', 1)
+        p32 = create_partition('t3', 2)
+        b2 = create_broker('b2', [p10, p30, p31, p32])  # b2 -> t1: 0, t3: 0
+        rg = ReplicationGroup('test_rg', set([b1, b2]))
+
+        # Since t1 has two partitions in b1 but only one in b2,
+        # the preferred destination should be b2
+        under_loaded_brokers = [b1, b2]
+        victim_partition_p12 = create_partition('t1', 2)
+        actual = rg._elect_dest_broker(under_loaded_brokers, victim_partition_p12)
         assert actual == b2
 
+    def test__elect_dest_broker_partition_conflict(self, create_partition):
+        p1 = create_partition('t1', 0)
+        p2 = create_partition('t2', 0)
+        p3 = create_partition('t1', 1)
+        b1 = create_broker('b1', [p1, p2, p3])  # b1 -> t1: {0,1}, t2: 0
+        rg = ReplicationGroup('test_rg', set([b1]))
+        # p1 already exists in b1
+        # This should never happen and we expect the application to fail badly
+        under_loaded_brokers = [b1]
+        victim_partition = p1
+        with pytest.raises(ValueError):
+            rg._elect_dest_broker(under_loaded_brokers, victim_partition)
+
     def test_select_under_loaded_brokers(self):
-        # Create brokers with different partition-count
         b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
         b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
         b3 = Broker('b3', set([sentinel.p5]))
-
-        # Creating replication-group with above brokers
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         victim_partition = sentinel.p7
-        actual = rg.select_under_loaded_brokers(victim_partition)
+        actual = rg._select_under_loaded_brokers(victim_partition)
         # Since sentinel.p7 is not present in b1, b2 and b3, they should be
         # returned in increasing order of partition-count
         assert actual == [b3, b2, b1]
 
+    def test_select_under_loaded_brokers_existing_partition(self):
+        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
+        b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
+        b3 = Broker('b3', set([sentinel.p5]))
+        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
+
         # under-loaded-brokers SHOULD NOT contain victim-partition sentinel.p4
-        # Brokers returned in sorted order of DECREASING partition-count
+        # brokers are returned in increasing order of partition-count
         victim_partition = sentinel.p4
-        actual = rg.select_under_loaded_brokers(victim_partition)
+        actual = rg._select_under_loaded_brokers(victim_partition)
         assert actual == [b3, b1]
 
+    def test_select_under_loaded_brokers_no_available_brokers(self):
+        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
+        b2 = Broker('b2', set([sentinel.p1, sentinel.p5]))
+        rg = ReplicationGroup('test_rg', set([b1, b2]))
+
+        # Partition p1 is already in both brokers of the replication group.
+        victim_partition = sentinel.p1
+        actual = rg._select_under_loaded_brokers(victim_partition)
+        assert actual == []
+
     def test_select_over_loaded_brokers(self):
-        # Create brokers with different partition-count
         b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
         b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
         b3 = Broker('b3', set([sentinel.p5]))
@@ -149,495 +290,218 @@ class TestReplicationGroup(object):
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         # over-loaded-brokers should contain victim-partition p5
-        # Broker-list returned in sorted order of INCREASING partition-count
+        # Broker-list returned in sorted order of decreasing partition-count
         victim_partition = sentinel.p5
         actual = rg._select_over_loaded_brokers(victim_partition)
         assert actual == [b2, b3]
 
-    def test_count_replica(self):
-        # Create broker with 3 partitions
+    def test_select_over_loaded_brokers_missing_partition(self):
         b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-
-        # Create broker with 2 partitions
-        b2 = Broker('b2', set([sentinel.p1, sentinel.p5]))
+        b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
+        b3 = Broker('b3', set([sentinel.p5]))
 
         # Creating replication-group with above brokers
+        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
+
+        # p6 does not exist in any of the brokers
+        victim_partition = sentinel.p6
+        actual = rg._select_over_loaded_brokers(victim_partition)
+        assert actual == []
+
+    def test_count_replica(self):
+        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
+        b2 = Broker('b2', set([sentinel.p1, sentinel.p5]))
         rg = ReplicationGroup('test_rg', set([b1, b2]))
 
         assert rg.count_replica(sentinel.p1) == 2
         assert rg.count_replica(sentinel.p5) == 1
         assert rg.count_replica(sentinel.p6) == 0
 
-    def test_move_partition(self):
-        # Create sample partitions
-        p1 = self.create_partition('t1', 0)
-        p2 = self.create_partition('t2', 0)
-        p3 = self.create_partition('t1', 1)
+    def test__select_broker_pair(self, create_partition):
+        # Tests whether source and destination broker are best match
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        b0 = create_broker('b0', [p10, p20, p11])
+        b1 = create_broker('b1', [p10, p20])
+        b2 = create_broker('b2', [p20, p11])
+        b3 = create_broker('b3', [p10, p20, p11])
+        rg_source = ReplicationGroup('rg1', set([b0, b1, b2, b3]))
+        b4 = create_broker('b4', [p20, p11])
+        b5 = create_broker('b5', [p20])
+        b6 = create_broker('b6', [p10])
+        b7 = create_broker('b7', [p11])
+        rg_dest = ReplicationGroup('rg2', set([b4, b5, b6, b7]))
 
-        # Create 4 brokers
-        b1 = Broker('b1', set([p1, p2, p3]))
-        b2 = Broker('b2', set([p1, p3]))
-        b3 = Broker('b3', set([p1, p3]))
-        b4 = Broker('b4', set([p2]))
+        # Select best-suitable brokers for moving partition 'p10'
+        broker_source, broker_dest = rg_source._select_broker_pair(rg_dest, p10)
 
-        # Update partition-replicas
-        p1.add_replica(b1)
-        p1.add_replica(b2)
-        p1.add_replica(b3)
-        p2.add_replica(b1)
-        p2.add_replica(b2)
-        p3.add_replica(b1)
-        p3.add_replica(b2)
-        p3.add_replica(b3)
+        # source-broker can't be b2 since it doesn't have p10
+        # source-broker shouldn't be b1 since it has lesser partitions
+        # than b3 and b0
+        assert broker_source in [b0, b3]
+        # dest-broker shouldn't be b4 since it has more partitions than b4
+        # dest-broker can't be b6 since it has already partition p10
+        assert broker_dest in [b5, b7]
 
+    def test_move_partition(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        b1 = create_broker('b1', [p10, p20, p11])
+        b2 = create_broker('b2', [p10, p11])
+        # 2 p1 replicas are in rg_source
         rg_source = ReplicationGroup('rg1', set([b1, b2]))
+        b3 = create_broker('b3', [p10, p11])
+        b4 = create_broker('b4', [p20])
+        # 1 p1 replica is in rg_dest
         rg_dest = ReplicationGroup('rg2', set([b3, b4]))
 
         # Move partition p1 from rg1 to rg2
-        rg_source.move_partition(rg_dest, p1)
+        rg_source.move_partition(rg_dest, p10)
 
-        # partition-count of p1 for rg1 should reduce by 1
-        assert rg_source.partitions.count(p1) == 1
-
-        # partition-count of p1 for rg2 should increase by 1
-        assert rg_dest.partitions.count(p1) == 2
-
+        # partition-count of p1 for rg1 should be 1
+        assert rg_source.count_replica(p10) == 1
+        # partition-count of p1 for rg2 should be 2
+        assert rg_dest.count_replica(p10) == 2
         # Rest of the partitions are untouched
-        assert rg_source.partitions.count(p2) == 1
-        assert rg_dest.partitions.count(p2) == 1
-        assert rg_source.partitions.count(p3) == 2
-        assert rg_dest.partitions.count(p3) == 1
+        assert rg_source.count_replica(p20) == 1
+        assert rg_dest.count_replica(p20) == 1
+        assert rg_source.count_replica(p11) == 2
+        assert rg_dest.count_replica(p11) == 1
 
-    def test_select_broker(self):
-        # Tests whether source and destination broker are best match
-        # Create sample partitions
-        p1 = self.create_partition('t1', 0)
-        p2 = self.create_partition('t2', 0)
-        p3 = self.create_partition('t1', 1)
+    def test__get_target_brokers_1(self, create_partition):
+        p10 = create_partition('topic1', 0, replication_factor=2)
+        p11 = create_partition('topic1', 1, replication_factor=2)
+        p20 = create_partition('topic2', 0, replication_factor=2)
+        p30 = create_partition('topic3', 0)
+        b1 = create_broker('b1', [p10, p11, p20, p30])
+        b2 = create_broker('b2', [p10, p20])
+        rg = ReplicationGroup('rg', set([b1, b2]))
 
-        # Create brokers for rg-source
-        b0 = Broker('b0', set([p1, p2, p3]))
-        b1 = Broker('b1', set([p1, p2]))
-        b2 = Broker('b2', set([p2, p3]))
-        b7 = Broker('b2', set([p1, p2, p3]))
-        # Create source-replication-group with brokers b1, b2, b0, b7
-        rg_source = ReplicationGroup('rg1', set([b0, b1, b2, b7]))
-
-        # Create brokers for rg-dest
-        b3 = Broker('b3', set([p2, p3]))
-        b4 = Broker('b4', set([p2]))
-        b5 = Broker('b5', set([p1]))
-        b6 = Broker('b6', set([p3]))
-        # Create dest-replication-group with brokers b3, b4, b5, b6
-        rg_dest = ReplicationGroup('rg2', set([b3, b4, b5, b6]))
-
-        # Select best-suitable brokers for moving partition 'p1'
-        broker_source, broker_dest = rg_source._select_broker_pair(rg_dest, p1)
-
-        # source-broker can't be b2 since it doesn't have p1
-        # source-broker can't be b3, b4, b5, b6 since those don't belong to rg-source
-        # source-broker shouldn't be b1 since it has lesser partitions than b7 and b0
-        assert broker_source in [b0, b7]
-
-        # dest-broker can't be b1 or b2 since those don't belong to rg-dest
-        # dest-broker shouldn't be b3 since it has more partitions than b4
-        # dest-broker can't be b5 since it has victim-partition p1
-        assert broker_dest in [b4, b6]
-
-    # Test brokers-rebalancing
-    def test_get_target_brokers_case1(self):
-        # Partition-selection decision
-        # rg1: 0,1; rg2: 2, 3
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 1, 2]),
-                ((u'T1', 1), [0, 3]),
-                ((u'T2', 0), [2]),
-            ]
+        over_loaded = [b1]
+        under_loaded = [b2]
+        target, _ = rg._get_target_brokers(
+            over_loaded,
+            under_loaded,
+            rg.generate_sibling_distance(over_loaded, under_loaded),
         )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(5)) as ct:
-            rg1 = ct.rgs['rg1']
-            over_loaded = [ct.brokers[0]]
-            under_loaded = [ct.brokers[1]]
-            sibling_info = rg1.partitions_sib_info(over_loaded, under_loaded)
-            (b_source, b_dest, victim_partition), _ = \
-                rg1._get_target_brokers(over_loaded, under_loaded, sibling_info)
 
-            # Assert source-broker is 0 and destination-broker is 1
-            assert b_source.id == 0
-            assert b_dest.id == 1
-            # Partition can't be T1, 0, since it already has replica on broker 1
-            # Partition shouldn't be (T1, 1) since it has its sibling (T1, 0)
-            # at destination broker 1
-            # So ideal-partition should be (T0, 0)
-            assert victim_partition.name == ('T0', 0)
+        # p30 is the best fit because topic3 doesn't have any partition in
+        # broker 2
+        assert target == (b1, b2, p30) or target == (b1, b2, p11)
 
-    def test_get_target_brokers_case2(self):
-        # Source broker selection decision
-        # Partition-count plays role
-        # Helps in minimum movements
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 1]),
-                ((u'T1', 0), [0, 1, 2]),
-                ((u'T1', 1), [0]),
-                ((u'T1', 2), [4]),
-            ]
+    def test_get_target_brokers_2(self, create_partition):
+        p10 = create_partition('topic1', 0, replication_factor=2)
+        p11 = create_partition('topic1', 1, replication_factor=2)
+        p20 = create_partition('topic2', 0, replication_factor=1)
+        p21 = create_partition('topic2', 1, replication_factor=1)
+        p30 = create_partition('topic3', 0)
+        b1 = create_broker('b1', [p10, p11, p20])
+        b2 = create_broker('b2', [p10, p30])
+        b3 = create_broker('b3', [p21])
+        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+
+        over_loaded = [b1]
+        under_loaded = [b2, b3]
+
+        target, _ = rg._get_target_brokers(
+            over_loaded,
+            under_loaded,
+            rg.generate_sibling_distance(over_loaded, under_loaded),
         )
-        with test_ct.build_cluster_topology(assignment, ['0', '1', '2', '4']) as ct:
-            rg1 = ct.rgs['rg1']
-            over_loaded = [ct.brokers[1], ct.brokers[0]]
-            under_loaded = [ct.brokers[4]]
-            sibling_info = rg1.partitions_sib_info(over_loaded, under_loaded)
-            (b_source, b_dest, victim_partition), _ = \
-                rg1._get_target_brokers(over_loaded, under_loaded, sibling_info)
 
-            # Verify destination-broker is 4
-            assert b_dest.id == 4
-            # Here both 0 and 1 equal minimum siblings in broker 4 (0)
-            # Both 0 and 1 could be selected as source broker, but since
-            # broker 0 has more partitions (3 > 2) than 1, broker 0 should be
-            # selected as source-broker.
-            assert b_source.id == 0
-            # Only partition with no siblings in 4 is (T0, 0)
-            assert victim_partition.name == ('T0', 0)
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan) is True
+        # b3 is the best broker fit because of number of partition
+        # Both p10 and p11 are a good fit. p20 can't be considered because it is
+        # already in b3.
+        assert target == (b1, b3, p10) or target == (b1, b3, p11)
 
-    def test_get_target_brokers_case3(self):
-        # Source broker selection decision
-        # Minimum-sibling count gets preference
-        # rg-groups: rg1: brokers:(0, 1, 4)
-        # Broker-partition cnt: opt-partition-cnt: 10/3: 3, extra: 1
-        # Over-loaded: 0:5, 1:4
-        # Under-loaded: 4:1
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 1]),
-                ((u'T0', 1), [0, 4]),
-                ((u'T0', 2), [0, 1]),
-                ((u'T0', 3), [0]),
-                ((u'T0', 4), [0, 1]),
-                ((u'T3', 1), [1]),
-            ]
+    def test_get_target_brokers_3(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p11 = create_partition('topic1', 1)
+        p12 = create_partition('topic1', 2)
+        p20 = create_partition('topic2', 0)
+        p21 = create_partition('topic2', 1)
+        p30 = create_partition('topic3', 0)
+        p31 = create_partition('topic3', 1)
+        b1 = create_broker('b1', [p10, p11, p20])
+        b2 = create_broker('b2', [p12, p21, p30, p31])
+        b3 = create_broker('b3', [])
+        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+
+        over_loaded = [b1, b2]
+        under_loaded = [b3]
+
+        target, _ = rg._get_target_brokers(
+            over_loaded,
+            under_loaded,
+            rg.generate_sibling_distance(over_loaded, under_loaded),
         )
-        with test_ct.build_cluster_topology(assignment, ['0', '1', '4']) as ct:
-            rg1 = ct.rgs['rg1']
-            over_loaded = [ct.brokers[0], ct.brokers[1]]
-            under_loaded = [ct.brokers[4]]
-            sibling_info = rg1.partitions_sib_info(over_loaded, under_loaded)
-            (b_source, b_dest, victim_partition), _ = \
-                rg1._get_target_brokers(over_loaded, under_loaded, sibling_info)
 
-            # Verify destination broker is 4 (only option)
-            assert b_dest.id == 4
-            # Note: Even though broker 0 has more partitions(5) than
-            # broker 1 (4), but broker 1 will be selected as source-broker
-            # since it has lesser siblings in destination-broker 4
-            # Sibling of broker 0 in broker 4: 1 (for every partition: of topic T0)
-            # Siblings of broker 1 in broker 4: 0 (for partition: (T3, 1)
-            # Verify source-broker is 1
-            assert b_source.id == 1
-            # Verify partition be (T3, 1) with minimum-siblings
-            assert victim_partition.name == ('T3', 1)
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan) is True
+        # b3 is the best broker fit because of number of partition
+        # Both p10 and p11 are a good fit. p20 can't be considered because it is
+        # already in b3.
+        assert target == (b2, b3, p30) or target == (b2, b3, p31)
 
-    def test_rebalance_brokers_balanced_1(self):
-        # Single replication-group
-        # Group: map(broker, p-count)
-        # rg1:  (0: 2, 1:2, 4:2)
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 4]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T2', 1), [1]),
-                ((u'T3', 0), [0, 1, 4]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, ['0', '1', '4']) as ct:
-            ct.rebalance_brokers()
+    def test_generate_sibling_count(self):
+        t1 = Topic('topic1', 2)
+        t2 = Topic('topic2', 2)
+        t3 = Topic('topic3', 1)
+        p10 = create_and_attach_partition(t1, 0)
+        p11 = create_and_attach_partition(t1, 1)
+        p12 = create_and_attach_partition(t1, 2)
+        p20 = create_and_attach_partition(t2, 0)
+        p21 = create_and_attach_partition(t2, 1)
+        p22 = create_and_attach_partition(t2, 2)
+        p30 = create_and_attach_partition(t3, 0)
+        p31 = create_and_attach_partition(t3, 1)
+        b1 = create_broker('b1', [p10, p11, p20, p21, p30, p31])
+        b2 = create_broker('b2', [p12, p21, p22])
+        b3 = create_broker('b3', [p10, p11, p22])
+        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        over_loaded = [b1]
+        under_loaded = [b2, b3]
 
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 0
-            # Verify no change is assignment
-            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan) is True
+        expected = {
+            b2: {b1: {t1: -1, t2: 0, t3: -2}},
+            b3: {b1: {t1: 0, t2: -1, t3: -2}},
+        }
+        actual = rg.generate_sibling_distance(over_loaded, under_loaded)
 
-    def test_rebalance_brokers_balanced_2(self):
-        # 2 replication-groups are balanced individually
-        # and overall balanced as well
-        # Rg-Group: map(broker, p-count)
-        # rg1:      (0: 2, 1:2)
-        # rg2:      (2: 1)
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T1', 1), [1]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
-            ct.rebalance_brokers()
+        assert dict(actual) == expected
 
-            # Verify no change is assignment
-            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
-            # Verify overall-imbalance is 0
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 0
-            # Verify  rg1 is balanced
-            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
-            assert net_rg1 == 0
-            # Verify  rg2 is balanced
-            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
-            assert net_rg2 == 0
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan) is True
+    def test_update_sibling_count(self):
+        t1 = Topic('topic1', 2)
+        t2 = Topic('topic2', 2)
+        t3 = Topic('topic3', 1)
+        p10 = create_and_attach_partition(t1, 0)
+        p11 = create_and_attach_partition(t1, 1)
+        p12 = create_and_attach_partition(t1, 2)
+        p20 = create_and_attach_partition(t2, 0)
+        p21 = create_and_attach_partition(t2, 1)
+        p22 = create_and_attach_partition(t2, 2)
+        p30 = create_and_attach_partition(t3, 0)
+        p31 = create_and_attach_partition(t3, 1)
+        b1 = create_broker('b1', [p10, p11, p20, p21, p30, p31])
+        b2 = create_broker('b2', [p12, p21, p22])
+        b3 = create_broker('b3', [p10, p11, p22])
+        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        sibling_distance = {
+            b2: {
+                b1: {t1: -1, t2: 0, t3: -2},
+                b3: {t1: 1, t2: -1, t3: -2}
+            },
+        }
+        # Move a p10 from b1 to b2
+        b1.move_partition(p10, b2)
 
-    def test_rebalance_brokers_balanced_3(self):
-        # 2 replication-groups are in balanced state individually
-        # but overall imbalanced.
-        # Rg-Group: map(broker, p-count)
-        # rg1:      (0: 2, 1:2); rg2:      (2: 1, 3:0)
-        # opt-overall: 5/4 ==> 1, extra-overall: 1
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T1', 1), [1]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
+        # NOTE: b2: b1: t1: -1 -> 1 and b2: b3: t1: 1 -> 0
+        expected = {
+            b2: {
+                b1: {t1: 1, t2: 0, t3: -2},
+                b3: {t1: 0, t2: -1, t3: -2},
+            },
+        }
+        actual = rg.update_sibling_distance(sibling_distance, b2, t1)
 
-            # Verify no change is assignment
-            assert sorted(ct.assignment) == sorted(ct.initial_assignment)
-            # Verify overall-imbalance is NOT 0, since we don't move partitions
-            # across rg's, to balance brokers
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 1
-            # Verify  rg1 is balanced
-            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
-            assert net_rg1 == 0
-            # Verify  rg2 is balanced
-            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
-            assert net_rg2 == 0
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
-
-    def test_rebalance_brokers_imbalanced_1(self):
-        # 1 rg is balanced, 2nd imbalanced
-        # Result: Overall-balanced and individually-balanced
-        # rg1: (0: 3, 1:1); rg2: (2: 1)
-        # opt-overall: 5/3 ==> 1, extra-overall: 2
-        # opt-rg1: 4/2 ==> 2, extra-rg1: 0
-        # ==> 0, 1 should have 2 partitions each
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T1', 1), [0]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(3)) as ct:
-            ct.rebalance_brokers()
-
-            # Verify partition-count of brokers 0 and 1 as equal to 2
-            assert len(ct.brokers[0].partitions) == 2
-            assert len(ct.brokers[1].partitions) == 2
-            # Verify overall-imbalance is 0
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 0
-            # Verify  rg1 is balanced
-            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
-            assert net_rg1 == 0
-            # Verify  rg2 is balanced
-            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
-            assert net_rg2 == 0
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan) is True
-
-    def test_rebalance_brokers_imbalanced_2(self):
-        # 2-rg's: Both rg's imbalanced
-        # Result: rgs' balanced individually and overall
-        # rg1: (0: 3, 1:1); rg2: (2: 2, 3:0)
-        # opt-overall: 6/4 ==> 1, extra-overall: 2
-        # opt-rg1: 4/2 ==> 2, extra-rg1: 0
-        # opt-rg2: 2/2 ==> 1, extra-rg1: 0
-        # ==> 0, 1 should have 2 partitions each
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T1', 1), [0, 2]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
-
-            # rg1: Verify partition-count of broker 0:2, 1:2
-            assert len(ct.brokers[0].partitions) == 2
-            assert len(ct.brokers[1].partitions) == 2
-            # rg2: Verify partition-count of brokers 2:1, 3:1
-            assert len(ct.brokers[2].partitions) == 1
-            assert len(ct.brokers[3].partitions) == 1
-            # Verify overall-imbalance is 0
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 0
-            # Verify  rg1 is balanced
-            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
-            assert net_rg1 == 0
-            # Verify  rg2 is balanced
-            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
-            assert net_rg2 == 0
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
-
-    def test_rebalance_brokers_imbalanced_3(self):
-        # 2-rg's: Both rg's imbalanced
-        # Result: rgs' balanced individually but NOT overall
-        # rg1: (0: 4, 1:2); rg2: (2: 2, 3:0)
-        # opt-overall: 8/4 ==> 2, extra-overall: 0
-        # opt-rg1: 6/2 ==> 3, extra-rg1: 0
-        # opt-rg2: 2/2 ==> 1, extra-rg1: 0
-        # ==> 0, 1 should have 3 partitions each
-        # ==> 2, 3 should have 1 partition each
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2, 1]),
-                ((u'T1', 0), [0, 1]),
-                ((u'T1', 1), [0, 2]),
-                ((u'T1', 2), [0]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            ct.rebalance_brokers()
-
-            # rg1: Verify partition-count of brokers 0 and 1 as equal to 3
-            assert len(ct.brokers[0].partitions) == 3
-            assert len(ct.brokers[1].partitions) == 3
-            # rg2: Verify partition-count of brokers 2 and 3 as equal to 1
-            assert len(ct.brokers[2].partitions) == 1
-            assert len(ct.brokers[3].partitions) == 1
-            # Verify overall-imbalance is NON-zero, since we don't move partitions
-            # across replication-groups
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 2
-            # Verify  rg1 is balanced
-            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
-            assert net_rg1 == 0
-            # Verify  rg2 is balanced
-            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
-            assert net_rg2 == 0
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert _validate_plan_base(new_plan, original_plan, irange(4)) is True
-
-    def test_rebalance_brokers_imbalanced_4(self):
-        # Test minimum-movements
-        # 3-rg's: 2 rg's imbalanced, 1 rg is balanced
-        # Result: All 3 rgs' balanced
-        # rg1: (0: 3, 1:0, 4:2); rg2: (2: 2, 3:0); rg3: (4:1)
-        # For minimum movements partition from 0 should move to 1
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 4]),
-                ((u'T1', 1), [4, 2]),
-                ((u'T1', 2), [0, 5]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(6)) as ct:
-            # Re-balance each replication-group separately
-            ct.rgs['rg1'].rebalance_brokers()
-            ct.rgs['rg2'].rebalance_brokers()
-            ct.rgs['rg3'].rebalance_brokers()
-
-            # rg1: Verify partition-count of 0:2, 1:1, 4:2
-            assert len(ct.brokers[0].partitions) == 2
-            assert len(ct.brokers[1].partitions) == 1
-            assert len(ct.brokers[4].partitions) == 2
-            # rg2: Verify partition-count of 2:1, 3:1
-            assert len(ct.brokers[2].partitions) == 1
-            assert len(ct.brokers[3].partitions) == 1
-            # rg3: Verify partition-count of broker 5 as equal to 1
-            assert len(ct.brokers[5].partitions) == 1
-            # Verify overall imbalance is also 0
-            _, net_imbalance, _ = get_partition_imbalance_stats(ct.brokers.values())
-            assert net_imbalance == 0
-            # Verify  rg1 is balanced
-            _, net_rg1, _ = get_partition_imbalance_stats(ct.rgs['rg1'].brokers)
-            assert net_rg1 == 0
-            # Verify  rg2 is balanced
-            _, net_rg2, _ = get_partition_imbalance_stats(ct.rgs['rg2'].brokers)
-            assert net_rg2 == 0
-            # Verify  rg3 is balanced
-            _, net_rg3, _ = get_partition_imbalance_stats(ct.rgs['rg3'].brokers)
-            assert net_rg3 == 0
-            # Assert Min-partition movements as previous net-imbalance for each
-            # group which is 2 (1 for rg1 and 1 for rg2)
-            _, total_movements = \
-                calculate_partition_movement(ct.initial_assignment, ct.assignment)
-            assert total_movements == 2
-            # Verify new plan
-            new_plan = assignment_to_plan(ct.assignment)
-            original_plan = assignment_to_plan(ct.initial_assignment)
-            assert validate_plan(new_plan, original_plan, irange(6)) is True
-
-    def test_partitions_sib_info(self):
-        test_ct = CT()
-        assignment = OrderedDict(
-            [
-                ((u'T0', 0), [0, 2]),
-                ((u'T1', 0), [0, 1, 2]),
-                ((u'T1', 1), [0, 2]),
-            ]
-        )
-        with test_ct.build_cluster_topology(assignment, test_ct.srange(4)) as ct:
-            rg1 = ct.rgs['rg1']
-            b0 = [broker for broker in ct.brokers.values() if broker.id == 0][0]
-            b1 = [broker for broker in ct.brokers.values() if broker.id == 1][0]
-            b2 = [broker for broker in ct.brokers.values() if broker.id == 2][0]
-            over_loaded = [b0]
-            under_loaded = [b1, b2]
-            sib_info = rg1.partitions_sib_info(over_loaded, under_loaded)
-
-            p1 = [p for p in b0.partitions if p.name == (u'T0', 0)][0]
-            p2 = [p for p in b0.partitions if p.name == (u'T1', 0)][0]
-            p3 = [p for p in b0.partitions if p.name == (u'T1', 1)][0]
-
-            # Verify sibling count of partitions of b1 in b2 and b3
-            assert sib_info[p1][b1] == 0
-            assert sib_info[p1][b2] == 1
-            assert sib_info[p2][b1] == 1
-            assert sib_info[p2][b2] == 2
-            assert sib_info[p3][b1] == 1
-            assert sib_info[p3][b2] == 2
-            assert len(sib_info) == 3
+        assert dict(actual) == expected
