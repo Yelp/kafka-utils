@@ -1,13 +1,12 @@
+from __future__ import print_function
+
 import logging
 import sys
 
 from .command import ClusterManagerCmd
 from yelp_kafka_tool.kafka_cluster_manager. \
-    cluster_info.cluster_topology import ClusterTopology
-from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.util import validate_plan
 from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
-from yelp_kafka_tool.util.zookeeper import ZK
 
 
 DEFAULT_MAX_PARTITION_MOVEMENTS = 1
@@ -51,32 +50,38 @@ class DecommissionCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def command(self):
-        with ZK(self.cluster_config) as zk:
-            ct = ClusterTopology(zk)
-            # TODO: We could get rid of initial_assignment in ClusterTopology
-            base_assignment = ct.initial_assignment
-            ct.decommission_brokers(self.args.broker_ids)
+    def run_command(self, cluster_topology):
+        # TODO: We could get rid of initial_assignment in ClusterTopology
+        base_assignment = cluster_topology.initial_assignment
+        cluster_topology.decommission_brokers(self.args.broker_ids)
 
-            if not validate_plan(
-                assignment_to_plan(ct.assignment),
-                assignment_to_plan(base_assignment),
-            ):
-                self.log.error('Invalid latest-cluster assignment. Exiting...')
-                sys.exit(1)
-
-            # Reduce the proposed assignment based on max_partition_movements
-            # and max_leader_changes
-            reduced_assignment = self.get_reduced_assignment(
-                base_assignment,
-                ct.assignment,
-                self.args.max_partition_movements,
-                self.args.max_leader_changes,
+        if not validate_plan(
+            assignment_to_plan(cluster_topology.assignment),
+            assignment_to_plan(base_assignment),
+        ):
+            self.log.error('Invalid assignment %s.', cluster_topology.assignment)
+            print(
+                'Invalid assignment: {0}'.format(cluster_topology.assignment),
+                file=sys.stderr,
             )
-            if reduced_assignment:
-                self.process_assignment(reduced_assignment)
-            else:
-                self.log.info(
-                    "Cluster already balanced. No more replicas in "
-                    "decommissioned brokers."
-                )
+            sys.exit(1)
+
+        # Reduce the proposed assignment based on max_partition_movements
+        # and max_leader_changes
+        reduced_assignment = self.get_reduced_assignment(
+            base_assignment,
+            cluster_topology.assignment,
+            self.args.max_partition_movements,
+            self.args.max_leader_changes,
+        )
+        if reduced_assignment:
+            self.process_assignment(reduced_assignment)
+        else:
+            self.log.info(
+                "Cluster already balanced. No more replicas in "
+                "decommissioned brokers."
+            )
+            print(
+                "Cluster already balanced. No more replicas in "
+                "decommissioned brokers."
+            )

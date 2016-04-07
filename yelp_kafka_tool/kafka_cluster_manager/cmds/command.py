@@ -54,9 +54,9 @@ class ClusterManagerCmd(object):
         raise NotImplementedError("Implement in subclass")
 
     def add_subparser(self, subparsers):
-        self.build_subparser(subparsers).set_default(command=self.run)
+        self.build_subparser(subparsers).set_defaults(command=self.run)
 
-    def run_command(self):
+    def run_command(self, cluster_topology):
         """Implement the command logic.
         When run_command is called cluster_config, args, and zk are already
         initialized.

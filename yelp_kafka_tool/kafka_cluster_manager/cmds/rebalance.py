@@ -22,7 +22,14 @@ class RebalanceCmd(ClusterManagerCmd):
     def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
             'rebalance',
-            description='Re-assign partitions over brokers.',
+            description='Rebalance cluster by moving partitions across brokers '
+            'and changing the preferred replica.',
+            help='This command is used to rebalance a Kafka cluster. Based on '
+            'the given flags this tool will generate and submit a reassinment '
+            'plan that will evently distributed partitions and leaders '
+            'across the brokers of the cluster. The replication groups option '
+            'moves the replicas of the same partition to separate replication '
+            'making the cluster resilient to the failure of one of more zones.'
         )
         subparser.add_argument(
             '--replication-groups',
@@ -61,7 +68,7 @@ class RebalanceCmd(ClusterManagerCmd):
         """Get executable proposed plan(if any) for display or execution."""
         # TODO: We could get rid of initial_assignment in ClusterTopology
         base_assignment = ct.initial_assignment
-        assignment = self.build_balanced_assignment(ct, self.args)
+        assignment = self.build_balanced_assignment(ct)
 
         if not validate_plan(
             assignment_to_plan(assignment),
