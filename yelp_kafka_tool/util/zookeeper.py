@@ -391,7 +391,7 @@ class ZK:
             groupid=groupid,
             topic=topic,
         )
-        self.delete(path)
+        self.delete(path, True)
 
     def execute_plan(self, plan):
         """Submit reassignment plan for execution."""
