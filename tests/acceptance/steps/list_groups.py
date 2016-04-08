@@ -1,8 +1,7 @@
-import subprocess
-
 from behave import given
 from behave import then
 from behave import when
+from util import call_cmd
 from util import create_consumer_group
 from util import create_random_topic
 from util import produce_example_msg
@@ -17,7 +16,6 @@ def step_impl1(context):
 
     for group in test_groups:
         create_consumer_group(topic, group)
-    context.topic = topic
 
 
 def call_list_groups():
@@ -26,11 +24,7 @@ def call_list_groups():
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'list_groups']
-    try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        output = e.output
-    return output
+    return call_cmd(cmd)
 
 
 @when('we call the list_groups command')

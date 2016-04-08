@@ -22,6 +22,14 @@ def create_topic(topic_name, replication_factor, partitions):
     time.sleep(1)
 
 
+def call_cmd(cmd):
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        output = e.output
+    return output
+
+
 def create_random_topic(replication_factor, partitions, topic_name=None):
     if not topic_name:
         topic_name = str(uuid.uuid1())
@@ -29,19 +37,22 @@ def create_random_topic(replication_factor, partitions, topic_name=None):
     return topic_name
 
 
-def produce_example_msg(topic):
+def produce_example_msg(topic, num_messages=1):
     kafka = KafkaClient(KAFKA_URL)
     producer = SimpleProducer(kafka)
-    producer.send_messages(topic, b'some message')
+    for i in xrange(num_messages):
+        producer.send_messages(topic, b'some message')
 
 
-def create_consumer_group(topic, group_name):
+def create_consumer_group(topic, group_name, num_messages=1):
     consumer = KafkaConsumer(
         topic,
         group_id=group_name,
         auto_commit_enable=False,
         bootstrap_servers=[KAFKA_URL],
         auto_offset_reset='smallest')
-    message = consumer.next()
-    consumer.task_done(message)
+    for i in xrange(num_messages):
+        message = consumer.next()
+        consumer.task_done(message)
     consumer.commit()
+    return consumer

@@ -1,9 +1,9 @@
 import os
-import subprocess
 
 from behave import given
 from behave import then
 from behave import when
+from util import call_cmd
 from util import create_random_topic
 
 from yelp_kafka_tool.util import config
@@ -28,11 +28,7 @@ def call_offset_restore():
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_restore',
            offsets_file_path()]
-    try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        output = e.output
-    return output
+    return call_cmd(cmd)
 
 
 def get_cluster_config():

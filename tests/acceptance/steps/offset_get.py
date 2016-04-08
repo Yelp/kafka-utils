@@ -1,41 +1,21 @@
-import subprocess
-
 from behave import given
 from behave import then
 from behave import when
-from kafka import KafkaConsumer
+from util import call_cmd
+from util import create_consumer_group
 from util import create_random_topic
-from util import KAFKA_URL
 from util import produce_example_msg
 
 TEST_GROUP = 'test_group'
 MSG_COUNT = 50
 
 
-def create_consumer(topic, group_name):
-    return KafkaConsumer(
-        topic,
-        group_id=group_name,
-        auto_commit_enable=False,
-        bootstrap_servers=[KAFKA_URL],
-        auto_offset_reset='smallest')
-
-
-def consume_and_set_offset(consumer):
-    for i in xrange(MSG_COUNT):
-        message = consumer.next()
-        consumer.task_done(message)
-    consumer.commit()
-
-
 @given(u'we have an existing consumer group and topic in the kafka cluster')
 def step_impl1(context):
     topic = create_random_topic(1, 1)
-    for i in xrange(MSG_COUNT):
-        produce_example_msg(topic)
+    produce_example_msg(topic, num_messages=MSG_COUNT)
+    consumer = create_consumer_group(topic, TEST_GROUP, num_messages=MSG_COUNT)
 
-    consumer = create_consumer(topic, TEST_GROUP)
-    consume_and_set_offset(consumer)
     context.topic = topic
     context.consumer = consumer
 
@@ -47,11 +27,7 @@ def call_offset_get():
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_get',
            TEST_GROUP]
-    try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        output = e.output
-    return output
+    return call_cmd(cmd)
 
 
 @when(u'we call the offset_get command')
