@@ -8,9 +8,13 @@ ENV PATH="$PATH:$JAVA_HOME/bin"
 # will never run in this container; the Kafka server will run in the "kafka"
 # container.
 RUN apt-get update && apt-get install -y \
-java-8u20-oracle confluent-kafka=0.8.2.0-1 \
-python python2.7 \
-python-pkg-resources python-pip python-setuptools
+    confluent-kafka=0.8.2.0-1 \
+    java-8u20-oracle \
+    python \
+    python2.7 \
+    python-pip \
+    python-pkg-resources \
+    python-setuptools
 
 RUN pip install tox
 

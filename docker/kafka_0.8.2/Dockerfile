@@ -1,7 +1,10 @@
 FROM docker-dev.yelpcorp.com/trusty_yelp
 MAINTAINER Team Distributed Systems <team-dist-sys@yelp.com>
 
-RUN apt-get update && apt-get -y install java-8u20-oracle confluent-kafka=0.8.2.0-1
+RUN apt-get update && apt-get install -y \
+    confluent-kafka=0.8.2.0-1 \
+    java-8u20-oracle
+    
 ENV JAVA_HOME="/usr/lib/jvm/java-8-oracle-1.8.0.20/"
 
 COPY config.properties /server.properties
