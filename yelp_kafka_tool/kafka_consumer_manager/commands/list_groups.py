@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import logging
 import sys
 from collections import defaultdict
 
@@ -47,7 +48,6 @@ class ListGroups(OffsetManagerBase):
     def get_kafka_groups(cls, cluster_config):
         '''Get the group_id of groups committed into Kafka.'''
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        print(kafka_group_reader)
         try:
             kafka_group_reader.read_groups()
             return kafka_group_reader.groups.keys()
@@ -93,6 +93,7 @@ class InvalidMessageException(Exception):
 class KafkaGroupReader:
 
     def __init__(self, kafka_config):
+        self.log = logging.getLogger(__name__)
         self.kafka_config = kafka_config
         self.config = KafkaConsumerConfig(
             'offset_monitoring_consumer',
@@ -105,22 +106,23 @@ class KafkaGroupReader:
         self.kafka_groups = defaultdict(set)
 
     def read_groups(self):
+        self.log.info("Kafka consumer running")
         self.consumer = KafkaConsumerGroup(
             [CONSUMER_OFFSET_TOPIC],
             self.config,
         )
         with self.consumer:
             self.log.info("Consumer ready")
-            while not self.terminate.is_set():
+            while True:
                 try:
                     message = self.consumer.next()
                 except ConsumerTimeout:
-                    continue
+                    break
                 except (
-                        FailedPayloadsError,
-                        KafkaUnavailableError,
-                        LeaderNotAvailableError,
-                        NotLeaderForPartitionError,
+                    FailedPayloadsError,
+                    KafkaUnavailableError,
+                    LeaderNotAvailableError,
+                    NotLeaderForPartitionError,
                 ) as e:
                     self.log.warning("Got %s, retrying", e.__class__.__name__)
                 self.process_consumer_offset_message(message)
