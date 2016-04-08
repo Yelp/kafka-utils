@@ -21,6 +21,9 @@ from .offset_manager import OffsetManagerBase
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
+CONSUMER_OFFSET_TOPIC = '__consumer_offsets'
+
+
 class ListGroups(OffsetManagerBase):
 
     @classmethod
@@ -75,15 +78,12 @@ class ListGroups(OffsetManagerBase):
     def run(cls, args, cluster_config):
         zk_groups = cls.get_zookeeper_groups(cluster_config)
         kafka_groups = cls.get_kafka_groups(cluster_config)
-        groups = []
+        groups = set()
         if zk_groups:
-            groups += zk_groups
+            groups.update(zk_groups)
         if kafka_groups:
-            groups += kafka_groups
+            groups.update(kafka_groups)
         cls.print_groups(groups, cluster_config)
-
-
-CONSUMER_OFFSET_TOPIC = '__consumer_offsets'
 
 
 class InvalidMessageException(Exception):
@@ -161,4 +161,4 @@ class KafkaGroupReader:
         """Return a dictionary of group and topics in the format:
             {'group_name': ['topic1', 'topic2', ...] ...}
         """
-        return self.kafka_groups.copy()
+        return self.kafka_groups
