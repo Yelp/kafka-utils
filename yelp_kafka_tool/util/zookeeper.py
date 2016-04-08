@@ -333,6 +333,17 @@ class ZK:
         )
         return self.get_children(path)
 
+    def get_cluster_assignment(self):
+        """Fetch the cluster layout in form of assignment from zookeeper"""
+        plan = self.get_cluster_plan()
+        assignment = {}
+        for elem in plan['partitions']:
+            assignment[
+                (elem['topic'], elem['partition'])
+            ] = elem['replicas']
+
+        return assignment
+
     def create(
         self,
         path,
