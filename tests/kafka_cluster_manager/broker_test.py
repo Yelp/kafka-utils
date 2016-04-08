@@ -23,13 +23,13 @@ class TestBroker(object):
         assert broker.partitions == set()
 
     def test_partitions(self):
-        broker = Broker('test-broker', set([sentinel.p1, sentinel.p2]))
+        broker = Broker('test-broker', partitions=set([sentinel.p1, sentinel.p2]))
 
         assert broker.partitions == set([sentinel.p1, sentinel.p2])
 
     def test_remove_partition(self, partition):
         p1 = partition
-        b1 = Broker('test-broker', set([p1]))
+        b1 = Broker('test-broker', partitions=set([p1]))
         p1.add_replica(b1)
 
         # Remove partition
@@ -39,7 +39,7 @@ class TestBroker(object):
         assert b1 not in p1.replicas
 
     def test_add_partition(self):
-        broker = Broker('test-broker', set([sentinel.p1]))
+        broker = Broker('test-broker', partitions=set([sentinel.p1]))
         p2 = Mock(spec=Partition, topic=sentinel.t1, replicas=[])
         broker.add_partition(p2)
 
@@ -52,7 +52,7 @@ class TestBroker(object):
             Mock(spec=Partition, topic=sentinel.t1),
             Mock(spec=Partition, topic=sentinel.t2),
         ])
-        broker = Broker('test-broker', partitions)
+        broker = Broker('test-broker', partition=partitions)
 
         assert broker.topics == set([sentinel.t1, sentinel.t2])
 
@@ -63,14 +63,14 @@ class TestBroker(object):
             Mock(spec=Partition, topic=t1, replicas=sentinel.r1),
             Mock(spec=Partition, topic=sentinel.t2, replicas=sentinel.r1),
         ])
-        broker = Broker('test-broker', partitions)
+        broker = Broker('test-broker', partitions=partitions)
 
         assert broker.count_partitions(t1) == 2
         assert broker.count_partitions(sentinel.t3) == 0
 
     def test_move_partition(self, partition):
         victim_partition = partition
-        source_broker = Broker('b1', set([victim_partition]))
+        source_broker = Broker('b1', partitions=set([victim_partition]))
         victim_partition.add_replica(source_broker)
         dest_broker = Broker('b2')
 
@@ -87,7 +87,7 @@ class TestBroker(object):
 
     def test_count_preferred_replica(self, partition):
         p1 = partition
-        b1 = Broker('test-broker', set([p1]))
+        b1 = Broker('test-broker', partitions=set([p1]))
         p1.add_replica(b1)
         p2 = Mock(spec=Partition, topic=sentinel.t1, replicas=[sentinel.b2])
         b1.add_partition(p2)

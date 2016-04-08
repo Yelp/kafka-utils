@@ -247,75 +247,111 @@ class TestReplicationGroup(object):
         with pytest.raises(ValueError):
             rg._elect_dest_broker(under_loaded_brokers, victim_partition)
 
-    def test_select_under_loaded_brokers(self):
-        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-        b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
-        b3 = Broker('b3', set([sentinel.p5]))
+    def test_select_under_loaded_brokers(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        p14 = create_partition('t1', 4)
+        b1 = create_broker('b1', [p10, p11, p12])
+        b2 = create_broker('b2', [p13, p14])
+        b3 = create_broker('b3', [p14])
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
-        victim_partition = sentinel.p7
+        victim_partition = create_partition('t1', 5)
         actual = rg._select_under_loaded_brokers(victim_partition)
-        # Since sentinel.p7 is not present in b1, b2 and b3, they should be
+        # Since victim_partition is not present in b1, b2 and b3, they should be
         # returned in increasing order of partition-count
         assert actual == [b3, b2, b1]
 
-    def test_select_under_loaded_brokers_existing_partition(self):
-        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-        b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
-        b3 = Broker('b3', set([sentinel.p5]))
+    def test_select_under_loaded_brokers_existing_partition(
+        self,
+        create_partition,
+    ):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        p14 = create_partition('t1', 4)
+        b1 = create_broker('b1', [p10, p11, p12])
+        b2 = create_broker('b2', [p13, p14])
+        b3 = create_broker('b3', [p14])
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
         # under-loaded-brokers SHOULD NOT contain victim-partition sentinel.p4
         # brokers are returned in increasing order of partition-count
-        victim_partition = sentinel.p4
+        victim_partition = p13
         actual = rg._select_under_loaded_brokers(victim_partition)
         assert actual == [b3, b1]
 
-    def test_select_under_loaded_brokers_no_available_brokers(self):
-        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-        b2 = Broker('b2', set([sentinel.p1, sentinel.p5]))
+    def test_select_under_loaded_brokers_no_available_brokers(
+        self,
+        create_partition,
+    ):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        b1 = create_broker('b1', [p10, p11, p12])
+        b2 = create_broker('b2', [p10, p13])
         rg = ReplicationGroup('test_rg', set([b1, b2]))
 
-        # Partition p1 is already in both brokers of the replication group.
-        victim_partition = sentinel.p1
+        # Partition p01 is already in both brokers of the replication group.
+        victim_partition = p10
         actual = rg._select_under_loaded_brokers(victim_partition)
         assert actual == []
 
-    def test_select_over_loaded_brokers(self):
-        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-        b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
-        b3 = Broker('b3', set([sentinel.p5]))
+    def test_select_over_loaded_brokers(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        p14 = create_partition('t1', 4)
+        b1 = create_broker('b1', [p10, p11, p12])
+        b2 = create_broker('b2', [p13, p14])
+        b3 = create_broker('b3', [p14])
 
         # Creating replication-group with above brokers
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
-        # over-loaded-brokers should contain victim-partition p5
+        # over-loaded-brokers should contain victim-partition p14
         # Broker-list returned in sorted order of decreasing partition-count
-        victim_partition = sentinel.p5
+        victim_partition = p14
         actual = rg._select_over_loaded_brokers(victim_partition)
         assert actual == [b2, b3]
 
-    def test_select_over_loaded_brokers_missing_partition(self):
-        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-        b2 = Broker('b2', set([sentinel.p4, sentinel.p5]))
-        b3 = Broker('b3', set([sentinel.p5]))
+    def test_select_over_loaded_brokers_missing_partition(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        p14 = create_partition('t1', 4)
+        b1 = create_broker('b1', [p10, p11, p12])
+        b2 = create_broker('b2', [p13, p14])
+        b3 = create_broker('b3', [p14])
 
         # Creating replication-group with above brokers
         rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
 
-        # p6 does not exist in any of the brokers
-        victim_partition = sentinel.p6
+        # p15 does not exist in any of the brokers
+        victim_partition = create_partition('t1', 5)
         actual = rg._select_over_loaded_brokers(victim_partition)
         assert actual == []
 
-    def test_count_replica(self):
-        b1 = Broker('b1', set([sentinel.p1, sentinel.p2, sentinel.p3]))
-        b2 = Broker('b2', set([sentinel.p1, sentinel.p5]))
+    def test_count_replica(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        b1 = create_broker('b1', [p10, p11, p12])
+        b2 = create_broker('b2', [p10, p13])
         rg = ReplicationGroup('test_rg', set([b1, b2]))
 
-        assert rg.count_replica(sentinel.p1) == 2
-        assert rg.count_replica(sentinel.p5) == 1
-        assert rg.count_replica(sentinel.p6) == 0
+        assert rg.count_replica(p10) == 2
+        assert rg.count_replica(p11) == 1
+        assert rg.count_replica(p12) == 1
+        assert rg.count_replica(p13) == 1
+        assert rg.count_replica(create_partition('t1', 4)) == 0
 
     def test__select_broker_pair(self, create_partition):
         # Tests whether source and destination broker are best match

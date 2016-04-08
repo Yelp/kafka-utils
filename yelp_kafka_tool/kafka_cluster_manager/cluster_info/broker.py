@@ -9,24 +9,16 @@ class Broker(object):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, id, partitions=None):
+    def __init__(self, id, metadata=None, partitions=None):
         self._id = id
+        self._metadata = metadata
         self._partitions = partitions or set()
         self._decommissioned = False
         self._replication_group = None
 
-    def get_hostname(self, zk):
-        """Get hostname of broker from zookeeper."""
-        try:
-            hostname = zk.get_brokers(self._id)
-            result = hostname[self._id]['host']
-        except KeyError:
-            self.log.warning(
-                'Unknown host for broker {broker}. Returning as'
-                ' localhost'.format(broker=self._id)
-            )
-            result = 'localhost'
-        return result
+    @property
+    def metadata(self):
+        return self._metadata
 
     def mark_decommissioned(self):
         self._decommissioned = True
