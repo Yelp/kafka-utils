@@ -37,20 +37,16 @@ class Topic(object):
         return self._partitions
 
     def add_partition(self, partition):
-        replication_factor_partition = len(partition.replicas)
-        if self._replication_factor == 0:
-            self._replication_factor = replication_factor_partition
-        else:
-            if (self._replication_factor != replication_factor_partition):
-                self.log.warning(
-                    'Replication factor for topic {topic} is not '
-                    'consistent for its partitions. Replication-factor of topic'
-                    ' is {repl_factor1} , Replication-factor of partition with '
-                    'id:{partition} is {repl_factor2}'.format(
-                        topic=self._id,
-                        repl_factor1=self._replication_factor,
-                        partition=partition.partition_id,
-                        repl_factor2=replication_factor_partition,
-                    )
-                )
+        if self._replication_factor != len(partition.replicas):
+            msg = 'Replication factor for topic {topic} is not '
+            'consistent for its partitions. Replication-factor of topic'
+            ' is {repl_factor1} , Replication-factor of partition with '
+            'id:{partition} is {repl_factor2}'.format(
+                topic=self._id,
+                repl_factor1=self._replication_factor,
+                partition=partition.partition_id,
+                repl_factor2=len(partition.replicas),
+            )
+            self.log.error(msg)
+            raise ValueError(msg)
         self._partitions.add(partition)

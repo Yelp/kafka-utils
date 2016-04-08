@@ -20,7 +20,6 @@ from .rg import ReplicationGroup
 from .topic import Topic
 from .util import compute_optimum
 from .util import separate_groups
-from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 
 
 class ClusterTopology(object):
@@ -30,50 +29,32 @@ class ClusterTopology(object):
     replication group (alias rg), broker, topic and partition.
     """
 
-    def __init__(self, zk):
-        self._name = zk.cluster_config.name
-        self._zk = zk
+    def __init__(self, assignment, brokers):
         self.log = logging.getLogger(self.__class__.__name__)
-        # Getting Initial assignment
-        broker_ids = [
-            int(broker) for broker in self._zk.get_brokers().iterkeys()
-        ]
-        topic_ids = sorted(self._zk.get_topics(names_only=True))
-        self._fetch_initial_assignment()
-        # Sequence of building objects
-        self._build_topics(topic_ids)
-        self._build_brokers(broker_ids)
+        self._build_brokers(brokers)
+        self._build_partitions(assignment)
         self._build_replication_groups()
-        self._build_partitions()
-        self.log.debug('Cluster-topology object created.')
-        self.log.info(
+        self.log.debug(
             'Total partitions in cluster {partitions}'.format(
                 partitions=len(self.partitions),
             ),
         )
-        self.log.info(
+        self.log.debug(
             'Total replication-groups in cluster {rgs}'.format(
                 rgs=len(self.rgs),
             ),
         )
-        self.log.info(
+        self.log.debug(
             'Total brokers in cluster {brokers}'.format(
                 brokers=len(self.brokers),
             ),
         )
 
-    def _build_topics(self, topic_ids):
-        """List of topic objects from topic-ids."""
-        # Fetch topic list from zookeeper
-        self.topics = {}
-        for topic_id in topic_ids:
-            self.topics[topic_id] = Topic(topic_id)
-
-    def _build_brokers(self, broker_ids):
+    def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
         self.brokers = {}
-        for broker_id in broker_ids:
-            self.brokers[broker_id] = Broker(broker_id)
+        for broker_id, metadata in brokers.iteritems():
+            self.brokers[broker_id] = Broker(broker_id, metadata)
 
     def _build_replication_groups(self):
         """Build replication-group objects using the given assignment."""
@@ -85,49 +66,38 @@ class ClusterTopology(object):
             self.rgs[rg_id].add_broker(broker)
             broker.replication_group = self.rgs[rg_id]
 
-    def _build_partitions(self):
+    def _build_partitions(self, assignment):
         """Builds all partition objects and update corresponding broker and
         topic objects.
         """
         self.partitions = {}
-        for partition_name, replica_ids in self._initial_assignment.iteritems():
+        for partition_name, replica_ids in assignment.iteritems():
             # Get topic
             topic_id = partition_name[0]
             partition_id = partition_name[1]
-            topic = self.topics[topic_id]
+            topic = self.topics.setdefault(
+                topic_id,
+                Topic(topic_id, replication_factor=len(replica_ids))
+            )
 
             # Creating partition object
             partition = Partition(topic, partition_id)
             self.partitions[partition_name] = partition
+            topic.add_partition(partition)
 
             # Updating corresponding broker objects
             for broker_id in replica_ids:
                 # Check if broker-id is present in current active brokers
-                if broker_id in self.brokers.keys():
-                    broker = self.brokers[broker_id]
-                    broker.add_partition(partition)
-                else:
-                    error_msg = 'Broker {b_id} in replicas {replicas} for partition '\
-                        '{partition} not present in active brokers {active_b}.'\
-                        .format(
-                            b_id=broker_id,
-                            replicas=replica_ids,
-                            partition=partition_name,
-                            active_b=self.brokers.keys(),
-                        ),
-                    self.log.exception(error_msg)
-                    raise ValueError(error_msg)
-            # Updating corresponding topic object. Should be done in end since
-            # replication-factor is updated once partition is updated.
-            topic.add_partition(partition)
-
-    def _fetch_initial_assignment(self):
-        """Fetch initial assignment from zookeeper.
-
-        Assignment is ordered by partition name tuple.
-        """
-        kafka = KafkaInterface()
-        self._initial_assignment = kafka.get_cluster_assignment(self._zk)
+                if broker_id not in self.brokers.keys():
+                    self.warning(
+                        "Broker %s containing partition %s is not in "
+                        "the active brokers.",
+                        broker_id,
+                        partition,
+                    )
+                self.brokers.setdefault(broker_id, Broker(broker_id))
+                broker = self.brokers[broker_id]
+                broker.add_partition(partition)
 
     def _get_replication_group_id(self, broker):
         """Fetch replication-group to broker map from zookeeper."""
@@ -148,10 +118,6 @@ class ClusterTopology(object):
             self.log.exception(error_msg)
             raise ValueError(error_msg)
         return rg_name
-
-    @property
-    def initial_assignment(self):
-        return self._initial_assignment
 
     @property
     def assignment(self):
