@@ -6,7 +6,8 @@ Feature: kafka_consumer_manager
       then the groups will be listed
 
   Scenario: Calling the offset_get command
-     Given we have an existing consumer group and topic in the kafka cluster
+     Given we have an existing kafka cluster with a topic
+      when we consume some number of messages from the topic
       when we call the offset_get command
       then the correct offset will be shown
 
@@ -14,3 +15,9 @@ Feature: kafka_consumer_manager
      Given we have a kafka cluster and a json offsets file
       when we call the offset_restore command with the offsets file
       then the correct offsets will be commited
+
+  Scenario: Calling the offset_save command
+     Given we have an existing kafka cluster with a topic
+      when we consume some number of messages from the topic
+      when we call the offset_save command with an offsets file
+      then the correct offsets will be saved into the given file
