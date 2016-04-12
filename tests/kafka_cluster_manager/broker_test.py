@@ -52,7 +52,7 @@ class TestBroker(object):
             Mock(spec=Partition, topic=sentinel.t1),
             Mock(spec=Partition, topic=sentinel.t2),
         ])
-        broker = Broker('test-broker', partition=partitions)
+        broker = Broker('test-broker', partitions=partitions)
 
         assert broker.topics == set([sentinel.t1, sentinel.t2])
 
@@ -113,7 +113,7 @@ class TestBroker(object):
         assert actual in (p10, p11)
 
     def test_get_preferred_partition_no_preferred(self):
-        t1 = Topic('t1', 2)
+        t1 = Topic('t1', replication_factor=2)
         p10 = create_and_attach_partition(t1, 0)
         p11 = create_and_attach_partition(t1, 1)
         source = create_broker('b1', [p10, p11])
