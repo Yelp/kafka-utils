@@ -54,3 +54,9 @@ class Topic(object):
                     )
                 )
         self._partitions.add(partition)
+
+    def __str__(self):
+        return "{0}".format(self._id)
+
+    def __repr__(self):
+        return "{0}".format(self)

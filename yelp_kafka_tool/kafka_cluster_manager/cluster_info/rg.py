@@ -206,14 +206,15 @@ class ReplicationGroup(object):
             )
             return
 
-        sibling_distance = self.generate_sibling_distance(
-            over_loaded_brokers,
-            under_loaded_brokers,
-        )
+        sibling_distance = self.generate_sibling_distance()
         while under_loaded_brokers and over_loaded_brokers:
             # Get best-fit source-broker, destination-broker and partition
-            (broker_source, broker_destination, victim_partition), sibling_distance = \
-                self._get_target_brokers(over_loaded_brokers, under_loaded_brokers, sibling_distance)
+            broker_source, broker_destination, victim_partition = \
+                self._get_target_brokers(
+                    over_loaded_brokers,
+                    under_loaded_brokers,
+                    sibling_distance,
+                )
             # No valid source or target brokers found
             if broker_source and broker_destination:
                 # Move partition
@@ -227,6 +228,11 @@ class ReplicationGroup(object):
                     ),
                 )
                 broker_source.move_partition(victim_partition, broker_destination)
+                sibling_distance = self.update_sibling_distance(
+                    sibling_distance,
+                    broker_destination,
+                    victim_partition,
+                )
             else:
                 # Brokers are balanced or could not be balanced further
                 break
@@ -300,9 +306,9 @@ class ReplicationGroup(object):
                     # If relatively-unbalanced then all brokers in destination
                     # will be thereafter, return from here.
                     break
-        return target, self.update_sibling_distance(sibling_distance, target[1], target[2])
+        return target
 
-    def generate_sibling_distance(self, over_loaded_brokers, under_loaded_brokers):
+    def generate_sibling_distance(self):
         """Generate a dict containing the distance computed as difference in
         in number of partitions of each topic from under_loaded_brokers
         to over_loaded_brokers.
@@ -313,12 +319,13 @@ class ReplicationGroup(object):
         returns: dict {dest: {source: {topic: distance}}}
         """
         sibling_distance = defaultdict(lambda: defaultdict(dict))
-        for source in over_loaded_brokers:
-            for dest in under_loaded_brokers:
-                for topic in source.topics:
-                    sibling_distance[dest][source][topic] = \
-                        dest.count_partitions(topic) - \
-                        source.count_partitions(topic)
+        for source in self.brokers:
+            for dest in self.brokers:
+                if source != dest:
+                    for topic in source.topics:
+                        sibling_distance[dest][source][topic] = \
+                            dest.count_partitions(topic) - \
+                            source.count_partitions(topic)
         return sibling_distance
 
     def update_sibling_distance(self, sibling_distance, dest, topic):
@@ -378,3 +385,9 @@ class ReplicationGroup(object):
             key=lambda broker: len(broker.partitions),
         )
         return (source_broker, dest_broker)
+
+    def __str__(self):
+        return "{0}".format(self._id)
+
+    def __repr__(self):
+        return "{0}".format(self)
