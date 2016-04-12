@@ -31,6 +31,7 @@ class ClusterTopology(object):
 
     def __init__(self, assignment, brokers):
         self.log = logging.getLogger(self.__class__.__name__)
+        self.topics = {}
         self._build_brokers(brokers)
         self._build_partitions(assignment)
         self._build_replication_groups()
@@ -52,13 +53,17 @@ class ClusterTopology(object):
 
     def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
+        import ipdb
+        ipdb.set_trace()
         self.brokers = {}
         for broker_id, metadata in brokers.iteritems():
-            self.brokers[broker_id] = Broker(broker_id, metadata)
+            self.brokers[broker_id] = Broker(broker_id, metadata=metadata)
 
     def _build_replication_groups(self):
         """Build replication-group objects using the given assignment."""
         self.rgs = {}
+        import ipdb
+        ipdb.set_trace()
         for broker in self.brokers.itervalues():
             rg_id = self._get_replication_group_id(broker)
             if rg_id not in self.rgs:
@@ -88,8 +93,10 @@ class ClusterTopology(object):
             # Updating corresponding broker objects
             for broker_id in replica_ids:
                 # Check if broker-id is present in current active brokers
+                import ipdb
+                ipdb.set_trace()
                 if broker_id not in self.brokers.keys():
-                    self.warning(
+                    self.log.warning(
                         "Broker %s containing partition %s is not in "
                         "the active brokers.",
                         broker_id,
@@ -102,7 +109,7 @@ class ClusterTopology(object):
     def _get_replication_group_id(self, broker):
         """Fetch replication-group to broker map from zookeeper."""
         try:
-            hostname = broker.get_hostname(self._zk)
+            hostname = broker.metadata['hostname']
             if 'localhost' in hostname:
                 self.log.warning(
                     "Setting replication-group as localhost for broker %s",
