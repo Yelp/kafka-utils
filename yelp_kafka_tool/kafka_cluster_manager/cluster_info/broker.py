@@ -261,4 +261,7 @@ class Broker(object):
                             break
 
     def __str__(self):
-        return "Broker {id}".format(id=self._id)
+        return "{id}".format(id=self._id)
+
+    def __repr__(self):
+        return "{0}".format(self)

@@ -29,10 +29,12 @@ def rg_unbalanced(create_partition):
     p21 = create_partition('topic2', 1)
     p30 = create_partition('topic3', 0)
     p40 = create_partition('topic4', 0, replication_factor=2)
-    b1 = create_broker('b1', [p10, p11, p40])
-    b2 = create_broker('b2', [p12, p13, p20, p21, p30])
+    p50 = create_partition('topic5', 0)
+    b1 = create_broker('b1', [p10, p12, p13, p21])
+    b2 = create_broker('b2', [p11, p20, p30, p40])
     b3 = create_broker('b3', [p40])
-    return ReplicationGroup('test_rg', set([b1, b2, b3]))
+    b4 = create_broker('b4', [p50])
+    return ReplicationGroup('test_rg', set([b1, b2, b3, b4]))
 
 
 @pytest.fixture
@@ -318,7 +320,6 @@ class TestReplicationGroup(object):
         assert rg.count_replica(sentinel.p6) == 0
 
     def test__select_broker_pair(self, create_partition):
-        # Tests whether source and destination broker are best match
         p10 = create_partition('t1', 0)
         p11 = create_partition('t1', 1)
         p20 = create_partition('t2', 0)
@@ -381,10 +382,10 @@ class TestReplicationGroup(object):
 
         over_loaded = [b1]
         under_loaded = [b2]
-        target, _ = rg._get_target_brokers(
+        target = rg._get_target_brokers(
             over_loaded,
             under_loaded,
-            rg.generate_sibling_distance(over_loaded, under_loaded),
+            rg.generate_sibling_distance(),
         )
 
         # p30 is the best fit because topic3 doesn't have any partition in
@@ -405,10 +406,10 @@ class TestReplicationGroup(object):
         over_loaded = [b1]
         under_loaded = [b2, b3]
 
-        target, _ = rg._get_target_brokers(
+        target = rg._get_target_brokers(
             over_loaded,
             under_loaded,
-            rg.generate_sibling_distance(over_loaded, under_loaded),
+            rg.generate_sibling_distance(),
         )
 
         # b3 is the best broker fit because of number of partition
@@ -432,10 +433,10 @@ class TestReplicationGroup(object):
         over_loaded = [b1, b2]
         under_loaded = [b3]
 
-        target, _ = rg._get_target_brokers(
+        target = rg._get_target_brokers(
             over_loaded,
             under_loaded,
-            rg.generate_sibling_distance(over_loaded, under_loaded),
+            rg.generate_sibling_distance(),
         )
 
         # b3 is the best broker fit because of number of partition
@@ -459,14 +460,13 @@ class TestReplicationGroup(object):
         b2 = create_broker('b2', [p12, p21, p22])
         b3 = create_broker('b3', [p10, p11, p22])
         rg = ReplicationGroup('rg', set([b1, b2, b3]))
-        over_loaded = [b1]
-        under_loaded = [b2, b3]
 
         expected = {
-            b2: {b1: {t1: -1, t2: 0, t3: -2}},
-            b3: {b1: {t1: 0, t2: -1, t3: -2}},
+            b1: {b2: {t1: 1, t2: 0}, b3: {t1: 0, t2: 1}},
+            b2: {b1: {t1: -1, t2: 0, t3: -2}, b3: {t1: -1, t2: 1}},
+            b3: {b1: {t1: 0, t2: -1, t3: -2}, b2: {t1: 1, t2: -1}},
         }
-        actual = rg.generate_sibling_distance(over_loaded, under_loaded)
+        actual = rg.generate_sibling_distance()
 
         assert dict(actual) == expected
 
