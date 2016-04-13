@@ -59,22 +59,20 @@ class TestListGroups(object):
             }
 
             m = mock_kafka_reader.return_value
-            p = mock.PropertyMock(return_value=expected_groups)
-            type(m).groups = p
+            m.read_groups.return_value = expected_groups
 
             cluster_config = mock.Mock(zookeeper='some_ip', type='some_cluster_type')
             cluster_config.configure_mock(name='some_cluster_name')
 
             result = ListGroups.get_kafka_groups(cluster_config)
             assert result == expected_groups.keys()
-            assert p.call_count == 1
+            assert m.read_groups.call_count == 1
 
     @mock.patch("yelp_kafka_tool.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_get_kafka_groups_error(self, mock_print):
         with self.mock_kafka_info() as (_, mock_kafka_reader):
             m = mock_kafka_reader.return_value
-            p = mock.PropertyMock(side_effect=Exception("Boom!"))
-            type(m).groups = p
+            m.read_groups.side_effect = Exception("Boom!")
 
             cluster_config = mock.Mock(zookeeper='some_ip', type='some_cluster_type')
             cluster_config.configure_mock(name='some_cluster_name')

@@ -50,8 +50,7 @@ class ListGroups(OffsetManagerBase):
         '''Get the group_id of groups committed into Kafka.'''
         kafka_group_reader = KafkaGroupReader(cluster_config)
         try:
-            kafka_group_reader.read_groups()
-            return kafka_group_reader.groups.keys()
+            return kafka_group_reader.read_groups().keys()
         except:
             print(
                 "Error: No consumer offsets topic found in Kafka",
@@ -124,6 +123,7 @@ class KafkaGroupReader:
             ) as e:
                 self.log.warning("Got %s, retrying", e.__class__.__name__)
             self.process_consumer_offset_message(message)
+        return self.kafka_groups
 
     def parse_consumer_offset_message(self, message):
         key = bytearray(message.key)
@@ -165,13 +165,5 @@ class KafkaGroupReader:
         return self.watermarks[CONSUMER_OFFSET_TOPIC][partition].highmark
 
     def finished(self):
-        num_partitions = len(self.watermarks[CONSUMER_OFFSET_TOPIC])
-        num_finished = len(self.finished_partitions)
-        return num_finished >= num_partitions
-
-    @property
-    def groups(self):
-        """Return a dictionary of group and topics in the format:
-            {'group_name': ['topic1', 'topic2', ...] ...}
-        """
-        return self.kafka_groups
+        return len(self.finished_partitions) >= \
+            len(self.watermarks[CONSUMER_OFFSET_TOPIC])
