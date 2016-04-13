@@ -25,8 +25,7 @@ class TestListGroups(object):
             yield mock_ZK, mock_kafka_reader
 
     def test_get_zookeeper_groups(self):
-        with self.mock_kafka_info(
-        ) as (mock_ZK, _):
+        with self.mock_kafka_info() as (mock_ZK, _):
             expected_groups = ['group1', 'group2', 'group3']
 
             obj = mock_ZK.return_value.__enter__.return_value
@@ -40,8 +39,7 @@ class TestListGroups(object):
 
     @mock.patch("yelp_kafka_tool.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_get_zookeeper_groups_error(self, mock_print):
-        with self.mock_kafka_info(
-        ) as (mock_ZK, _):
+        with self.mock_kafka_info() as (mock_ZK, _):
             obj = mock_ZK.return_value.__enter__.return_value
             obj.__exit__.return_value = False
             cluster_config = mock.Mock(zookeeper='some_ip')
@@ -54,8 +52,7 @@ class TestListGroups(object):
             )
 
     def test_get_kafka_groups(self):
-        with self.mock_kafka_info(
-        ) as (_, mock_kafka_reader):
+        with self.mock_kafka_info() as (_, mock_kafka_reader):
             expected_groups = {
                 'group_name': ['topic1', 'topic2'],
                 'group2': ['topic3', 'topic4']
@@ -74,8 +71,7 @@ class TestListGroups(object):
 
     @mock.patch("yelp_kafka_tool.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_get_kafka_groups_error(self, mock_print):
-        with self.mock_kafka_info(
-        ) as (_, mock_kafka_reader):
+        with self.mock_kafka_info() as (_, mock_kafka_reader):
             m = mock_kafka_reader.return_value
             p = mock.PropertyMock(side_effect=Exception("Boom!"))
             type(m).groups = p
