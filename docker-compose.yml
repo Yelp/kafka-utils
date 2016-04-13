@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  itest:
+    build: docker/itest_${KAFKA_VERSION}
+    links:
+      - kafka
+      - zookeeper
+    volumes:
+      - .:/work
+    command: echo "dummy command"
+
+  kafka:
+    build: docker/kafka_${KAFKA_VERSION}
+    expose:
+      - "9092"
+    links:
+      - zookeeper
+
+  zookeeper:
+    build: docker/zookeeper
+    expose:
+      - "2181"
