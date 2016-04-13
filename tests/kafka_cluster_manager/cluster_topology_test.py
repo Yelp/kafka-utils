@@ -1,21 +1,25 @@
-import contextlib
 from collections import Counter
 from collections import OrderedDict
 
-from mock import patch
+import mock
 
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import (
-    ClusterTopology,
-)
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import calculate_partition_movement
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_leader_imbalance_stats
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import get_replication_group_imbalance_stats
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .stats import calculate_partition_movement
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .stats import get_leader_imbalance_stats
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .stats import get_replication_group_imbalance_stats
 
 
 class TestClusterToplogy(object):
     # replication-group to broker map
     # rg1: 0, 1, 4; rg2: 2, 3; rg3: 5; rg4: 6;
-    broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3', 6: 'rg4'}
+    broker_rg = {
+        '0': 'rg1', '1': 'rg1', '2': 'rg2', '3': 'rg2',
+        '4': 'rg1', '5': 'rg3', '6': 'rg4',
+    }
     topic_ids = ['T0', 'T1', 'T2', 'T3']
     brokers = {
         '0': {'host': 'host1'},
@@ -39,25 +43,15 @@ class TestClusterToplogy(object):
     # rg-balanced-partitions:   T0-0, T1-0, T3-0, T2-0
     _initial_assignment = OrderedDict(
         [
-            ((u'T0', 0), [1, 2]),
-            ((u'T0', 1), [2, 3]),
-            ((u'T1', 0), [0, 1, 2, 3]),
-            ((u'T1', 1), [0, 1, 2, 4]),
-            ((u'T2', 0), [2]),
-            ((u'T3', 0), [0, 1, 2]),
-            ((u'T3', 1), [0, 1, 4]),
+            ((u'T0', 0), ['1', '2']),
+            ((u'T0', 1), ['2', '3']),
+            ((u'T1', 0), ['0', '1', '2', '3']),
+            ((u'T1', 1), ['0', '1', '2', '4']),
+            ((u'T2', 0), ['2']),
+            ((u'T3', 0), ['0', '1', '2']),
+            ((u'T3', 1), ['0', '1', '4']),
         ]
     )
-
-    @contextlib.contextmanager
-    def mock_get_replication_group_id(self):
-        with patch.object(
-            ClusterTopology,
-            "_get_replication_group_id",
-            spec=ClusterTopology._get_replication_group_id,
-            side_effect=self.get_replication_group_id,
-        ) as mock_get_replication_group_id:
-            yield mock_get_replication_group_id
 
     def get_replication_group_id(self, broker):
         return self.broker_rg[broker.id]
@@ -68,7 +62,7 @@ class TestClusterToplogy(object):
             assignment = self._initial_assignment
         if not brokers:
             brokers = self.brokers
-        return ClusterTopology(assignment, brokers)
+        return ClusterTopology(assignment, brokers, self.get_replication_group_id)
 
     def test_rebalance_replication_groups(self):
         ct = self.build_cluster_topology()
@@ -92,10 +86,10 @@ class TestClusterToplogy(object):
         # Replication-group is already balanced
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [0, 2]),
-                ((u'T0', 1), [0, 3]),
-                ((u'T2', 0), [2]),
-                ((u'T3', 0), [0, 1, 2]),
+                ((u'T0', 0), ['0', '2']),
+                ((u'T0', 1), ['0', '3']),
+                ((u'T2', 0), ['2']),
+                ((u'T3', 0), ['0', '1', '2']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(5))
@@ -124,13 +118,6 @@ class TestClusterToplogy(object):
         assert partition_replicas_cnt[('T3', 0)] == 3
         assert partition_replicas_cnt[('T3', 1)] == 3
 
-    def test_assignment(self):
-        ct = self.build_cluster_topology()
-        # Verify if the returned assignment is valid
-        assert ct.assignment == self._initial_assignment
-        # Assert initial-assignment
-        assert ct.initial_assignment == self._initial_assignment
-
     def test_elect_source_replication_group(self):
         # Sample assignment with 3 replication groups
         # with replica-count as as per map :-
@@ -142,7 +129,7 @@ class TestClusterToplogy(object):
         # rg4:      (6) = 1
         # rg1 and rg2 are over-replicated and rg3 being under-replicated
         # source-replication-group should be rg1 having the highest replicas
-        p1 = ((u'T0', 0), [0, 1, 2, 3, 4, 5, 6])
+        p1 = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
         assignment = OrderedDict([p1])
         ct = self.build_cluster_topology(assignment, self.srange(7))
         # Case-1: rg's have only 1 unique max replica count
@@ -165,7 +152,7 @@ class TestClusterToplogy(object):
         # rg3: (5) = 1
         # rg1 and rg2 are over-replicated and rg3 being under-replicated
         # source-replication-group should be rg1 having the highest replicas
-        p1_info = ((u'T0', 0), [0, 1, 2, 3, 4, 5, 6])
+        p1_info = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
         assignment = OrderedDict([p1_info])
         ct = self.build_cluster_topology(assignment, self.srange(7))
         p1 = ct.partitions[p1_info[0]]
@@ -301,7 +288,7 @@ class TestClusterToplogy(object):
 
     def srange(self, n):
         """Return list of integers as string from 0 to n-1."""
-        return [str(x) for x in range(n)]
+        return {str(x): {"host": "host%s" % x} for x in range(n)}
 
     def assert_valid(self, new_assignment, orig_assignment, orig_brokers):
         """Assert if new-assignment is valid based on given assignment.
@@ -328,9 +315,9 @@ class TestClusterToplogy(object):
         # opt-count: 3/3 = 1, extra-count: 3%3 = 0
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [1, 2]),
-                ((u'T0', 1), [2, 0]),
-                ((u'T1', 0), [0, 2]),
+                ((u'T0', 0), ['1', '2']),
+                ((u'T0', 1), ['2', '0']),
+                ((u'T1', 0), ['0', '2']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -349,8 +336,8 @@ class TestClusterToplogy(object):
         # opt-count: 2/3 = 0, extra-count: 2%3 = 2
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [1, 2]),
-                ((u'T0', 1), [2, 0]),
+                ((u'T0', 0), ['1', '2']),
+                ((u'T0', 1), ['2', '0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -370,9 +357,9 @@ class TestClusterToplogy(object):
         # opt-count: 3/3 = 1, extra-count: 3%3 = 0
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [1, 2]),
-                ((u'T0', 1), [2, 0]),
-                ((u'T1', 0), [1, 0]),
+                ((u'T0', 0), ['1', '2']),
+                ((u'T0', 1), ['2', '0']),
+                ((u'T1', 0), ['1', '0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -387,9 +374,9 @@ class TestClusterToplogy(object):
         # Verify leader-balanced
         assert new_leader_imbal == 0
         # Verify partitions-changed assignment
-        assert new_leaders_per_broker[0] == 1
-        assert new_leaders_per_broker[1] == 1
-        assert new_leaders_per_broker[2] == 1
+        assert new_leaders_per_broker['0'] == 1
+        assert new_leaders_per_broker['1'] == 1
+        assert new_leaders_per_broker['2'] == 1
 
     def test_rebalance_leaders_unbalanced_case2(self):
         # (Broker: leader-count): {0: 2, 1: 1, 2:0}
@@ -397,9 +384,9 @@ class TestClusterToplogy(object):
         # Leader-imbalance-value: 1
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [1, 2]),
-                ((u'T1', 1), [0, 1]),
-                ((u'T1', 0), [0]),
+                ((u'T0', 0), ['1', '2']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T1', 0), ['0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -416,10 +403,10 @@ class TestClusterToplogy(object):
         # imbalanced-broker: 0,2; balanced-brokers: 1,3
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [3, 2]),
-                ((u'T0', 1), [1, 3]),
-                ((u'T1', 1), [0, 1]),
-                ((u'T1', 0), [0]),
+                ((u'T0', 0), ['3', '2']),
+                ((u'T0', 1), ['1', '3']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T1', 0), ['0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(4))
@@ -431,15 +418,15 @@ class TestClusterToplogy(object):
         # Verify that (T0, 1) also swapped even if 1 and 3 were balanced
         # Rebalancing through non-followers
         replica_ids = [b.id for b in ct.partitions[('T0', 1)].replicas]
-        assert replica_ids == [3, 1]
+        assert replica_ids == ['3', '1']
 
     def test_rebalance_leaders_unbalanced_case2b(self):
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [3, 2]),
-                ((u'T1', 0), [1, 2]),
-                ((u'T1', 1), [0, 1]),
-                ((u'T2', 0), [0]),
+                ((u'T0', 0), ['3', '2']),
+                ((u'T1', 0), ['1', '2']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T2', 0), ['0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(4))
@@ -454,14 +441,14 @@ class TestClusterToplogy(object):
         # Broker-2 requests leadership from multiple brokers (0, 1) once
         assignment = OrderedDict(
             [
-                ((u'T1', 0), [1, 2]),
-                ((u'T1', 1), [0, 1]),
-                ((u'T2', 0), [0]),
-                ((u'T2', 1), [0]),
-                ((u'T3', 0), [3, 2]),
-                ((u'T3', 1), [1, 3]),
-                ((u'T4', 0), [1]),
-                ((u'T4', 2), [3]),
+                ((u'T1', 0), ['1', '2']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T2', 0), ['0']),
+                ((u'T2', 1), ['0']),
+                ((u'T3', 0), ['3', '2']),
+                ((u'T3', 1), ['1', '3']),
+                ((u'T4', 0), ['1']),
+                ((u'T4', 2), ['3']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(4))
@@ -476,12 +463,12 @@ class TestClusterToplogy(object):
         # Broker-2 requests leadership from same broker-1 twice
         assignment = OrderedDict(
             [
-                ((u'T1', 0), [1, 2]),
-                ((u'T1', 1), [0, 1]),
-                ((u'T1', 2), [0]),
-                ((u'T1', 3), [1, 2]),
-                ((u'T1', 4), [0, 1]),
-                ((u'T1', 5), [0]),
+                ((u'T1', 0), ['1', '2']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T1', 2), ['0']),
+                ((u'T1', 3), ['1', '2']),
+                ((u'T1', 4), ['0', '1']),
+                ((u'T1', 5), ['0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -497,12 +484,12 @@ class TestClusterToplogy(object):
         # from multiple brokers (1,4)
         assignment = OrderedDict(
             [
-                ((u'T1', 0), [1, 2]),
-                ((u'T1', 1), [0, 1]),
-                ((u'T2', 0), [0]),
-                ((u'T3', 0), [4, 5]),
-                ((u'T3', 1), [3, 4]),
-                ((u'T4', 0), [3]),
+                ((u'T1', 0), ['1', '2']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T2', 0), ['0']),
+                ((u'T3', 0), ['4', '5']),
+                ((u'T3', 1), ['3', '4']),
+                ((u'T4', 0), ['3']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(6))
@@ -516,9 +503,9 @@ class TestClusterToplogy(object):
         # Imbalanced 0 and 2. No re-balance possible.
         assignment = OrderedDict(
             [
-                ((u'T1', 0), [1, 2]),
-                ((u'T1', 1), [0]),
-                ((u'T2', 0), [0]),
+                ((u'T1', 0), ['1', '2']),
+                ((u'T1', 1), ['0']),
+                ((u'T2', 0), ['0']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -537,11 +524,11 @@ class TestClusterToplogy(object):
         # opt-count: 5/3 = 1, extra-count = 2
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [1, 2]),
-                ((u'T0', 1), [0, 2]),
-                ((u'T1', 0), [0]),
-                ((u'T1', 1), [0]),
-                ((u'T1', 2), [0]),
+                ((u'T0', 0), ['1', '2']),
+                ((u'T0', 1), ['0', '2']),
+                ((u'T1', 0), ['0']),
+                ((u'T1', 1), ['0']),
+                ((u'T1', 2), ['0']),
             ]
         )
 
@@ -554,18 +541,18 @@ class TestClusterToplogy(object):
         # Verify that net-imbalance has reduced but not zero
         assert new_net_imbal > 0 and new_net_imbal < net_imbal
         # Verify the changes in leaders-per-broker count
-        assert new_leaders_per_broker[2] == 1
-        assert new_leaders_per_broker[1] == 1
-        assert new_leaders_per_broker[0] == 3
+        assert new_leaders_per_broker['2'] == 1
+        assert new_leaders_per_broker['1'] == 1
+        assert new_leaders_per_broker['0'] == 3
 
     def test_rebalance_leaders_unbalanced_case2f(self):
         assignment = OrderedDict(
             [
-                ((u'T0', 0), [2, 0]),
-                ((u'T1', 0), [2, 0]),
-                ((u'T1', 1), [0]),
-                ((u'T2', 0), [1]),
-                ((u'T2', 1), [2]),
+                ((u'T0', 0), ['2', '0']),
+                ((u'T1', 0), ['2', '0']),
+                ((u'T1', 1), ['0']),
+                ((u'T2', 0), ['1']),
+                ((u'T2', 1), ['2']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
@@ -580,12 +567,12 @@ class TestClusterToplogy(object):
         # but 0 is overbalanced
         assignment = OrderedDict(
             [
-                ((u'T1', 1), [0, 1]),
-                ((u'T2', 0), [0]),
-                ((u'T2', 1), [0]),
-                ((u'T3', 0), [2, 3]),
-                ((u'T3', 1), [3, 1]),
-                ((u'T4', 0), [1]),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T2', 0), ['0']),
+                ((u'T2', 1), ['0']),
+                ((u'T3', 0), ['2', '3']),
+                ((u'T3', 1), ['3', '1']),
+                ((u'T4', 0), ['1']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(4))
@@ -602,10 +589,10 @@ class TestClusterToplogy(object):
         # Result: rg's will be balanced for partition-count
         assignment = OrderedDict(
             [
-                ((u'T1', 1), [0, 1, 2]),
-                ((u'T1', 0), [1]),
-                ((u'T3', 0), [1]),
-                ((u'T2', 0), [0, 1, 3]),
+                ((u'T1', 1), ['0', '1', '2']),
+                ((u'T1', 0), ['1']),
+                ((u'T3', 0), ['1']),
+                ((u'T2', 0), ['0', '1', '3']),
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(4))
@@ -615,7 +602,7 @@ class TestClusterToplogy(object):
         # Verify both replication-groups have same partition-count
         assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
         _, total_movements = \
-            calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            calculate_partition_movement(assignment, ct.assignment)
         # Verify minimum partition movements 2
         assert total_movements == 2
         net_imbal, _ = get_replication_group_imbalance_stats(
@@ -634,13 +621,18 @@ class TestClusterToplogy(object):
         # Result: rg's will be balanced for partition-count
         assignment = OrderedDict(
             [
-                ((u'T1', 1), [0, 2]),
-                ((u'T3', 1), [0]),
-                ((u'T3', 0), [0]),
-                ((u'T2', 0), [0, 5]),
+                ((u'T1', 1), ['0', '2']),
+                ((u'T3', 1), ['0']),
+                ((u'T3', 0), ['0']),
+                ((u'T2', 0), ['0', '5']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, ['0', '2', '5'])
+        brokers = {
+            '0': mock.MagicMock(),
+            '2': mock.MagicMock(),
+            '5': mock.MagicMock(),
+        }
+        ct = self.build_cluster_topology(assignment, brokers)
         # Re-balance brokers
         ct._rebalance_groups_partition_cnt()
 
@@ -648,7 +640,7 @@ class TestClusterToplogy(object):
         assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
         assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg3'].partitions)
         _, total_movements = \
-            calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            calculate_partition_movement(assignment, ct.assignment)
         # Verify minimum partition movements 2
         assert total_movements == 2
         net_imbal, _ = get_replication_group_imbalance_stats(
@@ -667,13 +659,18 @@ class TestClusterToplogy(object):
         # Result: rg's will be balanced for partition-count
         assignment = OrderedDict(
             [
-                ((u'T1', 1), [0, 2]),
-                ((u'T3', 1), [2]),
-                ((u'T3', 0), [0]),
-                ((u'T2', 0), [0, 5]),
+                ((u'T1', 1), ['0', '2']),
+                ((u'T3', 1), ['2']),
+                ((u'T3', 0), ['0']),
+                ((u'T2', 0), ['0', '5']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, ['0', '2', '5'])
+        brokers = {
+            '0': mock.MagicMock(),
+            '2': mock.MagicMock(),
+            '5': mock.MagicMock(),
+        }
+        ct = self.build_cluster_topology(assignment, brokers)
         # Re-balance brokers across replication-groups
         ct._rebalance_groups_partition_cnt()
 
@@ -681,7 +678,7 @@ class TestClusterToplogy(object):
         assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg2'].partitions)
         assert len(ct.rgs['rg1'].partitions) == len(ct.rgs['rg3'].partitions)
         _, total_movements = \
-            calculate_partition_movement(ct.initial_assignment, ct.assignment)
+            calculate_partition_movement(assignment, ct.assignment)
         # Verify minimum partition movements
         assert total_movements == 1
         net_imbal, _ = get_replication_group_imbalance_stats(

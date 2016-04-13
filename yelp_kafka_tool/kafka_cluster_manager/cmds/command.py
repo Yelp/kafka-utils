@@ -6,6 +6,8 @@ from collections import defaultdict
 
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager. \
+    replication_group.yelp_group import extract_yelp_replication_group
 from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
 from yelp_kafka_tool.util.zookeeper import ZK
 
@@ -49,7 +51,7 @@ class ClusterManagerCmd(object):
             )
             brokers = self.zk.get_brokers()
             assignment = self.zk.get_assignment()
-            ct = ClusterTopology(assignment, brokers)
+            ct = ClusterTopology(assignment, brokers, extract_yelp_replication_group)
             self.run_command(ct)
 
     def add_subparser(self, subparsers):

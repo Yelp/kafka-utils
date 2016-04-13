@@ -25,11 +25,17 @@ from .util import separate_groups
 class ClusterTopology(object):
     """Represent a Kafka cluster and functionalities supported over the cluster.
 
-    A Kafka cluster topology consists of:
-    replication group (alias rg), broker, topic and partition.
+        :param assignment: cluster assignment is a dict (topic, partition): replicas
+        :param brokers: dict representing the brokers of the
+            cluster broker_id: metadata
+        :param extract_group: function used to extract the replication group
+            from each broker. The extract_group function is called for each
+            broker passing the Broker object as argument. It should return a
+            string representing the ReplicationGroup id.
     """
 
-    def __init__(self, assignment, brokers):
+    def __init__(self, assignment, brokers, extract_group=lambda x: None):
+        self.extract_group = extract_group
         self.log = logging.getLogger(self.__class__.__name__)
         self.topics = {}
         self._build_brokers(brokers)
@@ -53,8 +59,6 @@ class ClusterTopology(object):
 
     def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
-        import ipdb
-        ipdb.set_trace()
         self.brokers = {}
         for broker_id, metadata in brokers.iteritems():
             self.brokers[broker_id] = Broker(broker_id, metadata=metadata)
@@ -62,14 +66,11 @@ class ClusterTopology(object):
     def _build_replication_groups(self):
         """Build replication-group objects using the given assignment."""
         self.rgs = {}
-        import ipdb
-        ipdb.set_trace()
         for broker in self.brokers.itervalues():
-            rg_id = self._get_replication_group_id(broker)
-            if rg_id not in self.rgs:
-                self.rgs[rg_id] = ReplicationGroup(rg_id)
-            self.rgs[rg_id].add_broker(broker)
-            broker.replication_group = self.rgs[rg_id]
+            rg_id = self.extract_group(broker)
+            group = self.rgs.setdefault(rg_id, ReplicationGroup(rg_id))
+            group.add_broker(broker)
+            broker.replication_group = group
 
     def _build_partitions(self, assignment):
         """Builds all partition objects and update corresponding broker and
@@ -93,8 +94,6 @@ class ClusterTopology(object):
             # Updating corresponding broker objects
             for broker_id in replica_ids:
                 # Check if broker-id is present in current active brokers
-                import ipdb
-                ipdb.set_trace()
                 if broker_id not in self.brokers.keys():
                     self.log.warning(
                         "Broker %s containing partition %s is not in "
@@ -105,26 +104,6 @@ class ClusterTopology(object):
                 self.brokers.setdefault(broker_id, Broker(broker_id))
                 broker = self.brokers[broker_id]
                 broker.add_partition(partition)
-
-    def _get_replication_group_id(self, broker):
-        """Fetch replication-group to broker map from zookeeper."""
-        try:
-            hostname = broker.metadata['hostname']
-            if 'localhost' in hostname:
-                self.log.warning(
-                    "Setting replication-group as localhost for broker %s",
-                    broker.id,
-                )
-                rg_name = 'localhost'
-            else:
-                habitat = hostname.rsplit('-', 1)[1]
-                rg_name = habitat.split('.', 1)[0]
-        except IndexError:
-            error_msg = "Could not parse replication group for broker {id} with"\
-                " hostname:{hostname}".format(id=broker.id, hostname=hostname)
-            self.log.exception(error_msg)
-            raise ValueError(error_msg)
-        return rg_name
 
     @property
     def assignment(self):
