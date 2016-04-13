@@ -17,14 +17,14 @@ RESTORED_OFFSET = 55
 
 offset_restore_data = '''
 {{
-"groupid": "{}",
+"groupid": "{group}",
 "offsets": {{
-"{}": {{
-"0": {}
+"{topic}": {{
+"0": {offset}
 }}
 }}
 }}
-'''.format(TEST_GROUP, TEST_TOPIC, RESTORED_OFFSET)
+'''.format(group=TEST_GROUP, topic=TEST_TOPIC, offset=RESTORED_OFFSET)
 
 
 def create_restore_file():
