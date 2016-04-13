@@ -3,7 +3,6 @@ import sys
 
 import mock
 from kazoo.exceptions import NoNodeError
-from yelp_kafka.error import PartitionerError
 
 from yelp_kafka_tool.kafka_consumer_manager. \
     commands.list_groups import ListGroups
@@ -78,7 +77,7 @@ class TestListGroups(object):
         with self.mock_kafka_info(
         ) as (_, mock_kafka_reader):
             m = mock_kafka_reader.return_value
-            p = mock.PropertyMock(side_effect=PartitionerError("Boom!"))
+            p = mock.PropertyMock(side_effect=Exception("Boom!"))
             type(m).groups = p
 
             cluster_config = mock.Mock(zookeeper='some_ip', type='some_cluster_type')

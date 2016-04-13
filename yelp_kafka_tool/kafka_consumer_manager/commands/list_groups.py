@@ -10,16 +10,14 @@ from kafka.common import FailedPayloadsError
 from kafka.common import KafkaUnavailableError
 from kafka.common import LeaderNotAvailableError
 from kafka.common import NotLeaderForPartitionError
+from kafka.consumer import KafkaConsumer
 from kafka.util import read_short_string
 from kafka.util import relative_unpack
 from kazoo.exceptions import NoNodeError
-from yelp_kafka.config import KafkaConsumerConfig
-from yelp_kafka.consumer_group import KafkaConsumerGroup
-from yelp_kafka.error import PartitionerError
 
 from .offset_manager import OffsetManagerBase
+from yelp_kafka_tool.util.offsets import get_topics_watermarks
 from yelp_kafka_tool.util.zookeeper import ZK
-
 
 CONSUMER_OFFSET_TOPIC = '__consumer_offsets'
 
@@ -54,7 +52,7 @@ class ListGroups(OffsetManagerBase):
         try:
             kafka_group_reader.read_groups()
             return kafka_group_reader.groups.keys()
-        except PartitionerError:
+        except:
             print(
                 "Error: No consumer offsets topic found in Kafka",
                 file=sys.stderr,
@@ -95,37 +93,37 @@ class KafkaGroupReader:
     def __init__(self, kafka_config):
         self.log = logging.getLogger(__name__)
         self.kafka_config = kafka_config
-        self.config = KafkaConsumerConfig(
-            'offset_monitoring_consumer',
-            self.kafka_config,
-            auto_offset_reset='smallest',
-            auto_commit=False,
-            partitioner_cooldown=1,
-            consumer_timeout_ms=10000,
-        )
         self.kafka_groups = defaultdict(set)
+        self.finished_partitions = set()
 
     def read_groups(self):
         self.log.info("Kafka consumer running")
-        self.consumer = KafkaConsumerGroup(
-            [CONSUMER_OFFSET_TOPIC],
-            self.config,
+        self.consumer = KafkaConsumer(
+            CONSUMER_OFFSET_TOPIC,
+            group_id='offset_monitoring_consumer',
+            bootstrap_servers=self.kafka_config.broker_list,
+            auto_offset_reset='smallest',
+            auto_commit_enable=False,
+            consumer_timeout_ms=10000,
         )
-        with self.consumer:
-            self.log.info("Consumer ready")
-            while True:
-                try:
-                    message = self.consumer.next()
-                except ConsumerTimeout:
-                    break
-                except (
+        self.log.info("Consumer ready")
+        self.watermarks = self.get_current_watermarks()
+        while not self.finished():
+            try:
+                message = self.consumer.next()
+                max_offset = self.get_max_offset(message.partition)
+                if message.offset >= max_offset:
+                    self.finished_partitions.add(message.partition)
+            except ConsumerTimeout:
+                break
+            except (
                     FailedPayloadsError,
                     KafkaUnavailableError,
                     LeaderNotAvailableError,
                     NotLeaderForPartitionError,
-                ) as e:
-                    self.log.warning("Got %s, retrying", e.__class__.__name__)
-                self.process_consumer_offset_message(message)
+            ) as e:
+                self.log.warning("Got %s, retrying", e.__class__.__name__)
+            self.process_consumer_offset_message(message)
 
     def parse_consumer_offset_message(self, message):
         key = bytearray(message.key)
@@ -155,6 +153,21 @@ class KafkaGroupReader:
             self.kafka_groups[group].add(topic)
         else:  # No offset means group deletion
             self.kafka_groups.pop(group, None)
+
+    def get_current_watermarks(self):
+        self.consumer._client.load_metadata_for_topics()
+        return get_topics_watermarks(
+            self.consumer._client,
+            [CONSUMER_OFFSET_TOPIC],
+        )
+
+    def get_max_offset(self, partition):
+        return self.watermarks[CONSUMER_OFFSET_TOPIC][partition].highmark
+
+    def finished(self):
+        num_partitions = len(self.watermarks[CONSUMER_OFFSET_TOPIC])
+        num_finished = len(self.finished_partitions)
+        return num_finished >= num_partitions
 
     @property
     def groups(self):
