@@ -75,13 +75,13 @@ def configure_logging(log_conf=None):
         try:
             fileConfig(log_conf)
         except ConfigParser.NoSectionError:
-            logging.basicConfig(level=logging.DEBUG)
+            logging.basicConfig(level=logging.INFO)
             _log.error(
                 'Failed to load {logconf} file.'
                 .format(logconf=log_conf),
             )
     else:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
 
 
 def run():

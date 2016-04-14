@@ -51,8 +51,7 @@ class DecommissionCmd(ClusterManagerCmd):
         return subparser
 
     def run_command(self, cluster_topology):
-        # TODO: We could get rid of initial_assignment in ClusterTopology
-        base_assignment = cluster_topology.initial_assignment
+        base_assignment = cluster_topology.assignment
         cluster_topology.decommission_brokers(self.args.broker_ids)
 
         if not validate_plan(
