@@ -29,6 +29,7 @@ setup(
         "scripts/kafka-rolling-restart",
         "scripts/reset-cg-offset",
         "scripts/kafka-copy-topics",
+        "scripts/kafka-message-backup",
     ],
     install_requires=[
         "argcomplete",
