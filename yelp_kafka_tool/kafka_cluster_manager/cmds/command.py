@@ -57,9 +57,9 @@ class ClusterManagerCmd(object):
     def add_subparser(self, subparsers):
         self.build_subparser(subparsers).set_defaults(command=self.run)
 
-    def execute_plan(self, plan, to_apply, no_confirm):
+    def execute_plan(self, plan):
         """Save proposed-plan and execute the same if requested."""
-        if self.should_execute(to_apply, no_confirm):
+        if self.should_execute():
             # Exit if there is an on-going reassignment
             if self.is_reassignment_pending():
                 self.log.error('Previous reassignment pending.')
@@ -75,9 +75,9 @@ class ClusterManagerCmd(object):
         else:
             self.log.info('Proposed plan won\'t be executed.')
 
-    def should_execute(self, to_apply, no_confirm):
+    def should_execute(self):
         """Confirm if proposed-plan should be executed."""
-        return to_apply and (no_confirm or self.confirm_execution())
+        return self.args.to_apply and (self.args.no_confirm or self.confirm_execution())
 
     def positive_int(self, string):
         """Convert string to positive integer."""
@@ -123,7 +123,7 @@ class ClusterManagerCmd(object):
             'Proposed-plan actions count: %s',
             len(plan['partitions']),
         )
-        self.execute_plan(plan, self.args.apply, self.args.no_confirm)
+        self.execute_plan(plan)
 
     def get_reduced_assignment(
         self,

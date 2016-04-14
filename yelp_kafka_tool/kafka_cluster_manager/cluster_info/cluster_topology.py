@@ -26,8 +26,9 @@ class ClusterTopology(object):
     """Represent a Kafka cluster and functionalities supported over the cluster.
 
         :param assignment: cluster assignment is a dict (topic, partition): replicas
-        :param brokers: dict representing the brokers of the
-            cluster broker_id: metadata
+        :param brokers: dict representing the active brokers of the
+            cluster broker_id: metadata (metadata is the content of the zookeeper
+            node of the broker)
         :param extract_group: function used to extract the replication group
             from each broker. The extract_group function is called for each
             broker passing the Broker object as argument. It should return a
@@ -97,7 +98,7 @@ class ClusterTopology(object):
                 if broker_id not in self.brokers.keys():
                     self.log.warning(
                         "Broker %s containing partition %s is not in "
-                        "the active brokers.",
+                        "active brokers.",
                         broker_id,
                         partition,
                     )
