@@ -8,7 +8,7 @@ from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
 from yelp_kafka_tool.kafka_cluster_manager. \
     replication_group.yelp_group import extract_yelp_replication_group
-from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
+from yelp_kafka_tool.util.validation import assignment_to_plan
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
