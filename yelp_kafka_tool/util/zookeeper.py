@@ -1,6 +1,5 @@
 import json
 import logging
-import sys
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
@@ -62,39 +61,35 @@ class ZK:
         data, _ = self.get(path, watch)
         return json.loads(data) if data else None
 
-    def get_brokers(self, broker_name=None, names_only=False):
+    def get_broker_metadata(self, broker_id):
+        try:
+            broker_json, _ = self.get(
+                "/brokers/ids/{b_id}".format(b_id=broker_id)
+            )
+        except NoNodeError:
+            _log.error(
+                "broker '{b_id}' not found.".format(b_id=broker_id),
+            )
+            raise
+        return json.loads(broker_json)
+
+    def get_brokers(self, names_only=False):
         """Get information on all the available brokers.
 
         :rtype : dict of brokers
         """
-        if broker_name is not None:
-            broker_ids = [broker_name]
-        else:
-            broker_ids = self.get_children("/brokers/ids")
+        broker_ids = self.get_children("/brokers/ids")
 
         # Return broker-ids only
         if names_only:
-            return {b_id: None for b_id in broker_ids}
-
-        brokers = {}
-        for b_id in broker_ids:
-            try:
-                broker_json, _ = self.get(
-                    "/brokers/ids/{b_id}".format(b_id=b_id)
-                )
-            except NoNodeError:
-                _log.error(
-                    "broker '{b_id}' not found.".format(b_id=b_id),
-                )
-                sys.exit(1)
-            broker = json.loads(broker_json)
-            brokers[b_id] = broker
-        return brokers
+            return {int(b_id): None for b_id in broker_ids}
+        return {int(b_id): self.get_broker_metadata(b_id) for b_id in broker_ids}
 
     def get_topic_config(self, topic):
         """Get configuration information for specified topic.
 
-        :rtype : dict of configuration"""
+        :rtype : dict of configuration
+        """
         try:
             config_data = json.loads(
                 self.get(

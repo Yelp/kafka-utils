@@ -1,4 +1,9 @@
-def extract_yelp_replication_group(self, broker):
+import logging
+
+log = logging.getLogger(__name__)
+
+
+def extract_yelp_replication_group(broker):
     """Extract Yelp replication group from a Broker instance.
     The replication group is the habitat of the broker, which in EC2
     corresponds to the Availability Zone of the broker. This information is
@@ -7,7 +12,7 @@ def extract_yelp_replication_group(self, broker):
     try:
         hostname = broker.metadata['host']
         if 'localhost' in hostname:
-            self.log.warning(
+            log.warning(
                 "Setting replication-group as localhost for broker %s",
                 broker.id,
             )
@@ -18,6 +23,6 @@ def extract_yelp_replication_group(self, broker):
     except IndexError:
         error_msg = "Could not parse replication group for broker {id} with" \
             " hostname:{hostname}".format(id=broker.id, hostname=hostname)
-        self.log.exception(error_msg)
+        log.exception(error_msg)
         raise ValueError(error_msg)
     return rg_name

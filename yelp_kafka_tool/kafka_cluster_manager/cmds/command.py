@@ -50,7 +50,7 @@ class ClusterManagerCmd(object):
                 self.cluster_config.zookeeper,
             )
             brokers = self.zk.get_brokers()
-            assignment = self.zk.get_assignment()
+            assignment = self.zk.get_cluster_assignment()
             ct = ClusterTopology(assignment, brokers, extract_yelp_replication_group)
             self.run_command(ct)
 
