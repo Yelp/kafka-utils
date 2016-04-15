@@ -5,9 +5,9 @@ from __future__ import unicode_literals
 import sys
 
 from kafka import KafkaClient
-from yelp_kafka.offsets import advance_consumer_offsets
 
 from .offset_manager import OffsetWriter
+from yelp_kafka_tool.util.offsets import advance_consumer_offsets
 
 
 class OffsetAdvance(OffsetWriter):

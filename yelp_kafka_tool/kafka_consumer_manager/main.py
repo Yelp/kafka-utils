@@ -6,8 +6,6 @@ import argparse
 import logging
 import sys
 
-from yelp_kafka.error import ConfigurationError
-
 from .commands.copy_group import CopyGroup
 from .commands.list_groups import ListGroups
 from .commands.list_topics import ListTopics
@@ -20,6 +18,7 @@ from .commands.offset_set import OffsetSet
 from .commands.rename_group import RenameGroup
 from .commands.unsubscribe_topics import UnsubscribeTopics
 from yelp_kafka_tool.util.config import get_cluster_config
+from yelp_kafka_tool.util.error import ConfigurationError
 
 
 def parse_args():
