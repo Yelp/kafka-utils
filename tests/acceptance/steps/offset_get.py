@@ -7,7 +7,8 @@ from util import create_random_topic
 from util import produce_example_msg
 
 TEST_GROUP = 'test_group'
-MSG_COUNT = 50
+PRODUCED_MSG_COUNT = 82
+CONSUMED_MSG_COUNT = 39
 
 
 @given(u'we have an existing kafka cluster with a topic')
@@ -25,25 +26,29 @@ def call_offset_get():
     return call_cmd(cmd)
 
 
-@when(u'we consume some number of messages from the topic')
+@when(u'we produce some number of messages into the topic')
 def step_impl2(context):
-    produce_example_msg(context.topic, num_messages=MSG_COUNT)
-    consumer = create_consumer_group(
+    produce_example_msg(context.topic, num_messages=PRODUCED_MSG_COUNT)
+    context.msgs_produced = PRODUCED_MSG_COUNT
+
+
+@when(u'we consume some number of messages from the topic')
+def step_impl3(context):
+    context.consumer = create_consumer_group(
         context.topic,
         TEST_GROUP,
-        num_messages=MSG_COUNT,
+        num_messages=CONSUMED_MSG_COUNT,
     )
-    context.consumer = consumer
-    context.msgs_consumed = MSG_COUNT
+    context.msgs_consumed = CONSUMED_MSG_COUNT
 
 
 @when(u'we call the offset_get command')
-def step_impl3(context):
+def step_impl4(context):
     context.output = call_offset_get()
 
 
 @then(u'the correct offset will be shown')
-def step_impl4(context):
+def step_impl5(context):
     offsets = context.consumer.offsets(group='commit')
     key = (context.topic, 0)
     offset = offsets[key]

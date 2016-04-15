@@ -5,12 +5,9 @@ from behave import then
 from behave import when
 from util import call_cmd
 
-from yelp_kafka_tool.util import config
-
 
 TEST_GROUP = 'test_group'
 TEST_TOPIC = 'save_test_topic'
-SAVED_OFFSET = 77
 
 
 def create_saved_file():
@@ -28,14 +25,6 @@ def call_offset_save(offsets_file):
     return call_cmd(cmd)
 
 
-def get_cluster_config():
-    return config.get_cluster_config(
-        'test',
-        'test_cluster',
-        'tests/acceptance/config',
-    )
-
-
 @when(u'we call the offset_save command with an offsets file')
 def step_impl2(context):
     context.offsets_file = create_saved_file()
@@ -44,6 +33,10 @@ def step_impl2(context):
 
 @then(u'the correct offsets will be saved into the given file')
 def step_impl3(context):
+    offsets = context.consumer.offsets(group='commit')
+    key = (context.topic, 0)
+    offset = offsets[key]
+
     data = json.loads(context.offsets_file.read())
-    assert context.msgs_consumed == data['offsets'][context.topic]['0']
+    assert offset == data['offsets'][context.topic]['0']
     context.offsets_file.close()
