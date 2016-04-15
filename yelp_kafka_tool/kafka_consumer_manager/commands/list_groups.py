@@ -111,7 +111,7 @@ class KafkaGroupReader:
             try:
                 message = self.consumer.next()
                 max_offset = self.get_max_offset(message.partition)
-                if message.offset >= max_offset:
+                if message.offset >= max_offset - 1:
                     self.finished_partitions.add(message.partition)
             except ConsumerTimeout:
                 break
@@ -156,14 +156,16 @@ class KafkaGroupReader:
 
     def get_current_watermarks(self):
         self.consumer._client.load_metadata_for_topics()
-        return get_topics_watermarks(
+        offsets = get_topics_watermarks(
             self.consumer._client,
             [CONSUMER_OFFSET_TOPIC],
         )
+        return {partition: offset for partition, offset
+                in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
+                if offset.highmark > offset.lowmark}
 
     def get_max_offset(self, partition):
-        return self.watermarks[CONSUMER_OFFSET_TOPIC][partition].highmark
+        return self.watermarks[partition].highmark
 
     def finished(self):
-        return len(self.finished_partitions) >= \
-            len(self.watermarks[CONSUMER_OFFSET_TOPIC])
+        return len(self.finished_partitions) >= len(self.watermarks)
