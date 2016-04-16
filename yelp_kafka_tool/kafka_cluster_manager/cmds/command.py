@@ -77,7 +77,7 @@ class ClusterManagerCmd(object):
 
     def should_execute(self):
         """Confirm if proposed-plan should be executed."""
-        return self.args.to_apply and (self.args.no_confirm or self.confirm_execution())
+        return self.args.apply and (self.args.no_confirm or self.confirm_execution())
 
     def positive_int(self, string):
         """Convert string to positive integer."""
