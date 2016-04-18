@@ -1,7 +1,6 @@
 import mock
 import pytest
 from kafka.common import KafkaUnavailableError
-from kafka.common import OffsetFetchResponse
 from test_offsets import MyKafkaClient
 from test_offsets import TestOffsetsBase
 
@@ -9,8 +8,6 @@ from yelp_kafka_tool.util.error import UnknownPartitions
 from yelp_kafka_tool.util.error import UnknownTopic
 from yelp_kafka_tool.util.monitoring import ConsumerPartitionOffsets
 from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
-from yelp_kafka_tool.util.monitoring import offset_distance
-from yelp_kafka_tool.util.monitoring import topics_offset_distance
 
 
 class TestMonitoring(TestOffsetsBase):
@@ -98,85 +95,3 @@ class TestMonitoring(TestOffsetsBase):
                     {'topic1': [99]},
                 )
             assert mock_func.call_count == 2
-
-    def test_offset_distance_ok(self, kafka_client_mock):
-        assert {0: 0, 1: 10, 2: 20} == offset_distance(
-            kafka_client_mock,
-            self.group,
-            'topic1',
-        )
-
-    def test_offset_distance_partition_subset(self, kafka_client_mock):
-        assert {1: 10, 2: 20} == offset_distance(
-            kafka_client_mock,
-            self.group,
-            'topic1',
-            partitions=[1, 2],
-        )
-
-    def test_offset_distance_all_partitions(self, kafka_client_mock):
-        kafka_client = kafka_client_mock
-
-        implicit = offset_distance(
-            kafka_client,
-            self.group,
-            'topic1',
-        )
-
-        explicit = offset_distance(
-            kafka_client,
-            self.group,
-            'topic1',
-            partitions=self.high_offsets['topic1'].keys(),
-        )
-
-        assert implicit == explicit
-
-    def test_offset_distance_unknown_group(self, kafka_client_mock):
-        with mock.patch.object(
-            MyKafkaClient,
-            'send_offset_fetch_request',
-            side_effect=lambda group, payloads, fail_on_error, callback: [
-                callback(
-                    OffsetFetchResponse(req.topic, req.partition, -1, None, 3)
-                )
-                for req in payloads
-            ]
-        ):
-            assert self.high_offsets['topic1'] == offset_distance(
-                kafka_client_mock,
-                'derp',
-                'topic1',
-            )
-
-    def test_topics_offset_distance(self, kafka_client_mock):
-        expected = {
-            'topic1': {0: 0, 1: 10, 2: 20},
-            'topic2': {0: 35, 1: 50}
-        }
-        assert expected == topics_offset_distance(
-            kafka_client_mock,
-            self.group,
-            ['topic1', 'topic2'],
-        )
-
-    def test_topics_offset_distance_partition_subset(self, kafka_client_mock):
-        expected = {
-            'topic1': {0: 0, 1: 10},
-            'topic2': {1: 50}
-        }
-        assert expected == topics_offset_distance(
-            kafka_client_mock,
-            self.group,
-            {'topic1': [0, 1], 'topic2': [1]},
-        )
-
-    def test_topics_offset_distance_topic_subset(self, kafka_client_mock):
-        expected = {
-            'topic1': {0: 0, 1: 10},
-        }
-        assert expected == topics_offset_distance(
-            kafka_client_mock,
-            self.group,
-            {'topic1': [0, 1]},
-        )
