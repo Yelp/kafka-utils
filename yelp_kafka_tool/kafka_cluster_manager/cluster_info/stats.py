@@ -227,7 +227,7 @@ def replication_group_imbalance(rgs, partitions):
     return get_replication_group_imbalance_stats(rgs, partitions)
 
 
-def imbalance_value_all(base_assignment, ct, leaders=True, display=True):
+def imbalance_value_all(ct, leaders=True, display=True):
     """Evaluate imbalance statistics based on given params.
 
     Params represent the layer for which imbalance needs to be calculated
@@ -280,15 +280,10 @@ def imbalance_value_all(base_assignment, ct, leaders=True, display=True):
                 stdev_imbalance,
                 imbal_leader,
             )
-    total_movements = calculate_partition_movement(
-        base_assignment,
-        ct.assignment,
-    )[1]
     return {
         'net_part_cnt_per_rg': net_imbal_part_per_rg,
         'partition_cnt': imbal_part,
         'replica_cnt': imbal_replica,
         'topic_partition_cnt': imbal_topic,
         'leader_cnt': imbal_leader,
-        'total_movements': total_movements,
     }

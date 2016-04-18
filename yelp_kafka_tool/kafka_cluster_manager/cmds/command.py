@@ -43,7 +43,7 @@ class ClusterManagerCmd(object):
         self.cluster_config = cluster_config
         self.args = args
         with ZK(self.cluster_config) as self.zk:
-            self.log.debug(
+            self.log.info(
                 'Starting %s for cluster: %s and zookeeper: %s',
                 self.__class__.__name__,
                 self.cluster_config.name,
