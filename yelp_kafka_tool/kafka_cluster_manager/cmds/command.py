@@ -6,8 +6,9 @@ from collections import defaultdict
 
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager. \
+    replication_group.yelp_group import extract_yelp_replication_group
 from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
-from yelp_kafka_tool.kafka_cluster_manager.util import KafkaInterface
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -23,28 +24,6 @@ class ClusterManagerCmd(object):
         self.args = None
         self.zk = None
 
-    def execute_plan(self, zk, plan, to_apply, no_confirm):
-        """Save proposed-plan and execute the same if requested."""
-        if self.should_execute(to_apply, no_confirm):
-            # Exit if there is an on-going reassignment
-            if self.is_reassignment_pending(zk):
-                self.log.error('Previous reassignment pending.')
-                sys.exit(1)
-            result = KafkaInterface().execute_plan(zk, plan)
-            if not result:
-                self.log.error('Plan execution unsuccessful.')
-                sys.exit(1)
-            else:
-                self.log.info(
-                    'Plan sent to zookeeper for reassignment successfully.',
-                )
-        else:
-            self.log.info('Proposed plan won\'t be executed.')
-
-    def should_execute(self, to_apply, no_confirm):
-        """Confirm if proposed-plan should be executed."""
-        return to_apply and (no_confirm or self.confirm_execution())
-
     def build_subparser(self, subparsers):
         """Build the command subparser.
 
@@ -52,9 +31,6 @@ class ClusterManagerCmd(object):
         :returns: subparser
         """
         raise NotImplementedError("Implement in subclass")
-
-    def add_subparser(self, subparsers):
-        self.build_subparser(subparsers).set_defaults(command=self.run)
 
     def run_command(self, cluster_topology):
         """Implement the command logic.
@@ -73,8 +49,35 @@ class ClusterManagerCmd(object):
                 self.cluster_config.name,
                 self.cluster_config.zookeeper,
             )
-            ct = ClusterTopology(zk=self.zk)
+            brokers = self.zk.get_brokers()
+            assignment = self.zk.get_cluster_assignment()
+            ct = ClusterTopology(assignment, brokers, extract_yelp_replication_group)
             self.run_command(ct)
+
+    def add_subparser(self, subparsers):
+        self.build_subparser(subparsers).set_defaults(command=self.run)
+
+    def execute_plan(self, plan):
+        """Save proposed-plan and execute the same if requested."""
+        if self.should_execute():
+            # Exit if there is an on-going reassignment
+            if self.is_reassignment_pending():
+                self.log.error('Previous reassignment pending.')
+                sys.exit(1)
+            result = self.zk.execute_plan(plan)
+            if not result:
+                self.log.error('Plan execution unsuccessful.')
+                sys.exit(1)
+            else:
+                self.log.info(
+                    'Plan sent to zookeeper for reassignment successfully.',
+                )
+        else:
+            self.log.info('Proposed plan won\'t be executed.')
+
+    def should_execute(self):
+        """Confirm if proposed-plan should be executed."""
+        return self.args.apply and (self.args.no_confirm or self.confirm_execution())
 
     def positive_int(self, string):
         """Convert string to positive integer."""
@@ -87,9 +90,9 @@ class ClusterManagerCmd(object):
             raise argparse.ArgumentTypeError(error_msg)
         return value
 
-    def is_reassignment_pending(self, zk):
+    def is_reassignment_pending(self):
         """Return True if there are no reassignment tasks pending."""
-        in_progress_plan = zk.get_pending_plan()
+        in_progress_plan = self.zk.get_pending_plan()
         if in_progress_plan:
             in_progress_partitions = in_progress_plan['partitions']
             self.log.info(
@@ -120,7 +123,7 @@ class ClusterManagerCmd(object):
             'Proposed-plan actions count: %s',
             len(plan['partitions']),
         )
-        self.execute_plan(self.zk, plan, self.args.apply, self.args.no_confirm)
+        self.execute_plan(plan)
 
     def get_reduced_assignment(
         self,

@@ -3,7 +3,7 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partiti
 
 
 def create_broker(broker_id, partitions):
-    b = Broker(broker_id, set(partitions))
+    b = Broker(broker_id, partitions=set(partitions))
     for p in partitions:
         p.add_replica(b)
     return b

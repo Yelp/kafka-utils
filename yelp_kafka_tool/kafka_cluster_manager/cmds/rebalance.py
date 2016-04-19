@@ -66,9 +66,8 @@ class RebalanceCmd(ClusterManagerCmd):
 
     def run_command(self, ct):
         """Get executable proposed plan(if any) for display or execution."""
-        # TODO: We could get rid of initial_assignment in ClusterTopology
-        base_assignment = ct.initial_assignment
-        assignment = self.build_balanced_assignment(ct)
+        base_assignment = ct.assignment
+        assignment = self.build_balanced_assignment(base_assignment, ct)
 
         if not validate_plan(
             assignment_to_plan(assignment),
@@ -90,9 +89,9 @@ class RebalanceCmd(ClusterManagerCmd):
         else:
             self.log.info("Cluster already balanced. No actions to perform.")
 
-    def build_balanced_assignment(self, ct):
+    def build_balanced_assignment(self, base_assignment, ct):
         # Get initial imbalance statistics
-        initial_imbal = self.pre_balancing_imbalance_stats(ct)
+        initial_imbal = self.pre_balancing_imbalance_stats(base_assignment, ct)
 
         # Balancing to be done in the given order only
         # Rebalance replication-groups
@@ -125,9 +124,9 @@ class RebalanceCmd(ClusterManagerCmd):
         return ct.assignment
 
     # Imbalance statistics evaluation and reporting
-    def pre_balancing_imbalance_stats(self, ct):
+    def pre_balancing_imbalance_stats(self, base_assignment, ct):
         self.log.info('Calculating initial rebalance imbalance statistics...')
-        initial_imbal = imbalance_value_all(ct)
+        initial_imbal = imbalance_value_all(base_assignment, ct)
         self.log_imbalance_stats(initial_imbal)
         total_imbal = (
             initial_imbal['replica_cnt'] +
