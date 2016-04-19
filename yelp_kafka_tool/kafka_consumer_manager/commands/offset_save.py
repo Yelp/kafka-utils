@@ -8,9 +8,9 @@ from collections import defaultdict
 
 from kafka import KafkaClient
 from kafka.common import KafkaUnavailableError
-from yelp_kafka.monitoring import get_consumer_offsets_metadata
 
 from .offset_manager import OffsetManagerBase
+from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
 
 
 class OffsetSave(OffsetManagerBase):

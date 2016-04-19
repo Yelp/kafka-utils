@@ -1,10 +1,10 @@
 import mock
 import pytest
 from kafka.client import KafkaClient
-from yelp_kafka.monitoring import ConsumerPartitionOffsets
 
 from yelp_kafka_tool.kafka_consumer_manager. \
     commands.offset_restore import OffsetRestore
+from yelp_kafka_tool.util.monitoring import ConsumerPartitionOffsets
 
 
 class TestOffsetRestore(object):

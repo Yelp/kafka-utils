@@ -1,3 +1,14 @@
+class ConfigurationError(Exception):
+    """Error in configuration. For example. Missing configuration file
+    or misformatted configuration."""
+    pass
+
+
+class InvalidOffsetStorageError(Exception):
+    """Unknown source of offsets."""
+    pass
+
+
 class UnknownTopic(Exception):
     pass
 

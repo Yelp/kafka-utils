@@ -1,5 +1,6 @@
 import copy
 
+import mock
 import pytest
 from kafka.common import NotLeaderForPartitionError
 from kafka.common import OffsetCommitResponse
@@ -8,6 +9,7 @@ from kafka.common import OffsetResponse
 from kafka.common import RequestTimedOutError
 from kafka.common import UnknownTopicOrPartitionError
 
+from yelp_kafka_tool.util.error import InvalidOffsetStorageError
 from yelp_kafka_tool.util.offsets import _verify_commit_offsets_requests
 from yelp_kafka_tool.util.offsets import advance_consumer_offsets
 from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
@@ -118,7 +120,41 @@ class MyKafkaClient(object):
     def get_partition_ids_for_topic(self, topic):
         return self.topics[topic]
 
-    def send_offset_fetch_request(self, group, reqs, fail_on_error, callback):
+    def send_offset_fetch_request(
+        self,
+        group,
+        payloads,
+        fail_on_error,
+        callback,
+    ):
+        return self._send_offset_fetch_request_either(
+            group,
+            payloads,
+            fail_on_error,
+            callback,
+        )
+
+    def send_offset_fetch_request_kafka(
+        self,
+        group,
+        payloads,
+        fail_on_error,
+        callback
+    ):
+        return self._send_offset_fetch_request_either(
+            group,
+            payloads,
+            fail_on_error,
+            callback,
+        )
+
+    def _send_offset_fetch_request_either(
+        self,
+        group,
+        payloads,
+        fail_on_error,
+        callback
+    ):
         return [
             callback(
                 OffsetFetchResponse(
@@ -129,7 +165,7 @@ class MyKafkaClient(object):
                     0 if req.partition in self.group_offsets[req.topic] else 3
                 ),
             )
-            for req in reqs
+            for req in payloads
         ]
 
 
@@ -252,6 +288,52 @@ class TestOffsets(TestOffsetsBase):
             topics
         )
         assert actual == {'topic1': {0: 30, 1: 20, 2: 10}}
+
+    def test_get_current_consumer_offsets_from_zookeeper(
+        self,
+        topics,
+        kafka_client_mock
+    ):
+        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
+        get_current_consumer_offsets(
+            kafka_client_mock,
+            self.group,
+            topics,
+            offset_storage='zookeeper',
+        )
+        assert kafka_client_mock.send_offset_fetch_request.call_count == 1
+        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 0
+
+    def test_get_current_consumer_offsets_from_kafka(
+        self,
+        topics,
+        kafka_client_mock
+    ):
+        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
+        get_current_consumer_offsets(
+            kafka_client_mock,
+            self.group,
+            topics,
+            offset_storage='kafka',
+        )
+        assert kafka_client_mock.send_offset_fetch_request.call_count == 0
+        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 1
+
+    def test_get_current_consumer_offsets_invalid_storage(
+        self,
+        topics,
+        kafka_client_mock
+    ):
+        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
+        with pytest.raises(InvalidOffsetStorageError):
+            get_current_consumer_offsets(
+                kafka_client_mock,
+                self.group,
+                topics,
+                offset_storage='random_string',
+            )
+        assert kafka_client_mock.send_offset_fetch_request.call_count == 0
+        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 0
 
     def test_get_topics_watermarks_invalid_arguments(self, kafka_client_mock):
         with pytest.raises(TypeError):
