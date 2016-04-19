@@ -17,7 +17,7 @@ class OffsetManagerBase(object):
         cls,
         cluster_config,
         groupid,
-        fail_on_error=True
+        fail_on_error=True,
     ):
         topics = []
         with ZK(cluster_config) as zk:
