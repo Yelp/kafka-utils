@@ -5,10 +5,10 @@ from __future__ import unicode_literals
 import sys
 
 from kafka import KafkaClient
-from yelp_kafka.monitoring import get_consumer_offsets_metadata
 
 from .offset_manager import OffsetManagerBase
 from yelp_kafka_tool.util import print_json
+from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
 
 
 class OffsetGet(OffsetManagerBase):

@@ -6,9 +6,9 @@ import sys
 from collections import defaultdict
 
 from kafka import KafkaClient
-from yelp_kafka.offsets import set_consumer_offsets
 
 from .offset_manager import OffsetWriter
+from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
 
 class OffsetSet(OffsetWriter):
