@@ -32,8 +32,7 @@ class TestUnsubscribeTopics(object):
             yield mock_writer_process_args, mock_ZK
 
     def test_run_some_partitions_left(self, mock_client):
-        with self.mock_kafka_info(
-        ) as (mock_writer_process_args, mock_ZK):
+        with self.mock_kafka_info() as (mock_writer_process_args, mock_ZK):
             args = mock.Mock(
                 groupid="some_group",
                 topic="topic1",
@@ -59,8 +58,7 @@ class TestUnsubscribeTopics(object):
             assert not obj.delete_topic.called
 
     def test_run_wipe_all_partitions(self, mock_client):
-        with self.mock_kafka_info(
-        ) as (mock_writer_process_args, mock_ZK):
+        with self.mock_kafka_info() as (mock_writer_process_args, mock_ZK):
             args = mock.Mock(
                 groupid="some_group",
                 topic="topic1",
@@ -86,8 +84,7 @@ class TestUnsubscribeTopics(object):
             ]
 
     def test_run_wipe_default_partitions(self, mock_client):
-        with self.mock_kafka_info(
-        ) as (mock_writer_process_args, mock_ZK):
+        with self.mock_kafka_info() as (mock_writer_process_args, mock_ZK):
             args = mock.Mock(
                 groupid="some_group",
                 topic="topic1",
@@ -107,8 +104,7 @@ class TestUnsubscribeTopics(object):
             ]
 
     def test_run_wipe_default_topics(self, mock_client):
-        with self.mock_kafka_info(
-        ) as (mock_writer_process_args, mock_ZK):
+        with self.mock_kafka_info() as (mock_writer_process_args, mock_ZK):
             args = mock.Mock(
                 groupid="some_group",
                 topic=None,
@@ -128,8 +124,7 @@ class TestUnsubscribeTopics(object):
             ]
 
     def test_run_no_node_error(self, mock_client):
-        with self.mock_kafka_info(
-        ) as (mock_writer_process_args, mock_ZK):
+        with self.mock_kafka_info() as (mock_writer_process_args, mock_ZK):
             obj = mock_ZK.return_value
             obj.delete_topic_partitions.side_effect = NoNodeError("Boom!")
             args = mock.Mock(
@@ -143,8 +138,7 @@ class TestUnsubscribeTopics(object):
             assert mock_ZK.return_value.delete_topic_partitions.called
 
     def test_run_any_other_exception(self, mock_client):
-        with self.mock_kafka_info(
-        ) as (mock_writer_process_args, mock_ZK):
+        with self.mock_kafka_info() as (mock_writer_process_args, mock_ZK):
             obj = mock_ZK.return_value.__enter__.return_value
             obj.__exit__.return_value = False
             obj.delete_topic_partitions.side_effect = ZookeeperError("Boom!")
