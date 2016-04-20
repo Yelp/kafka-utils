@@ -6,18 +6,17 @@ from util import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-TEST_GROUP = 'test_group'
 NEW_GROUP = 'new_group'
 
 
-def call_rename_group(groupid):
+def call_rename_group(old_group, new_group):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'rename_group',
-           TEST_GROUP,
-           groupid]
+           old_group,
+           new_group]
     return call_cmd(cmd)
 
 
@@ -30,7 +29,7 @@ def step_impl2(context):
 def step_impl4(context):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(TEST_GROUP)
+        offsets = zk.get_group_offsets(context.group)
         new_offsets = zk.get_group_offsets(NEW_GROUP)
     assert offsets is None
     assert context.topic in new_offsets

@@ -10,11 +10,11 @@ from util import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-TEST_GROUP = 'test_group'
+RESTORED_GROUP = 'restored_group'
 RESTORED_OFFSET = 55
 
 
-def create_restore_file(topic):
+def create_restore_file(group, topic, offset):
     offset_restore_data = '''
     {{
     "groupid": "{group}",
@@ -24,7 +24,7 @@ def create_restore_file(topic):
     }}
     }}
     }}
-    '''.format(group=TEST_GROUP, topic=topic, offset=RESTORED_OFFSET)
+    '''.format(group=group, topic=topic, offset=offset)
     f = tempfile.NamedTemporaryFile()
     f.write(offset_restore_data)
     f.flush()
@@ -43,7 +43,11 @@ def call_offset_restore(offsets_file):
 
 @given(u'we have a json offsets file')
 def step_impl2(context):
-    context.offsets_file = create_restore_file(context.topic)
+    context.offsets_file = create_restore_file(
+        RESTORED_GROUP,
+        context.topic,
+        RESTORED_OFFSET,
+    )
     assert os.path.isfile(context.offsets_file.name)
 
 
@@ -56,6 +60,6 @@ def step_impl3(context):
 def step_impl4(context):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(TEST_GROUP)
+        offsets = zk.get_group_offsets(RESTORED_GROUP)
     assert offsets[context.topic]["0"] == RESTORED_OFFSET
     context.offsets_file.close()

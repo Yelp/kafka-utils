@@ -6,18 +6,17 @@ from util import create_consumer_group
 from util import create_random_topic
 from util import produce_example_msg
 
-test_groups = ['group1', 'group2', 'group3']
-test_topics = ['topic1', 'topic2']
+test_group = 'group1'
+test_topics = ['topic1', 'topic2', 'topic3']
 
 
-@given('we have a set of existing consumer groups and topics')
+@given('we have a set of existing topics and a consumer group')
 def step_impl1(context):
     for topic in test_topics:
         create_random_topic(1, 1, topic_name=topic)
         produce_example_msg(topic)
 
-    for group in test_groups:
-        create_consumer_group(topic, group)
+        create_consumer_group(topic, test_group)
 
 
 def call_list_topics(groupid):

@@ -6,21 +6,17 @@ from behave import when
 from util import call_cmd
 
 
-TEST_GROUP = 'test_group'
-TEST_TOPIC = 'save_test_topic'
-
-
 def create_saved_file():
     return tempfile.NamedTemporaryFile()
 
 
-def call_offset_save(offsets_file):
+def call_offset_save(groupid, offsets_file):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_save',
-           TEST_GROUP,
+           groupid,
            offsets_file]
     return call_cmd(cmd)
 
@@ -28,7 +24,7 @@ def call_offset_save(offsets_file):
 @when(u'we call the offset_save command with an offsets file')
 def step_impl2(context):
     context.offsets_file = create_saved_file()
-    call_offset_save(context.offsets_file.name)
+    call_offset_save(context.group, context.offsets_file.name)
 
 
 @then(u'the correct offsets will be saved into the given file')
