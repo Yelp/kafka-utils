@@ -106,6 +106,27 @@ class TestUnsubscribeTopics(object):
                 mock.call(args.groupid, "topic1"),
             ]
 
+    def test_run_wipe_default_topics(self, mock_client):
+        with self.mock_kafka_info(
+        ) as (mock_writer_process_args, mock_ZK):
+            args = mock.Mock(
+                groupid="some_group",
+                topic=None,
+                partitions=None
+            )
+            mock_ZK.return_value.get_my_subscribed_partitions.return_value = []
+            cluster_config = mock.Mock(zookeeper='some_ip')
+
+            UnsubscribeTopics.run(args, cluster_config)
+
+            calls = []
+
+            obj = mock_ZK.return_value
+            assert obj.delete_topic_partitions.call_args_list == calls
+            assert obj.delete_topic.call_args_list == [
+                mock.call(args.groupid, "topic1"),
+            ]
+
     def test_run_no_node_error(self, mock_client):
         with self.mock_kafka_info(
         ) as (mock_writer_process_args, mock_ZK):
