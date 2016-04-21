@@ -52,21 +52,30 @@ class UnsubscribeTopics(OffsetWriter):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         with ZK(cluster_config) as zk:
-            for topic, partitions in topics_dict.iteritems():
-                if not args.partitions:
+            if args.topic and args.partitions:
+                cls.unsubscribe_partitions(
+                    zk,
+                    args.groupid,
+                    args.topic,
+                    args.partitions,
+                )
+            elif args.topic:
+                zk.delete_topic(args.groupid, args.topic)
+            else:
+                for topic, partitions in topics_dict.iteritems():
                     zk.delete_topic(args.groupid, topic)
-                else:
-                    try:
-                        zk.delete_topic_partitions(
-                            args.groupid,
-                            topic,
-                            partitions
-                        )
-                    except NoNodeError:
-                        print(
-                            "WARNING: No node found for topic {}, \
-                            partition {}".format(topic, partitions),
-                            file=sys.stderr,
-                        )
-                    if not zk.get_my_subscribed_partitions(args.groupid, topic):
-                        zk.delete_topic(args.groupid, topic)
+
+    @classmethod
+    def unsubscribe_partitions(cls, zk, groupid, topic, partitions):
+        try:
+            zk.delete_topic_partitions(groupid, topic, partitions)
+        except NoNodeError:
+            print(
+                "WARNING: No node found for topic {}, partition {}".format(
+                    topic,
+                    partitions,
+                ),
+                file=sys.stderr,
+            )
+        if not zk.get_my_subscribed_partitions(groupid, topic):
+            zk.delete_topic(groupid, topic)
