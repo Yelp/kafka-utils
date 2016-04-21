@@ -7,8 +7,8 @@ FROM ubuntu:14.04
 # Install Java.
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV PATH="$PATH:$JAVA_HOME/bin"
-RUN apt-get update
-RUN apt-get install software-properties-common -y
+RUN apt-get update && \
+    apt-get install software-properties-common -y
 RUN \
   echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
   add-apt-repository -y ppa:webupd8team/java && \
