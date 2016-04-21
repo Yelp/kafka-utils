@@ -15,6 +15,7 @@ from collections import OrderedDict
 
 from .broker import Broker
 from .error import InvalidBrokerIdError
+from .error import InvalidPartitionError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
@@ -110,7 +111,6 @@ class ClusterTopology(object):
     def assignment(self):
         assignment = {}
         for partition in self.partitions.itervalues():
-            #  assignment_json['partitions']:
             assignment[
                 (partition.topic.id, partition.partition_id)
             ] = [broker.id for broker in partition.replicas]
@@ -372,3 +372,46 @@ class ClusterTopology(object):
             for broker in over_brokers:
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
+
+    def update_cluster_topology(self, plan):
+        """Modify the cluster-topology with given plan.
+
+        Change the replica set of partitions as in given assignment.
+
+        :param plan: dict representing actions to be used to update the current
+        cluster-topology
+        :raises: InvalidBrokerIdError when broker-id is invalid
+        :raises: InvalidPartitionError when partition-name is invalid
+        """
+        try:
+            for elem in plan['partitions']:
+                partition_name = (elem['topic'], elem['partition'])
+                replica_ids = elem['replicas']
+                try:
+                    new_replicas = [self.brokers[b_id] for b_id in replica_ids]
+                except KeyError:
+                    self.log.error(
+                        "Invalid replicas %s for topic-partition %s-%s.",
+                        ', '.join([str(id) for id in replica_ids]),
+                        partition_name[0],
+                        partition_name[1],
+                    )
+                    raise InvalidBrokerIdError(
+                        "Invalid replicas {0}.".format(', '.join([str(id) for id in replica_ids])),
+                    )
+                # Update replicas of partition
+                try:
+                    partition = self.partitions[partition_name]
+                    partition.set_replicas(new_replicas)
+                except KeyError:
+                    self.log.error(
+                        "Invalid topic-partition %s-%s.",
+                        partition_name[0],
+                        partition_name[1],
+                    )
+                    raise InvalidPartitionError(
+                        "Invalid topic-partition {0}-{1}."
+                        .format(partition_name[0], partition_name[1]),
+                    )
+        except KeyError:
+            self.log.error("Could not parse given plan {plan}".format(plan=plan))

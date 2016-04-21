@@ -1,15 +1,8 @@
-from __future__ import print_function
-
 import json
 import logging
 
 from .command import ClusterManagerCmd
-from yelp_kafka_tool.kafka_cluster_manager. \
-    cluster_info.cluster_topology import ClusterTopology
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import imbalance_value_all
-from yelp_kafka_tool.kafka_cluster_manager. \
-    replication_group.yelp_group import extract_yelp_replication_group
-from yelp_kafka_tool.util.zookeeper import ZK
 
 
 class StatsCmd(ClusterManagerCmd):
@@ -37,9 +30,15 @@ class StatsCmd(ClusterManagerCmd):
         return subparser
 
     def run_command(self, cluster_topology):
-        self.initial_imbalance_stats(cluster_topology)
+        if self.args.assignment_json:
+            plan = self.get_plan()
+            base_assignment = cluster_topology.assignment
+            cluster_topology.update_cluster_topology(plan)
+            self.imbalance_stats(cluster_topology, base_assignment)
+        else:
+            self.imbalance_stats(cluster_topology)
 
-    def log_imbalance_stats(self, imbal, leaders=True):
+    def log_imbalance_stats(self, imbal):
         net_imbalance = (
             imbal['replica_cnt'] +
             imbal['net_part_cnt_per_rg'] +
@@ -59,20 +58,24 @@ class StatsCmd(ClusterManagerCmd):
                 imbal_net=net_imbalance,
             )
         )
-        if leaders:
-            net_imbalance_with_leaders = net_imbalance + imbal['leader_cnt']
-            self.log.info(
-                'Leader-count imbalance: {imbal_leader}\n'
-                'Net-cluster imbalance (including leader-imbalance): '
-                '{imbal}'.format(
-                    imbal=net_imbalance_with_leaders,
-                    imbal_leader=imbal['leader_cnt'],
-                )
+        net_imbalance_with_leaders = net_imbalance + imbal['leader_cnt']
+        self.log.info(
+            'Leader-count imbalance: {imbal_leader}\n'
+            'Net-cluster imbalance (including leader-imbalance): '
+            '{imbal}'.format(
+                imbal=net_imbalance_with_leaders,
+                imbal_leader=imbal['leader_cnt'],
             )
+        )
 
-    def initial_imbalance_stats(self, ct):
+        self.log.info(
+            'Total partition-movements: {movement_cnt}'
+            .format(movement_cnt=imbal['total_movements']),
+        )
+
+    def imbalance_stats(self, ct, base_assignment=None):
         self.log.info('Calculating rebalance imbalance statistics...')
-        initial_imbal = imbalance_value_all(ct)
+        initial_imbal = imbalance_value_all(ct, base_assignment)
         self.log_imbalance_stats(initial_imbal)
         total_imbal = (
             initial_imbal['replica_cnt'] +
@@ -84,43 +87,18 @@ class StatsCmd(ClusterManagerCmd):
         if total_imbal == 0:
             self.log.info('Cluster is currently balanced!')
 
-    def run(self, cluster_config, args):
-        self.cluster_config = cluster_config
-        self.args = args
-
-        with ZK(self.cluster_config) as self.zk:
-            self.log.info(
-                'Starting %s for cluster: %s and zookeeper: %s',
-                self.__class__.__name__,
-                self.cluster_config.name,
-                self.cluster_config.zookeeper,
+    def get_plan(self):
+        try:
+            return json.loads(open(self.args.assignment_json).read())
+        except IOError:
+            self.log.exception(
+                'Given json file {file} not found.'
+                .format(file=self.args.assignment_json),
             )
-            brokers = self.zk.get_brokers()
-            assignment = self.zk.get_cluster_assignment()
-            if args.assignment_json:
-                try:
-                    proposed_plan = json.loads(open(args.assignment_json).read())
-                except IOError:
-                    self.log.error(
-                        'Given json file {file} not found.'
-                        .format(file=args.assignment_json),
-                    )
-                    raise
-                except ValueError:
-                    self.log.error(
-                        'Given json file {file} could not be decoded.'
-                        .format(file=args.assignment_json),
-                    )
-                    raise
-
-                for ele in proposed_plan['partitions']:
-                    t_p = (ele['topic'], ele['partition'])
-                    if t_p in assignment.keys():
-                        assignment[t_p] = ele['replicas']
-                    else:
-                        self.log.error(
-                            'Invalid topic partition {t_p} in given assignment'
-                            .format(t_p=t_p),
-                        )
-            ct = ClusterTopology(assignment, brokers, extract_yelp_replication_group)
-            self.run_command(ct)
+            raise
+        except ValueError:
+            self.log.exception(
+                'Given json file {file} could not be decoded.'
+                .format(file=self.args.assignment_json),
+            )
+            raise
