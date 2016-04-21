@@ -17,6 +17,8 @@ class TestUnsubscribeTopics(object):
         "topic2": [0, 1],
     }
 
+    cluster_config = mock.Mock(zookeeper='some_ip')
+
     @contextlib.contextmanager
     def mock_kafka_info(self):
         with mock.patch.object(
@@ -39,10 +41,9 @@ class TestUnsubscribeTopics(object):
                 topic="topic1",
                 partitions=[0, 1, 2]
             )
-            cluster_config = mock.Mock(zookeeper='some_ip')
             mock_ZK.return_value.get_my_subscribed_partitions.return_value = [3]
 
-            UnsubscribeTopics.run(args, cluster_config)
+            UnsubscribeTopics.run(args, self.cluster_config)
 
             calls = [
                 mock.call(
@@ -66,9 +67,8 @@ class TestUnsubscribeTopics(object):
                 partitions=[0, 1, 2]
             )
             mock_ZK.return_value.get_my_subscribed_partitions.return_value = []
-            cluster_config = mock.Mock(zookeeper='some_ip')
 
-            UnsubscribeTopics.run(args, cluster_config)
+            UnsubscribeTopics.run(args, self.cluster_config)
 
             calls = [
                 mock.call(
@@ -91,9 +91,8 @@ class TestUnsubscribeTopics(object):
                 topic="topic1",
                 partitions=None
             )
-            cluster_config = mock.Mock(zookeeper='some_ip')
 
-            UnsubscribeTopics.run(args, cluster_config)
+            UnsubscribeTopics.run(args, self.cluster_config)
 
             obj = mock_ZK.return_value
             assert obj.delete_topic_partitions.call_count == 0
@@ -108,9 +107,8 @@ class TestUnsubscribeTopics(object):
                 topic=None,
                 partitions=None
             )
-            cluster_config = mock.Mock(zookeeper='some_ip')
 
-            UnsubscribeTopics.run(args, cluster_config)
+            UnsubscribeTopics.run(args, self.cluster_config)
 
             obj = mock_ZK.return_value
             assert obj.delete_topic_partitions.call_count == 0
@@ -130,9 +128,8 @@ class TestUnsubscribeTopics(object):
                 topic="topic1",
                 partitions=[0, 1, 2]
             )
-            cluster_config = mock.Mock(zookeeper='some_ip')
 
-            UnsubscribeTopics.run(args, cluster_config)
+            UnsubscribeTopics.run(args, self.cluster_config)
             assert mock_ZK.return_value.delete_topic_partitions.called
 
     def test_run_any_other_exception(self, mock_client):
@@ -145,7 +142,6 @@ class TestUnsubscribeTopics(object):
                 topic="topic1",
                 partitions=[0, 1, 2]
             )
-            cluster_config = mock.Mock(zookeeper='some_ip')
 
             with pytest.raises(ZookeeperError):
-                UnsubscribeTopics.run(args, cluster_config)
+                UnsubscribeTopics.run(args, self.cluster_config)
