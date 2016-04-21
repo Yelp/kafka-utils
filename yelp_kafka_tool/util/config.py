@@ -190,7 +190,7 @@ def get_cluster_config(
     :param kafka_topology_base_path: base path to look for <cluster_type>.yaml
     :type cluster_name: string
     :returns: the cluster
-    :rtype: yelp_kafka.config.ClusterConfig
+    :rtype: ClusterConfig
     """
     if kafka_topology_base_path:
         topology = TopologyConfiguration(cluster_type, kafka_topology_base_path)

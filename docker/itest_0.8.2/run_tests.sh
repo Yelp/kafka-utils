@@ -7,7 +7,7 @@ function do_at_exit {
   rm -rf build/ dist/ yelp_kafka_tool.egg-info/
   rm -rf .tox/log .tox/dist .tox/acceptance
   find . -name '*.pyc' -delete
-  find . -name '__pycache__' -delete
+  find . -name '__pycache__' -print0 | xargs -0 rm -rf
   exit $exit_status
 }
 

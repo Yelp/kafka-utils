@@ -1,8 +1,8 @@
 import json
 
 import mock
-from yelp_kafka.config import ClusterConfig
 
+from yelp_kafka_tool.util.config import ClusterConfig
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
