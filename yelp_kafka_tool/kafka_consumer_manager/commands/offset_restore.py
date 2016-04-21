@@ -8,10 +8,10 @@ from collections import defaultdict
 from contextlib import closing
 
 from kafka import KafkaClient
-from yelp_kafka.monitoring import get_consumer_offsets_metadata
-from yelp_kafka.offsets import set_consumer_offsets
 
 from .offset_manager import OffsetManagerBase
+from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
+from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
 
 class OffsetRestore(OffsetManagerBase):

@@ -3,10 +3,10 @@ from collections import defaultdict
 
 import mock
 import pytest
-from yelp_kafka.error import OffsetCommitError
 
 from yelp_kafka_tool.kafka_consumer_manager. \
     commands.offset_set import OffsetSet
+from yelp_kafka_tool.util.error import OffsetCommitError
 
 
 class TestOffsetSet(object):
