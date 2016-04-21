@@ -4,9 +4,8 @@ import sys
 from .command import ClusterManagerCmd
 from yelp_kafka_tool.kafka_cluster_manager. \
     cluster_info.stats import imbalance_value_all
-from yelp_kafka_tool.kafka_cluster_manager. \
-    cluster_info.util import validate_plan
-from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
+from yelp_kafka_tool.util.validation import assignment_to_plan
+from yelp_kafka_tool.util.validation import validate_plan
 
 
 DEFAULT_MAX_PARTITION_MOVEMENTS = 1

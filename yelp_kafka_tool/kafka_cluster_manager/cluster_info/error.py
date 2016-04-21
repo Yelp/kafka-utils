@@ -1,13 +1,18 @@
-class InvalidBrokerIdError(Exception):
-    """Raised when a broker id doesn't exist in the cluster"""
+from yelp_kafka_tool.util.error import KafkaToolError
+
+
+class InvalidBrokerIdError(KafkaToolError):
+    """Raised when a broker id doesn't exist in the cluster."""
     pass
 
 
-class EmptyReplicationGroupError(Exception):
-    """Raised when there are no brokers in a replication group"""
+class EmptyReplicationGroupError(KafkaToolError):
+    """Raised when there are no brokers in a replication group."""
     pass
 
 
-class BrokerDecommissionError(Exception):
-    """Raised it is not possible to move partition out from decommissioned brokers"""
+class BrokerDecommissionError(KafkaToolError):
+    """Raised if it is not possible to move partition out
+    from decommissioned brokers.
+    """
     pass

@@ -2,7 +2,7 @@ import json
 import logging
 
 from .command import ClusterManagerCmd
-from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
+from yelp_kafka_tool.util.validation import assignment_to_plan
 
 
 class StoreAssignmentsCmd(ClusterManagerCmd):
