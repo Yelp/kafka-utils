@@ -1,11 +1,8 @@
 import json
 import logging
-from collections import OrderedDict
 
 from .command import ClusterManagerCmd
-
-DEFAULT_MAX_PARTITION_MOVEMENTS = 1
-DEFAULT_MAX_LEADER_CHANGES = 5
+from yelp_kafka_tool.kafka_cluster_manager.util import assignment_to_plan
 
 
 class StoreAssignmentsCmd(ClusterManagerCmd):
@@ -38,31 +35,15 @@ class StoreAssignmentsCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def generate_kafka_json(self, assignment_dict):
-        """Assemble json string per examples in:
-        http://kafka.apache.org/documentation.html#basic_ops_automigrate"""
-        return json.dumps(
-            OrderedDict((
-                ('version', 1),
-                (
-                    'partitions',
-                    [
-                        {'topic': k[0], 'partition': k[1], 'replicas': v}
-                        for k, v in assignment_dict.items()
-                    ]
-                ),
-            )),
-            sort_keys=True,
-        )
-
     def run_command(self, ct):
-        json_text = self.generate_kafka_json(ct.assignment)
+        plan_json = json.dumps(assignment_to_plan(ct.assignment))
         if self.args.json_out:
             with open(self.args.json_out, 'w') as f:
                 self.log.info(
                     'writing assignments as json to: %s',
-                    self.args.json_out)
-                f.write(json_text)
+                    self.args.json_out,
+                )
+                f.write(plan_json)
         else:
             self.log.info('writing assignments as json to stdout')
-            print json_text
+            print plan_json
