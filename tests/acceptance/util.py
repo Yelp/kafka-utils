@@ -11,7 +11,7 @@ KAFKA_URL = 'kafka:9092'
 
 
 def create_topic(topic_name, replication_factor, partitions):
-    cmd = ['/usr/bin/kafka-topics', '--create',
+    cmd = ['kafka-topics.sh', '--create',
            '--zookeeper', ZOOKEEPER_URL,
            '--replication-factor', str(replication_factor),
            '--partitions', str(partitions),

@@ -1,5 +1,4 @@
-FROM docker-dev.yelpcorp.com/trusty_yelp
-MAINTAINER Team Distributed Systems <team-dist-sys@yelp.com>
+FROM ubuntu:14.04
 
 RUN apt-get update && apt-get -y install zookeeper
 
