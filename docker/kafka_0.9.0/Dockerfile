@@ -1,9 +1,5 @@
 FROM ubuntu:14.04
 
-# We need to install Java and Kafka in order to use Kafka CLI. The Kakfa server
-# will never run in this container; the Kafka server will run in the "kafka"
-# container.
-
 # Install Java.
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV PATH="$PATH:$JAVA_HOME/bin"
