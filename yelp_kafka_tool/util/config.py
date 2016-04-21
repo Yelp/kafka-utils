@@ -109,7 +109,7 @@ class TopologyConfiguration(object):
         """Load the topology configuration"""
         config_path = os.path.join(
             self.kafka_topology_path,
-            '{id}.yaml'.format(id=self.cluster_type)
+            '{id}.yaml'.format(id=self.cluster_type),
         )
         self.log.debug("Loading configuration from %s", config_path)
         if os.path.isfile(config_path):
@@ -118,7 +118,8 @@ class TopologyConfiguration(object):
             raise ConfigurationError(
                 "Topology configuration {0} for cluster {1} "
                 "does not exist".format(
-                    config_path, self.cluster_type
+                    config_path,
+                    self.cluster_type,
                 )
             )
         self.log.debug("Topology configuration %s", topology_config)

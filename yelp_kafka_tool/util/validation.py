@@ -1,3 +1,4 @@
+""""Provide functions to validate and generate a Kafka assignment"""
 import logging
 from collections import Counter
 

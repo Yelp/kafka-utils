@@ -1,10 +1,10 @@
 class KafkaToolError(Exception):
-    """Base class for kafka tool exceptions"""
+    """Base class for kafka tool exceptions."""
     pass
 
 
 class ConfigurationError(KafkaToolError):
-    """Error in configuration. For example. Missing configuration file
+    """Error in configuration. For example: missing configuration file
     or misformatted configuration."""
     pass
 
@@ -15,17 +15,17 @@ class InvalidOffsetStorageError(KafkaToolError):
 
 
 class UnknownTopic(KafkaToolError):
-    """Topic does not exist in kafka"""
+    """Topic does not exist in kafka."""
     pass
 
 
 class UnknownPartitions(KafkaToolError):
-    """Partition doesn't exist in kafka"""
+    """Partition doesn't exist in kafka."""
     pass
 
 
 class OffsetCommitError(KafkaToolError):
-    """Error during offset commit"""
+    """Error during offset commit."""
 
     def __init__(self, topic, partition, error):
         self.topic = topic
