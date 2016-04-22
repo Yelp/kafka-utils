@@ -1,4 +1,5 @@
 FROM ubuntu:14.04
+MAINTAINER Team Distributed Systems <team-dist-sys@yelp.com>
 
 # We need to install Java and Kafka in order to use Kafka CLI. The Kakfa server
 # will never run in this container; the Kafka server will run in the "kafka"
@@ -18,12 +19,16 @@ RUN \
   rm -rf /var/cache/oracle-jdk8-installer
 
 # Install Kafka.
-RUN apt-get update && \
-    apt-get install -y unzip wget curl docker jq coreutils
+RUN apt-get update && apt-get install -y \
+    unzip \
+    wget \
+    curl \
+    jq \
+    coreutils
 ENV KAFKA_VERSION="0.8.2.1"
 ENV SCALA_VERSION="2.11"
 ENV KAFKA_HOME /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION}
-ADD download-kafka.sh /tmp/download-kafka.sh
+COPY download-kafka.sh /tmp/download-kafka.sh
 RUN chmod 755 /tmp/download-kafka.sh
 RUN /tmp/download-kafka.sh && tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz -C /opt && rm /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
 ENV PATH="$PATH:$KAFKA_HOME/bin"
