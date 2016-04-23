@@ -373,20 +373,18 @@ class ClusterTopology(object):
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
 
-    def update_cluster_topology(self, plan):
-        """Modify the cluster-topology with given plan.
+    def update_cluster_topology(self, assignment):
+        """Modify the cluster-topology with given assignment.
 
         Change the replica set of partitions as in given assignment.
 
-        :param plan: dict representing actions to be used to update the current
+        :param assignment: dict representing actions to be used to update the current
         cluster-topology
         :raises: InvalidBrokerIdError when broker-id is invalid
         :raises: InvalidPartitionError when partition-name is invalid
         """
         try:
-            for elem in plan['partitions']:
-                partition_name = (elem['topic'], elem['partition'])
-                replica_ids = elem['replicas']
+            for partition_name, replica_ids in assignment.iteritems():
                 try:
                     new_replicas = [self.brokers[b_id] for b_id in replica_ids]
                 except KeyError:
@@ -399,10 +397,17 @@ class ClusterTopology(object):
                     raise InvalidBrokerIdError(
                         "Invalid replicas {0}.".format(', '.join([str(id) for id in replica_ids])),
                     )
-                # Update replicas of partition
                 try:
                     partition = self.partitions[partition_name]
-                    partition.set_replicas(new_replicas)
+                    old_replicas = [broker for broker in partition.replicas]
+
+                    # Remove old partitions from broker
+                    for broker in old_replicas:
+                        broker.remove_partition(partition)
+
+                    # Add new partition to brokers
+                    for broker in new_replicas:
+                        broker.add_partition(partition)
                 except KeyError:
                     self.log.error(
                         "Invalid topic-partition %s-%s.",
@@ -414,4 +419,5 @@ class ClusterTopology(object):
                         .format(partition_name[0], partition_name[1]),
                     )
         except KeyError:
-            self.log.error("Could not parse given plan {plan}".format(plan=plan))
+            self.log.error("Could not parse given assignment {0}".format(assignment))
+            raise

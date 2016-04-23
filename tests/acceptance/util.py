@@ -6,8 +6,19 @@ from kafka import KafkaClient
 from kafka import KafkaConsumer
 from kafka import SimpleProducer
 
+from yelp_kafka_tool.util import config
+
+
 ZOOKEEPER_URL = 'zookeeper:2181'
 KAFKA_URL = 'kafka:9092'
+
+
+def get_cluster_config():
+    return config.get_cluster_config(
+        'test',
+        'test_cluster',
+        'tests/acceptance/config',
+    )
 
 
 def create_topic(topic_name, replication_factor, partitions):
@@ -24,7 +35,8 @@ def create_topic(topic_name, replication_factor, partitions):
 
 def call_cmd(cmd):
     try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        output, _ = p.communicate('y')
     except subprocess.CalledProcessError as e:
         output = e.output
     return output

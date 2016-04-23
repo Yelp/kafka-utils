@@ -82,7 +82,3 @@ class Partition(object):
 
     def __repr__(self):
         return "{0}".format(self)
-
-    def set_replicas(self, replicas):
-        """Replace existing replicas with new replicas."""
-        self._replicas = replicas

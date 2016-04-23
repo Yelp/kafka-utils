@@ -2,9 +2,14 @@ from collections import Counter
 from collections import OrderedDict
 
 import mock
+import pytest
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import InvalidBrokerIdError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import InvalidPartitionError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
@@ -687,6 +692,66 @@ class TestClusterToplogy(object):
         )
         # Verify replica-count imbalance remains 0
         assert net_imbal == 0
+
+    def test_update_cluster_topology_invalid_broker(self):
+        assignment = OrderedDict([((u'T0', 0), ['1', '2'])])
+        proposed_assignment = OrderedDict([((u'T0', 0), ['1', '3'])])
+        ct = self.build_cluster_topology(assignment, self.srange(3))
+
+        # Verify that partition (T0, 1) is updated and not others
+        with pytest.raises(InvalidBrokerIdError):
+            ct.update_cluster_topology(proposed_assignment)
+
+    def test_update_cluster_topology_invalid_partition(self):
+        assignment = OrderedDict([((u'T0', 0), ['1', '2'])])
+        proposed_assignment = OrderedDict([((u'invalid_topic', 0), ['1', '0'])])
+        ct = self.build_cluster_topology(assignment, self.srange(3))
+
+        # Verify that partition (T0, 1) is updated and not others
+        with pytest.raises(InvalidPartitionError):
+            ct.update_cluster_topology(proposed_assignment)
+
+    def test_update_cluster_topology(self):
+        assignment = OrderedDict(
+            [
+                ((u'T0', 0), ['1', '2']),
+                ((u'T0', 1), ['2', '0']),
+                ((u'T1', 0), ['0', '2']),
+            ]
+        )
+        proposed_assignment = OrderedDict(
+            [
+                ((u'T0', 0), ['1', '2']),
+                ((u'T0', 1), ['1', '2']),
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, self.srange(3))
+
+        ct.update_cluster_topology(proposed_assignment)
+
+        # Verify updates of partition and broker objects
+        r_T0_0 = [b.id for b in ct.partitions[(u'T0', 0)].replicas]
+        r_T0_1 = [b.id for b in ct.partitions[(u'T0', 1)].replicas]
+        r_T1_0 = [b.id for b in ct.partitions[(u'T1', 0)].replicas]
+        assert r_T0_0 == ['1', '2']
+        assert r_T0_1 == ['1', '2']
+        assert r_T1_0 == ['0', '2']
+
+        # Assert partitions of brokers get updated
+        assert ct.brokers['0'].partitions == set([
+            ct.partitions[(u'T1', 0)],
+        ])
+
+        assert ct.brokers['1'].partitions == set([
+            ct.partitions[(u'T0', 0)],
+            ct.partitions[(u'T0', 1)],
+        ])
+
+        assert ct.brokers['2'].partitions == set([
+            ct.partitions[(u'T0', 0)],
+            ct.partitions[(u'T0', 1)],
+            ct.partitions[(u'T1', 0)],
+        ])
 
     def assert_leader_valid(self, orig_assignment, new_assignment):
         """Verify that new-assignment complies with just leader changes.

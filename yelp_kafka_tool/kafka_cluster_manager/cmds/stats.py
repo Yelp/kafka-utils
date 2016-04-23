@@ -3,6 +3,7 @@ import logging
 
 from .command import ClusterManagerCmd
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import imbalance_value_all
+from yelp_kafka_tool.util.validation import plan_to_assignment
 
 
 class StatsCmd(ClusterManagerCmd):
@@ -20,20 +21,21 @@ class StatsCmd(ClusterManagerCmd):
             'applied',
         )
         subparser.add_argument(
-            '--assignment-json',
+            '--read-from-file',
+            dest='plan_file_path',
+            metavar='<reassignment-plan-file-path>',
             type=str,
-            help='json file path of assignment to be used over current cluster-'
-            'topology for calculating stats in the format {"version": 1, '
-            '"partitions": [{"topic": "foo", "partition": 1, "replicas": [1,2,3]'
-            '}]',
+            help='Read the partition assignment from json file. Example format:'
+            ' {"version": 1, "partitions": [{"topic": "foo", "partition": 1, '
+            '"replicas": [1,2,3]}]}',
         )
         return subparser
 
     def run_command(self, cluster_topology):
-        if self.args.assignment_json:
-            plan = self.get_plan()
+        if self.args.plan_file_path:
             base_assignment = cluster_topology.assignment
-            cluster_topology.update_cluster_topology(plan)
+
+            cluster_topology.update_cluster_topology(self.get_assignment())
             self.imbalance_stats(cluster_topology, base_assignment)
         else:
             self.imbalance_stats(cluster_topology)
@@ -87,18 +89,20 @@ class StatsCmd(ClusterManagerCmd):
         if total_imbal == 0:
             self.log.info('Cluster is currently balanced!')
 
-    def get_plan(self):
+    def get_assignment(self):
+        """Parse the given json plan in dict format."""
         try:
-            return json.loads(open(self.args.assignment_json).read())
+            plan = json.loads(open(self.args.plan_file_path).read())
+            return plan_to_assignment(plan)
         except IOError:
             self.log.exception(
                 'Given json file {file} not found.'
-                .format(file=self.args.assignment_json),
+                .format(file=self.args.plan_file_path),
             )
             raise
         except ValueError:
             self.log.exception(
                 'Given json file {file} could not be decoded.'
-                .format(file=self.args.assignment_json),
+                .format(file=self.args.plan_file_path),
             )
             raise

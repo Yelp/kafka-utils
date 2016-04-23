@@ -16,9 +16,8 @@ from fabric.api import sudo
 from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
-from yelp_kafka import discovery
-from yelp_kafka.error import ConfigurationError
 
+from yelp_kafka_tool.util import config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -49,6 +48,12 @@ def parse_opts():
     parser.add_argument(
         '--cluster-name',
         help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
+    )
+    parser.add_argument(
+        '--discovery-base-path',
+        dest='discovery_base_path',
+        type=str,
+        help='Path of the directory containing the <cluster_type>.yaml config',
     )
     parser.add_argument(
         '--check-interval',
@@ -102,25 +107,6 @@ def parse_opts():
         action="store_true",
     )
     return parser.parse_args()
-
-
-def get_cluster(cluster_type, cluster_name):
-    """Return the cluster configuration, given cluster type and name.
-    Use the local cluster if cluster_name is not specified.
-
-    :param cluster_type: the type of the cluster
-    :type cluster_type: string
-    :param cluster_name: the name of the cluster
-    :type cluster_name: string
-    """
-    try:
-        if cluster_name:
-            return discovery.get_cluster_by_name(cluster_type, cluster_name)
-        else:
-            return discovery.get_local_cluster(cluster_type)
-    except ConfigurationError as e:
-        print(e, file=sys.stderr)
-        sys.exit(1)
 
 
 def get_broker_list(cluster_config):
@@ -372,7 +358,11 @@ def run():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARN)
-    cluster_config = get_cluster(opts.cluster_type, opts.cluster_name)
+    cluster_config = config.get_cluster_config(
+        opts.cluster_type,
+        opts.cluster_name,
+        opts.discovery_base_path,
+    )
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
