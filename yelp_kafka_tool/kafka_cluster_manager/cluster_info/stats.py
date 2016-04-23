@@ -264,10 +264,7 @@ def imbalance_value_all(ct, base_assignment=None):
         stdev_imbalance,
         imbal_part,
     )
-    display_same_replica_count_rg(
-        duplicate_replica_count_per_rg,
-        imbal_replica,
-    )
+    display_same_replica_count_rg(duplicate_replica_count_per_rg, imbal_replica)
     display_same_topic_partition_count_broker(
         same_topic_partition_count_per_broker,
         imbal_topic,

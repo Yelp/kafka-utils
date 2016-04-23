@@ -402,6 +402,7 @@ class ClusterTopology(object):
                     old_replicas = [broker for broker in partition.replicas]
 
                     # Remove old partitions from broker
+                    # This also updates partition replicas
                     for broker in old_replicas:
                         broker.remove_partition(partition)
 

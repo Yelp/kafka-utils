@@ -695,21 +695,19 @@ class TestClusterToplogy(object):
 
     def test_update_cluster_topology_invalid_broker(self):
         assignment = OrderedDict([((u'T0', 0), ['1', '2'])])
-        proposed_assignment = OrderedDict([((u'T0', 0), ['1', '3'])])
+        new_assignment = OrderedDict([((u'T0', 0), ['1', '3'])])
         ct = self.build_cluster_topology(assignment, self.srange(3))
 
-        # Verify that partition (T0, 1) is updated and not others
         with pytest.raises(InvalidBrokerIdError):
-            ct.update_cluster_topology(proposed_assignment)
+            ct.update_cluster_topology(new_assignment)
 
     def test_update_cluster_topology_invalid_partition(self):
         assignment = OrderedDict([((u'T0', 0), ['1', '2'])])
-        proposed_assignment = OrderedDict([((u'invalid_topic', 0), ['1', '0'])])
+        new_assignment = OrderedDict([((u'invalid_topic', 0), ['1', '0'])])
         ct = self.build_cluster_topology(assignment, self.srange(3))
 
-        # Verify that partition (T0, 1) is updated and not others
         with pytest.raises(InvalidPartitionError):
-            ct.update_cluster_topology(proposed_assignment)
+            ct.update_cluster_topology(new_assignment)
 
     def test_update_cluster_topology(self):
         assignment = OrderedDict(
@@ -719,7 +717,7 @@ class TestClusterToplogy(object):
                 ((u'T1', 0), ['0', '2']),
             ]
         )
-        proposed_assignment = OrderedDict(
+        new_assignment = OrderedDict(
             [
                 ((u'T0', 0), ['1', '2']),
                 ((u'T0', 1), ['1', '2']),
@@ -727,7 +725,7 @@ class TestClusterToplogy(object):
         )
         ct = self.build_cluster_topology(assignment, self.srange(3))
 
-        ct.update_cluster_topology(proposed_assignment)
+        ct.update_cluster_topology(new_assignment)
 
         # Verify updates of partition and broker objects
         r_T0_0 = [b.id for b in ct.partitions[(u'T0', 0)].replicas]

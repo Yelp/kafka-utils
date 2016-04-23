@@ -18,7 +18,7 @@ class StatsCmd(ClusterManagerCmd):
             description='Show imbalance statistics of cluster topology',
             help='This command is used to display imbalance stats of current '
             'cluster-topology or cluster-topology after given assignment is '
-            'applied',
+            'applied.',
         )
         subparser.add_argument(
             '--read-from-file',
@@ -35,6 +35,7 @@ class StatsCmd(ClusterManagerCmd):
         if self.args.plan_file_path:
             base_assignment = cluster_topology.assignment
 
+            print('Integrating given assignment-plan in current cluster-topology.')
             cluster_topology.update_cluster_topology(self.get_assignment())
             self.imbalance_stats(cluster_topology, base_assignment)
         else:
@@ -46,7 +47,7 @@ class StatsCmd(ClusterManagerCmd):
             imbal['net_part_cnt_per_rg'] +
             imbal['topic_partition_cnt']
         )
-        self.log.info(
+        print(
             'Replication-group imbalance (replica-count): {imbal_repl}\n'
             'Net Partition-count imbalance/replication-group: '
             '{imbal_part_rg}\nNet Partition-count imbalance: {imbal_part}\n'
@@ -61,7 +62,7 @@ class StatsCmd(ClusterManagerCmd):
             )
         )
         net_imbalance_with_leaders = net_imbalance + imbal['leader_cnt']
-        self.log.info(
+        print(
             'Leader-count imbalance: {imbal_leader}\n'
             'Net-cluster imbalance (including leader-imbalance): '
             '{imbal}'.format(
@@ -70,13 +71,14 @@ class StatsCmd(ClusterManagerCmd):
             )
         )
 
-        self.log.info(
-            'Total partition-movements: {movement_cnt}'
-            .format(movement_cnt=imbal['total_movements']),
+        print(
+            'Total partition-movements: {total_movements}'.format(
+                total_movements=imbal['total_movements'],
+            ),
         )
 
     def imbalance_stats(self, ct, base_assignment=None):
-        self.log.info('Calculating rebalance imbalance statistics...')
+        print('Calculating cluster imbalance statistics...')
         initial_imbal = imbalance_value_all(ct, base_assignment)
         self.log_imbalance_stats(initial_imbal)
         total_imbal = (
@@ -87,7 +89,7 @@ class StatsCmd(ClusterManagerCmd):
             initial_imbal['leader_cnt']
         )
         if total_imbal == 0:
-            self.log.info('Cluster is currently balanced!')
+            print('Cluster is currently balanced!')
 
     def get_assignment(self):
         """Parse the given json plan in dict format."""
@@ -103,6 +105,12 @@ class StatsCmd(ClusterManagerCmd):
         except ValueError:
             self.log.exception(
                 'Given json file {file} could not be decoded.'
+                .format(file=self.args.plan_file_path),
+            )
+            raise
+        except KeyError:
+            self.log.exception(
+                'Given json file {file} could not be parsed in desired format.'
                 .format(file=self.args.plan_file_path),
             )
             raise

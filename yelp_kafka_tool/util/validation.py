@@ -7,7 +7,6 @@ _log = logging.getLogger(__name__)
 
 def plan_to_assignment(plan):
     """Convert the plan to the format used by cluster-topology."""
-    # Build assignment from plan
     assignment = {}
     for elem in plan['partitions']:
         assignment[

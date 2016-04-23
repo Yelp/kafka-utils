@@ -399,6 +399,12 @@ class ZK:
         )
         self.delete(path, True)
 
+    def delete_group(self, groupid):
+        path = "/consumers/{groupid}".format(
+            groupid=groupid,
+        )
+        self.delete(path, True)
+
     def execute_plan(self, plan):
         """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\

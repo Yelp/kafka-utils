@@ -7,6 +7,7 @@ import logging
 import sys
 
 from .commands.copy_group import CopyGroup
+from .commands.delete_group import DeleteGroup
 from .commands.list_groups import ListGroups
 from .commands.list_topics import ListTopics
 from .commands.offset_advance import OffsetAdvance
@@ -53,6 +54,7 @@ def parse_args():
     ListGroups.add_parser(subparsers)
     UnsubscribeTopics.add_parser(subparsers)
     CopyGroup.add_parser(subparsers)
+    DeleteGroup.add_parser(subparsers)
     RenameGroup.add_parser(subparsers)
     OffsetRestore.add_parser(subparsers)
     return parser.parse_args()
