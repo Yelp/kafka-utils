@@ -496,7 +496,7 @@ def set_consumer_offsets(
         for partition, offset in new_partition_offsets.iteritems()
     ]
 
-    if offset_storage == 'zookeeper' or offset_storage is None:
+    if offset_storage == 'zookeeper' or not offset_storage:
         send_api = kafka_client.send_offset_commit_request
     elif offset_storage == 'kafka':
         send_api = kafka_client.send_offset_commit_request_kafka
