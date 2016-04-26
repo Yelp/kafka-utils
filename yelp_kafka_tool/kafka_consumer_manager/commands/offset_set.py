@@ -51,7 +51,7 @@ class OffsetSet(OffsetWriter):
             "new offset."
         )
         parser_offset_set.add_argument(
-            '--storage',
+            '--storage', choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets."
         )
 
