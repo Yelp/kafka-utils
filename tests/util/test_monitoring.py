@@ -8,6 +8,7 @@ from yelp_kafka_tool.util.error import UnknownPartitions
 from yelp_kafka_tool.util.error import UnknownTopic
 from yelp_kafka_tool.util.monitoring import ConsumerPartitionOffsets
 from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
+from yelp_kafka_tool.util.monitoring import merge_offsets_metadata
 
 
 class TestMonitoring(TestOffsetsBase):
@@ -95,3 +96,29 @@ class TestMonitoring(TestOffsetsBase):
                     {'topic1': [99]},
                 )
             assert mock_func.call_count == 2
+
+    def test_merge_offsets_metadata_empty(self, kafka_client_mock):
+        zk_offsets = {}
+        kafka_offsets = {}
+        expected = {}
+
+        result = merge_offsets_metadata([], zk_offsets, kafka_offsets)
+        assert result == expected
+
+    def test_merge_offsets_metadata(self, kafka_client_mock):
+        zk_offsets = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 6, 6)],
+            'topic2': []
+        }
+        kafka_offsets = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 5, 5)],
+            'topic2': [ConsumerPartitionOffsets('topic1', 0, 1, 1, 1)],
+        }
+        expected = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 6, 6)],
+            'topic2': [ConsumerPartitionOffsets('topic1', 0, 1, 1, 1)],
+        }
+
+        topics = ['topic1', 'topic2']
+        result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
+        assert result == expected

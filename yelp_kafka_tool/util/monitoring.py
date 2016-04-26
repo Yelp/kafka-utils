@@ -1,7 +1,9 @@
 import logging
+import operator
 from collections import namedtuple
 
 from kafka.common import KafkaUnavailableError
+from kafka.common import NotCoordinatorForConsumerCode
 
 from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
 from yelp_kafka_tool.util.offsets import get_topics_watermarks
@@ -71,4 +73,73 @@ def get_consumer_offsets_metadata(
                 lowmark=watermarks[topic][partition].lowmark,
             ) for partition in partitions
         ]
+    return result
+
+
+def get_higher_consumer_offsets_metadata(
+    kafka_client,
+    group,
+    topics,
+):
+    """
+    Attempts to fetch offsets metadata from both Zookeeper and Kafka.
+    For each partition, returns offset metadata for whichever one has
+    higher offsets.
+
+    :param kafka_client: KafkaClient instance
+    :param group: group id
+    :param topics: list of topics
+    :returns: dict <topic>: [ConsumerPartitionOffsets]
+    """
+    zk_offsets = get_consumer_offsets_metadata(
+        kafka_client,
+        group,
+        topics,
+        raise_on_error=False,
+        offset_storage='zookeeper',
+    )
+    try:
+        kafka_offsets = get_consumer_offsets_metadata(
+            kafka_client,
+            group,
+            topics,
+            raise_on_error=False,
+            offset_storage='kafka',
+        )
+    except NotCoordinatorForConsumerCode:
+        kafka_offsets = {}
+    return merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
+
+
+def merge(d1, d2, merge_fn=lambda x, y: y):
+    """
+    Merges two dictionaries, non-destructively, combining
+    values on duplicate keys as defined by the optional merge
+    function.
+    """
+    result = dict(d1)
+    for k, v in d2.iteritems():
+        if k in result:
+            result[k] = merge_fn(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def merge_offsets_metadata(topics, first, second):
+    def to_dict(lst):
+        return {item.partition: item for item in lst}
+
+    def from_dict(dct):
+        return dct.values()
+
+    result = dict()
+    for topic in topics:
+        result[topic] = from_dict(
+            merge(
+                to_dict(first[topic]),
+                to_dict(second[topic]),
+                lambda x, y: max(x, y, key=operator.attrgetter('highmark'))
+            )
+        )
     return result

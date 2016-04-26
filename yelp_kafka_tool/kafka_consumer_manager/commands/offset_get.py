@@ -8,7 +8,7 @@ from kafka import KafkaClient
 
 from .offset_manager import OffsetManagerBase
 from yelp_kafka_tool.util import print_json
-from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
+from yelp_kafka_tool.util.monitoring import get_higher_consumer_offsets_metadata
 
 
 class OffsetGet(OffsetManagerBase):
@@ -66,8 +66,8 @@ class OffsetGet(OffsetManagerBase):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         try:
-            consumer_offsets_metadata = get_consumer_offsets_metadata(
-                client, args.groupid, topics_dict, False,
+            consumer_offsets_metadata = get_higher_consumer_offsets_metadata(
+                client, args.groupid, topics_dict
             )
         except:
             print(
