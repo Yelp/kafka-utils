@@ -1,0 +1,29 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import functools
+
+from kafka import KafkaClient
+
+from yelp_kafka_tool.util.protocol import YelpKafkaProtocol
+
+
+class YelpKafkaClient(KafkaClient):
+    '''
+    Extends the KafkaClient class, and includes a method for sending offset
+    commit requests to Kafka.
+    '''
+
+    def send_offset_commit_request_kafka(
+            self, group, payloads=[],
+            fail_on_error=True, callback=None):
+        encoder = functools.partial(
+            YelpKafkaProtocol.encode_offset_commit_request_kafka,
+            group=group,
+        )
+        decoder = YelpKafkaProtocol.decode_offset_commit_response
+        resps = self._send_consumer_aware_request(group, payloads, encoder, decoder)
+
+        return [resp if not callback else callback(resp) for resp in resps
+                if not fail_on_error or not self._raise_on_response_error(resp)]
