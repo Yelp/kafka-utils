@@ -5,7 +5,7 @@ from kafka.util import group_by_topic_and_partition
 from kafka.util import write_short_string
 
 
-class YelpKafkaProtocol(KafkaProtocol):
+class KafkaToolProtocol(KafkaProtocol):
 
     @classmethod
     def encode_offset_commit_request_kafka(cls, client_id, correlation_id,

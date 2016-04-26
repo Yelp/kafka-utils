@@ -6,10 +6,10 @@ import functools
 
 from kafka import KafkaClient
 
-from yelp_kafka_tool.util.protocol import YelpKafkaProtocol
+from yelp_kafka_tool.util.protocol import KafkaToolProtocol
 
 
-class YelpKafkaClient(KafkaClient):
+class KafkaToolClient(KafkaClient):
     '''
     Extends the KafkaClient class, and includes a method for sending offset
     commit requests to Kafka.
@@ -19,10 +19,10 @@ class YelpKafkaClient(KafkaClient):
             self, group, payloads=[],
             fail_on_error=True, callback=None):
         encoder = functools.partial(
-            YelpKafkaProtocol.encode_offset_commit_request_kafka,
+            KafkaToolProtocol.encode_offset_commit_request_kafka,
             group=group,
         )
-        decoder = YelpKafkaProtocol.decode_offset_commit_response
+        decoder = KafkaToolProtocol.decode_offset_commit_response
         resps = self._send_consumer_aware_request(group, payloads, encoder, decoder)
 
         return [resp if not callback else callback(resp) for resp in resps

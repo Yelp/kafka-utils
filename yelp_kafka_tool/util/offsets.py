@@ -456,7 +456,7 @@ def set_consumer_offsets(
     other topics. This is the tradeoff of sending all topic requests in batch
     and save both in performance and Kafka load.
 
-    :param kafka_client: a connected YelpKafkaClient
+    :param kafka_client: a connected KafkaToolClient
     :param group: kafka group_id
     :param topics: dict {<topic>: {<partition>: <offset>}}
     :param raise_on_error: if False the method does not raise exceptions

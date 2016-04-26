@@ -41,7 +41,7 @@ class TestOffsetSet(object):
 
     @mock.patch(
         'yelp_kafka_tool.kafka_consumer_manager.'
-        'commands.offset_set.YelpKafkaClient',
+        'commands.offset_set.KafkaToolClient',
         autospec=True,
     )
     def test_run(self, mock_client):
@@ -84,7 +84,7 @@ class TestOffsetSet(object):
 
     @mock.patch(
         'yelp_kafka_tool.kafka_consumer_manager.'
-        'commands.offset_set.YelpKafkaClient',
+        'commands.offset_set.KafkaToolClient',
         autospec=True,
     )
     def test_run_error_committing_offsets(self, mock_client):
@@ -133,7 +133,7 @@ class TestOffsetSet(object):
 
     @mock.patch(
         'yelp_kafka_tool.kafka_consumer_manager.'
-        'commands.offset_set.YelpKafkaClient',
+        'commands.offset_set.KafkaToolClient',
         autospec=True,
     )
     def test_run_bad_topics_dict(self, mock_client):

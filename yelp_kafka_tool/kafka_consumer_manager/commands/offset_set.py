@@ -6,7 +6,7 @@ import sys
 from collections import defaultdict
 
 from .offset_manager import OffsetWriter
-from yelp_kafka_tool.util.client import YelpKafkaClient
+from yelp_kafka_tool.util.client import KafkaToolClient
 from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
 
@@ -60,7 +60,7 @@ class OffsetSet(OffsetWriter):
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = YelpKafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         # Let's verify that the consumer does exist in Zookeeper

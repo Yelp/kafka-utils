@@ -2,7 +2,7 @@ import struct
 
 from kafka.common import OffsetCommitRequest
 
-from yelp_kafka_tool.util.protocol import YelpKafkaProtocol
+from yelp_kafka_tool.util.protocol import KafkaToolProtocol
 
 
 class TestProtocol(object):
@@ -45,7 +45,7 @@ class TestProtocol(object):
         expected1 = b"".join([header, topic1, topic2])
         expected2 = b"".join([header, topic2, topic1])
 
-        encoded = YelpKafkaProtocol.encode_offset_commit_request_kafka(b"client_id", 42, b"group_id", [
+        encoded = KafkaToolProtocol.encode_offset_commit_request_kafka(b"client_id", 42, b"group_id", [
             OffsetCommitRequest(b"topic1", 0, 123, None),
             OffsetCommitRequest(b"topic1", 1, 234, None),
             OffsetCommitRequest(b"topic2", 2, 345, None),
