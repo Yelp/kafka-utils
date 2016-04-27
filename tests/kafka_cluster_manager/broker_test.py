@@ -38,13 +38,15 @@ class TestBroker(object):
         assert p1 not in b1.partitions
         assert b1 not in p1.replicas
 
-    def test_add_partition(self):
-        broker = Broker('test-broker', partitions=set([sentinel.p1]))
-        p2 = Mock(spec=Partition, topic=sentinel.t1, replicas=[])
-        broker.add_partition(p2)
+    def test_add_partition(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p20 = create_partition('t2', 0)
+        broker = Broker('test-broker', partitions=set([p10]))
 
-        assert broker.partitions == set([sentinel.p1, p2])
-        assert p2.replicas == [broker]
+        broker.add_partition(p20)
+
+        assert broker.partitions == set([p10, p20])
+        assert p20.replicas == [broker]
 
     def test_topics(self):
         partitions = set([
