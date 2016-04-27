@@ -1,6 +1,3 @@
-"""This file incorporates handling partitions over replication-groups
-(Availability-zones) in our case.
-"""
 import logging
 import sys
 from collections import defaultdict
@@ -12,7 +9,7 @@ from .util import separate_groups
 
 class ReplicationGroup(object):
     """Represent attributes and functions specific to replication-groups
-    (Availability zones) abbreviated as rg.
+    abbreviated as rg.
     """
 
     log = logging.getLogger(__name__)
@@ -63,6 +60,17 @@ class ReplicationGroup(object):
     def count_replica(self, partition):
         """Return count of replicas of given partition."""
         return self.partitions.count(partition)
+
+    def acquire_partition(self, partition, broker):
+        """Move a partition from a broker to any of the brokers of the replication
+        group.
+
+        :param partition: Partition to move
+        :param broker: Broker the partition belongs to
+        """
+        under_loaded = self._select_under_loaded_brokers(partition)
+        broker_dest = self._elect_dest_broker(under_loaded, partition)
+        broker.move_partition(partition, broker_dest)
 
     def move_partition(self, rg_destination, victim_partition):
         """Move partition(victim) from current replication-group to destination
