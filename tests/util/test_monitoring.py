@@ -9,6 +9,7 @@ from yelp_kafka_tool.util.error import UnknownTopic
 from yelp_kafka_tool.util.monitoring import ConsumerPartitionOffsets
 from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
 from yelp_kafka_tool.util.monitoring import merge_offsets_metadata
+from yelp_kafka_tool.util.monitoring import merge_partition_offsets
 
 
 class TestMonitoring(TestOffsetsBase):
@@ -107,18 +108,68 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_merge_offsets_metadata(self, kafka_client_mock):
         zk_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 6, 6)],
-            'topic2': []
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
         }
         kafka_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 5, 5)],
-            'topic2': [ConsumerPartitionOffsets('topic1', 0, 1, 1, 1)],
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
         }
         expected = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 6, 6)],
-            'topic2': [ConsumerPartitionOffsets('topic1', 0, 1, 1, 1)],
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+        }
+
+        topics = ['topic1']
+        result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
+        assert result == expected
+
+    def test_merge_offsets_metadata_zk_only(self, kafka_client_mock):
+        zk_offsets = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+        }
+        kafka_offsets = {}
+        expected = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+        }
+
+        topics = ['topic1']
+        result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
+        assert result == expected
+
+    def test_merge_offsets_metadata_kafka_only(self, kafka_client_mock):
+        zk_offsets = {}
+        kafka_offsets = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+        }
+        expected = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+        }
+
+        topics = ['topic1']
+        result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
+        assert result == expected
+
+    def test_merge_offsets_metadata_multiple(self, kafka_client_mock):
+        zk_offsets = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+        }
+        kafka_offsets = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+            'topic2': [ConsumerPartitionOffsets('topic2', 0, 15, 20, 20)],
+        }
+        expected = {
+            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            'topic2': [ConsumerPartitionOffsets('topic2', 0, 15, 20, 20)],
         }
 
         topics = ['topic1', 'topic2']
         result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
+        assert result == expected
+
+    def test_merge_partition_offsets(self):
+        partition_offsets = [
+            [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+        ]
+        expected = [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)]
+
+        result = merge_partition_offsets(*partition_offsets)
         assert result == expected

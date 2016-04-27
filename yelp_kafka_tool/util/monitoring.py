@@ -1,3 +1,4 @@
+import itertools
 import logging
 import operator
 from collections import namedtuple
@@ -25,27 +26,13 @@ ConsumerPartitionOffsets = namedtuple(
 """
 
 
-def get_consumer_offsets_metadata(
+def _get_consumer_offsets_metadata(
     kafka_client,
     group,
     topics,
     raise_on_error=True,
     offset_storage='zookeeper',
 ):
-    """This method:
-        * refreshes metadata for the kafka client
-        * fetches group offsets
-        * fetches watermarks
-
-    :param kafka_client: KafkaClient instance
-    :param group: group id
-    :param topics: list of topics
-    :param raise_on_error: if False the method ignores missing topics and
-      missing partitions. It still may fail on the request send.
-    :param offset_storage: String, one of {zookeeper, kafka}.
-    :returns: dict <topic>: [ConsumerPartitionOffsets]
-    """
-
     # Refresh client metadata. We do now use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
     # If Kafka is unavailable, let's retry loading client metadata (YELPKAFKA-30)
@@ -76,22 +63,37 @@ def get_consumer_offsets_metadata(
     return result
 
 
-def get_higher_consumer_offsets_metadata(
+def get_consumer_offsets_metadata(
     kafka_client,
     group,
     topics,
+    raise_on_error=True,
+    offset_storage='zookeeper',
 ):
-    """
-    Attempts to fetch offsets metadata from both Zookeeper and Kafka.
-    For each partition, returns offset metadata for whichever one has
-    higher offsets.
+    """This method:
+        * refreshes metadata for the kafka client
+        * fetches group offsets
+        * fetches watermarks
 
     :param kafka_client: KafkaClient instance
     :param group: group id
     :param topics: list of topics
+    :param raise_on_error: if False the method ignores missing topics and
+      missing partitions. It still may fail on the request send.
+    :param offset_storage: String, one of {zookeeper, kafka, dual}.
     :returns: dict <topic>: [ConsumerPartitionOffsets]
     """
-    zk_offsets = get_consumer_offsets_metadata(
+
+    if offset_storage in ['zookeeper', 'kafka']:
+        return _get_consumer_offsets_metadata(
+            kafka_client,
+            group,
+            topics,
+            raise_on_error,
+            offset_storage,
+        )
+
+    zk_offsets = _get_consumer_offsets_metadata(
         kafka_client,
         group,
         topics,
@@ -99,7 +101,7 @@ def get_higher_consumer_offsets_metadata(
         offset_storage='zookeeper',
     )
     try:
-        kafka_offsets = get_consumer_offsets_metadata(
+        kafka_offsets = _get_consumer_offsets_metadata(
             kafka_client,
             group,
             topics,
@@ -111,35 +113,31 @@ def get_higher_consumer_offsets_metadata(
     return merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
 
 
-def merge(d1, d2, merge_fn=lambda x, y: y):
+def merge_offsets_metadata(topics, *offsets_responses):
+    """Merge the offset metadata dictionaries from multiple responses.
     """
-    Merges two dictionaries, non-destructively, combining
-    values on duplicate keys as defined by the optional merge
-    function.
-    """
-    result = dict(d1)
-    for k, v in d2.iteritems():
-        if k in result:
-            result[k] = merge_fn(result[k], v)
-        else:
-            result[k] = v
-    return result
-
-
-def merge_offsets_metadata(topics, first, second):
-    def to_dict(lst):
-        return {item.partition: item for item in lst}
-
-    def from_dict(dct):
-        return dct.values()
-
     result = dict()
     for topic in topics:
-        result[topic] = from_dict(
-            merge(
-                to_dict(first[topic]),
-                to_dict(second[topic]),
-                lambda x, y: max(x, y, key=operator.attrgetter('highmark'))
-            )
-        )
+        partition_offsets = [response[topic]
+                             for response in offsets_responses
+                             if topic in response]
+        result[topic] = merge_partition_offsets(*partition_offsets)
     return result
+
+
+def merge_partition_offsets(*partition_offsets):
+    """Merge the partition offsets of a single topic from multiple responses.
+    """
+    output = dict()
+    for offset in itertools.chain.from_iterable(partition_offsets):
+        try:
+            prev_offset = output[offset.partition]
+        except KeyError:
+            output[offset.partition] = offset
+        else:
+            output[offset.partition] = max(
+                prev_offset,
+                offset,
+                key=operator.attrgetter('current'),
+            )
+    return output.values()
