@@ -170,6 +170,8 @@ class ClusterTopology(object):
     def replace_broker(self, source_broker_id, dest_broker_id):
         """Move all partitions in source broker to destination broker.
 
+        Note: We simple cannot move partition from source to destination broker
+        since that re-orders the replicas for the partition.
         :param source_broker_id: source broker-id
         :param dest_broker_id: destination broker-id
         :raises: InvalidBrokerIdError, when either of given broker-ids is invalid.
@@ -180,7 +182,13 @@ class ClusterTopology(object):
             # Move all partitions from source to destination broker
             source_partitions = [partition for partition in source_broker.partitions]
             for partition in source_partitions:
-                source_broker.move_partition(partition, dest_broker)
+                source_broker.partitions.remove(partition)
+                dest_broker.partitions.add(partition)
+                # Replace broker in replica
+                for i, broker in enumerate(partition.replicas):
+                    if broker == source_broker:
+                        partition.replicas[i] = dest_broker
+                        break
         except KeyError:
             self.log.error("Invalid broker id %s and/or %s.", source_broker_id, dest_broker_id)
             raise InvalidBrokerIdError(

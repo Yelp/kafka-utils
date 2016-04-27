@@ -2,9 +2,12 @@ from collections import Counter
 from collections import OrderedDict
 
 import mock
+import pytest
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import InvalidBrokerIdError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
@@ -700,3 +703,40 @@ class TestClusterToplogy(object):
         # Replica-set remains same
         for partition, orig_replicas in orig_assignment.iteritems():
             set(orig_replicas) == set(new_assignment[partition])
+
+    def test_replace_broker(self):
+        assignment = OrderedDict(
+            [
+                ((u'T1', 0), ['1', '2']),
+                ((u'T1', 1), ['0', '2']),
+                ((u'T2', 0), ['1']),
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct.replace_broker('1', '3')
+
+        assert ct.brokers['1'].partitions == set([])
+        assert ct.brokers['3'].partitions == set([
+            ct.partitions[(u'T1', 0)],
+            ct.partitions[(u'T2', 0)],
+        ])
+        assert ct.partitions[(u'T1', 0)].replicas == [
+            ct.brokers['3'],
+            ct.brokers['2'],
+        ]
+
+    def test_replace_broker_invalid_broker1(self):
+        assignment = OrderedDict([((u'T1', 0), ['0', '1'])])
+        ct = self.build_cluster_topology(assignment, self.srange(3))
+
+        # Invalid source-broker
+        with pytest.raises(InvalidBrokerIdError):
+            ct.replace_broker('444', '2')
+
+    def test_replace_broker_invalid_broker2(self):
+        assignment = OrderedDict([((u'T1', 0), ['0', '1'])])
+        ct = self.build_cluster_topology(assignment, self.srange(3))
+
+        # Invalid destination-broker
+        with pytest.raises(InvalidBrokerIdError):
+            ct.replace_broker('0', '444')
