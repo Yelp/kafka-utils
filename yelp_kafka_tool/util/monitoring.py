@@ -6,6 +6,7 @@ from collections import namedtuple
 from kafka.common import KafkaUnavailableError
 from kafka.common import NotCoordinatorForConsumerCode
 
+from yelp_kafka_tool.util.error import InvalidOffsetStorageError
 from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
 from yelp_kafka_tool.util.offsets import get_topics_watermarks
 
@@ -26,12 +27,55 @@ ConsumerPartitionOffsets = namedtuple(
 """
 
 
-def _get_consumer_offsets_metadata(
+def get_consumer_offsets_metadata(
     kafka_client,
     group,
     topics,
     raise_on_error=True,
     offset_storage='zookeeper',
+):
+    """This method:
+        * refreshes metadata for the kafka client
+        * fetches group offsets
+        * fetches watermarks
+
+    :param kafka_client: KafkaClient instance
+    :param group: group id
+    :param topics: list of topics
+    :param raise_on_error: if False the method ignores missing topics and
+      missing partitions. It still may fail on the request send.
+    :param offset_storage: String, one of {zookeeper, kafka, dual}.
+    :returns: dict <topic>: [ConsumerPartitionOffsets]
+    :raises:
+      :py:class:`yelp_kafka_tool.util.error.InvalidOffsetStorageError: upon unknown
+      offset_storage choice.
+    """
+
+    if offset_storage in ['zookeeper', 'kafka']:
+        return _get_consumer_offsets_metadata(
+            kafka_client,
+            group,
+            topics,
+            raise_on_error,
+            offset_storage,
+        )
+    elif offset_storage == 'dual':
+        return _get_consumer_offsets_metadata_dual(
+            kafka_client,
+            group,
+            topics,
+            raise_on_error,
+        )
+    else:
+        raise InvalidOffsetStorageError(offset_storage)
+
+
+def _get_consumer_offsets_metadata(
+    kafka_client,
+    group,
+    topics,
+    raise_on_error,
+    offset_storage,
 ):
     # Refresh client metadata. We do now use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -63,41 +107,17 @@ def _get_consumer_offsets_metadata(
     return result
 
 
-def get_consumer_offsets_metadata(
+def _get_consumer_offsets_metadata_dual(
     kafka_client,
     group,
     topics,
-    raise_on_error=True,
-    offset_storage='zookeeper',
+    raise_on_error,
 ):
-    """This method:
-        * refreshes metadata for the kafka client
-        * fetches group offsets
-        * fetches watermarks
-
-    :param kafka_client: KafkaClient instance
-    :param group: group id
-    :param topics: list of topics
-    :param raise_on_error: if False the method ignores missing topics and
-      missing partitions. It still may fail on the request send.
-    :param offset_storage: String, one of {zookeeper, kafka, dual}.
-    :returns: dict <topic>: [ConsumerPartitionOffsets]
-    """
-
-    if offset_storage in ['zookeeper', 'kafka']:
-        return _get_consumer_offsets_metadata(
-            kafka_client,
-            group,
-            topics,
-            raise_on_error,
-            offset_storage,
-        )
-
     zk_offsets = _get_consumer_offsets_metadata(
         kafka_client,
         group,
         topics,
-        raise_on_error=False,
+        raise_on_error,
         offset_storage='zookeeper',
     )
     try:
@@ -105,7 +125,7 @@ def get_consumer_offsets_metadata(
             kafka_client,
             group,
             topics,
-            raise_on_error=False,
+            raise_on_error,
             offset_storage='kafka',
         )
     except NotCoordinatorForConsumerCode:
