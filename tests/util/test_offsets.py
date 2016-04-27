@@ -89,6 +89,34 @@ class MyKafkaClient(object):
         fail_on_error=True,
         callback=None
     ):
+        return self._send_offset_commit_request(
+            group,
+            payloads,
+            fail_on_error,
+            callback,
+        )
+
+    def send_offset_commit_request_kafka(
+        self,
+        group,
+        payloads=None,
+        fail_on_error=True,
+        callback=None
+    ):
+        return self._send_offset_commit_request(
+            group,
+            payloads,
+            fail_on_error,
+            callback,
+        )
+
+    def _send_offset_commit_request(
+        self,
+        group,
+        payloads=None,
+        fail_on_error=True,
+        callback=None
+    ):
         if payloads is None:
             payloads = []
 
@@ -627,7 +655,7 @@ class TestOffsets(TestOffsetsBase):
         status = set_consumer_offsets(
             kafka_client_mock,
             "group",
-            new_offsets
+            new_offsets,
         )
 
         expected_offsets = {
@@ -667,10 +695,92 @@ class TestOffsets(TestOffsetsBase):
             kafka_client_mock,
             "group",
             new_offsets,
-            raise_on_error=True
+            raise_on_error=True,
         )
 
         assert len(status) == len(expected_status)
         for expected in expected_status:
             assert any(actual == expected for actual in status)
         assert kafka_client_mock.group_offsets == self.group_offsets
+
+    def test_set_consumer_offsets_zookeeper(
+        self,
+        topics,
+        kafka_client_mock
+    ):
+        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
+        new_offsets = {
+            'topic1': {
+                0: 100,
+                1: 200,
+            },
+            'topic2': {
+                0: 150,
+                1: 300,
+            },
+        }
+
+        set_consumer_offsets(
+            kafka_client_mock,
+            "group",
+            new_offsets,
+            raise_on_error=True,
+            offset_storage='zookeeper',
+        )
+        assert kafka_client_mock.send_offset_commit_request.call_count == 1
+        assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 0
+
+    def test_set_consumer_offsets_kafka(
+        self,
+        topics,
+        kafka_client_mock
+    ):
+        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
+        new_offsets = {
+            'topic1': {
+                0: 100,
+                1: 200,
+            },
+            'topic2': {
+                0: 150,
+                1: 300,
+            },
+        }
+
+        set_consumer_offsets(
+            kafka_client_mock,
+            "group",
+            new_offsets,
+            raise_on_error=True,
+            offset_storage='kafka',
+        )
+        assert kafka_client_mock.send_offset_commit_request.call_count == 0
+        assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 1
+
+    def test_set_consumer_offsets_invalid_storage(
+        self,
+        topics,
+        kafka_client_mock
+    ):
+        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
+        new_offsets = {
+            'topic1': {
+                0: 100,
+                1: 200,
+            },
+            'topic2': {
+                0: 150,
+                1: 300,
+            },
+        }
+
+        with pytest.raises(InvalidOffsetStorageError):
+            set_consumer_offsets(
+                kafka_client_mock,
+                "group",
+                new_offsets,
+                raise_on_error=True,
+                offset_storage='randon_string',
+            )
+        assert kafka_client_mock.send_offset_commit_request.call_count == 0
+        assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 0

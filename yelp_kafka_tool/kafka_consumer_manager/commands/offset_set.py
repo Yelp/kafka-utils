@@ -5,9 +5,8 @@ from __future__ import unicode_literals
 import sys
 from collections import defaultdict
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetWriter
+from yelp_kafka_tool.util.client import KafkaToolClient
 from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
 
@@ -51,13 +50,17 @@ class OffsetSet(OffsetWriter):
             "the the intended "
             "new offset."
         )
+        parser_offset_set.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets."
+        )
 
         parser_offset_set.set_defaults(command=cls.run)
 
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         # Let's verify that the consumer does exist in Zookeeper
@@ -70,7 +73,8 @@ class OffsetSet(OffsetWriter):
             results = set_consumer_offsets(
                 client,
                 args.groupid,
-                cls.new_offsets_dict
+                cls.new_offsets_dict,
+                offset_storage=args.storage,
             )
         except TypeError:
             print(
