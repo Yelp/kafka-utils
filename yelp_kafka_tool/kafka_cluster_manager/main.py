@@ -8,6 +8,7 @@ from logging.config import fileConfig
 
 from yelp_kafka_tool.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 from yelp_kafka_tool.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
+from yelp_kafka_tool.kafka_cluster_manager.cmds.replace import ReplaceBrokerCmd
 from yelp_kafka_tool.kafka_cluster_manager.cmds.store_assignments import StoreAssignmentsCmd
 from yelp_kafka_tool.util import config
 
@@ -68,6 +69,7 @@ def parse_args():
     RebalanceCmd().add_subparser(subparsers)
     DecommissionCmd().add_subparser(subparsers)
     StoreAssignmentsCmd().add_subparser(subparsers)
+    ReplaceBrokerCmd().add_subparser(subparsers)
 
     return parser.parse_args()
 
