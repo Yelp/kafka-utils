@@ -2,9 +2,12 @@ from collections import Counter
 from collections import OrderedDict
 
 import mock
+import pytest
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import BrokerDecommissionError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
@@ -63,6 +66,106 @@ class TestClusterToplogy(object):
         if not brokers:
             brokers = self.brokers
         return ClusterTopology(assignment, brokers, self.get_replication_group_id)
+
+    def test_cluster_topology_inactive_brokers(self):
+        assignment = {
+            (u'T0', 0): ['0', '1'],
+            (u'T0', 1): ['8', '9'],  # 8 and 9 do are not in active brokers
+        }
+        brokers = {
+            '0': {'host': 'host0'},
+            '1': {'host': 'host1'},
+        }
+
+        def extract_group(broker):
+            # group 0 for broker 0
+            # group 1 for broker 1
+            # None for inactive brokers
+            if broker in brokers:
+                return broker.id
+            return None
+
+        ct = ClusterTopology(assignment, brokers, extract_group)
+        assert ct.brokers['8'].inactive
+        assert ct.brokers['9'].inactive
+        assert None in ct.rgs
+
+    def test_broker_decommission(self):
+        assignment = {
+            (u'T0', 0): ['0', '2'],
+            (u'T0', 1): ['0', '3'],
+            (u'T1', 0): ['0', '5'],
+        }
+        ct = self.build_cluster_topology(assignment)
+        partitions_count = len(ct.partitions)
+
+        # should move all partitions from broker 0 to either 1 or 4 because they
+        # are in the same replication group and empty.
+        ct.decommission_brokers(['0'])
+
+        # Here we just care that broker 1 is empty and partitions count didn't
+        # change
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['1'].empty
+
+    def test_broker_decommission_multi(self):
+        assignment = {
+            (u'T0', 0): ['0', '2'],
+            (u'T0', 1): ['0', '3'],
+            (u'T1', 0): ['0', '5'],
+            (u'T1', 1): ['1', '5'],
+            (u'T1', 2): ['1', '5'],
+            (u'T2', 0): ['0', '3'],
+        }
+        ct = self.build_cluster_topology(assignment)
+        partitions_count = len(ct.partitions)
+
+        ct.decommission_brokers(['0', '1', '3'])
+
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['0'].empty
+        assert ct.brokers['1'].empty
+        assert ct.brokers['3'].empty
+        # All partitions from 0 and 1 should now be in 4
+        assert len(ct.brokers['4'].partitions) == 6
+        # All partitions from 3 should now be in 2
+        assert len(ct.brokers['2'].partitions) == 3
+
+    def test_broker_decommission_failover(self):
+        assignment = {
+            (u'T0', 0): ['0', '1', '2'],
+            (u'T0', 1): ['0', '1', '2'],
+            (u'T1', 0): ['0', '1'],
+            (u'T1', 1): ['1', '5'],
+            (u'T1', 2): ['1', '5'],
+            (u'T2', 0): ['0', '3'],
+        }
+        ct = self.build_cluster_topology(assignment)
+        partitions_count = len(ct.partitions)
+
+        ct.decommission_brokers(['0'])
+
+        # Partition T00, T01, and T10 should move to 5 and 6
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['0'].empty
+
+    def test_broker_decommission_error(self):
+        assignment = {
+            (u'T1', 0): ['0', '1', '2', '3'],
+            (u'T1', 1): ['0', '1', '2', '4'],
+            (u'T2', 0): ['2'],
+            (u'T3', 0): ['0', '1', '2'],
+            (u'T3', 1): ['0', '1', '4'],
+        }
+        ct = self.build_cluster_topology(assignment)
+
+        with pytest.raises(BrokerDecommissionError):
+            import ipdb
+            ipdb.set_trace()
+            ct.decommission_brokers(['0'])
+
+    def test__broker_decommission_inactive(self):
+        pass
 
     def test_rebalance_replication_groups(self):
         ct = self.build_cluster_topology()

@@ -109,11 +109,9 @@ class ClusterTopology(object):
                         broker_id,
                         partition,
                     )
-                    broker = self._create_broker(broker_id)
-                else:
-                    broker = self.brokers[broker_id]
+                    self.brokers[broker_id] = self._create_broker(broker_id)
 
-                broker.add_partition(partition)
+                self.brokers[broker_id].add_partition(partition)
 
     @property
     def assignment(self):
@@ -200,7 +198,7 @@ class ClusterTopology(object):
                 if failed:
                     # Decommission may be impossible if there are not enough
                     # brokers to redistributed the replicas.
-                    self.error("Broker decommission failed.")
+                    self.log.error("Broker decommission failed.")
                     raise BrokerDecommissionError(
                         "Broker decommission failed after force."
                     )
@@ -210,7 +208,8 @@ class ClusterTopology(object):
             rg for rg in self.rgs.itervalues()
             if rg is not broker.replication_group
         ]
-        for partition in broker.partitions.itervalues:
+
+        for partition in broker.partitions.copy():  # partitions set changes during loop
             group = min(
                 available_groups,
                 key=lambda x: x.count_replica(partition),
