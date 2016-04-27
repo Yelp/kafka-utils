@@ -1,6 +1,4 @@
-import itertools
 import logging
-import operator
 from collections import namedtuple
 
 from kafka.common import KafkaUnavailableError
@@ -50,33 +48,6 @@ def get_consumer_offsets_metadata(
       :py:class:`yelp_kafka_tool.util.error.InvalidOffsetStorageError: upon unknown
       offset_storage choice.
     """
-
-    if offset_storage in ['zookeeper', 'kafka']:
-        return _get_consumer_offsets_metadata(
-            kafka_client,
-            group,
-            topics,
-            raise_on_error,
-            offset_storage,
-        )
-    elif offset_storage == 'dual':
-        return _get_consumer_offsets_metadata_dual(
-            kafka_client,
-            group,
-            topics,
-            raise_on_error,
-        )
-    else:
-        raise InvalidOffsetStorageError(offset_storage)
-
-
-def _get_consumer_offsets_metadata(
-    kafka_client,
-    group,
-    topics,
-    raise_on_error,
-    offset_storage,
-):
     # Refresh client metadata. We do now use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
     # If Kafka is unavailable, let's retry loading client metadata (YELPKAFKA-30)
@@ -85,7 +56,7 @@ def _get_consumer_offsets_metadata(
     except KafkaUnavailableError:
         kafka_client.load_metadata_for_topics()
 
-    group_offsets = get_current_consumer_offsets(
+    group_offsets = _get_current_offsets(
         kafka_client, group, topics, raise_on_error, offset_storage
     )
 
@@ -107,26 +78,43 @@ def _get_consumer_offsets_metadata(
     return result
 
 
-def _get_consumer_offsets_metadata_dual(
+def _get_current_offsets(
+        kafka_client,
+        group,
+        topics,
+        raise_on_error,
+        offset_storage,
+):
+    """Get the current consumer offsets from either Zookeeper or Kafka
+    or the combination of both.
+    """
+    if offset_storage in ['zookeeper', 'kafka']:
+        return get_current_consumer_offsets(
+            kafka_client, group, topics, raise_on_error, offset_storage
+        )
+    elif offset_storage == 'dual':
+        return _get_current_offsets_dual(
+            kafka_client, group, topics, raise_on_error,
+        )
+    else:
+        raise InvalidOffsetStorageError(offset_storage)
+
+
+def _get_current_offsets_dual(
     kafka_client,
     group,
     topics,
     raise_on_error,
 ):
-    zk_offsets = _get_consumer_offsets_metadata(
-        kafka_client,
-        group,
-        topics,
-        raise_on_error,
-        offset_storage='zookeeper',
+    """Get current consumer offsets from Zookeeper and from Kafka
+    and return the higher partition offsets from the responses.
+    """
+    zk_offsets = get_current_consumer_offsets(
+        kafka_client, group, topics, raise_on_error, 'zookeeper',
     )
     try:
-        kafka_offsets = _get_consumer_offsets_metadata(
-            kafka_client,
-            group,
-            topics,
-            raise_on_error,
-            offset_storage='kafka',
+        kafka_offsets = get_current_consumer_offsets(
+            kafka_client, group, topics, raise_on_error, 'kafka',
         )
     except NotCoordinatorForConsumerCode:
         kafka_offsets = {}
@@ -149,15 +137,12 @@ def merge_partition_offsets(*partition_offsets):
     """Merge the partition offsets of a single topic from multiple responses.
     """
     output = dict()
-    for offset in itertools.chain.from_iterable(partition_offsets):
-        try:
-            prev_offset = output[offset.partition]
-        except KeyError:
-            output[offset.partition] = offset
-        else:
-            output[offset.partition] = max(
-                prev_offset,
-                offset,
-                key=operator.attrgetter('current'),
-            )
-    return output.values()
+    for partition_offset in partition_offsets:
+        for partition, offset in partition_offset.iteritems():
+            try:
+                prev_offset = output[partition]
+            except KeyError:
+                output[partition] = offset
+            else:
+                output[partition] = max(prev_offset, offset)
+    return output

@@ -108,13 +108,13 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_merge_offsets_metadata(self, kafka_client_mock):
         zk_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            'topic1': {0: 6},
         }
         kafka_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+            'topic1': {0: 5},
         }
         expected = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            'topic1': {0: 6},
         }
 
         topics = ['topic1']
@@ -123,11 +123,11 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_merge_offsets_metadata_zk_only(self, kafka_client_mock):
         zk_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            'topic1': {0: 6},
         }
         kafka_offsets = {}
         expected = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            'topic1': {0: 6},
         }
 
         topics = ['topic1']
@@ -137,10 +137,10 @@ class TestMonitoring(TestOffsetsBase):
     def test_merge_offsets_metadata_kafka_only(self, kafka_client_mock):
         zk_offsets = {}
         kafka_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+            'topic1': {0: 5},
         }
         expected = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+            'topic1': {0: 5},
         }
 
         topics = ['topic1']
@@ -149,15 +149,15 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_merge_offsets_metadata_multiple(self, kafka_client_mock):
         zk_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
+            'topic1': {0: 6},
         }
         kafka_offsets = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
-            'topic2': [ConsumerPartitionOffsets('topic2', 0, 15, 20, 20)],
+            'topic1': {0: 5},
+            'topic2': {0: 15},
         }
         expected = {
-            'topic1': [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
-            'topic2': [ConsumerPartitionOffsets('topic2', 0, 15, 20, 20)],
+            'topic1': {0: 6},
+            'topic2': {0: 15},
         }
 
         topics = ['topic1', 'topic2']
@@ -166,10 +166,10 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_merge_partition_offsets(self):
         partition_offsets = [
-            [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)],
-            [ConsumerPartitionOffsets('topic1', 0, 5, 0, 10)],
+            {0: 6},
+            {0: 5},
         ]
-        expected = [ConsumerPartitionOffsets('topic1', 0, 6, 0, 10)]
+        expected = {0: 6}
 
         result = merge_partition_offsets(*partition_offsets)
         assert result == expected
