@@ -57,6 +57,13 @@ class Partition(object):
             self._replicas[idx], self._replicas[0]
         return curr_leader
 
+    def replace(self, source, dest):
+        """Replace source broker with destination broker in replica set if found."""
+        for i, broker in enumerate(self.replicas):
+            if broker == source:
+                self.replicas[i] = dest
+                return
+
     @property
     def followers(self):
         """Return list of brokers not as preferred leader

@@ -5,6 +5,16 @@ from collections import Counter
 _log = logging.getLogger(__name__)
 
 
+def plan_to_assignment(plan):
+    """Convert the plan to the format used by cluster-topology."""
+    assignment = {}
+    for elem in plan['partitions']:
+        assignment[
+            (elem['topic'], elem['partition'])
+        ] = elem['replicas']
+    return assignment
+
+
 def assignment_to_plan(assignment):
     """Convert an assignment to the format used by Kafka to
     describe a reassignment plan.

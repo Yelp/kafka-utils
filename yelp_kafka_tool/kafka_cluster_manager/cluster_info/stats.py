@@ -227,7 +227,7 @@ def replication_group_imbalance(rgs, partitions):
     return get_replication_group_imbalance_stats(rgs, partitions)
 
 
-def imbalance_value_all(base_assignment, ct, leaders=True, display=True):
+def imbalance_value_all(ct, base_assignment=None):
     """Evaluate imbalance statistics based on given params.
 
     Params represent the layer for which imbalance needs to be calculated
@@ -254,36 +254,34 @@ def imbalance_value_all(base_assignment, ct, leaders=True, display=True):
         topic_imbalance(ct.brokers.values(), ct.topics.values())
 
     imbal_leader = 0
-    if leaders:
-        # Leader-count imbalance
-        stdev_imbalance, imbal_leader, leaders_per_broker = \
-            leader_imbalance(ct.brokers.values())
+    # Leader-count imbalance
+    stdev_imbalance, imbal_leader, leaders_per_broker = \
+        leader_imbalance(ct.brokers.values())
 
     # Display stats to stdout
-    if display:
-        display_partition_count_per_broker(
-            partitions_per_broker,
-            stdev_imbalance,
-            imbal_part,
-        )
-        display_same_replica_count_rg(
-            duplicate_replica_count_per_rg,
-            imbal_replica,
-        )
-        display_same_topic_partition_count_broker(
-            same_topic_partition_count_per_broker,
-            imbal_topic,
-        )
-        if leaders:
-            display_leader_count_per_broker(
-                leaders_per_broker,
-                stdev_imbalance,
-                imbal_leader,
-            )
-    total_movements = calculate_partition_movement(
-        base_assignment,
-        ct.assignment,
-    )[1]
+    display_partition_count_per_broker(
+        partitions_per_broker,
+        stdev_imbalance,
+        imbal_part,
+    )
+    display_same_replica_count_rg(duplicate_replica_count_per_rg, imbal_replica)
+    display_same_topic_partition_count_broker(
+        same_topic_partition_count_per_broker,
+        imbal_topic,
+    )
+    display_leader_count_per_broker(
+        leaders_per_broker,
+        stdev_imbalance,
+        imbal_leader,
+    )
+
+    if base_assignment:
+        total_movements = calculate_partition_movement(
+            base_assignment,
+            ct.assignment,
+        )[1]
+    else:
+        total_movements = 0
     return {
         'net_part_cnt_per_rg': net_imbal_part_per_rg,
         'partition_cnt': imbal_part,
