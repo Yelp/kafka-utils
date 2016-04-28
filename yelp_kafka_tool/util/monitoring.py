@@ -110,11 +110,11 @@ def _get_current_offsets_dual(
     and return the higher partition offsets from the responses.
     """
     zk_offsets = get_current_consumer_offsets(
-        kafka_client, group, topics, raise_on_error, 'zookeeper',
+        kafka_client, group, topics, False, 'zookeeper',
     )
     try:
         kafka_offsets = get_current_consumer_offsets(
-            kafka_client, group, topics, raise_on_error, 'kafka',
+            kafka_client, group, topics, False, 'kafka',
         )
     except NotCoordinatorForConsumerCode:
         kafka_offsets = {}
@@ -123,26 +123,31 @@ def _get_current_offsets_dual(
 
 def merge_offsets_metadata(topics, *offsets_responses):
     """Merge the offset metadata dictionaries from multiple responses.
+
+    :param topics: list of topics
+    :param offsets_responses: list of dict topic: partition: offset
+    :returns: dict topic: partition: offset
     """
     result = dict()
     for topic in topics:
-        partition_offsets = [response[topic]
-                             for response in offsets_responses
-                             if topic in response]
+        partition_offsets = [
+            response[topic]
+            for response in offsets_responses
+            if topic in response
+        ]
         result[topic] = merge_partition_offsets(*partition_offsets)
     return result
 
 
 def merge_partition_offsets(*partition_offsets):
     """Merge the partition offsets of a single topic from multiple responses.
+
+    :param partition_offsets: list of dict partition: offset
+    :returns: dict partition: offset
     """
     output = dict()
     for partition_offset in partition_offsets:
         for partition, offset in partition_offset.iteritems():
-            try:
-                prev_offset = output[partition]
-            except KeyError:
-                output[partition] = offset
-            else:
-                output[partition] = max(prev_offset, offset)
+            prev_offset = output.get(partition, None)
+            output[partition] = max(prev_offset, offset)
     return output

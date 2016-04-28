@@ -1,3 +1,5 @@
+import os
+
 from behave import then
 from behave import when
 from util import call_cmd
@@ -7,6 +9,7 @@ from yelp_kafka_tool.util.zookeeper import ZK
 
 
 SET_OFFSET = 36
+SET_OFFSET_KAFKA = 65
 
 
 def offsets_data(topic, offset):
@@ -17,7 +20,7 @@ def offsets_data(topic, offset):
     )
 
 
-def call_offset_set(groupid, offsets_data):
+def call_offset_set(groupid, offsets_data, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -25,6 +28,8 @@ def call_offset_set(groupid, offsets_data):
            'offset_set',
            groupid,
            offsets_data]
+    if storage:
+        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
@@ -32,6 +37,13 @@ def call_offset_set(groupid, offsets_data):
 def step_impl2(context):
     context.offsets = offsets_data(context.topic, SET_OFFSET)
     call_offset_set(context.group, context.offsets)
+
+
+@when(u'we call the offset_set command and commit into kafka')
+def step_impl2_2(context):
+    if '0.9.0' in os.environ['PATH']:
+        context.offsets = offsets_data(context.topic, SET_OFFSET_KAFKA)
+        call_offset_set(context.group, context.offsets, storage='kafka')
 
 
 @then(u'the committed offsets will match the specified offsets')

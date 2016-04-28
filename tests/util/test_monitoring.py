@@ -98,7 +98,7 @@ class TestMonitoring(TestOffsetsBase):
                 )
             assert mock_func.call_count == 2
 
-    def test_merge_offsets_metadata_empty(self, kafka_client_mock):
+    def test_merge_offsets_metadata_empty(self):
         zk_offsets = {}
         kafka_offsets = {}
         expected = {}
@@ -106,7 +106,7 @@ class TestMonitoring(TestOffsetsBase):
         result = merge_offsets_metadata([], zk_offsets, kafka_offsets)
         assert result == expected
 
-    def test_merge_offsets_metadata(self, kafka_client_mock):
+    def test_merge_offsets_metadata(self):
         zk_offsets = {
             'topic1': {0: 6},
         }
@@ -121,7 +121,7 @@ class TestMonitoring(TestOffsetsBase):
         result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
         assert result == expected
 
-    def test_merge_offsets_metadata_zk_only(self, kafka_client_mock):
+    def test_merge_offsets_metadata_zk_only(self):
         zk_offsets = {
             'topic1': {0: 6},
         }
@@ -134,7 +134,7 @@ class TestMonitoring(TestOffsetsBase):
         result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
         assert result == expected
 
-    def test_merge_offsets_metadata_kafka_only(self, kafka_client_mock):
+    def test_merge_offsets_metadata_kafka_only(self):
         zk_offsets = {}
         kafka_offsets = {
             'topic1': {0: 5},
@@ -147,7 +147,7 @@ class TestMonitoring(TestOffsetsBase):
         result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
         assert result == expected
 
-    def test_merge_offsets_metadata_multiple(self, kafka_client_mock):
+    def test_merge_offsets_metadata_multiple(self):
         zk_offsets = {
             'topic1': {0: 6},
         }
@@ -173,3 +173,63 @@ class TestMonitoring(TestOffsetsBase):
 
         result = merge_partition_offsets(*partition_offsets)
         assert result == expected
+
+    def _has_no_partitions(self, offsets_metadata):
+        return all(
+            not partitions
+            for partitions in offsets_metadata.values()
+        )
+
+    def test_dual_offsets_zk_empty(self, kafka_client_mock):
+        with mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request',
+            return_value={},
+            autospec=True,
+        ) as mock_get_zk:
+            actual = get_consumer_offsets_metadata(
+                kafka_client_mock,
+                self.group,
+                self.topics,
+                offset_storage='dual',
+            )
+            assert mock_get_zk.call_count == 1
+            assert not self._has_no_partitions(actual)
+
+    def test_dual_offsets_kafka_empty(self, kafka_client_mock):
+        with mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request_kafka',
+            return_value={},
+            autospec=True,
+        ) as mock_get_kafka:
+            actual = get_consumer_offsets_metadata(
+                kafka_client_mock,
+                self.group,
+                self.topics,
+                offset_storage='dual',
+            )
+            assert mock_get_kafka.call_count == 1
+            assert not self._has_no_partitions(actual)
+
+    def test_dual_offsets_both_empty(self, kafka_client_mock):
+        with mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request',
+            return_value={},
+            autospec=True,
+        ) as mock_get_zk, mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request_kafka',
+            return_value={},
+            autospec=True,
+        ) as mock_get_kafka:
+            actual = get_consumer_offsets_metadata(
+                kafka_client_mock,
+                self.group,
+                self.topics,
+                offset_storage='dual',
+            )
+            assert mock_get_zk.call_count == 1
+            assert mock_get_kafka.call_count == 1
+            assert self._has_no_partitions(actual)

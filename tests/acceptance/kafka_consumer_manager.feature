@@ -17,6 +17,14 @@ Feature: kafka_consumer_manager
       when we call the offset_get command
       then the correct offset will be shown
 
+  Scenario: Calling the offset_get command with dual storage
+     Given we have an existing kafka cluster with a topic
+      when we produce some number of messages into the topic
+      when we consume some number of messages from the topic
+      when we call the offset_set command and commit into kafka
+      when we call the offset_get command with the dual storage option
+      then the offset that was committed into Kafka will be shown
+
   Scenario: Calling the offset_restore command
      Given we have an existing kafka cluster with a topic
      Given we have a json offsets file
