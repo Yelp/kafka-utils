@@ -6,6 +6,11 @@ class InvalidBrokerIdError(KafkaToolError):
     pass
 
 
+class InvalidPartitionError(KafkaToolError):
+    """Raised when a partition tuple (topic, partition) doesn't exist in the cluster"""
+    pass
+
+
 class EmptyReplicationGroupError(KafkaToolError):
     """Raised when there are no brokers in a replication group."""
     pass
