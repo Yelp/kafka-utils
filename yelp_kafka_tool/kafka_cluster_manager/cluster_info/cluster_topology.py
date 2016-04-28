@@ -167,6 +167,28 @@ class ClusterTopology(object):
         for group in groups:
             group.rebalance_brokers()
 
+    def replace_broker(self, source_id, dest_id):
+        """Move all partitions in source broker to destination broker.
+
+        :param source_id: source broker-id
+        :param dest_id: destination broker-id
+        :raises: InvalidBrokerIdError, when either of given broker-ids is invalid.
+        """
+        try:
+            source = self.brokers[source_id]
+            dest = self.brokers[dest_id]
+            # Move all partitions from source to destination broker
+            for partition in source.partitions.copy():  # Partitions set changes
+                # We cannot move partition directly since that re-orders the
+                # replicas for the partition
+                source.partitions.remove(partition)
+                dest.partitions.add(partition)
+                # Replace broker in replica
+                partition.replace(source, dest)
+        except KeyError as e:
+            self.log.error("Invalid broker id %s.", e[0])
+            raise InvalidBrokerIdError("Broker id {} does not exist in cluster".format(e[0]))
+
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
         # Separate replication-groups into under and over replicated
