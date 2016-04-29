@@ -25,7 +25,8 @@ def step_impl4(context):
 
 @when(u'we call the offset_get command with the dual storage option')
 def step_impl4_2(context):
-    context.output = call_offset_get(context.group, storage='dual')
+    if '0.9.0' in os.environ['PATH']:
+        context.output = call_offset_get(context.group, storage='dual')
 
 
 @then(u'the correct offset will be shown')

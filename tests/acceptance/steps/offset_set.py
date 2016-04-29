@@ -42,6 +42,8 @@ def step_impl2(context):
 @when(u'we call the offset_set command and commit into kafka')
 def step_impl2_2(context):
     if '0.9.0' in os.environ['PATH']:
+        if not hasattr(context, 'group'):
+            context.group = 'test_kafka_offset_group'
         context.offsets = offsets_data(context.topic, SET_OFFSET_KAFKA)
         call_offset_set(context.group, context.offsets, storage='kafka')
 
