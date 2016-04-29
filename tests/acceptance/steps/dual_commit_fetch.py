@@ -37,14 +37,14 @@ def fetch_offsets(group, topics):
 
 @when(u'we commit some offsets for a group into kafka')
 def step_impl4(context):
-    if '0.9.0' in os.environ['PATH']:
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
         context.offsets = {context.topic: {0: TEST_OFFSET}}
         commit_offsets(context.offsets, TEST_KAFKA_COMMIT_GROUP)
 
 
 @when(u'we fetch offsets for the group with the dual option')
 def step_impl4_2(context):
-    if '0.9.0' in os.environ['PATH']:
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
         topics = context.offsets.keys()
         context.fetched_offsets = fetch_offsets(
             TEST_KAFKA_COMMIT_GROUP,
@@ -54,5 +54,5 @@ def step_impl4_2(context):
 
 @then(u'the fetched offsets will match the committed offsets')
 def step_impl5(context):
-    if '0.9.0' in os.environ['PATH']:
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
         assert context.fetched_offsets == context.offsets

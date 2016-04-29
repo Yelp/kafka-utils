@@ -25,7 +25,7 @@ def step_impl4(context):
 
 @when(u'we call the offset_get command with the dual storage option')
 def step_impl4_2(context):
-    if '0.9.0' in os.environ['PATH']:
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
         context.output = call_offset_get(context.group, storage='dual')
 
 
@@ -40,7 +40,7 @@ def step_impl5(context):
 
 @then(u'the offset that was committed into Kafka will be shown')
 def step_impl5_2(context):
-    if '0.9.0' in os.environ['PATH']:
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
         offset = SET_OFFSET_KAFKA
         pattern = 'Current Offset: {}'.format(offset)
         assert pattern in context.output
