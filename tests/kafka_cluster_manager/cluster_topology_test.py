@@ -108,7 +108,7 @@ class TestClusterToplogy(object):
         assert len(ct.partitions) == partitions_count
         assert ct.brokers['1'].empty
 
-    def test_broker_decommission_multi(self):
+    def test_broker_decommission_many(self):
         assignment = {
             (u'T0', 0): ['0', '2'],
             (u'T0', 1): ['0', '3'],

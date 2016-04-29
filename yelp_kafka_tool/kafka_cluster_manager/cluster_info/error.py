@@ -16,3 +16,10 @@ class BrokerDecommissionError(KafkaToolError):
     from decommissioned brokers.
     """
     pass
+
+
+class NotEligibleBrokerError(KafkaToolError):
+    """Raised when there are no brokers eligible to acquire a certain partition
+    in a replication group.
+    """
+    pass

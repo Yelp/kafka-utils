@@ -16,6 +16,7 @@ from collections import OrderedDict
 from .broker import Broker
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
+from .error import NotEligibleBrokerError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
@@ -171,37 +172,38 @@ class ClusterTopology(object):
             groups.add(broker.replication_group)
 
         for group in groups:
-            try:
-                group.rebalance_brokers()
-            except BrokerDecommissionError:
-                # In this case we need to reassign the remaining partitions to
-                # other replication groups
-                failed = False
-                for broker in group.brokers:
-                    if broker.decommissioned and not broker.empty():
-                        self.log.info(
-                            "Broker: %s can't be decommissioned withing the same "
-                            "replication group: %s. Moving partitions to other "
-                            "replication groups.",
-                            broker,
-                            broker.replication_group,
-                        )
-                        self._force_broker_decommission(broker)
-                    # Broker should be empty now
-                    if not broker.empty():
-                        self.log.error(
-                            "Impossible to decommission broker %s partitions %s.",
-                            broker,
-                            broker.partitions,
-                        )
-                        failed = True
-                if failed:
-                    # Decommission may be impossible if there are not enough
-                    # brokers to redistributed the replicas.
-                    self.log.error("Broker decommission failed.")
-                    raise BrokerDecommissionError(
-                        "Broker decommission failed after force."
+            self._decommission_brokers_in_group(group)
+
+    def _decommission_brokers_in_group(self, group):
+        group.rebalance_brokers()
+        failed = False
+        for broker in group.brokers:
+            if broker.decommissioned and not broker.empty():
+                # In this case we need to reassign the remaining partitions
+                # to other replication groups
+                self.log.info(
+                    "Broker %s can't be decommissioned withing the same "
+                    "replication group %s. Moving partitions to other "
+                    "replication groups.",
+                    broker,
+                    broker.replication_group,
+                )
+                self._force_broker_decommission(broker)
+                # Broker should be empty now
+                if not broker.empty():
+                    self.log.error(
+                        "Impossible to decommission broker %s partitions %s.",
+                        broker,
+                        broker.partitions,
                     )
+                    failed = True
+            if failed:
+                # Decommission may be impossible if there are not enough
+                # brokers to redistributed the replicas.
+                self.log.error("Broker decommission failed in group %s", group)
+                raise BrokerDecommissionError(
+                    "Broker decommission failed."
+                )
 
     def _force_broker_decommission(self, broker):
         available_groups = [
@@ -210,17 +212,22 @@ class ClusterTopology(object):
         ]
 
         for partition in broker.partitions.copy():  # partitions set changes during loop
-            group = min(
+            groups = sorted(
                 available_groups,
                 key=lambda x: x.count_replica(partition),
             )
-            self.log.debug(
-                "Try to move partition: %s from broker %s to replication group %s",
-                partition,
-                broker,
-                broker.replication_group,
-            )
-            group.acquire_partition(partition, broker)
+            for group in groups:
+                self.log.debug(
+                    "Try to move partition: %s from broker %s to "
+                    "replication group %s",
+                    partition,
+                    broker,
+                    broker.replication_group,
+                )
+                try:
+                    group.acquire_partition(partition, broker)
+                except NotEligibleBrokerError:
+                    pass
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""

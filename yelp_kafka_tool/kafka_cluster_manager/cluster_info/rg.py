@@ -2,8 +2,8 @@ import logging
 import sys
 from collections import defaultdict
 
-from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
+from .error import NotEligibleBrokerError
 from .util import separate_groups
 
 
@@ -68,8 +68,12 @@ class ReplicationGroup(object):
         :param partition: Partition to move
         :param broker: Broker the partition belongs to
         """
-        under_loaded = self._select_under_loaded_brokers(partition)
-        broker_dest = self._elect_dest_broker(under_loaded, partition)
+        eligible = self._select_under_loaded_brokers(partition)
+        if not eligible:
+            raise NotEligibleBrokerError(
+                "No eligible brokers to accept partition {p}".format(p=partition),
+            )
+        broker_dest = self._elect_dest_broker(eligible, partition)
         broker.move_partition(partition, broker_dest)
 
     def move_partition(self, rg_destination, victim_partition):
@@ -135,7 +139,7 @@ class ReplicationGroup(object):
         over_loaded_brokers = [
             broker
             for broker in self._brokers
-            if victim_partition in broker.partitions
+            if victim_partition in broker.partitions and not broker.inactive
         ]
         return sorted(
             over_loaded_brokers,
@@ -150,7 +154,7 @@ class ReplicationGroup(object):
         under_loaded_brokers = [
             broker
             for broker in self._brokers
-            if victim_partition not in broker.partitions
+            if victim_partition not in broker.partitions and not broker.inactive
         ]
         return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
 
@@ -252,25 +256,6 @@ class ReplicationGroup(object):
             )
             # As before add brokers to decommission.
             over_loaded_brokers += [b for b in blacklist if not b.empty()]
-        # Check if decommissioned brokers are empty. Decommission can't happen
-        # if the replication factor is higher than the available brokers in the
-        # replication group.
-        if not all(broker.empty() for broker in blacklist):
-            raise BrokerDecommissionError(
-                "Impossible to decommission brokers: {0}".format(
-                    ", ".join(
-                        "{broker}:{partitions};".format(
-                            broker=b,
-                            partitions=",".join(
-                                "{partition}".format(
-                                    partition=p
-                                ) for p in b.partitions
-                            )
-                        )
-                        for b in blacklist if not b.empty()
-                    )
-                )
-            )
 
     def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_distance):
         """Pick best-suitable source-broker, destination-broker and partition to
