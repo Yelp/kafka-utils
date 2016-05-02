@@ -27,6 +27,7 @@ class TestOffsetRestore(object):
         ConsumerPartitionOffsets(topic='topic1', partition=0, current=30, highmark=40, lowmark=10),
         ConsumerPartitionOffsets(topic='topic1', partition=1, current=20, highmark=40, lowmark=10),
     ]}
+    storage = 'zookeeper'
 
     @pytest.fixture
     def mock_kafka_client(self):
@@ -54,7 +55,11 @@ class TestOffsetRestore(object):
             return_value=self.consumer_offsets_metadata,
             autospec=True,
         ):
-            OffsetRestore.restore_offsets(mock_kafka_client, self.parsed_consumer_offsets)
+            OffsetRestore.restore_offsets(
+                mock_kafka_client,
+                self.parsed_consumer_offsets,
+                self.storage,
+            )
 
             ordered_args, _ = mock_set_offsets.call_args
             assert ordered_args[1] == 'group1'

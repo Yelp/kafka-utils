@@ -1,3 +1,5 @@
+import os
+
 from behave import then
 from behave import when
 from util import call_cmd
@@ -14,7 +16,7 @@ def offsets_data(topic, offset):
     )
 
 
-def call_offset_rewind(groupid, topic):
+def call_offset_rewind(groupid, topic, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -22,12 +24,20 @@ def call_offset_rewind(groupid, topic):
            'offset_rewind',
            groupid,
            '--topic', topic]
+    if storage:
+        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
 @when(u'we call the offset_rewind command with a groupid and topic')
 def step_impl3(context):
     call_offset_rewind(context.group, context.topic)
+
+
+@when(u'we call the offset_rewind command and commit into kafka')
+def step_impl3_2(context):
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
+        call_offset_rewind(context.group, context.topic, storage='kafka')
 
 
 @then(u'the committed offsets will match the earliest message offsets')

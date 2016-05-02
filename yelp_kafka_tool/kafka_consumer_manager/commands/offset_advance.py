@@ -40,6 +40,10 @@ class OffsetAdvance(OffsetWriter):
             "specified, offsets from all partitions of the topic shall "
             "be advanced."
         )
+        parser_offset_advance.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets."
+        )
         parser_offset_advance.set_defaults(command=cls.run)
 
     @classmethod
@@ -52,7 +56,7 @@ class OffsetAdvance(OffsetWriter):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         try:
-            advance_consumer_offsets(client, args.groupid, topics_dict)
+            advance_consumer_offsets(client, args.groupid, topics_dict, args.storage)
         except TypeError:
             print(
                 "Error: Badly formatted input, please re-run command ",

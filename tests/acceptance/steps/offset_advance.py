@@ -1,3 +1,5 @@
+import os
+
 from behave import then
 from behave import when
 from util import call_cmd
@@ -19,6 +21,12 @@ def call_offset_advance(groupid):
 @when(u'we call the offset_advance command with a groupid and topic')
 def step_impl3(context):
     call_offset_advance(context.group)
+
+
+@when(u'we call the offset_advance command and commit into kafka')
+def step_impl3_2(context):
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
+        call_offset_advance(context.group, context.topic, storage='kafka')
 
 
 @then(u'the committed offsets will match the latest message offsets')

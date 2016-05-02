@@ -52,6 +52,10 @@ class OffsetSave(OffsetManagerBase):
             type=str,
             help="Export data in json format in the given file.",
         )
+        parser_offset_save.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets."
+        )
         parser_offset_save.set_defaults(command=cls.run)
 
     @classmethod

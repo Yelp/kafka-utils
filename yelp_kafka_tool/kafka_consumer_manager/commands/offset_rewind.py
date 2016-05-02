@@ -40,6 +40,10 @@ class OffsetRewind(OffsetWriter):
             "specified, offsets from all partitions of the topic shall "
             "be rewinded."
         )
+        parser_offset_rewind.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets."
+        )
         parser_offset_rewind.set_defaults(command=OffsetRewind.run)
 
     @classmethod
@@ -52,7 +56,7 @@ class OffsetRewind(OffsetWriter):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         try:
-            rewind_consumer_offsets(client, args.groupid, topics_dict)
+            rewind_consumer_offsets(client, args.groupid, topics_dict, args.storage)
         except TypeError:
             print(
                 "Error: Badly formatted input, please re-run command "
