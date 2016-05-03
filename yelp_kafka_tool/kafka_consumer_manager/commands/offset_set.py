@@ -54,6 +54,11 @@ class OffsetSet(OffsetWriter):
             '--storage', choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets."
         )
+        parser_offset_set.add_argument(
+            '--force',
+            help="Force the offset of the group to be committed even if "
+            "it does not already exist."
+        )
 
         parser_offset_set.set_defaults(command=cls.run)
 
@@ -64,10 +69,11 @@ class OffsetSet(OffsetWriter):
         client.load_metadata_for_topics()
 
         # Let's verify that the consumer does exist in Zookeeper
-        cls.get_topics_from_consumer_group_id(
-            cluster_config,
-            args.groupid
-        )
+        if not args.force:
+            cls.get_topics_from_consumer_group_id(
+                cluster_config,
+                args.groupid
+            )
 
         try:
             results = set_consumer_offsets(

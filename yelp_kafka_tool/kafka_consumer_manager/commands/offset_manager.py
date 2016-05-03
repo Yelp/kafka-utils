@@ -128,11 +128,19 @@ class OffsetWriter(OffsetManagerBase):
         partitions,
         cluster_config,
         client,
-        fail_on_error=True
+        fail_on_error=True,
+        force=False,
     ):
         topics_dict = super(OffsetWriter, cls).preprocess_args(
-            groupid, topic, partitions, cluster_config, client, fail_on_error
+            groupid, topic, partitions, cluster_config, client,
+            fail_on_error=(fail_on_error and not force),
         )
+
+        if not topics_dict and force:
+            topics_dict = cls.get_forced_topic_partitions(
+                groupid, topic, partitions, client,
+            )
+
         topics_str = ""
         for local_topic, local_partitions in topics_dict.iteritems():
             temp_str = "Topic: {topic}, Partitions: {partitions}\n".format(
@@ -150,3 +158,10 @@ class OffsetWriter(OffsetManagerBase):
             prompt_user_input(in_str)
 
         return topics_dict
+
+    @classmethod
+    def get_forced_topic_partitions(cls, groupid, topic, partitions, client):
+        assert(topic is not None)
+        if not partitions:
+            partitions = client.get_partition_ids_for_topic(topic)
+        return {topic: partitions}

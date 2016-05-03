@@ -16,7 +16,7 @@ def offsets_data(topic, offset):
     )
 
 
-def call_offset_rewind(groupid, topic, storage=None):
+def call_offset_rewind(groupid, topic, storage=None, force=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -26,6 +26,8 @@ def call_offset_rewind(groupid, topic, storage=None):
            '--topic', topic]
     if storage:
         cmd.extend(['--storage', storage])
+    if force:
+        cmd.extend(['--force', force])
     return call_cmd(cmd)
 
 
@@ -38,6 +40,16 @@ def step_impl3(context):
 def step_impl3_2(context):
     if '0.9.0' == os.environ['KAFKA_VERSION']:
         call_offset_rewind(context.group, context.topic, storage='kafka')
+
+
+@when(u'we call the offset_rewind command with a new groupid and the force option')
+def step_impl2(context):
+    context.group = 'offset_advance_created_group'
+    call_offset_rewind(
+        context.group,
+        topic=context.topic,
+        force='force',
+    )
 
 
 @then(u'the committed offsets will match the earliest message offsets')

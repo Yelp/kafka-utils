@@ -8,13 +8,19 @@ from util import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-def call_offset_advance(groupid):
+def call_offset_advance(groupid, topic=None, partitions=None, force=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_advance',
            groupid]
+    if topic:
+        cmd.extend(['--topic', topic])
+    if partitions:
+        cmd.extend(['--partitions', partitions])
+    if force:
+        cmd.extend(['--force', force])
     return call_cmd(cmd)
 
 
@@ -27,6 +33,16 @@ def step_impl3(context):
 def step_impl3_2(context):
     if '0.9.0' == os.environ['KAFKA_VERSION']:
         call_offset_advance(context.group, context.topic, storage='kafka')
+
+
+@when(u'we call the offset_advance command with a new groupid and the force option')
+def step_impl2(context):
+    context.group = 'offset_advance_created_group'
+    call_offset_advance(
+        context.group,
+        topic=context.topic,
+        force='force',
+    )
 
 
 @then(u'the committed offsets will match the latest message offsets')

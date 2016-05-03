@@ -96,3 +96,21 @@ Feature: kafka_consumer_manager
       when we call the offset_advance command and commit into kafka
       when we call the offset_get command
       then the correct offset will be shown
+
+  Scenario: Calling the offset_set command when the group doesn't exist
+     Given we have an existing kafka cluster with a topic
+      when we produce some number of messages into the topic
+      when we call the offset_set command with a new groupid and the force option
+      then the committed offsets will match the specified offsets
+
+  Scenario: Calling the offset_advance command when the group doesn't exist
+     Given we have an existing kafka cluster with a topic
+      when we produce some number of messages into the topic
+      when we call the offset_advance command with a new groupid and the force option
+      then the committed offsets will match the latest message offsets
+
+  Scenario: Calling the offset_rewind command when the group doesn't exist
+     Given we have an existing kafka cluster with a topic
+      when we produce some number of messages into the topic
+      when we call the offset_rewind command with a new groupid and the force option
+      then the committed offsets will match the earliest message offsets
