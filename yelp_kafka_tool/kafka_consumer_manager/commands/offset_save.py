@@ -53,8 +53,9 @@ class OffsetSave(OffsetManagerBase):
             help="Export data in json format in the given file.",
         )
         parser_offset_save.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets."
+            '--storage', choices=['zookeeper', 'kafka', 'dual'],
+            help="String describing where to fetch the committed offsets.",
+            default='dual'
         )
         parser_offset_save.set_defaults(command=cls.run)
 
@@ -77,6 +78,7 @@ class OffsetSave(OffsetManagerBase):
                 args.groupid,
                 topics_dict,
                 False,
+                args.storage,
             )
         except KafkaUnavailableError:
             print(

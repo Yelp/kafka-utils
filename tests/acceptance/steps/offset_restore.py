@@ -31,13 +31,15 @@ def create_restore_file(group, topic, offset):
     return f
 
 
-def call_offset_restore(offsets_file):
+def call_offset_restore(offsets_file, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_restore',
            offsets_file]
+    if storage:
+        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
@@ -49,11 +51,18 @@ def step_impl2(context):
         RESTORED_OFFSET,
     )
     assert os.path.isfile(context.offsets_file.name)
+    context.group = RESTORED_GROUP
 
 
 @when(u'we call the offset_restore command with the offsets file')
 def step_impl3(context):
     call_offset_restore(context.offsets_file.name)
+
+
+@when(u'we call the offset_restore command with the offsets file and kafka storage')
+def step_impl3_2(context):
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
+        call_offset_restore(context.offsets_file.name, storage='kafka')
 
 
 @then(u'the committed offsets will match the offsets file')
