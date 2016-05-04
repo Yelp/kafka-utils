@@ -5,8 +5,7 @@ import tempfile
 from behave import then
 from behave import when
 
-from offset_restore import RESTORED_OFFSET
-from util import call_cmd
+from .util import call_cmd
 
 
 def create_saved_file():
@@ -53,7 +52,7 @@ def step_impl3(context):
 @then(u'the restored offsets will be saved into the given file')
 def step_impl3_2(context):
     if '0.9.0' == os.environ['KAFKA_VERSION']:
-        offset = RESTORED_OFFSET
+        offset = context.restored_offset
 
         data = json.loads(context.offsets_file.read())
         assert offset == data['offsets'][context.topic]['0']

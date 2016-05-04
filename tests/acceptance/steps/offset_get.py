@@ -3,8 +3,7 @@ import os
 from behave import then
 from behave import when
 
-from offset_set import SET_OFFSET_KAFKA
-from util import call_cmd
+from .util import call_cmd
 
 
 def call_offset_get(group, storage=None):
@@ -42,6 +41,6 @@ def step_impl5(context):
 @then(u'the offset that was committed into Kafka will be shown')
 def step_impl5_2(context):
     if '0.9.0' == os.environ['KAFKA_VERSION']:
-        offset = SET_OFFSET_KAFKA
+        offset = context.set_offset_kafka
         pattern = 'Current Offset: {}'.format(offset)
         assert pattern in context.output

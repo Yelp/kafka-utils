@@ -5,9 +5,8 @@ from behave import given
 from behave import then
 from behave import when
 
-from util import call_cmd
-from util import get_cluster_config
-
+from .util import call_cmd
+from .util import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -53,6 +52,7 @@ def step_impl2(context):
     )
     assert os.path.isfile(context.offsets_file.name)
     context.group = RESTORED_GROUP
+    context.restored_offset = RESTORED_OFFSET
 
 
 @when(u'we call the offset_restore command with the offsets file')

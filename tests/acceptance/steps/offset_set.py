@@ -3,9 +3,8 @@ import os
 from behave import then
 from behave import when
 
-from util import call_cmd
-from util import get_cluster_config
-
+from .util import call_cmd
+from .util import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
@@ -48,6 +47,7 @@ def step_impl2_2(context):
         if not hasattr(context, 'group'):
             context.group = 'test_kafka_offset_group'
         context.offsets = offsets_data(context.topic, SET_OFFSET_KAFKA)
+        context.set_offset_kafka = SET_OFFSET_KAFKA
         call_offset_set(context.group, context.offsets, storage='kafka')
 
 

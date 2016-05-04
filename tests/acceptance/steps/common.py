@@ -1,8 +1,9 @@
 from behave import given
 from behave import when
-from util import create_consumer_group
-from util import create_random_topic
-from util import produce_example_msg
+
+from .util import create_consumer_group
+from .util import create_random_topic
+from .util import produce_example_msg
 
 TEST_GROUP = 'test_group'
 PRODUCED_MSG_COUNT = 82

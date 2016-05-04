@@ -3,8 +3,7 @@ import os
 from behave import then
 from behave import when
 
-from util import get_cluster_config
-
+from .util import get_cluster_config
 from yelp_kafka_tool.util.client import KafkaToolClient
 from yelp_kafka_tool.util.monitoring import get_current_offsets
 from yelp_kafka_tool.util.offsets import set_consumer_offsets
