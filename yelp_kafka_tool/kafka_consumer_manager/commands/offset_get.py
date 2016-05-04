@@ -51,6 +51,11 @@ class OffsetGet(OffsetManagerBase):
             default="all"
         )
         parser_offset_get.add_argument(
+            '--storage', choices=['zookeeper', 'kafka', 'dual'],
+            help="String describing where to fetch the committed offsets.",
+            default='dual'
+        )
+        parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
             help="Export data in json format."
         )
@@ -67,7 +72,7 @@ class OffsetGet(OffsetManagerBase):
         )
         try:
             consumer_offsets_metadata = get_consumer_offsets_metadata(
-                client, args.groupid, topics_dict, False,
+                client, args.groupid, topics_dict, False, args.storage,
             )
         except:
             print(
