@@ -58,11 +58,20 @@ class OffsetAdvance(OffsetWriter):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, args.topic, args.partitions, cluster_config,
-            client, force=args.force,
+            args.groupid,
+            args.topic,
+            args.partitions,
+            cluster_config,
+            client,
+            force=args.force,
         )
         try:
-            advance_consumer_offsets(client, args.groupid, topics_dict, args.storage)
+            advance_consumer_offsets(
+                client,
+                args.groupid,
+                topics_dict,
+                args.storage,
+            )
         except TypeError:
             print(
                 "Error: Badly formatted input, please re-run command ",

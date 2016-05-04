@@ -32,15 +32,15 @@ class OffsetSet(OffsetWriter):
             "offset_set",
             description="Modify consumer offsets for the specified consumer "
             "group to the specified offset.",
-            add_help=False
+            add_help=False,
         )
         parser_offset_set.add_argument(
             "-h", "--help", action="help",
-            help="Show this help message and exit."
+            help="Show this help message and exit.",
         )
         parser_offset_set.add_argument(
             'groupid',
-            help="Consumer Group ID whose consumer offsets shall be modified."
+            help="Consumer Group ID whose consumer offsets shall be modified.",
         )
 
         parser_offset_set.add_argument(
@@ -48,16 +48,16 @@ class OffsetSet(OffsetWriter):
             type=cls.topics_dict,
             help="Tuple containing the Kafka topic, partition and "
             "the the intended "
-            "new offset."
+            "new offset.",
         )
         parser_offset_set.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets."
+            help="String describing where to store the committed offsets.",
         )
         parser_offset_set.add_argument(
             '--force',
             help="Force the offset of the group to be committed even if "
-            "it does not already exist."
+            "it does not already exist.",
         )
 
         parser_offset_set.set_defaults(command=cls.run)
@@ -72,7 +72,7 @@ class OffsetSet(OffsetWriter):
         if not args.force:
             cls.get_topics_from_consumer_group_id(
                 cluster_config,
-                args.groupid
+                args.groupid,
             )
 
         try:

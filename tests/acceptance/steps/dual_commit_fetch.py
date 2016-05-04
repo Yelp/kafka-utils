@@ -2,10 +2,11 @@ import os
 
 from behave import then
 from behave import when
+
 from util import get_cluster_config
 
 from yelp_kafka_tool.util.client import KafkaToolClient
-from yelp_kafka_tool.util.monitoring import _get_current_offsets
+from yelp_kafka_tool.util.monitoring import get_current_offsets
 from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
 
@@ -30,7 +31,7 @@ def fetch_offsets(group, topics):
     # Setup the Kafka client
     config = get_cluster_config()
     client = KafkaToolClient(config.broker_list)
-    offsets = _get_current_offsets(client, group, topics, False, 'dual')
+    offsets = get_current_offsets(client, group, topics, False, 'dual')
     client.close()
     return offsets
 

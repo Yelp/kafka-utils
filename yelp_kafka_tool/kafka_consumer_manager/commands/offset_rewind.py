@@ -58,11 +58,20 @@ class OffsetRewind(OffsetWriter):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, args.topic, args.partitions, cluster_config,
-            client, force=args.force,
+            args.groupid,
+            args.topic,
+            args.partitions,
+            cluster_config,
+            client,
+            force=args.force,
         )
         try:
-            rewind_consumer_offsets(client, args.groupid, topics_dict, args.storage)
+            rewind_consumer_offsets(
+                client,
+                args.groupid,
+                topics_dict,
+                args.storage,
+            )
         except TypeError:
             print(
                 "Error: Badly formatted input, please re-run command "

@@ -132,13 +132,20 @@ class OffsetWriter(OffsetManagerBase):
         force=False,
     ):
         topics_dict = super(OffsetWriter, cls).preprocess_args(
-            groupid, topic, partitions, cluster_config, client,
+            groupid,
+            topic,
+            partitions,
+            cluster_config,
+            client,
             fail_on_error=(fail_on_error and not force),
         )
 
         if not topics_dict and force:
             topics_dict = cls.get_forced_topic_partitions(
-                groupid, topic, partitions, client,
+                groupid,
+                topic,
+                partitions,
+                client,
             )
 
         topics_str = ""

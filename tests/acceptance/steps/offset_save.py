@@ -4,6 +4,7 @@ import tempfile
 
 from behave import then
 from behave import when
+
 from offset_restore import RESTORED_OFFSET
 from util import call_cmd
 

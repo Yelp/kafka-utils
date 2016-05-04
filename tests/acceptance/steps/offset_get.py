@@ -2,6 +2,7 @@ import os
 
 from behave import then
 from behave import when
+
 from offset_set import SET_OFFSET_KAFKA
 from util import call_cmd
 

@@ -56,7 +56,7 @@ def get_consumer_offsets_metadata(
     except KafkaUnavailableError:
         kafka_client.load_metadata_for_topics()
 
-    group_offsets = _get_current_offsets(
+    group_offsets = get_current_offsets(
         kafka_client, group, topics, raise_on_error, offset_storage
     )
 
@@ -78,7 +78,7 @@ def get_consumer_offsets_metadata(
     return result
 
 
-def _get_current_offsets(
+def get_current_offsets(
         kafka_client,
         group,
         topics,

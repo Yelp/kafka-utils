@@ -193,6 +193,7 @@ class TestMonitoring(TestOffsetsBase):
                 self.topics,
                 offset_storage='dual',
             )
+
             assert mock_get_zk.call_count == 1
             assert not self._has_no_partitions(actual)
 
@@ -209,6 +210,7 @@ class TestMonitoring(TestOffsetsBase):
                 self.topics,
                 offset_storage='dual',
             )
+
             assert mock_get_kafka.call_count == 1
             assert not self._has_no_partitions(actual)
 
@@ -230,6 +232,7 @@ class TestMonitoring(TestOffsetsBase):
                 self.topics,
                 offset_storage='dual',
             )
+
             assert mock_get_zk.call_count == 1
             assert mock_get_kafka.call_count == 1
             assert self._has_no_partitions(actual)
