@@ -2,7 +2,6 @@ import logging
 from collections import namedtuple
 
 from kafka.common import KafkaUnavailableError
-from kafka.common import NotCoordinatorForConsumerCode
 
 from yelp_kafka_tool.util.error import InvalidOffsetStorageError
 from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
@@ -112,12 +111,9 @@ def _get_current_offsets_dual(
     zk_offsets = get_current_consumer_offsets(
         kafka_client, group, topics, False, 'zookeeper',
     )
-    try:
-        kafka_offsets = get_current_consumer_offsets(
-            kafka_client, group, topics, False, 'kafka',
-        )
-    except NotCoordinatorForConsumerCode:
-        kafka_offsets = {}
+    kafka_offsets = get_current_consumer_offsets(
+        kafka_client, group, topics, False, 'kafka',
+    )
     return merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
 
 
