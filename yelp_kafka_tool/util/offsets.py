@@ -563,7 +563,6 @@ def _delete_group_kafka(cluster_config, group):
 
 
 def _delete_group_zk(cluster_config, group):
-    print cluster_config
     with ZK(cluster_config) as zk:
         zk.delete_group(group)
 
