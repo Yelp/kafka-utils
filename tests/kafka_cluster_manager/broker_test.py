@@ -141,3 +141,9 @@ class TestBroker(object):
         broker = Broker('test-broker', partitions=set([partition]))
 
         assert not broker.empty()
+
+    def test_mark_inactive(self):
+        broker = Broker('test-broker')
+        broker.mark_inactive()
+
+        assert broker.inactive

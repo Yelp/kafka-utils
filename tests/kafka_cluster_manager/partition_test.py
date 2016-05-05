@@ -1,6 +1,8 @@
 import pytest
+from mock import Mock
 from mock import sentinel
 
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
 
 
@@ -76,3 +78,17 @@ class TestPartition(object):
         # Empty group
         p_group = []
         assert p1.count_siblings(p_group) == 0
+
+    def test_has_inactive_replicas_all_active(self):
+        topic = Mock()
+        partition = Partition(topic, 0, [Broker('b1'), Broker('b2')])
+
+        assert partition.has_inactive_replicas() is False
+
+    def test_has_inactive_replicas_inactive(self):
+        topic = Mock()
+        inactive = Broker('b3')
+        inactive.mark_inactive()
+        partition = Partition(topic, 0, [Broker('b1'), Broker('b2'), inactive])
+
+        assert partition.has_inactive_replicas() is True
