@@ -70,7 +70,7 @@ class TestClusterToplogy(object):
     def test_cluster_topology_inactive_brokers(self):
         assignment = {
             (u'T0', 0): ['0', '1'],
-            (u'T0', 1): ['8', '9'],  # 8 and 9 do are not in active brokers
+            (u'T0', 1): ['8', '9'],  # 8 and 9 are not in active brokers
         }
         brokers = {
             '0': {'host': 'host0'},
@@ -103,10 +103,10 @@ class TestClusterToplogy(object):
         # are in the same replication group and empty.
         ct.decommission_brokers(['0'])
 
-        # Here we just care that broker 1 is empty and partitions count didn't
+        # Here we just care that broker 0 is empty and partitions count didn't
         # change
         assert len(ct.partitions) == partitions_count
-        assert ct.brokers['1'].empty
+        assert ct.brokers['0'].empty()
 
     def test_broker_decommission_many(self):
         assignment = {
@@ -123,9 +123,9 @@ class TestClusterToplogy(object):
         ct.decommission_brokers(['0', '1', '3'])
 
         assert len(ct.partitions) == partitions_count
-        assert ct.brokers['0'].empty
-        assert ct.brokers['1'].empty
-        assert ct.brokers['3'].empty
+        assert ct.brokers['0'].empty()
+        assert ct.brokers['1'].empty()
+        assert ct.brokers['3'].empty()
         # All partitions from 0 and 1 should now be in 4
         assert len(ct.brokers['4'].partitions) == 6
         # All partitions from 3 should now be in 2
@@ -147,7 +147,7 @@ class TestClusterToplogy(object):
 
         # Partition T00, T01, and T10 should move to 5 and 6
         assert len(ct.partitions) == partitions_count
-        assert ct.brokers['0'].empty
+        assert ct.brokers['0'].empty()
 
     def test_broker_decommission_error(self):
         assignment = {
@@ -160,8 +160,6 @@ class TestClusterToplogy(object):
         ct = self.build_cluster_topology(assignment)
 
         with pytest.raises(BrokerDecommissionError):
-            import ipdb
-            ipdb.set_trace()
             ct.decommission_brokers(['0'])
 
     def test__broker_decommission_inactive(self):
