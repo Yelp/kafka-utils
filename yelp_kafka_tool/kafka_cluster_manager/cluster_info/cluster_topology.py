@@ -136,7 +136,7 @@ class ClusterTopology(object):
         ]
 
     def rebalance_replication_groups(self):
-        """Rebalance partitions over replication groups (availability-zones).
+        """Rebalance partitions over replication groups.
 
         First step involves rebalancing replica-count for each partition across
         replication-groups.
@@ -145,7 +145,9 @@ class ClusterTopology(object):
         """
         # Balance replicas over replication-groups for each partition
         for partition in self.partitions.itervalues():
-            self._rebalance_partition(partition)
+            # Can't rebalance a partition with inactive brokers.
+            if not partition.has_inactive_replicas():
+                self._rebalance_partition(partition)
 
         # Balance partition-count over replication-groups
         self._rebalance_groups_partition_cnt()

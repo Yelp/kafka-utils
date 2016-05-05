@@ -121,7 +121,7 @@ class ReplicationGroup(object):
         return broker_source, broker_destination
 
     def _elect_source_broker(self, victim_partition):
-        """Select first broker from given brokers having victim_partition.
+        """Select first over loaded broker having victim_partition.
 
         Note: The broker with maximum siblings of victim-partitions (same topic)
         is selected to reduce topic-partition imbalance.
@@ -149,7 +149,7 @@ class ReplicationGroup(object):
         return max_count_pair[0]
 
     def _elect_dest_broker(self, victim_partition):
-        """Select first broker from under_loaded_brokers preferring not having
+        """Select first under loaded brokers preferring not having
         partition of same topic as victim partition.
         """
         under_loaded_brokers = sorted(
