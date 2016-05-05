@@ -34,11 +34,21 @@ def create_topic(topic_name, replication_factor, partitions):
 
 
 def call_cmd(cmd):
+    output = ''
     try:
-        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        output, _ = p.communicate('y')
+        p = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        out, err = p.communicate('y')
+        if out:
+            output += out
+        if err:
+            output += err
     except subprocess.CalledProcessError as e:
-        output = e.output
+        output += e.output
     return output
 
 

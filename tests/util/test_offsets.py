@@ -10,6 +10,8 @@ from kafka.common import RequestTimedOutError
 from kafka.common import UnknownTopicOrPartitionError
 
 from yelp_kafka_tool.util.error import InvalidOffsetStorageError
+from yelp_kafka_tool.util.offsets import _nullify_partition_offsets
+from yelp_kafka_tool.util.offsets import _nullify_topics
 from yelp_kafka_tool.util.offsets import _verify_commit_offsets_requests
 from yelp_kafka_tool.util.offsets import advance_consumer_offsets
 from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
@@ -784,3 +786,31 @@ class TestOffsets(TestOffsetsBase):
             )
         assert kafka_client_mock.send_offset_commit_request.call_count == 0
         assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 0
+
+    def test_nullify_partition_offsets(self):
+        partition_offsets = {
+            0: 11,
+            1: 43,
+            2: 531,
+        }
+
+        expected = {0: -1, 1: -1, 2: -1}
+        result = _nullify_partition_offsets(partition_offsets)
+
+        assert result == expected
+
+    def test_nullify_topics(self):
+        topics = {
+            'topic1': {
+                0: 11,
+                1: 43,
+                2: 531,
+            }
+        }
+
+        expected = {
+            'topic1': {0: -1, 1: -1, 2: -1}
+        }
+        result = _nullify_topics(topics)
+
+        assert result == expected

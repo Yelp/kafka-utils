@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections import namedtuple
 
+from kafka import KafkaClient
 from kafka.common import BrokerResponseError
 from kafka.common import check_error
 from kafka.common import OffsetCommitRequest
@@ -15,6 +16,7 @@ from yelp_kafka_tool.util.error import InvalidOffsetStorageError
 from yelp_kafka_tool.util.error import OffsetCommitError
 from yelp_kafka_tool.util.error import UnknownPartitions
 from yelp_kafka_tool.util.error import UnknownTopic
+from yelp_kafka_tool.util.zookeeper import ZK
 
 
 PartitionOffsets = namedtuple(
@@ -527,3 +529,60 @@ def set_consumer_offsets(
         )
 
     return filter(None, status)
+
+
+def _nullify_partition_offsets(partition_offsets):
+    result = {}
+    for partition in partition_offsets:
+        result[partition] = -1
+    return result
+
+
+def _nullify_topics(topics_dict):
+    result = {}
+    for topic, partition_offsets in topics_dict.iteritems():
+        result[topic] = _nullify_partition_offsets(partition_offsets)
+    return result
+
+
+def _delete_group_kafka(cluster_config, group):
+    client = KafkaClient(cluster_config.broker_list)
+    client.load_metadata_for_topics()
+
+    offsets = get_current_consumer_offsets(
+        client,
+        group,
+        offset_storage='kafka',
+    )
+    set_consumer_offsets(
+        client,
+        group,
+        _nullify_topics(offsets),
+        offset_storage='kafka',
+    )
+
+
+def _delete_group_zk(cluster_config, group):
+    print cluster_config
+    with ZK(cluster_config) as zk:
+        zk.delete_group(group)
+
+
+def delete_group(
+    cluster_config,
+    group,
+    raise_on_error=True,
+    offset_storage='zookeeper',
+):
+    """Delete a consumer group.
+
+    This method removes the offset data for a consumer group
+    by deleting a Zookeeper node, or by sending null offsets into
+    the kafka offset storage.
+    """
+    if not offset_storage or offset_storage == 'zookeeper':
+        _delete_group_zk(cluster_config, group)
+    elif offset_storage == 'kafka':
+        _delete_group_kafka(cluster_config, group)
+    else:
+        raise InvalidOffsetStorageError(offset_storage)

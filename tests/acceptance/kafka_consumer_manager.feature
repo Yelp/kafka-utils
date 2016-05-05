@@ -58,6 +58,14 @@ Feature: kafka_consumer_manager
       when we call the unsubscribe_topics command
       then the committed offsets will no longer exist in zookeeper
 
+  Scenario: Calling the delete_group command
+     Given we have an existing kafka cluster with a topic
+      when we produce some number of messages into the topic
+      when we consume some number of messages from the topic
+      when we call the delete_group command
+      when we call the offset_get command
+      then the specified group will not be found
+
   Scenario: Calling the copy_group command
      Given we have an existing kafka cluster with a topic
       when we produce some number of messages into the topic
@@ -103,6 +111,22 @@ Feature: kafka_consumer_manager
       when we call the offset_restore command with the offsets file and kafka storage
       when we call the offset_save command with an offsets file and kafka storage
       then the restored offsets will be saved into the given file
+
+  Scenario: Calling the delete_group command with kafka storage
+     Given we have an existing kafka cluster with a topic
+      when we commit some offsets for a group into kafka
+      when we call the delete_group command with kafka storage
+      when we call the offset_get command with kafka storage
+      then the specified group will not be found
+
+  Scenario: Calling the delete_group command with kafka storage after consuming
+     Given we have an existing kafka cluster with a topic
+      when we produce some number of messages into the topic
+      when we consume some number of messages from the topic
+      when we call the offset_advance command and commit into kafka
+      when we call the delete_group command with kafka storage
+      when we call the offset_get command with kafka storage
+      then the specified group will not be found
 
   Scenario: Calling the offset_set command when the group doesn't exist
      Given we have an existing kafka cluster with a topic

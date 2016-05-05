@@ -4,7 +4,7 @@ from __future__ import print_function
 from kafka import KafkaClient
 
 from .offset_manager import OffsetWriter
-from yelp_kafka_tool.util.zookeeper import ZK
+from yelp_kafka_tool.util.offsets import delete_group
 
 
 class DeleteGroup(OffsetWriter):
@@ -25,6 +25,10 @@ class DeleteGroup(OffsetWriter):
             'groupid',
             help="Consumer Group IDs whose metadata shall be deleted."
         )
+        parser_delete_group.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets.",
+        )
         parser_delete_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -33,5 +37,4 @@ class DeleteGroup(OffsetWriter):
         client = KafkaClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
-        with ZK(cluster_config) as zk:
-            zk.delete_group(args.groupid)
+        delete_group(cluster_config, args.groupid, offset_storage=args.storage)

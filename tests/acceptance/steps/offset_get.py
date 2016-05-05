@@ -29,6 +29,12 @@ def step_impl4_2(context):
         context.output = call_offset_get(context.group, storage='dual')
 
 
+@when(u'we call the offset_get command with kafka storage')
+def step_impl4_3(context):
+    if '0.9.0' == os.environ['KAFKA_VERSION']:
+        context.output = call_offset_get(context.group, storage='kafka')
+
+
 @then(u'the correct offset will be shown')
 def step_impl5(context):
     offsets = context.consumer.offsets(group='commit')
