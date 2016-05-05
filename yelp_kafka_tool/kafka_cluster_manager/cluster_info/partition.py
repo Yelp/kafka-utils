@@ -38,6 +38,14 @@ class Partition(object):
     def replication_factor(self):
         return len(self._replicas)
 
+    @property
+    def followers(self):
+        """Return list of brokers not as preferred leader
+        for a particular partition.
+        """
+        # Empty list is returned in case no non-leaders found
+        return self._replicas[1:]
+
     def add_replica(self, broker):
         """Add broker to existing set of replicas."""
         self._replicas.append(broker)
@@ -57,14 +65,6 @@ class Partition(object):
             self._replicas[idx], self._replicas[0]
         return curr_leader
 
-    @property
-    def followers(self):
-        """Return list of brokers not as preferred leader
-        for a particular partition.
-        """
-        # Empty list is returned in case no non-leaders found
-        return self._replicas[1:]
-
     def count_siblings(self, partitions):
         """Count siblings of partition in given partition-list.
 
@@ -76,6 +76,9 @@ class Partition(object):
             for partition in partitions
         )
         return count
+
+    def has_inactive_replicas(self):
+        return any(replica.inactive for replica in self.replicas)
 
     def __str__(self):
         return "{name}".format(name=self._name)

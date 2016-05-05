@@ -182,7 +182,7 @@ class ClusterTopology(object):
                 # In this case we need to reassign the remaining partitions
                 # to other replication groups
                 self.log.info(
-                    "Broker %s can't be decommissioned withing the same "
+                    "Broker %s can't be decommissioned within the same "
                     "replication group %s. Moving partitions to other "
                     "replication groups.",
                     broker,
@@ -191,16 +191,16 @@ class ClusterTopology(object):
                 self._force_broker_decommission(broker)
                 # Broker should be empty now
                 if not broker.empty():
+                    # Decommission may be impossible if there are not enough
+                    # brokers to redistributed the replicas.
                     self.log.error(
-                        "Impossible to decommission broker %s partitions %s.",
+                        "Could not decommission broker %s. "
+                        "Partitions %s cannot be reassigned.",
                         broker,
                         broker.partitions,
                     )
                     failed = True
             if failed:
-                # Decommission may be impossible if there are not enough
-                # brokers to redistributed the replicas.
-                self.log.error("Broker decommission failed in group %s", group)
                 raise BrokerDecommissionError(
                     "Broker decommission failed."
                 )
