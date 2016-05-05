@@ -64,7 +64,7 @@ class RebalanceCmd(ClusterManagerCmd):
     def run_command(self, ct):
         """Get executable proposed plan(if any) for display or execution."""
         base_assignment = ct.assignment
-        assignment = self.build_balanced_assignment(base_assignment, ct)
+        assignment = self.build_balanced_assignment(ct)
 
         if not validate_plan(
             assignment_to_plan(assignment),
