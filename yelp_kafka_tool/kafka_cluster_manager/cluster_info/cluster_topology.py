@@ -1,11 +1,3 @@
-"""Contains information for partition layout on given cluster.
-
-Also contains api's dealing with changes in partition layout.
-The steps (1-6) and states S0 -- S2 and algorithm for re-assigning-partitions
-is per the design document at:-
-
-https://docs.google.com/document/d/1qloANcOHkzuu8wYVm0ZAMCGY5Mmb-tdcxUywNIXfQFI
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
@@ -17,6 +9,7 @@ from .broker import Broker
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
 from .error import NotEligibleGroupError
+from .error import RebalanceError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
@@ -124,17 +117,6 @@ class ClusterTopology(object):
         # assignment map created in sorted order for deterministic solution
         return OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
 
-    @property
-    def partition_replicas(self):
-        """Return list of all partitions in the cluster.
-        Note: List contains all replicas as well.
-        """
-        return [
-            partition
-            for rg in self.rgs.itervalues()
-            for partition in rg.partitions
-        ]
-
     def rebalance_replication_groups(self):
         """Rebalance partitions over replication groups.
 
@@ -144,10 +126,18 @@ class ClusterTopology(object):
         of the cluster.
         """
         # Balance replicas over replication-groups for each partition
+        if any(b.inactive for b in self.brokers.itervalues()):
+            self.log.error(
+                "Impossible to rebalance replication groups because of inactive "
+                "brokers."
+            )
+            raise RebalanceError(
+                "Impossible to rebalance replication groups because of inactive "
+                "brokers"
+            )
+
         for partition in self.partitions.itervalues():
-            # Can't rebalance a partition with inactive brokers.
-            if not partition.has_inactive_replicas():
-                self._rebalance_partition(partition)
+            self._rebalance_partition(partition)
 
         # Balance partition-count over replication-groups
         self._rebalance_groups_partition_cnt()
@@ -361,9 +351,9 @@ class ClusterTopology(object):
                 eligible_partitions = set(filter(
                     lambda partition:
                     over_loaded_rg.count_replica(partition) >
-                        len(partition.replicas) // len(self.rgs) and
+                    len(partition.replicas) // len(self.rgs) and
                     under_loaded_rg.count_replica(partition) <=
-                        len(partition.replicas) // len(self.rgs),
+                    len(partition.replicas) // len(self.rgs),
                     over_loaded_rg.partitions,
                 ))
                 # Move all possible partitions

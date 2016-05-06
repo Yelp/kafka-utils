@@ -23,3 +23,8 @@ class NotEligibleGroupError(KafkaToolError):
     in a replication group.
     """
     pass
+
+
+class RebalanceError(KafkaToolError):
+    """Raised when a rebalance operation is not possible."""
+    pass

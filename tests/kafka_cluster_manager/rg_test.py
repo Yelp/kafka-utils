@@ -180,6 +180,29 @@ class TestReplicationGroup(object):
         with pytest.raises(EmptyReplicationGroupError):
             rg.rebalance_brokers()
 
+    def test_decommission_an_inactive_broker(self, rg_balanced, create_partition):
+        # rg_balanced is supposed to have 3 brokers with 3 partitions each. We
+        # add another broker with 3 more partitions
+        broker_count = len(rg_balanced.brokers)
+        p50 = create_partition('topic5', 0)
+        p51 = create_partition('topic5', 1)
+        p52 = create_partition('topic5', 2)
+        broker = create_broker('broker4', [p50, p51, p52])
+        rg_balanced.add_broker(broker)
+
+        broker.mark_decommissioned()
+        broker.mark_inactive()
+        orig_partitions = rg_balanced.partitions
+
+        rg_balanced.rebalance_brokers()
+
+        assert broker.empty() is True
+        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        expected_count = len(rg_balanced.partitions) // broker_count
+        for broker in rg_balanced.brokers:
+            if not broker.decommissioned:
+                assert len(broker.partitions) in (expected_count, expected_count + 1)
+
     def test_add_broker_empty(self):
         rg = ReplicationGroup('test_rg', None)
         rg.add_broker(sentinel.broker)

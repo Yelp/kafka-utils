@@ -1,4 +1,3 @@
-from collections import Counter
 from collections import OrderedDict
 
 import mock
@@ -8,6 +7,8 @@ from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .error import BrokerDecommissionError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import RebalanceError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
@@ -57,7 +58,10 @@ class TestClusterToplogy(object):
     )
 
     def get_replication_group_id(self, broker):
-        return self.broker_rg[broker.id]
+        try:
+            return self.broker_rg[broker.id]
+        except KeyError:
+            return None
 
     def build_cluster_topology(self, assignment=None, brokers=None):
         """Create cluster topology from given assignment."""
@@ -151,19 +155,14 @@ class TestClusterToplogy(object):
 
     def test_broker_decommission_error(self):
         assignment = {
-            (u'T1', 0): ['0', '1', '2', '3'],
+            (u'T1', 0): ['0', '1', '2', '3', '4'],
             (u'T1', 1): ['0', '1', '2', '4'],
-            (u'T2', 0): ['2'],
-            (u'T3', 0): ['0', '1', '2'],
-            (u'T3', 1): ['0', '1', '4'],
+            (u'T3', 1): ['0', '1', '2', '4'],
         }
         ct = self.build_cluster_topology(assignment)
 
         with pytest.raises(BrokerDecommissionError):
             ct.decommission_brokers(['0'])
-
-    def test__broker_decommission_inactive(self):
-        pass
 
     def test_rebalance_replication_groups(self):
         ct = self.build_cluster_topology()
@@ -194,6 +193,7 @@ class TestClusterToplogy(object):
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(5))
+        ct.rebalance_replication_groups()
         net_imbal, _ = get_replication_group_imbalance_stats(
             ct.rgs.values(),
             ct.partitions.values(),
@@ -204,20 +204,19 @@ class TestClusterToplogy(object):
         # Verify that new-assignment same as previous
         assert ct.assignment == assignment
 
-    def test_partition_replicas(self):
-        ct = self.build_cluster_topology()
-        partition_replicas = [p.name for p in ct.partition_replicas]
+    def test_rebalance_replication_groups_error(self):
+        assignment = dict(
+            [
+                ((u'T0', 0), ['0', '2']),
+                ((u'T0', 1), ['0', '3']),
+                ((u'T2', 0), ['2']),
+                ((u'T3', 0), ['0', '1', '9']),  # broker 9 is not actibe
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, self.srange(5))
 
-        # Assert that replica-count for each partition as the value
-        # Get dict for count of each partition
-        partition_replicas_cnt = Counter(partition_replicas)
-        assert partition_replicas_cnt[('T0', 0)] == 2
-        assert partition_replicas_cnt[('T0', 1)] == 2
-        assert partition_replicas_cnt[('T1', 0)] == 4
-        assert partition_replicas_cnt[('T1', 1)] == 4
-        assert partition_replicas_cnt[('T2', 0)] == 1
-        assert partition_replicas_cnt[('T3', 0)] == 3
-        assert partition_replicas_cnt[('T3', 1)] == 3
+        with pytest.raises(RebalanceError):
+            ct.rebalance_replication_groups()
 
     def test_elect_source_replication_group(self):
         # Sample assignment with 3 replication groups

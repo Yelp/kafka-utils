@@ -76,9 +76,6 @@ class Partition(object):
         )
         return count
 
-    def has_inactive_replicas(self):
-        return any(replica.inactive for replica in self.replicas)
-
     def __str__(self):
         return "{name}".format(name=self._name)
 
