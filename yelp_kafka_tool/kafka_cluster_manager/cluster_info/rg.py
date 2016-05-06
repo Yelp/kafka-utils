@@ -117,7 +117,7 @@ class ReplicationGroup(object):
         * Partition-count is balanced across replication-groups.
         """
         broker_source = self._elect_source_broker(victim_partition)
-        broker_destination = self._elect_dest_broker(victim_partition)
+        broker_destination = rg_destination._elect_dest_broker(victim_partition)
         return broker_source, broker_destination
 
     def _elect_source_broker(self, victim_partition):
@@ -176,15 +176,15 @@ class ReplicationGroup(object):
         )
         return min_count_pair[0]
 
-    def _extract_decommissioned(self):
-        return set([b for b in self.brokers if b.decommissioned])
+    def get_active_brokers(self):
+        return set(b for b in self.brokers if not b.inactive)
 
     # Re-balancing brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers."""
         total_partitions = sum(len(b.partitions) for b in self.brokers)
-        blacklist = self._extract_decommissioned()
-        active_brokers = self.brokers - blacklist
+        blacklist = set(b for b in self.brokers if b.decommissioned)
+        active_brokers = self.get_active_brokers() - blacklist
         if not active_brokers:
             raise EmptyReplicationGroupError("No active brokers in %s", self.id)
         # Separate brokers based on partition count

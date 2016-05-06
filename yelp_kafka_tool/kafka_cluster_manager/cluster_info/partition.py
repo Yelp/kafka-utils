@@ -43,7 +43,6 @@ class Partition(object):
         """Return list of brokers not as preferred leader
         for a particular partition.
         """
-        # Empty list is returned in case no non-leaders found
         return self._replicas[1:]
 
     def add_replica(self, broker):

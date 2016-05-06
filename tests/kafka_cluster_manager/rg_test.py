@@ -74,6 +74,27 @@ class TestReplicationGroup(object):
         assert sorted(orig_partitions) == sorted(rg_unbalanced.partitions)
         assert_rg_balanced(rg_unbalanced)
 
+    def test_rebalance_brokers_one_inactive(self, rg_unbalanced, create_partition):
+        expected_count = len(rg_unbalanced.partitions) // len(rg_unbalanced.brokers)
+        p51 = create_partition('topic5', 1)
+        b4 = create_broker('b4', [p51])
+        b4.mark_inactive()
+        rg_unbalanced.add_broker(b4)
+        orig_partitions = rg_unbalanced.partitions
+
+        rg_unbalanced.rebalance_brokers()
+
+        # No partitions are missing
+        assert sorted(orig_partitions) == sorted(rg_unbalanced.partitions)
+        # b4 has not changed
+        assert b4.partitions == set([p51])
+        for broker in rg_unbalanced.brokers:
+            if not broker.decommissioned and not broker.inactive:
+                assert len(broker.partitions) in (
+                    expected_count,
+                    expected_count + 1
+                )
+
     def test_rebalance_brokers_balanced(self, rg_balanced):
         expected = {b: b.partitions for b in rg_balanced.brokers}
 
@@ -115,14 +136,26 @@ class TestReplicationGroup(object):
         assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
         assert_rg_balanced(rg_balanced)
 
+    def test_rebalance_balanced_inactive_broker(self, rg_balanced):
+        expected = {b: b.partitions for b in rg_balanced.brokers}
+        list(rg_balanced.brokers)[0].mark_inactive()
+
+        rg_balanced.rebalance_brokers()
+
+        assert expected == {b: b.partitions for b in rg_balanced.brokers}
+        assert_rg_balanced(rg_balanced)
+
     def test_decommission_no_remaining_brokers(self, create_partition):
         p10 = create_partition('topic1', 0)
         p11 = create_partition('topic1', 1)
         p20 = create_partition('topic2', 0)
         b1 = create_broker('b1', [p10, p11, p20])
-        rg = ReplicationGroup('rg', set([b1]))
+        b2 = create_broker('b2', [])
+        b2.mark_inactive()
+        rg = ReplicationGroup('rg', set([b1, b2]))
         b1.mark_decommissioned()
 
+        # Two brokers b1 decommissioned b2 inactive
         with pytest.raises(EmptyReplicationGroupError):
             rg.rebalance_brokers()
 
@@ -193,9 +226,10 @@ class TestReplicationGroup(object):
         b2 = create_broker('b2', [p1, p2, p4])  # b2 -> t1: 0, t2: 1, t3: 0
         rg = ReplicationGroup('test_rg', set([b1, b2]))
 
-        # Since p1.topic is t1 and b1 has 2 partitions (p1 and p3) for same topic
-        # t1 and b2 has only 1 partition with topic t2, even though it has more
-        # partition, so b1 is preferred (To reduce topic-partition imbalance).
+        # b1 has 2 partitions (p1 and p3) for same topic t1
+        # b2 has only 1 partition (p1) for topic t1
+        # source broker should be b1 to reduce the number of partitions of the
+        # same topic
         victim_partition = p1
         actual = rg._elect_source_broker(victim_partition)
         assert actual == b1
@@ -215,7 +249,7 @@ class TestReplicationGroup(object):
         actual = rg._elect_dest_broker(victim_partition)
         assert actual == b1
 
-    def test__elect_dest_broker_(self, create_partition):
+    def test__elect_dest_broker_prefer_less_siblings(self, create_partition):
         p10 = create_partition('t1', 0)
         p11 = create_partition('t1', 1)
         p20 = create_partition('t2', 0)
@@ -241,8 +275,7 @@ class TestReplicationGroup(object):
         # p1 already exists in b1
         # This should never happen and we expect the application to fail badly
         victim_partition = p1
-        with pytest.raises(ValueError):
-            rg._elect_dest_broker(victim_partition)
+        assert None is rg._elect_dest_broker(victim_partition)
 
     def test_count_replica(self, create_partition):
         p10 = create_partition('t1', 0)
