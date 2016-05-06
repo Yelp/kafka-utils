@@ -35,6 +35,10 @@ class OffsetRestore(OffsetManagerBase):
             type=str,
             help="Json file containing offset information",
         )
+        parser_offset_restore.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets."
+        )
         parser_offset_restore.set_defaults(command=cls.run)
 
     @classmethod
@@ -129,16 +133,17 @@ class OffsetRestore(OffsetManagerBase):
         with closing(KafkaClient(cluster_config.broker_list)) as client:
             client.load_metadata_for_topics()
 
-            cls.restore_offsets(client, parsed_consumer_offsets)
+            cls.restore_offsets(client, parsed_consumer_offsets, args.storage)
 
     @classmethod
-    def restore_offsets(cls, client, parsed_consumer_offsets):
+    def restore_offsets(cls, client, parsed_consumer_offsets, storage):
         """Fetch current offsets from kafka, validate them against given
         consumer-offsets data and commit the new offsets.
 
         :param client: Kafka-client
         :param parsed_consumer_offsets: Parsed consumer offset data from json file
         :type parsed_consumer_offsets: dict(group: dict(topic: partition-offsets))
+        :param storage: String describing where to store the committed offsets.
         """
         # Fetch current offsets
         try:
@@ -171,5 +176,11 @@ class OffsetRestore(OffsetManagerBase):
 
         # Commit offsets
         consumer_group = parsed_consumer_offsets['groupid']
-        set_consumer_offsets(client, consumer_group, new_offsets, raise_on_error=True)
+        set_consumer_offsets(
+            client,
+            consumer_group,
+            new_offsets,
+            raise_on_error=True,
+            offset_storage=storage,
+        )
         print("Restored to new offsets {offsets}".format(offsets=dict(new_offsets)))

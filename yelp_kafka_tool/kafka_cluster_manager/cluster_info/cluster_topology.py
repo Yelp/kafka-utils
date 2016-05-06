@@ -8,6 +8,7 @@ from collections import OrderedDict
 from .broker import Broker
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
+from .error import InvalidPartitionError
 from .error import NotEligibleGroupError
 from .error import RebalanceError
 from .partition import Partition
@@ -222,6 +223,28 @@ class ClusterTopology(object):
                 except NotEligibleGroupError:
                     pass
 
+    def replace_broker(self, source_id, dest_id):
+        """Move all partitions in source broker to destination broker.
+
+        :param source_id: source broker-id
+        :param dest_id: destination broker-id
+        :raises: InvalidBrokerIdError, when either of given broker-ids is invalid.
+        """
+        try:
+            source = self.brokers[source_id]
+            dest = self.brokers[dest_id]
+            # Move all partitions from source to destination broker
+            for partition in source.partitions.copy():  # Partitions set changes
+                # We cannot move partition directly since that re-orders the
+                # replicas for the partition
+                source.partitions.remove(partition)
+                dest.partitions.add(partition)
+                # Replace broker in replica
+                partition.replace(source, dest)
+        except KeyError as e:
+            self.log.error("Invalid broker id %s.", e[0])
+            raise InvalidBrokerIdError("Broker id {} does not exist in cluster".format(e[0]))
+
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
         # Separate replication-groups into under and over replicated
@@ -427,3 +450,53 @@ class ClusterTopology(object):
             for broker in over_brokers:
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
+
+    def update_cluster_topology(self, assignment):
+        """Modify the cluster-topology with given assignment.
+
+        Change the replica set of partitions as in given assignment.
+
+        :param assignment: dict representing actions to be used to update the current
+        cluster-topology
+        :raises: InvalidBrokerIdError when broker-id is invalid
+        :raises: InvalidPartitionError when partition-name is invalid
+        """
+        try:
+            for partition_name, replica_ids in assignment.iteritems():
+                try:
+                    new_replicas = [self.brokers[b_id] for b_id in replica_ids]
+                except KeyError:
+                    self.log.error(
+                        "Invalid replicas %s for topic-partition %s-%s.",
+                        ', '.join([str(id) for id in replica_ids]),
+                        partition_name[0],
+                        partition_name[1],
+                    )
+                    raise InvalidBrokerIdError(
+                        "Invalid replicas {0}.".format(', '.join([str(id) for id in replica_ids])),
+                    )
+                try:
+                    partition = self.partitions[partition_name]
+                    old_replicas = [broker for broker in partition.replicas]
+
+                    # Remove old partitions from broker
+                    # This also updates partition replicas
+                    for broker in old_replicas:
+                        broker.remove_partition(partition)
+
+                    # Add new partition to brokers
+                    for broker in new_replicas:
+                        broker.add_partition(partition)
+                except KeyError:
+                    self.log.error(
+                        "Invalid topic-partition %s-%s.",
+                        partition_name[0],
+                        partition_name[1],
+                    )
+                    raise InvalidPartitionError(
+                        "Invalid topic-partition {0}-{1}."
+                        .format(partition_name[0], partition_name[1]),
+                    )
+        except KeyError:
+            self.log.error("Could not parse given assignment {0}".format(assignment))
+            raise

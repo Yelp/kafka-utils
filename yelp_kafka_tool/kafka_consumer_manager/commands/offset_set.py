@@ -5,9 +5,8 @@ from __future__ import unicode_literals
 import sys
 from collections import defaultdict
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetWriter
+from yelp_kafka_tool.util.client import KafkaToolClient
 from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
 
@@ -33,15 +32,15 @@ class OffsetSet(OffsetWriter):
             "offset_set",
             description="Modify consumer offsets for the specified consumer "
             "group to the specified offset.",
-            add_help=False
+            add_help=False,
         )
         parser_offset_set.add_argument(
             "-h", "--help", action="help",
-            help="Show this help message and exit."
+            help="Show this help message and exit.",
         )
         parser_offset_set.add_argument(
             'groupid',
-            help="Consumer Group ID whose consumer offsets shall be modified."
+            help="Consumer Group ID whose consumer offsets shall be modified.",
         )
 
         parser_offset_set.add_argument(
@@ -49,7 +48,16 @@ class OffsetSet(OffsetWriter):
             type=cls.topics_dict,
             help="Tuple containing the Kafka topic, partition and "
             "the the intended "
-            "new offset."
+            "new offset.",
+        )
+        parser_offset_set.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets.",
+        )
+        parser_offset_set.add_argument(
+            '--force',
+            help="Force the offset of the group to be committed even if "
+            "it does not already exist.",
         )
 
         parser_offset_set.set_defaults(command=cls.run)
@@ -57,20 +65,22 @@ class OffsetSet(OffsetWriter):
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         # Let's verify that the consumer does exist in Zookeeper
-        cls.get_topics_from_consumer_group_id(
-            cluster_config,
-            args.groupid
-        )
+        if not args.force:
+            cls.get_topics_from_consumer_group_id(
+                cluster_config,
+                args.groupid,
+            )
 
         try:
             results = set_consumer_offsets(
                 client,
                 args.groupid,
-                cls.new_offsets_dict
+                cls.new_offsets_dict,
+                offset_storage=args.storage,
             )
         except TypeError:
             print(

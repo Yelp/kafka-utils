@@ -76,3 +76,9 @@ class TestPartition(object):
         # Empty group
         p_group = []
         assert p1.count_siblings(p_group) == 0
+
+    def test_replace(self, partition):
+        curr_broker = partition.replicas[0]
+        partition.replace(curr_broker, sentinel.new_broker)
+
+        assert partition.replicas[0] == sentinel.new_broker

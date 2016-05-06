@@ -319,7 +319,8 @@ def _commit_offsets_to_watermark(
     group,
     topics,
     watermark,
-    raise_on_error
+    raise_on_error,
+    offset_storage,
 ):
     topics = _verify_topics_and_partitions(kafka_client, topics, raise_on_error)
 
@@ -348,9 +349,16 @@ def _commit_offsets_to_watermark(
             "Unknown watermark: {watermark}".format(watermark=watermark)
         )
 
+    if offset_storage == 'zookeeper' or not offset_storage:
+        send_api = kafka_client.send_offset_commit_request
+    elif offset_storage == 'kafka':
+        send_api = kafka_client.send_offset_commit_request_kafka
+    else:
+        raise InvalidOffsetStorageError(offset_storage)
+
     status = []
     if group_offset_reqs:
-        status = kafka_client.send_offset_commit_request(
+        status = send_api(
             kafka_bytestring(group),
             group_offset_reqs,
             raise_on_error,
@@ -364,7 +372,8 @@ def advance_consumer_offsets(
     kafka_client,
     group,
     topics,
-    raise_on_error=True
+    raise_on_error=True,
+    offset_storage='zookeeper',
 ):
     """Advance consumer offsets to the latest message in the topic
     partition (the high watermark).
@@ -381,6 +390,7 @@ def advance_consumer_offsets(
     :param topics: topic list or dict {<topic>: [partitions]}
     :param raise_on_error: if False the method does not raise exceptions
       on missing topics/partitions. It may still fail on the request send.
+    :param offset_storage: String, one of {zookeeper, kafka}.
     :returns: a list of errors for each partition offset update that failed.
     :rtype: list [OffsetCommitError]
     :raises:
@@ -396,7 +406,8 @@ def advance_consumer_offsets(
 
     return _commit_offsets_to_watermark(
         kafka_client, group, topics,
-        HIGH_WATERMARK, raise_on_error
+        HIGH_WATERMARK, raise_on_error,
+        offset_storage,
     )
 
 
@@ -404,7 +415,8 @@ def rewind_consumer_offsets(
     kafka_client,
     group,
     topics,
-    raise_on_error=True
+    raise_on_error=True,
+    offset_storage='zookeeper',
 ):
     """Rewind consumer offsets to the earliest message in the topic
     partition (the low watermark).
@@ -421,6 +433,7 @@ def rewind_consumer_offsets(
     :param topics: topic list or dict {<topic>: [partitions]}
     :param raise_on_error: if False the method does not raise exceptions
       on missing topics/partitions. It may still fail on the request send.
+    :param offset_storage: String, one of {zookeeper, kafka}.
     :returns: a list of errors for each partition offset update that failed.
     :rtype: list [OffsetCommitError]
     :raises:
@@ -436,7 +449,8 @@ def rewind_consumer_offsets(
 
     return _commit_offsets_to_watermark(
         kafka_client, group, topics,
-        LOW_WATERMARK, raise_on_error
+        LOW_WATERMARK, raise_on_error,
+        offset_storage,
     )
 
 
@@ -444,7 +458,8 @@ def set_consumer_offsets(
     kafka_client,
     group,
     new_offsets,
-    raise_on_error=True
+    raise_on_error=True,
+    offset_storage='zookeeper',
 ):
     """Set consumer offsets to the specified offsets.
 
@@ -455,11 +470,12 @@ def set_consumer_offsets(
     other topics. This is the tradeoff of sending all topic requests in batch
     and save both in performance and Kafka load.
 
-    :param kafka_client: a connected KafkaClient
+    :param kafka_client: a connected KafkaToolClient
     :param group: kafka group_id
     :param topics: dict {<topic>: {<partition>: <offset>}}
     :param raise_on_error: if False the method does not raise exceptions
       on errors encountered. It may still fail on the request send.
+    :param offset_storage: String, one of {zookeeper, kafka}.
     :returns: a list of errors for each partition offset update that failed.
     :rtype: list [OffsetCommitError]
     :raises:
@@ -471,6 +487,9 @@ def set_consumer_offsets(
 
       :py:class:`exceptions.TypeError`: upon badly formatted input
       new_offsets
+
+      :py:class:`yelp_kafka_tool.util.error.InvalidOffsetStorageError: upon unknown
+      offset_storage choice.
 
       FailedPayloadsError: upon send request error.
     """
@@ -491,9 +510,16 @@ def set_consumer_offsets(
         for partition, offset in new_partition_offsets.iteritems()
     ]
 
+    if offset_storage == 'zookeeper' or not offset_storage:
+        send_api = kafka_client.send_offset_commit_request
+    elif offset_storage == 'kafka':
+        send_api = kafka_client.send_offset_commit_request_kafka
+    else:
+        raise InvalidOffsetStorageError(offset_storage)
+
     status = []
     if group_offset_reqs:
-        status = kafka_client.send_offset_commit_request(
+        status = send_api(
             kafka_bytestring(group),
             group_offset_reqs,
             raise_on_error,
