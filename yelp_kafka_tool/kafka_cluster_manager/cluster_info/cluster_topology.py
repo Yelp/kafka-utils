@@ -16,7 +16,7 @@ from collections import OrderedDict
 from .broker import Broker
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
-from .error import NotEligibleBrokerError
+from .error import NotEligibleGroupError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
@@ -177,6 +177,7 @@ class ClusterTopology(object):
             self._decommission_brokers_in_group(group)
 
     def _decommission_brokers_in_group(self, group):
+        """Decommission the marked brokers of a group"""
         group.rebalance_brokers()
         failed = False
         for broker in group.brokers:
@@ -228,7 +229,7 @@ class ClusterTopology(object):
                 )
                 try:
                     group.acquire_partition(partition, broker)
-                except NotEligibleBrokerError:
+                except NotEligibleGroupError:
                     pass
 
     def _rebalance_partition(self, partition):

@@ -7,6 +7,8 @@ from .helper import create_broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
     EmptyReplicationGroupError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+    NotEligibleGroupError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import \
     ReplicationGroup
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
@@ -216,6 +218,34 @@ class TestReplicationGroup(object):
         ]
 
         assert sorted(expected) == sorted(rg.partitions)
+
+    def test_acquire_partition(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p12 = create_partition('t1', 2)
+        p13 = create_partition('t1', 3)
+        p20 = create_partition('t2', 0)
+        p21 = create_partition('t2', 1)
+        b1 = create_broker('b1', [p10, p11, p20])
+        b2 = create_broker('b2', [p12, p21])
+        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        b3 = create_broker('b3', [p13])
+
+        rg.acquire_partition(p13, b3)
+
+        assert b3.empty()
+        assert p13 in rg.partitions
+
+    def test_acquire_partition_error(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        b1 = create_broker('b1', [p10, p11, p20])
+        rg = ReplicationGroup('test_rg', set([b1]))
+        b3 = create_broker('b3', [p11])
+
+        with pytest.raises(NotEligibleGroupError):
+            rg.acquire_partition(p11, b3)
 
     def test__elect_source_broker(self, create_partition):
         p1 = create_partition('t1', 0)

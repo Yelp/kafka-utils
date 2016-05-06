@@ -3,7 +3,7 @@ import sys
 from collections import defaultdict
 
 from .error import EmptyReplicationGroupError
-from .error import NotEligibleBrokerError
+from .error import NotEligibleGroupError
 from .util import separate_groups
 
 
@@ -70,7 +70,7 @@ class ReplicationGroup(object):
         """
         broker_dest = self._elect_dest_broker(partition)
         if not broker_dest:
-            raise NotEligibleBrokerError(
+            raise NotEligibleGroupError(
                 "No eligible brokers to accept partition {p}".format(p=partition),
             )
         source_broker.move_partition(partition, broker_dest)
