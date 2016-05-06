@@ -60,7 +60,7 @@ class TestClusterToplogy(object):
     def get_replication_group_id(self, broker):
         try:
             return self.broker_rg[broker.id]
-        except KeyError:
+        except KeyError:  # inactive brokers
             return None
 
     def build_cluster_topology(self, assignment=None, brokers=None):
