@@ -7,9 +7,8 @@ import sys
 from collections import defaultdict
 from contextlib import closing
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetManagerBase
+from yelp_kafka_tool.util.client import KafkaToolClient
 from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
 from yelp_kafka_tool.util.offsets import set_consumer_offsets
 
@@ -37,7 +36,8 @@ class OffsetRestore(OffsetManagerBase):
         )
         parser_offset_restore.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets."
+            help="String describing where to store the committed offsets.",
+            default='zookeeper'
         )
         parser_offset_restore.set_defaults(command=cls.run)
 
@@ -130,7 +130,7 @@ class OffsetRestore(OffsetManagerBase):
         # Fetch offsets from given json-file
         parsed_consumer_offsets = cls.parse_consumer_offsets(args.json_file)
         # Setup the Kafka client
-        with closing(KafkaClient(cluster_config.broker_list)) as client:
+        with closing(KafkaToolClient(cluster_config.broker_list)) as client:
             client.load_metadata_for_topics()
 
             cls.restore_offsets(client, parsed_consumer_offsets, args.storage)
@@ -164,7 +164,7 @@ class OffsetRestore(OffsetManagerBase):
             client,
             consumer_group,
             topic_partitions,
-            False,
+            offset_storage=storage,
         )
         # Build new offsets
         new_offsets = cls.build_new_offsets(
@@ -180,7 +180,6 @@ class OffsetRestore(OffsetManagerBase):
             client,
             consumer_group,
             new_offsets,
-            raise_on_error=True,
             offset_storage=storage,
         )
         print("Restored to new offsets {offsets}".format(offsets=dict(new_offsets)))

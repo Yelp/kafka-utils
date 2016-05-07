@@ -1,5 +1,3 @@
-import os
-
 from behave import then
 from behave import when
 
@@ -8,7 +6,7 @@ from .util import get_cluster_config
 from yelp_kafka_tool.util.zookeeper import ZK
 
 
-def call_offset_advance(groupid, topic=None, partitions=None, force=None):
+def call_offset_advance(groupid, topic=None, storage=None, force=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -17,8 +15,8 @@ def call_offset_advance(groupid, topic=None, partitions=None, force=None):
            groupid]
     if topic:
         cmd.extend(['--topic', topic])
-    if partitions:
-        cmd.extend(['--partitions', partitions])
+    if storage:
+        cmd.extend(['--storage', storage])
     if force:
         cmd.extend(['--force', force])
     return call_cmd(cmd)
@@ -31,8 +29,7 @@ def step_impl3(context):
 
 @when(u'we call the offset_advance command and commit into kafka')
 def step_impl3_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        call_offset_advance(context.group, context.topic, storage='kafka')
+    call_offset_advance(context.group, context.topic, storage='kafka')
 
 
 @when(u'we call the offset_advance command with a new groupid and the force option')
@@ -51,3 +48,10 @@ def step_impl4(context):
     with ZK(cluster_config) as zk:
         offsets = zk.get_group_offsets(context.group)
     assert offsets[context.topic]["0"] == context.msgs_produced
+
+
+@then(u'the latest message offsets will be shown')
+def step_impl5_2(context):
+    offset = context.msgs_produced
+    pattern = 'Current Offset: {}'.format(offset)
+    assert pattern in context.output

@@ -70,7 +70,7 @@ class OffsetAdvance(OffsetWriter):
                 client,
                 args.groupid,
                 topics_dict,
-                args.storage,
+                offset_storage=args.storage,
             )
         except TypeError:
             print(

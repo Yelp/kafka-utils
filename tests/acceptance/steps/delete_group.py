@@ -1,5 +1,3 @@
-import os
-
 from behave import then
 from behave import when
 
@@ -25,13 +23,11 @@ def step_impl2(context):
 
 @when('we call the delete_group command with kafka storage')
 def step_impl2_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        call_delete_group(context.group)
+    call_delete_group(context.group)
 
 
 @then(u'the specified group will not be found')
 def step_impl5(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        pattern = 'Error: Consumer Group ID {} does' \
-                  ' not exist.'.format(context.group)
-        assert pattern in context.output
+    pattern = 'Error: Consumer Group ID {} does' \
+              ' not exist.'.format(context.group)
+    assert pattern in context.output

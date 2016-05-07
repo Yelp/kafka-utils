@@ -27,7 +27,6 @@ class TestOffsetRestore(object):
         ConsumerPartitionOffsets(topic='topic1', partition=0, current=30, highmark=40, lowmark=10),
         ConsumerPartitionOffsets(topic='topic1', partition=1, current=20, highmark=40, lowmark=10),
     ]}
-    storage = 'zookeeper'
 
     @pytest.fixture
     def mock_kafka_client(self):
@@ -38,7 +37,7 @@ class TestOffsetRestore(object):
             side_effect = self.topics_partitions
         return mock_kafka_client
 
-    def test_restore_offsets(self, mock_kafka_client):
+    def test_restore_offsets_zk(self, mock_kafka_client):
         with mock.patch(
             "yelp_kafka_tool.kafka_consumer_manager."
             "commands.offset_restore.set_consumer_offsets",
@@ -58,7 +57,7 @@ class TestOffsetRestore(object):
             OffsetRestore.restore_offsets(
                 mock_kafka_client,
                 self.parsed_consumer_offsets,
-                self.storage,
+                'zookeeper',
             )
 
             ordered_args, _ = mock_set_offsets.call_args

@@ -1,5 +1,4 @@
 import json
-import os
 import tempfile
 
 from behave import then
@@ -33,9 +32,8 @@ def step_impl2(context):
 
 @when(u'we call the offset_save command with an offsets file and kafka storage')
 def step_impl2_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        context.offsets_file = create_saved_file()
-        call_offset_save(context.group, context.offsets_file.name, storage='kafka')
+    context.offsets_file = create_saved_file()
+    call_offset_save(context.group, context.offsets_file.name, storage='kafka')
 
 
 @then(u'the correct offsets will be saved into the given file')
@@ -51,9 +49,8 @@ def step_impl3(context):
 
 @then(u'the restored offsets will be saved into the given file')
 def step_impl3_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        offset = context.restored_offset
+    offset = context.restored_offset
 
-        data = json.loads(context.offsets_file.read())
-        assert offset == data['offsets'][context.topic]['0']
-        context.offsets_file.close()
+    data = json.loads(context.offsets_file.read())
+    assert offset == data['offsets'][context.topic]['0']
+    context.offsets_file.close()

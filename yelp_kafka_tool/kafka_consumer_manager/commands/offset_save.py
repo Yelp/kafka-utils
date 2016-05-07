@@ -77,8 +77,7 @@ class OffsetSave(OffsetManagerBase):
                 client,
                 args.groupid,
                 topics_dict,
-                False,
-                args.storage,
+                offset_storage=args.storage,
             )
         except KafkaUnavailableError:
             print(
