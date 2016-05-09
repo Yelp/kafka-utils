@@ -11,11 +11,11 @@ from kafka.common import UnknownTopicOrPartitionError
 
 from yelp_kafka_tool.util.error import InvalidOffsetStorageError
 from yelp_kafka_tool.util.offsets import _nullify_partition_offsets
-from yelp_kafka_tool.util.offsets import _nullify_topics
 from yelp_kafka_tool.util.offsets import _verify_commit_offsets_requests
 from yelp_kafka_tool.util.offsets import advance_consumer_offsets
 from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
 from yelp_kafka_tool.util.offsets import get_topics_watermarks
+from yelp_kafka_tool.util.offsets import nullify_offsets
 from yelp_kafka_tool.util.offsets import OffsetCommitError
 from yelp_kafka_tool.util.offsets import PartitionOffsets
 from yelp_kafka_tool.util.offsets import rewind_consumer_offsets
@@ -811,6 +811,6 @@ class TestOffsets(TestOffsetsBase):
         expected = {
             'topic1': {0: -1, 1: -1, 2: -1}
         }
-        result = _nullify_topics(topics)
+        result = nullify_offsets(topics)
 
         assert result == expected

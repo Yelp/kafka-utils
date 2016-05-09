@@ -15,7 +15,8 @@ class TestDeleteGroup(object):
     @contextlib.contextmanager
     def mock_kafka_info(self):
         with mock.patch(
-            'yelp_kafka_tool.util.offsets.ZK',
+            'yelp_kafka_tool.kafka_consumer_manager.'
+            'commands.delete_group.ZK',
             autospec=True
         ) as mock_ZK:
             mock_ZK.return_value.__enter__.return_value = mock_ZK.return_value
