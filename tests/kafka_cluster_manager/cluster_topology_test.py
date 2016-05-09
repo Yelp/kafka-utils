@@ -159,7 +159,7 @@ class TestClusterTopology(object):
         assignment = {
             (u'T1', 0): ['0', '1', '2', '3', '4'],
             (u'T1', 1): ['0', '1', '2', '4'],
-            (u'T3', 1): ['0', '1', '2', '4'],
+            (u'T2', 1): ['0', '1', '2', '4'],
         }
         ct = self.build_cluster_topology(assignment)
 
@@ -212,7 +212,7 @@ class TestClusterTopology(object):
                 ((u'T0', 0), ['0', '2']),
                 ((u'T0', 1), ['0', '3']),
                 ((u'T2', 0), ['2']),
-                ((u'T3', 0), ['0', '1', '9']),  # broker 9 is not actibe
+                ((u'T3', 0), ['0', '1', '9']),  # broker 9 is not active
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(5))

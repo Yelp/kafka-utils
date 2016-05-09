@@ -168,7 +168,7 @@ class ClusterTopology(object):
             self._decommission_brokers_in_group(group)
 
     def _decommission_brokers_in_group(self, group):
-        """Decommission the marked brokers of a group"""
+        """Decommission the marked brokers of a group."""
         group.rebalance_brokers()
         failed = False
         for broker in group.brokers:
