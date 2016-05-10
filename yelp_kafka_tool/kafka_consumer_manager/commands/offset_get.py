@@ -70,16 +70,13 @@ class OffsetGet(OffsetManagerBase):
         topics_dict = cls.preprocess_args(
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
-        try:
-            consumer_offsets_metadata = get_consumer_offsets_metadata(
-                client, args.groupid, topics_dict, False, args.storage,
-            )
-        except:
-            print(
-                "Error: Encountered error with Kafka, please try again later.",
-                file=sys.stderr
-            )
-            raise
+
+        consumer_offsets_metadata = cls.get_offsets(
+            client,
+            args.groupid,
+            topics_dict,
+            args.storage,
+        )
 
         # Warn the user if a topic being subscribed to does not exist in
         # Kafka.
@@ -95,6 +92,19 @@ class OffsetGet(OffsetManagerBase):
             print_json(consumer_offsets_metadata)
         else:
             cls.print_output(consumer_offsets_metadata, args.watermark)
+
+    @classmethod
+    def get_offsets(cls, client, group, topics_dict, storage):
+        try:
+            return get_consumer_offsets_metadata(
+                client, group, topics_dict, False, storage,
+            )
+        except:
+            print(
+                "Error: Encountered error with Kafka, please try again later.",
+                file=sys.stderr
+            )
+            raise
 
     @classmethod
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
