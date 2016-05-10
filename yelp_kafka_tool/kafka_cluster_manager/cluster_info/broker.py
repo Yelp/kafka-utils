@@ -14,6 +14,7 @@ class Broker(object):
         self._metadata = metadata
         self._partitions = partitions or set()
         self._decommissioned = False
+        self._inactive = False
         self._replication_group = None
 
     @property
@@ -22,6 +23,13 @@ class Broker(object):
 
     def mark_decommissioned(self):
         self._decommissioned = True
+
+    def mark_inactive(self):
+        self._inactive = True
+
+    @property
+    def inactive(self):
+        return self._inactive
 
     @property
     def replication_group(self):
@@ -75,7 +83,7 @@ class Broker(object):
         # Add partition to existing set
         self._partitions.add(partition)
         # Add broker to replica list
-        partition.replicas.append(self)
+        partition.add_replica(self)
 
     def move_partition(self, partition, broker_destination):
         """Move partition to destination broker and adjust replicas."""

@@ -1,14 +1,16 @@
-from collections import Counter
-
 import mock
 import pytest
 
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import BrokerDecommissionError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .error import InvalidBrokerIdError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .error import InvalidPartitionError
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+    .error import RebalanceError
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
 from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
@@ -58,7 +60,10 @@ class TestClusterTopology(object):
     )
 
     def get_replication_group_id(self, broker):
-        return self.broker_rg[broker.id]
+        try:
+            return self.broker_rg[broker.id]
+        except KeyError:  # inactive brokers
+            return None
 
     def build_cluster_topology(self, assignment=None, brokers=None):
         """Create cluster topology from given assignment."""
@@ -67,6 +72,99 @@ class TestClusterTopology(object):
         if not brokers:
             brokers = self.brokers
         return ClusterTopology(assignment, brokers, self.get_replication_group_id)
+
+    def test_cluster_topology_inactive_brokers(self):
+        assignment = {
+            (u'T0', 0): ['0', '1'],
+            (u'T0', 1): ['8', '9'],  # 8 and 9 are not in active brokers
+        }
+        brokers = {
+            '0': {'host': 'host0'},
+            '1': {'host': 'host1'},
+        }
+
+        def extract_group(broker):
+            # group 0 for broker 0
+            # group 1 for broker 1
+            # None for inactive brokers
+            if broker in brokers:
+                return broker.id
+            return None
+
+        ct = ClusterTopology(assignment, brokers, extract_group)
+        assert ct.brokers['8'].inactive
+        assert ct.brokers['9'].inactive
+        assert None in ct.rgs
+
+    def test_broker_decommission(self):
+        assignment = {
+            (u'T0', 0): ['0', '2'],
+            (u'T0', 1): ['0', '3'],
+            (u'T1', 0): ['0', '5'],
+        }
+        ct = self.build_cluster_topology(assignment)
+        partitions_count = len(ct.partitions)
+
+        # should move all partitions from broker 0 to either 1 or 4 because they
+        # are in the same replication group and empty.
+        ct.decommission_brokers(['0'])
+
+        # Here we just care that broker 0 is empty and partitions count didn't
+        # change
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['0'].empty()
+
+    def test_broker_decommission_many(self):
+        assignment = {
+            (u'T0', 0): ['0', '2'],
+            (u'T0', 1): ['0', '3'],
+            (u'T1', 0): ['0', '5'],
+            (u'T1', 1): ['1', '5'],
+            (u'T1', 2): ['1', '5'],
+            (u'T2', 0): ['0', '3'],
+        }
+        ct = self.build_cluster_topology(assignment)
+        partitions_count = len(ct.partitions)
+
+        ct.decommission_brokers(['0', '1', '3'])
+
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['0'].empty()
+        assert ct.brokers['1'].empty()
+        assert ct.brokers['3'].empty()
+        # All partitions from 0 and 1 should now be in 4
+        assert len(ct.brokers['4'].partitions) == 6
+        # All partitions from 3 should now be in 2
+        assert len(ct.brokers['2'].partitions) == 3
+
+    def test_broker_decommission_failover(self):
+        assignment = {
+            (u'T0', 0): ['0', '1', '2'],
+            (u'T0', 1): ['0', '1', '2'],
+            (u'T1', 0): ['0', '1'],
+            (u'T1', 1): ['1', '5'],
+            (u'T1', 2): ['1', '5'],
+            (u'T2', 0): ['0', '3'],
+        }
+        ct = self.build_cluster_topology(assignment)
+        partitions_count = len(ct.partitions)
+
+        ct.decommission_brokers(['0'])
+
+        # Partition T00, T01, and T10 should move to 5 and 6
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['0'].empty()
+
+    def test_broker_decommission_error(self):
+        assignment = {
+            (u'T1', 0): ['0', '1', '2', '3', '4'],
+            (u'T1', 1): ['0', '1', '2', '4'],
+            (u'T2', 1): ['0', '1', '2', '4'],
+        }
+        ct = self.build_cluster_topology(assignment)
+
+        with pytest.raises(BrokerDecommissionError):
+            ct.decommission_brokers(['0'])
 
     def test_rebalance_replication_groups(self):
         ct = self.build_cluster_topology()
@@ -97,6 +195,7 @@ class TestClusterTopology(object):
             ]
         )
         ct = self.build_cluster_topology(assignment, self.srange(5))
+        ct.rebalance_replication_groups()
         net_imbal, _ = get_replication_group_imbalance_stats(
             ct.rgs.values(),
             ct.partitions.values(),
@@ -107,20 +206,19 @@ class TestClusterTopology(object):
         # Verify that new-assignment same as previous
         assert ct.assignment == assignment
 
-    def test_partition_replicas(self):
-        ct = self.build_cluster_topology()
-        partition_replicas = [p.name for p in ct.partition_replicas]
+    def test_rebalance_replication_groups_error(self):
+        assignment = dict(
+            [
+                ((u'T0', 0), ['0', '2']),
+                ((u'T0', 1), ['0', '3']),
+                ((u'T2', 0), ['2']),
+                ((u'T3', 0), ['0', '1', '9']),  # broker 9 is not active
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, self.srange(5))
 
-        # Assert that replica-count for each partition as the value
-        # Get dict for count of each partition
-        partition_replicas_cnt = Counter(partition_replicas)
-        assert partition_replicas_cnt[('T0', 0)] == 2
-        assert partition_replicas_cnt[('T0', 1)] == 2
-        assert partition_replicas_cnt[('T1', 0)] == 4
-        assert partition_replicas_cnt[('T1', 1)] == 4
-        assert partition_replicas_cnt[('T2', 0)] == 1
-        assert partition_replicas_cnt[('T3', 0)] == 3
-        assert partition_replicas_cnt[('T3', 1)] == 3
+        with pytest.raises(RebalanceError):
+            ct.rebalance_replication_groups()
 
     def test_elect_source_replication_group(self):
         # Sample assignment with 3 replication groups

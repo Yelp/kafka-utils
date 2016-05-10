@@ -1,18 +1,15 @@
-"""This file incorporates handling partitions over replication-groups
-(Availability-zones) in our case.
-"""
 import logging
 import sys
 from collections import defaultdict
 
-from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
+from .error import NotEligibleGroupError
 from .util import separate_groups
 
 
 class ReplicationGroup(object):
     """Represent attributes and functions specific to replication-groups
-    (Availability zones) abbreviated as rg.
+    abbreviated as rg.
     """
 
     log = logging.getLogger(__name__)
@@ -64,6 +61,20 @@ class ReplicationGroup(object):
         """Return count of replicas of given partition."""
         return self.partitions.count(partition)
 
+    def acquire_partition(self, partition, source_broker):
+        """Move a partition from a broker to any of the eligible brokers
+        of the replication group.
+
+        :param partition: Partition to move
+        :param source_broker: Broker the partition currently belongs to
+        """
+        broker_dest = self._elect_dest_broker(partition)
+        if not broker_dest:
+            raise NotEligibleGroupError(
+                "No eligible brokers to accept partition {p}".format(p=partition),
+            )
+        source_broker.move_partition(partition, broker_dest)
+
     def move_partition(self, rg_destination, victim_partition):
         """Move partition(victim) from current replication-group to destination
         replication-group.
@@ -105,53 +116,28 @@ class ReplicationGroup(object):
         * Topic-partitions are distributed across brokers.
         * Partition-count is balanced across replication-groups.
         """
-        # Get overloaded brokers in source replication-group
-        over_loaded_brokers = self._select_over_loaded_brokers(
-            victim_partition,
-        )
-        # Get underloaded brokers in destination replication-group
-        under_loaded_brokers = rg_destination._select_under_loaded_brokers(
-            victim_partition,
-        )
-        broker_source = self._elect_source_broker(over_loaded_brokers, victim_partition)
-        broker_destination = self._elect_dest_broker(
-            under_loaded_brokers,
-            victim_partition,
-        )
+        broker_source = self._elect_source_broker(victim_partition)
+        broker_destination = rg_destination._elect_dest_broker(victim_partition)
         return broker_source, broker_destination
 
-    def _select_over_loaded_brokers(self, victim_partition):
-        """Get over-loaded brokers as sorted broker in partition-count and
-        containing victim-partition.
-        """
-        over_loaded_brokers = [
-            broker
-            for broker in self._brokers
-            if victim_partition in broker.partitions
-        ]
-        return sorted(
-            over_loaded_brokers,
-            key=lambda b: len(b.partitions),
-            reverse=True,
-        )
-
-    def _select_under_loaded_brokers(self, victim_partition):
-        """Get brokers in ascending sorted order of partition-count
-        not containing victim-partition.
-        """
-        under_loaded_brokers = [
-            broker
-            for broker in self._brokers
-            if victim_partition not in broker.partitions
-        ]
-        return sorted(under_loaded_brokers, key=lambda b: len(b.partitions))
-
-    def _elect_source_broker(self, over_loaded_brokers, victim_partition):
-        """Select first broker from given brokers having victim_partition.
+    def _elect_source_broker(self, victim_partition):
+        """Select first over loaded broker having victim_partition.
 
         Note: The broker with maximum siblings of victim-partitions (same topic)
         is selected to reduce topic-partition imbalance.
         """
+        over_loaded_brokers = sorted(
+            [
+                broker
+                for broker in self._brokers
+                if victim_partition in broker.partitions and not broker.inactive
+            ],
+            key=lambda b: len(b.partitions),
+            reverse=True,
+        )
+        if not over_loaded_brokers:
+            return None
+
         broker_topic_partition_cnt = [
             (broker, broker.count_partitions(victim_partition.topic))
             for broker in over_loaded_brokers
@@ -162,11 +148,23 @@ class ReplicationGroup(object):
         )
         return max_count_pair[0]
 
-    def _elect_dest_broker(self, under_loaded_brokers, victim_partition):
-        """Select first broker from under_loaded_brokers preferring not having
+    def _elect_dest_broker(self, victim_partition):
+        """Select first under loaded brokers preferring not having
         partition of same topic as victim partition.
         """
-        # Pick broker having least partitions of the given topic
+        under_loaded_brokers = sorted(
+            [
+                broker
+                for broker in self._brokers
+                if (victim_partition not in broker.partitions and
+                    not broker.inactive and
+                    not broker.decommissioned)
+            ],
+            key=lambda b: len(b.partitions)
+        )
+        if not under_loaded_brokers:
+            return None
+
         broker_topic_partition_cnt = [
             (broker, broker.count_partitions(victim_partition.topic))
             for broker in under_loaded_brokers
@@ -178,15 +176,15 @@ class ReplicationGroup(object):
         )
         return min_count_pair[0]
 
-    def _extract_decommissioned(self):
-        return set([b for b in self.brokers if b.decommissioned])
+    def get_active_brokers(self):
+        return set(b for b in self.brokers if not b.inactive)
 
     # Re-balancing brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers."""
         total_partitions = sum(len(b.partitions) for b in self.brokers)
-        blacklist = self._extract_decommissioned()
-        active_brokers = self.brokers - blacklist
+        blacklist = set(b for b in self.brokers if b.decommissioned)
+        active_brokers = self.get_active_brokers() - blacklist
         if not active_brokers:
             raise EmptyReplicationGroupError("No active brokers in %s", self.id)
         # Separate brokers based on partition count
@@ -244,25 +242,6 @@ class ReplicationGroup(object):
             )
             # As before add brokers to decommission.
             over_loaded_brokers += [b for b in blacklist if not b.empty()]
-        # Check if decommissioned brokers are empty. Decommission can't happen
-        # if the replication factor is higher than the available brokers in the
-        # replication group.
-        if not all(broker.empty() for broker in blacklist):
-            raise BrokerDecommissionError(
-                "Impossible to decommission brokers: {0}".format(
-                    ", ".join(
-                        "{broker}:{partitions};".format(
-                            broker=b,
-                            partitions=",".join(
-                                "{partition}".format(
-                                    partition=p
-                                ) for p in b.partitions
-                            )
-                        )
-                        for b in blacklist if not b.empty()
-                    )
-                )
-            )
 
     def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_distance):
         """Pick best-suitable source-broker, destination-broker and partition to
