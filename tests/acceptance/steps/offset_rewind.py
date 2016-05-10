@@ -1,5 +1,3 @@
-import os
-
 from behave import then
 from behave import when
 
@@ -38,8 +36,7 @@ def step_impl3(context):
 
 @when(u'we call the offset_rewind command and commit into kafka')
 def step_impl3_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        call_offset_rewind(context.group, context.topic, storage='kafka')
+    call_offset_rewind(context.group, context.topic, storage='kafka')
 
 
 @when(u'we call the offset_rewind command with a new groupid and the force option')

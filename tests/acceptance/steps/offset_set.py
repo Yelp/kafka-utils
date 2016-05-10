@@ -1,5 +1,3 @@
-import os
-
 from behave import then
 from behave import when
 
@@ -43,12 +41,11 @@ def step_impl2(context):
 
 @when(u'we call the offset_set command and commit into kafka')
 def step_impl2_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        if not hasattr(context, 'group'):
-            context.group = 'test_kafka_offset_group'
-        context.offsets = offsets_data(context.topic, SET_OFFSET_KAFKA)
-        context.set_offset_kafka = SET_OFFSET_KAFKA
-        call_offset_set(context.group, context.offsets, storage='kafka')
+    if not hasattr(context, 'group'):
+        context.group = 'test_kafka_offset_group'
+    context.offsets = offsets_data(context.topic, SET_OFFSET_KAFKA)
+    context.set_offset_kafka = SET_OFFSET_KAFKA
+    call_offset_set(context.group, context.offsets, storage='kafka')
 
 
 @when(u'we call the offset_set command with a new groupid and the force option')

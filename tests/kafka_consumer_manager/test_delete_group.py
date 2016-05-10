@@ -26,6 +26,7 @@ class TestDeleteGroup(object):
         with self.mock_kafka_info() as mock_ZK:
             args = mock.Mock(
                 groupid="some_group",
+                storage="zookeeper",
             )
             cluster_config = mock.Mock(zookeeper='some_ip')
 
@@ -43,6 +44,7 @@ class TestDeleteGroup(object):
             obj.delete_group.side_effect = ZookeeperError("Boom!")
             args = mock.Mock(
                 groupid="some_group",
+                storage="zookeeper",
             )
             cluster_config = mock.Mock(zookeeper='some_ip')
 

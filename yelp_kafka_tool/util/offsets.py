@@ -527,3 +527,23 @@ def set_consumer_offsets(
         )
 
     return filter(None, status)
+
+
+def _nullify_partition_offsets(partition_offsets):
+    result = {}
+    for partition in partition_offsets:
+        result[partition] = -1
+    return result
+
+
+def nullify_offsets(offsets):
+    """Modify offsets metadata so that the partition offsets
+    have null payloads.
+
+    :param offsets: dict {<topic>: {<partition>: <offset>}}
+    :returns: a dict topic: partition: offset
+    """
+    result = {}
+    for topic, partition_offsets in offsets.iteritems():
+        result[topic] = _nullify_partition_offsets(partition_offsets)
+    return result

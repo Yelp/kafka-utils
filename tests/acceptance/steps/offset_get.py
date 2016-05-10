@@ -1,5 +1,3 @@
-import os
-
 from behave import then
 from behave import when
 
@@ -25,8 +23,17 @@ def step_impl4(context):
 
 @when(u'we call the offset_get command with the dual storage option')
 def step_impl4_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        context.output = call_offset_get(context.group, storage='dual')
+    context.output = call_offset_get(context.group, storage='dual')
+
+
+@when(u'we call the offset_get command with kafka storage')
+def step_impl4_3(context):
+    context.output = call_offset_get(context.group, storage='kafka')
+
+
+@when(u'we call the offset_get command with zookeeper storage')
+def step_impl4_4(context):
+    context.output = call_offset_get(context.group, storage='zookeeper')
 
 
 @then(u'the correct offset will be shown')
@@ -40,7 +47,6 @@ def step_impl5(context):
 
 @then(u'the offset that was committed into Kafka will be shown')
 def step_impl5_2(context):
-    if '0.9.0' == os.environ['KAFKA_VERSION']:
-        offset = context.set_offset_kafka
-        pattern = 'Current Offset: {}'.format(offset)
-        assert pattern in context.output
+    offset = context.set_offset_kafka
+    pattern = 'Current Offset: {}'.format(offset)
+    assert pattern in context.output
