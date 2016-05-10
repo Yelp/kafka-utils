@@ -1,11 +1,3 @@
-"""Contains information for partition layout on given cluster.
-
-Also contains api's dealing with changes in partition layout.
-The steps (1-6) and states S0 -- S2 and algorithm for re-assigning-partitions
-is per the design document at:-
-
-https://docs.google.com/document/d/1qloANcOHkzuu8wYVm0ZAMCGY5Mmb-tdcxUywNIXfQFI
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
@@ -14,8 +6,11 @@ import logging
 from collections import OrderedDict
 
 from .broker import Broker
+from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
+from .error import NotEligibleGroupError
+from .error import RebalanceError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
@@ -40,9 +35,11 @@ class ClusterTopology(object):
         self.extract_group = extract_group
         self.log = logging.getLogger(self.__class__.__name__)
         self.topics = {}
+        self.rgs = {}
+        self.brokers = {}
+        self.partitions = {}
         self._build_brokers(brokers)
         self._build_partitions(assignment)
-        self._build_replication_groups()
         self.log.debug(
             'Total partitions in cluster {partitions}'.format(
                 partitions=len(self.partitions),
@@ -61,18 +58,22 @@ class ClusterTopology(object):
 
     def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
-        self.brokers = {}
         for broker_id, metadata in brokers.iteritems():
-            self.brokers[broker_id] = Broker(broker_id, metadata=metadata)
+            self.brokers[broker_id] = self._create_broker(broker_id, metadata)
 
-    def _build_replication_groups(self):
-        """Build replication-group objects using the given assignment."""
-        self.rgs = {}
-        for broker in self.brokers.itervalues():
-            rg_id = self.extract_group(broker)
-            group = self.rgs.setdefault(rg_id, ReplicationGroup(rg_id))
-            group.add_broker(broker)
-            broker.replication_group = group
+    def _create_broker(self, broker_id, metadata=None):
+        """Create a broker object and assign to a replication group.
+        A broker object with no metadata is considered inactive.
+        An inactive broker may or may not belong to a group.
+        """
+        broker = Broker(broker_id, metadata)
+        if not metadata:
+            broker.mark_inactive()
+        rg_id = self.extract_group(broker)
+        group = self.rgs.setdefault(rg_id, ReplicationGroup(rg_id))
+        group.add_broker(broker)
+        broker.replication_group = group
+        return broker
 
     def _build_partitions(self, assignment):
         """Builds all partition objects and update corresponding broker and
@@ -103,9 +104,9 @@ class ClusterTopology(object):
                         broker_id,
                         partition,
                     )
-                self.brokers.setdefault(broker_id, Broker(broker_id))
-                broker = self.brokers[broker_id]
-                broker.add_partition(partition)
+                    self.brokers[broker_id] = self._create_broker(broker_id)
+
+                self.brokers[broker_id].add_partition(partition)
 
     @property
     def assignment(self):
@@ -117,20 +118,8 @@ class ClusterTopology(object):
         # assignment map created in sorted order for deterministic solution
         return OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
 
-    @property
-    def partition_replicas(self):
-        """Return list of all partitions in the cluster.
-        Note: List contains all replicas as well.
-        """
-        return [
-            partition
-            for rg in self.rgs.itervalues()
-            for partition in rg.partitions
-        ]
-
-    # Balancing replication-groups: S0 --> S1
     def rebalance_replication_groups(self):
-        """Rebalance partitions over replication groups (availability-zones).
+        """Rebalance partitions over replication groups.
 
         First step involves rebalancing replica-count for each partition across
         replication-groups.
@@ -138,6 +127,16 @@ class ClusterTopology(object):
         of the cluster.
         """
         # Balance replicas over replication-groups for each partition
+        if any(b.inactive for b in self.brokers.itervalues()):
+            self.log.error(
+                "Impossible to rebalance replication groups because of inactive "
+                "brokers."
+            )
+            raise RebalanceError(
+                "Impossible to rebalance replication groups because of inactive "
+                "brokers"
+            )
+
         for partition in self.partitions.itervalues():
             self._rebalance_partition(partition)
 
@@ -164,8 +163,65 @@ class ClusterTopology(object):
                 )
             broker.mark_decommissioned()
             groups.add(broker.replication_group)
+
         for group in groups:
-            group.rebalance_brokers()
+            self._decommission_brokers_in_group(group)
+
+    def _decommission_brokers_in_group(self, group):
+        """Decommission the marked brokers of a group."""
+        group.rebalance_brokers()
+        failed = False
+        for broker in group.brokers:
+            if broker.decommissioned and not broker.empty():
+                # In this case we need to reassign the remaining partitions
+                # to other replication groups
+                self.log.info(
+                    "Broker %s can't be decommissioned within the same "
+                    "replication group %s. Moving partitions to other "
+                    "replication groups.",
+                    broker,
+                    broker.replication_group,
+                )
+                self._force_broker_decommission(broker)
+                # Broker should be empty now
+                if not broker.empty():
+                    # Decommission may be impossible if there are not enough
+                    # brokers to redistributed the replicas.
+                    self.log.error(
+                        "Could not decommission broker %s. "
+                        "Partitions %s cannot be reassigned.",
+                        broker,
+                        broker.partitions,
+                    )
+                    failed = True
+            if failed:
+                raise BrokerDecommissionError(
+                    "Broker decommission failed."
+                )
+
+    def _force_broker_decommission(self, broker):
+        available_groups = [
+            rg for rg in self.rgs.itervalues()
+            if rg is not broker.replication_group
+        ]
+
+        for partition in broker.partitions.copy():  # partitions set changes during loop
+            groups = sorted(
+                available_groups,
+                key=lambda x: x.count_replica(partition),
+            )
+            for group in groups:
+                self.log.debug(
+                    "Try to move partition: %s from broker %s to "
+                    "replication group %s",
+                    partition,
+                    broker,
+                    broker.replication_group,
+                )
+                try:
+                    group.acquire_partition(partition, broker)
+                except NotEligibleGroupError:
+                    pass
 
     def replace_broker(self, source_id, dest_id):
         """Move all partitions in source broker to destination broker.
@@ -318,9 +374,9 @@ class ClusterTopology(object):
                 eligible_partitions = set(filter(
                     lambda partition:
                     over_loaded_rg.count_replica(partition) >
-                        len(partition.replicas) // len(self.rgs) and
+                    len(partition.replicas) // len(self.rgs) and
                     under_loaded_rg.count_replica(partition) <=
-                        len(partition.replicas) // len(self.rgs),
+                    len(partition.replicas) // len(self.rgs),
                     over_loaded_rg.partitions,
                 ))
                 # Move all possible partitions

@@ -9,6 +9,10 @@ def extract_yelp_replication_group(broker):
     corresponds to the Availability Zone of the broker. This information is
     extracted from the hostname of the broker.
     """
+    if broker.inactive:
+        # Can't extract replication group from inactive brokers because they
+        # don't have metadata
+        return None
     try:
         hostname = broker.metadata['host']
         if 'localhost' in hostname:
