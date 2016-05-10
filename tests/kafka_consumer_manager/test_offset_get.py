@@ -8,7 +8,7 @@ class TestOffsetGet(object):
 
     @mock.patch(
         'yelp_kafka_tool.kafka_consumer_manager.'
-        'commands.offset_save.KafkaClient', autospec=True)
+        'commands.offset_get.KafkaClient', autospec=True)
     def test_get_offsets(self, mock_client):
         consumer_group = 'group1'
         topics = {'topic1': {0: 100}}
@@ -31,7 +31,7 @@ class TestOffsetGet(object):
 
     @mock.patch(
         'yelp_kafka_tool.kafka_consumer_manager.'
-        'commands.offset_save.KafkaClient', autospec=True)
+        'commands.offset_get.KafkaClient', autospec=True)
     def test_get_offsets_kafka(self, mock_client):
         consumer_group = 'group1'
         topics = {'topic1': {0: 100}}
