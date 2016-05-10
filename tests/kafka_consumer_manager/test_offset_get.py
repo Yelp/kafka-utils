@@ -55,11 +55,3 @@ class TestOffsetGet(object):
             assert client.load_metadata_for_topics.call_count == 1
             assert client.send_offset_fetch_request.call_count == 0
             assert client.send_offset_fetch_request_kafka.call_count == 1
-
-    def test_get_offsets_foo(self, client):
-        # this should fail:
-        # assert client.send_offset_fetch_request_foo.call_count == 0
-
-        assert hasattr(client, 'send_offset_fetch_request')
-        assert hasattr(client, 'send_offset_fetch_request_kafka')
-        assert not hasattr(client, 'send_offset_fetch_request_foo')
