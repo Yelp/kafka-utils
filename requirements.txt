@@ -19,5 +19,5 @@ setproctitle==1.1.8
 simplejson==3.6.5
 six==1.9.0
 wsgiref==0.1.2
-yelp-kafka==4.5.3
+yelp-kafka==4.10.1
 boto==2.38.0
