@@ -5,40 +5,23 @@ from kafka_tools import __version__
 
 
 setup(
-    name="yelp-kafka-tool",
+    name="kafka-tools",
     version=__version__,
-    author="Distributed systems team",
+    author="Distributed Systems Team",
     author_email="team-dist-sys@yelp.com",
     description="Kafka management tools",
     packages=find_packages(exclude=["scripts", "tests"]),
-    data_files=[
-        ("bash_completion.d",
-         ["bash_completion.d/kafka-info"]),
-    ],
     scripts=[
-        "scripts/kafka-info",
-        "scripts/kafka-reassignment",
-        "scripts/kafka-topic-autopartition",
-        "scripts/kafka-partition-manager",
-        "scripts/kafka-compaction-setter",
         "scripts/kafka-consumer-manager",
         "scripts/kafka-cluster-manager",
-        "scripts/yelpkafka",
-        "scripts/kafka-check",
-        "scripts/kafka-check-corruption",
         "scripts/kafka-rolling-restart",
-        "scripts/reset-cg-offset",
-        "scripts/kafka-copy-topics",
-        "scripts/kafka-message-backup",
     ],
     install_requires=[
-        "argcomplete",
         "kazoo>=2.0.post2,<3.0.0",
         "fabric>=1.8.0,<1.11.0",
         "PyYAML<4.0.0",
         "requests-futures>0.9.0",
-        "kafka-python==0.9.5.post2",
-        "yelp-kafka>=4.0.0,<5.0.0",
+        "kafka-python",
         "requests<3.0.0",
     ],
 )
