@@ -81,7 +81,9 @@ def produce_example_msg(topic, num_messages=1):
         try:
             producer.send_messages(topic, b'some message')
         except LeaderNotAvailableError:
-            time.sleep(1)
+            # Sometimes kafka takes a bit longer to assign a leader to a new
+            # topic
+            time.sleep(10)
             producer.send_messages(topic, b'some message')
 
 
