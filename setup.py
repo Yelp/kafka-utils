@@ -21,8 +21,9 @@ from kafka_tools import __version__
 
 
 with open(
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "README.rst")
+    os.path.join(
+        os.path.abspath(os.path.dirname(__file__)),
+        "README.md"
     )
 ) as f:
     README = f.read()

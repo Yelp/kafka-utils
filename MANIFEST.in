@@ -1,0 +1,3 @@
+recursive-include kafka_tools *.py
+include README.md
+include LICENSE
