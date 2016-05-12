@@ -30,7 +30,7 @@ class StatsCmd(ClusterManagerCmd):
         subparser = subparsers.add_parser(
             'stats',
             description='Show imbalance statistics of cluster topology',
-            help='This command is used to display imbalance stats of current '
+            help='This command is used to display imbalance statistics of current '
             'cluster-topology or cluster-topology after given assignment is '
             'applied.',
         )

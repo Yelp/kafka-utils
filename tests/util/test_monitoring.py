@@ -14,6 +14,7 @@
 # limitations under the License.
 import mock
 import pytest
+from kafka.common import ConsumerCoordinatorNotAvailableCode
 from kafka.common import KafkaUnavailableError
 from test_offsets import MyKafkaClient
 from test_offsets import TestOffsetsBase
@@ -238,6 +239,29 @@ class TestMonitoring(TestOffsetsBase):
             MyKafkaClient,
             'send_offset_fetch_request_kafka',
             return_value={},
+            autospec=True,
+        ) as mock_get_kafka:
+            actual = get_consumer_offsets_metadata(
+                kafka_client_mock,
+                self.group,
+                self.topics,
+                offset_storage='dual',
+            )
+
+            assert mock_get_zk.call_count == 1
+            assert mock_get_kafka.call_count == 1
+            assert self._has_no_partitions(actual)
+
+    def test_dual_offsets_kafka_error(self, kafka_client_mock):
+        with mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request',
+            return_value={},
+            autospec=True,
+        ) as mock_get_zk, mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request_kafka',
+            side_effect=ConsumerCoordinatorNotAvailableCode('Boom!'),
             autospec=True,
         ) as mock_get_kafka:
             actual = get_consumer_offsets_metadata(
