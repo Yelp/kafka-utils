@@ -2,9 +2,9 @@ from behave import then
 from behave import when
 
 from .util import get_cluster_config
-from yelp_kafka_tool.util.client import KafkaToolClient
-from yelp_kafka_tool.util.monitoring import get_current_offsets
-from yelp_kafka_tool.util.offsets import set_consumer_offsets
+from kafka_tools.util.client import KafkaToolClient
+from kafka_tools.util.monitoring import get_current_offsets
+from kafka_tools.util.offsets import set_consumer_offsets
 
 
 TEST_KAFKA_COMMIT_GROUP = 'kafka_commit_group'

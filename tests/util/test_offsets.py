@@ -9,19 +9,19 @@ from kafka.common import OffsetResponse
 from kafka.common import RequestTimedOutError
 from kafka.common import UnknownTopicOrPartitionError
 
-from yelp_kafka_tool.util.error import InvalidOffsetStorageError
-from yelp_kafka_tool.util.offsets import _nullify_partition_offsets
-from yelp_kafka_tool.util.offsets import _verify_commit_offsets_requests
-from yelp_kafka_tool.util.offsets import advance_consumer_offsets
-from yelp_kafka_tool.util.offsets import get_current_consumer_offsets
-from yelp_kafka_tool.util.offsets import get_topics_watermarks
-from yelp_kafka_tool.util.offsets import nullify_offsets
-from yelp_kafka_tool.util.offsets import OffsetCommitError
-from yelp_kafka_tool.util.offsets import PartitionOffsets
-from yelp_kafka_tool.util.offsets import rewind_consumer_offsets
-from yelp_kafka_tool.util.offsets import set_consumer_offsets
-from yelp_kafka_tool.util.offsets import UnknownPartitions
-from yelp_kafka_tool.util.offsets import UnknownTopic
+from kafka_tools.util.error import InvalidOffsetStorageError
+from kafka_tools.util.offsets import _nullify_partition_offsets
+from kafka_tools.util.offsets import _verify_commit_offsets_requests
+from kafka_tools.util.offsets import advance_consumer_offsets
+from kafka_tools.util.offsets import get_current_consumer_offsets
+from kafka_tools.util.offsets import get_topics_watermarks
+from kafka_tools.util.offsets import nullify_offsets
+from kafka_tools.util.offsets import OffsetCommitError
+from kafka_tools.util.offsets import PartitionOffsets
+from kafka_tools.util.offsets import rewind_consumer_offsets
+from kafka_tools.util.offsets import set_consumer_offsets
+from kafka_tools.util.offsets import UnknownPartitions
+from kafka_tools.util.offsets import UnknownTopic
 
 
 @pytest.fixture(params=[['topic1'], set(['topic1']), ('topic1',)])

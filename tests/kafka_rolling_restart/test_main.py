@@ -3,7 +3,7 @@ import pytest
 import requests
 from requests.exceptions import RequestException
 
-from yelp_kafka_tool.kafka_rolling_restart import main
+from kafka_tools.kafka_rolling_restart import main
 
 
 @mock.patch.object(main.FuturesSession, 'get', autospec=True)

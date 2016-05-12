@@ -7,7 +7,7 @@ from behave import when
 
 from .util import call_cmd
 from .util import get_cluster_config
-from yelp_kafka_tool.util.zookeeper import ZK
+from kafka_tools.util.zookeeper import ZK
 
 
 RESTORED_OFFSET = 55

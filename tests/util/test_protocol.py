@@ -2,7 +2,7 @@ import struct
 
 from kafka.common import OffsetCommitRequest
 
-from yelp_kafka_tool.util.protocol import KafkaToolProtocol
+from kafka_tools.util.protocol import KafkaToolProtocol
 
 
 class TestProtocol(object):

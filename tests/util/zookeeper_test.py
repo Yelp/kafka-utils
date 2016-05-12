@@ -2,12 +2,12 @@ import json
 
 import mock
 
-from yelp_kafka_tool.util.config import ClusterConfig
-from yelp_kafka_tool.util.zookeeper import ZK
+from kafka_tools.util.config import ClusterConfig
+from kafka_tools.util.zookeeper import ZK
 
 
 @mock.patch(
-    'yelp_kafka_tool.util.zookeeper.KazooClient',
+    'kafka_tools.util.zookeeper.KazooClient',
     autospec=True
 )
 class TestZK(object):

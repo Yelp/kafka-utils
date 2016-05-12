@@ -6,7 +6,7 @@ from kafka import KafkaClient
 from kafka import KafkaConsumer
 from kafka import SimpleProducer
 
-from yelp_kafka_tool.util import config
+from kafka_tools.util import config
 
 
 ZOOKEEPER_URL = 'zookeeper:2181'

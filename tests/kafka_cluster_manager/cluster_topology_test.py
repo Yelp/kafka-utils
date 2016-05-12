@@ -1,21 +1,21 @@
 import mock
 import pytest
 
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .error import BrokerDecommissionError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .error import InvalidBrokerIdError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .error import InvalidPartitionError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .error import RebalanceError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .stats import get_leader_imbalance_stats
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info \
+from kafka_tools.kafka_cluster_manager.cluster_info \
     .stats import get_replication_group_imbalance_stats
 
 

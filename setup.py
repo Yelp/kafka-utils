@@ -1,7 +1,7 @@
 from setuptools import find_packages
 from setuptools import setup
 
-from yelp_kafka_tool import __version__
+from kafka_tools import __version__
 
 
 setup(

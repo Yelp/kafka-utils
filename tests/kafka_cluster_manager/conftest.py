@@ -1,7 +1,7 @@
 import pytest
 
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
+from kafka_tools.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_tools.kafka_cluster_manager.cluster_info.topic import Topic
 
 
 @pytest.fixture

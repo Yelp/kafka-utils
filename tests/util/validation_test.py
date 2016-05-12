@@ -1,7 +1,7 @@
-from yelp_kafka_tool.util.validation import _validate_format
-from yelp_kafka_tool.util.validation import _validate_plan
-from yelp_kafka_tool.util.validation import _validate_plan_base
-from yelp_kafka_tool.util.validation import validate_plan
+from kafka_tools.util.validation import _validate_format
+from kafka_tools.util.validation import _validate_plan
+from kafka_tools.util.validation import _validate_plan_base
+from kafka_tools.util.validation import validate_plan
 
 
 def test_validate_format():

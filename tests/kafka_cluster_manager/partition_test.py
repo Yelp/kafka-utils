@@ -1,7 +1,7 @@
 import pytest
 from mock import sentinel
 
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_tools.kafka_cluster_manager.cluster_info.partition import Partition
 
 
 class TestPartition(object):

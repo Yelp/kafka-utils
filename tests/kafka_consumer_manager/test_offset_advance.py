@@ -1,11 +1,11 @@
 import mock
 import pytest
 
-from yelp_kafka_tool.kafka_consumer_manager.commands. \
+from kafka_tools.kafka_consumer_manager.commands. \
     offset_advance import OffsetAdvance
 
 
-@mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
+@mock.patch('kafka_tools.kafka_consumer_manager.'
             'commands.offset_advance.KafkaClient')
 class TestOffsetAdvance(object):
     topics_partitions = {
@@ -20,7 +20,7 @@ class TestOffsetAdvance(object):
             spec=OffsetAdvance.preprocess_args,
             return_value=self.topics_partitions,
         ), mock.patch(
-            "yelp_kafka_tool.kafka_consumer_manager."
+            "kafka_tools.kafka_consumer_manager."
             "commands.offset_advance.advance_consumer_offsets",
             autospec=True
         ) as mock_advance:

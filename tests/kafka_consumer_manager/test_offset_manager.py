@@ -5,7 +5,7 @@ import mock
 import pytest
 from kafka.client import KafkaClient
 
-from yelp_kafka_tool.kafka_consumer_manager. \
+from kafka_tools.kafka_consumer_manager. \
     commands.offset_manager import OffsetManagerBase
 
 

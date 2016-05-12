@@ -42,7 +42,7 @@ The command provides the ability to balance one or more of these layers except f
 the topic-partition imbalance layer which will be balanced implicitly with replica or
 partition rebalancing.
 
-:py:mod:`yelp_kafka_tool.kafka_cluster_manager.cluster_topology` provides APIs to create
+:py:mod:`kafka_tools.kafka_cluster_manager.cluster_topology` provides APIs to create
 a cluster-topology object based on the distribution of topics, partitions, brokers and
 replication-groups across the cluster.
 
@@ -55,7 +55,7 @@ Cluster-topology
 
 .. code-block:: python
 
-   from yelp_kafka_tool.kafka_cluster_manager.cluster_info.cluster_topology import ClusterTopology
+   from kafka_tools.kafka_cluster_manager.cluster_info.cluster_topology import ClusterTopology
 
    # Create cluster-topology object from given assignment
    ct = ClusterTopology(assignment, brokers, extract_group)

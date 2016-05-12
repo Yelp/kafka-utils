@@ -4,10 +4,10 @@ from StringIO import StringIO
 import mock
 import pytest
 
-from yelp_kafka_tool.util.config import ClusterConfig
-from yelp_kafka_tool.util.config import load_yaml_config
-from yelp_kafka_tool.util.config import TopologyConfiguration
-from yelp_kafka_tool.util.error import ConfigurationError
+from kafka_tools.util.config import ClusterConfig
+from kafka_tools.util.config import load_yaml_config
+from kafka_tools.util.config import TopologyConfiguration
+from kafka_tools.util.error import ConfigurationError
 
 TEST_BASE_KAFKA = '/base/kafka_discovery'
 
@@ -137,7 +137,7 @@ class TestClusterConfig():
 def mock_yaml():
     with contextlib.nested(
         mock.patch(
-            'yelp_kafka_tool.util.config.load_yaml_config',
+            'kafka_tools.util.config.load_yaml_config',
             return_value=MOCK_YAML,
             create=True,
         ),

@@ -4,18 +4,18 @@ import mock
 import pytest
 from kazoo.exceptions import ZookeeperError
 
-from yelp_kafka_tool.kafka_consumer_manager.commands. \
+from kafka_tools.kafka_consumer_manager.commands. \
     delete_group import DeleteGroup
 
 
-@mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
+@mock.patch('kafka_tools.kafka_consumer_manager.'
             'commands.delete_group.KafkaClient')
 class TestDeleteGroup(object):
 
     @contextlib.contextmanager
     def mock_kafka_info(self):
         with mock.patch(
-            'yelp_kafka_tool.kafka_consumer_manager.'
+            'kafka_tools.kafka_consumer_manager.'
             'commands.delete_group.ZK',
             autospec=True
         ) as mock_ZK:

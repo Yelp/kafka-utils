@@ -4,12 +4,12 @@ from kafka.common import KafkaUnavailableError
 from test_offsets import MyKafkaClient
 from test_offsets import TestOffsetsBase
 
-from yelp_kafka_tool.util.error import UnknownPartitions
-from yelp_kafka_tool.util.error import UnknownTopic
-from yelp_kafka_tool.util.monitoring import ConsumerPartitionOffsets
-from yelp_kafka_tool.util.monitoring import get_consumer_offsets_metadata
-from yelp_kafka_tool.util.monitoring import merge_offsets_metadata
-from yelp_kafka_tool.util.monitoring import merge_partition_offsets
+from kafka_tools.util.error import UnknownPartitions
+from kafka_tools.util.error import UnknownTopic
+from kafka_tools.util.monitoring import ConsumerPartitionOffsets
+from kafka_tools.util.monitoring import get_consumer_offsets_metadata
+from kafka_tools.util.monitoring import merge_offsets_metadata
+from kafka_tools.util.monitoring import merge_partition_offsets
 
 
 class TestMonitoring(TestOffsetsBase):

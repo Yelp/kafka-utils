@@ -1,8 +1,8 @@
 import mock
 
-from yelp_kafka_tool.kafka_consumer_manager. \
+from kafka_tools.kafka_consumer_manager. \
     commands.offset_save import OffsetSave
-from yelp_kafka_tool.util.monitoring import ConsumerPartitionOffsets
+from kafka_tools.util.monitoring import ConsumerPartitionOffsets
 
 
 class TestOffsetSave(object):
@@ -21,7 +21,7 @@ class TestOffsetSave(object):
     offset_data_file = {'groupid': 'group1', 'offsets': {'topic1': {0: 10, 1: 20}}}
     json_data = {'groupid': 'group1', 'offsets': {'topic1': {'0': 10, '1': 20}}}
 
-    @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
+    @mock.patch('kafka_tools.kafka_consumer_manager.'
                 'commands.offset_save.KafkaClient')
     def test_save_offsets(self, mock_client):
         with mock.patch.object(
@@ -43,7 +43,7 @@ class TestOffsetSave(object):
             assert ordered_args[0] == filename
             assert ordered_args[1] == self.offset_data_file
 
-    @mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
+    @mock.patch('kafka_tools.kafka_consumer_manager.'
                 'commands.offset_save.KafkaClient')
     def test_run(self, mock_client):
         with mock.patch.object(
@@ -52,7 +52,7 @@ class TestOffsetSave(object):
             spec=OffsetSave.preprocess_args,
             return_value=self.topics_partitions,
         ), mock.patch(
-            "yelp_kafka_tool.kafka_consumer_manager."
+            "kafka_tools.kafka_consumer_manager."
             "commands.offset_save.get_consumer_offsets_metadata",
             return_value=self.consumer_offsets_metadata,
             autospec=True,

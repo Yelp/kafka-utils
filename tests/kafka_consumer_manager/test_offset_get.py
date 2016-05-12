@@ -1,7 +1,7 @@
 import mock
 import pytest
 
-from yelp_kafka_tool.kafka_consumer_manager. \
+from kafka_tools.kafka_consumer_manager. \
     commands.offset_get import OffsetGet
 
 
@@ -10,7 +10,7 @@ class TestOffsetGet(object):
     @pytest.yield_fixture
     def client(self):
         with mock.patch(
-                'yelp_kafka_tool.kafka_consumer_manager.'
+                'kafka_tools.kafka_consumer_manager.'
                 'commands.offset_get.KafkaClient',
                 autospec=True,
         ) as mock_client:
@@ -21,7 +21,7 @@ class TestOffsetGet(object):
         topics = {'topic1': {0: 100}}
 
         with mock.patch(
-            'yelp_kafka_tool.util.offsets._verify_topics_and_partitions',
+            'kafka_tools.util.offsets._verify_topics_and_partitions',
             return_value=topics,
             autospec=True,
         ):
@@ -41,7 +41,7 @@ class TestOffsetGet(object):
         topics = {'topic1': {0: 100}}
 
         with mock.patch(
-            'yelp_kafka_tool.util.offsets._verify_topics_and_partitions',
+            'kafka_tools.util.offsets._verify_topics_and_partitions',
             return_value=topics,
             autospec=True,
         ):

@@ -1,7 +1,7 @@
 import pytest
 
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import compute_optimum
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.util import separate_groups
+from kafka_tools.kafka_cluster_manager.cluster_info.util import compute_optimum
+from kafka_tools.kafka_cluster_manager.cluster_info.util import separate_groups
 
 
 def test_compute_optimum():

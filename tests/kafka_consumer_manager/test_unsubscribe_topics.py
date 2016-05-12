@@ -5,11 +5,11 @@ import pytest
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import ZookeeperError
 
-from yelp_kafka_tool.kafka_consumer_manager.commands. \
+from kafka_tools.kafka_consumer_manager.commands. \
     unsubscribe_topics import UnsubscribeTopics
 
 
-@mock.patch('yelp_kafka_tool.kafka_consumer_manager.'
+@mock.patch('kafka_tools.kafka_consumer_manager.'
             'commands.unsubscribe_topics.KafkaClient')
 class TestUnsubscribeTopics(object):
     topics_partitions = {
@@ -27,7 +27,7 @@ class TestUnsubscribeTopics(object):
             spec=UnsubscribeTopics.preprocess_args,
             return_value=self.topics_partitions,
         )as mock_writer_process_args, mock.patch(
-            'yelp_kafka_tool.kafka_consumer_manager.'
+            'kafka_tools.kafka_consumer_manager.'
             'commands.unsubscribe_topics.ZK',
             autospec=True
         ) as mock_ZK:

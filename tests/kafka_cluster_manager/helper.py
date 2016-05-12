@@ -1,5 +1,5 @@
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_tools.kafka_cluster_manager.cluster_info.broker import Broker
+from kafka_tools.kafka_cluster_manager.cluster_info.partition import Partition
 
 
 def create_broker(broker_id, partitions):

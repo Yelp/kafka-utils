@@ -4,14 +4,14 @@ from mock import sentinel
 
 from .helper import create_and_attach_partition
 from .helper import create_broker
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.broker import Broker
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+from kafka_tools.kafka_cluster_manager.cluster_info.broker import Broker
+from kafka_tools.kafka_cluster_manager.cluster_info.error import \
     EmptyReplicationGroupError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.error import \
+from kafka_tools.kafka_cluster_manager.cluster_info.error import \
     NotEligibleGroupError
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.rg import \
+from kafka_tools.kafka_cluster_manager.cluster_info.rg import \
     ReplicationGroup
-from yelp_kafka_tool.kafka_cluster_manager.cluster_info.topic import Topic
+from kafka_tools.kafka_cluster_manager.cluster_info.topic import Topic
 
 
 @pytest.fixture
