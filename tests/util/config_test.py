@@ -27,7 +27,7 @@ MOCK_TOPOLOGY_CONFIG = """
 """
 
 
-MOCK_YAML = {
+MOCK_YAML_1 = {
     'clusters': {
         'cluster1': {
             'broker_list': ["mybrokerhost1:9092"],
@@ -36,6 +36,23 @@ MOCK_YAML = {
         'cluster2': {
             'broker_list': ["mybrokerhost2:9092"],
             'zookeeper': "0.3.4.5,0.4.5.6/kafka"
+        }
+    },
+    'local_config': {
+        'cluster': 'cluster1',
+    }
+}
+
+
+MOCK_YAML_2 = {
+    'clusters': {
+        'cluster3': {
+            'broker_list': ["mybrokerhost3:9092"],
+            'zookeeper': "0.1.2.3,0.2.3.4/kafka_2"
+        },
+        'cluster4': {
+            'broker_list': ["mybrokerhost4:9092"],
+            'zookeeper': "0.3.4.5,0.4.5.6/kafka_2"
         }
     },
     'local_config': {
@@ -135,10 +152,17 @@ class TestClusterConfig():
 
 @pytest.yield_fixture
 def mock_yaml():
+
+    def get_fake_yaml(path):
+        if 'mykafka' in path:
+            return MOCK_YAML_1
+        else:
+            return MOCK_YAML_2
+
     with contextlib.nested(
         mock.patch(
             'kafka_tools.util.config.load_yaml_config',
-            return_value=MOCK_YAML,
+            side_effect=get_fake_yaml,
             create=True,
         ),
         mock.patch('os.path.isfile', return_value=True)
@@ -156,7 +180,7 @@ def test_load_yaml():
     ) as mock_open:
         actual = load_yaml_config('test')
         mock_open.assert_called_once_with("test", "r")
-        assert actual == MOCK_YAML
+        assert actual == MOCK_YAML_1
 
 
 class TestTopologyConfig(object):
@@ -187,6 +211,7 @@ class TestTopologyConfig(object):
     def test_get_local_cluster_error(self, mock_yaml):
         # Should raise ConfigurationError if a cluster is in region but not in
         # the cluster list
+        mock_yaml.side_effect = None
         mock_yaml.return_value = {
             'clusters': {
                 'cluster1': {
@@ -242,20 +267,20 @@ class TestTopologyConfig(object):
         with pytest.raises(ConfigurationError):
             topology.get_cluster_by_name('does-not-exist')
 
-    def test___eq__(self):
-        topology1 = TopologyConfiguration("standard", "/nail/etc/kafka_discovery")
-        topology2 = TopologyConfiguration("standard", "/nail/etc/kafka_discovery")
+    def test___eq__(self, mock_yaml):
+        topology1 = TopologyConfiguration("mykafka", "/nail/etc/kafka_discovery")
+        topology2 = TopologyConfiguration("mykafka", "/nail/etc/kafka_discovery")
         assert topology1 == topology2
 
-        topology1 = TopologyConfiguration("scribe")
-        topology2 = TopologyConfiguration("scribe")
+        topology1 = TopologyConfiguration("mykafka")
+        topology2 = TopologyConfiguration("mykafka")
         assert topology1 == topology2
 
-    def test___ne__(self):
-        topology1 = TopologyConfiguration("standard", "/nail/etc/kafka_discovery")
-        topology2 = TopologyConfiguration("scribe", "/nail/etc/kafka_discovery")
+    def test___ne__(self, mock_yaml):
+        topology1 = TopologyConfiguration("mykafka", "/nail/etc/kafka_discovery")
+        topology2 = TopologyConfiguration("somethingelse", "/nail/etc/kafka_discovery")
         assert topology1 != topology2
 
-        topology1 = TopologyConfiguration("standard")
-        topology2 = TopologyConfiguration("spam")
+        topology1 = TopologyConfiguration("mykafka")
+        topology2 = TopologyConfiguration("somethingelse")
         assert topology1 != topology2
