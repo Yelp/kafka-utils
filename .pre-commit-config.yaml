@@ -16,17 +16,7 @@
         language_version: python2.7
         args: [--ignore=E501]
 
--   repo: git@git.yelpcorp.com:yelp_pre_commit_hooks
-    sha: ea3d27c150d98a6dcec8789fdba4f8aadf7fb116
-    hooks:
-    -   id: use-except-as
-    -   id: check-indentation
-        language_version: python2.7
-    -   id: check_mock_methods
-        files: ^tests.+\.py$
-        language_version: python2.7
-
--   repo: git@git.yelpcorp.com:mirrors/asottile/reorder_python_imports
+-   repo: git@github.com:asottile/reorder_python_imports.git
     sha: f3dfe379d2ea341c6cf54d926d4585b35dea9251
     hooks:
     -   id: reorder-python-imports

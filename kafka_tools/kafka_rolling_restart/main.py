@@ -177,8 +177,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
 def print_brokers(cluster_config, brokers):
     """Print the list of brokers that will be restarted.
 
-    :param cluster_config: the cluster configuration as returned by yelp_kafka
-    discovery
+    :param cluster_config: the cluster configuration
     :type cluster_config: map
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
