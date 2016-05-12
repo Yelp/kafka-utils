@@ -38,4 +38,14 @@ setup(
         "kafka-python<1.0.0",
         "requests<3.0.0",
     ],
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'Operating System :: POSIX',
+        'Operating System :: MacOS :: MacOS X',
+    ],
 )
