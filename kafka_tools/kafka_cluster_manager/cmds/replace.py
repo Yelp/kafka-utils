@@ -4,8 +4,8 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
-from kafka_tools.util.validation import assignment_to_plan
-from kafka_tools.util.validation import validate_plan
+from yelp_kafka_tool.util.validation import assignment_to_plan
+from yelp_kafka_tool.util.validation import validate_plan
 
 
 DEFAULT_MAX_PARTITION_MOVEMENTS = 1
@@ -28,11 +28,13 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         subparser.add_argument(
             '--source-broker',
             type=int,
+            required=True,
             help='Broker id of source broker.',
         )
         subparser.add_argument(
             '--dest-broker',
             type=int,
+            required=True,
             help='Broker id of destination broker.',
         )
         subparser.add_argument(

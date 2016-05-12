@@ -2,8 +2,8 @@ import json
 import logging
 
 from .command import ClusterManagerCmd
-from kafka_tools.kafka_cluster_manager.cluster_info.stats import imbalance_value_all
-from kafka_tools.util.validation import plan_to_assignment
+from yelp_kafka_tool.kafka_cluster_manager.cluster_info.stats import imbalance_value_all
+from yelp_kafka_tool.util.validation import plan_to_assignment
 
 
 class StatsCmd(ClusterManagerCmd):
@@ -16,7 +16,7 @@ class StatsCmd(ClusterManagerCmd):
         subparser = subparsers.add_parser(
             'stats',
             description='Show imbalance statistics of cluster topology',
-            help='This command is used to display imbalance stats of current '
+            help='This command is used to display imbalance statistics of current '
             'cluster-topology or cluster-topology after given assignment is '
             'applied.',
         )

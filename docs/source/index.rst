@@ -11,6 +11,7 @@ For more information about Apache Kafka see the official `Kafka documentation`_.
 
    self
    getting_started
+   examples
 
 
 Indices and tables
