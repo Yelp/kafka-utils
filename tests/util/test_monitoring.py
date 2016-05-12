@@ -1,5 +1,20 @@
+# -*- coding: utf-8 -*-
+# Copyright 2016 Yelp Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import mock
 import pytest
+from kafka.common import ConsumerCoordinatorNotAvailableCode
 from kafka.common import KafkaUnavailableError
 from test_offsets import MyKafkaClient
 from test_offsets import TestOffsetsBase
@@ -224,6 +239,29 @@ class TestMonitoring(TestOffsetsBase):
             MyKafkaClient,
             'send_offset_fetch_request_kafka',
             return_value={},
+            autospec=True,
+        ) as mock_get_kafka:
+            actual = get_consumer_offsets_metadata(
+                kafka_client_mock,
+                self.group,
+                self.topics,
+                offset_storage='dual',
+            )
+
+            assert mock_get_zk.call_count == 1
+            assert mock_get_kafka.call_count == 1
+            assert self._has_no_partitions(actual)
+
+    def test_dual_offsets_kafka_error(self, kafka_client_mock):
+        with mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request',
+            return_value={},
+            autospec=True,
+        ) as mock_get_zk, mock.patch.object(
+            MyKafkaClient,
+            'send_offset_fetch_request_kafka',
+            side_effect=ConsumerCoordinatorNotAvailableCode('Boom!'),
             autospec=True,
         ) as mock_get_kafka:
             actual = get_consumer_offsets_metadata(
