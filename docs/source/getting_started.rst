@@ -29,7 +29,9 @@ Broker as leaders distribution
     -- Some brokers might be elected as leaders for more partitions than others.
     This creates load-imbalance for these brokers. Balancing this layer ensures
     the uniform election of brokers as leaders.
+
 .. note:: The rebalancing of this layer doesn't move any partitions across brokers.
+
 It re-elects a new leader for the partitions to ensure that every broker is chosen
 as a leader uniformly. Also, we consider each partition equally, independently from
 the partition size/rate.
@@ -71,9 +73,10 @@ idea is to move all partitions from brokers that are going to be decommissioned 
 brokers in their replication-group while keeping the cluster balanced as above.
 
 .. note:: While decommissioning brokers we need to ensure that we have at least 'n' number
-of brokers per replication group where n is the max replication-factor of a partition.
+   of brokers per replication group where n is the max replication-factor of a partition.
 
 .. code-block:: python
+
     # Decommission given list of brokers
     cluster_topology.decommission_brokers(broker_ids)
     # Process and send the new reduced-assignment to zookeeper
