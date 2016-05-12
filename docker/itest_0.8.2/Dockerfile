@@ -35,8 +35,9 @@ ENV PATH="$PATH:$KAFKA_HOME/bin"
 
 # Install Python.
 RUN apt-get update && apt-get install -y \
-    python \
+    build-essential \
     python2.7 \
+    python2.7-dev \
     python-pip \
     python-pkg-resources \
     python-setuptools
