@@ -28,11 +28,13 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         subparser.add_argument(
             '--source-broker',
             type=int,
+            required=True,
             help='Broker id of source broker.',
         )
         subparser.add_argument(
             '--dest-broker',
             type=int,
+            required=True,
             help='Broker id of destination broker.',
         )
         subparser.add_argument(
