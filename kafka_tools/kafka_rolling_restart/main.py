@@ -84,8 +84,8 @@ def parse_opts():
         default=DEFAULT_CHECK_COUNT,
     )
     parser.add_argument(
-        '--unstable-time-limit',
-        help=('the maximum amount of time the cluster can be unstable before '
+        '--unhealthy-time-limit',
+        help=('the maximum amount of time the cluster can be unhealthy before '
               'stopping the rolling restart. Default: %(default)s'),
         type=int,
         default=DEFAULT_TIME_LIMIT_SECS,
@@ -230,7 +230,7 @@ def wait_for_stable_cluster(
     jolokia_prefix,
     check_interval,
     check_count,
-    unstable_time_limit,
+    unhealthy_time_limit,
 ):
     """
     Block the caller until the cluster can be considered stable.
@@ -246,12 +246,12 @@ def wait_for_stable_cluster(
     :param check_count: the number of times the check should be positive before
     restarting the next broker
     :type check_count: integer
-    :param unstable_time_limit: the maximum number of seconds it will wait for
+    :param unhealthy_time_limit: the maximum number of seconds it will wait for
     the cluster to become stable before exiting with error
-    :type unstable_time_limit: integer
+    :type unhealthy_time_limit: integer
     """
     stable_counter = 0
-    max_checks = int(math.ceil(unstable_time_limit / check_interval))
+    max_checks = int(math.ceil(unhealthy_time_limit / check_interval))
     for i in itertools.count():
         partitions, brokers = read_cluster_status(
             hosts,
@@ -283,7 +283,7 @@ def execute_rolling_restart(
     jolokia_prefix,
     check_interval,
     check_count,
-    unstable_time_limit,
+    unhealthy_time_limit,
     skip,
     verbose,
 ):
@@ -305,9 +305,9 @@ def execute_rolling_restart(
     :param check_count: the number of times the check should be positive before
     restarting the next broker
     :type check_count: integer
-    :param unstable_time_limit: the maximum number of seconds it will wait for
+    :param unhealthy_time_limit: the maximum number of seconds it will wait for
     the cluster to become stable before exiting with error
-    :type unstable_time_limit: integer
+    :type unhealthy_time_limit: integer
     :param skip: the number of brokers to skip
     :type skip: integer
     :param verbose: print commend execution information
@@ -323,7 +323,7 @@ def execute_rolling_restart(
                 jolokia_prefix,
                 check_interval,
                 1 if n == 0 else check_count,
-                unstable_time_limit,
+                unhealthy_time_limit,
             )
             print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
             execute(restart_broker, hosts=host)
@@ -334,7 +334,7 @@ def execute_rolling_restart(
         jolokia_prefix,
         check_interval,
         check_count,
-        unstable_time_limit,
+        unhealthy_time_limit,
     )
 
 
@@ -354,8 +354,8 @@ def validate_opts(opts, brokers_num):
     if opts.check_count < 0:
         print("Error: --check-count must be >= 0")
         return True
-    if opts.unstable_time_limit < 0:
-        print("Error: --unstable-time-limit must be >= 0")
+    if opts.unhealthy_time_limit < 0:
+        print("Error: --unhealthy-time-limit must be >= 0")
         return True
     if opts.check_count == 0:
         print("Warning: no check will be performed")
@@ -389,10 +389,10 @@ def run():
                 opts.jolokia_prefix,
                 opts.check_interval,
                 opts.check_count,
-                opts.unstable_time_limit,
+                opts.unhealthy_time_limit,
                 opts.skip,
                 opts.verbose,
             )
         except WaitTimeoutException:
-            print("ERROR: cluster is still unstable, exiting")
+            print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)

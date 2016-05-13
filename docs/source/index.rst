@@ -1,5 +1,5 @@
 Kafka-Tools v\ |version|
-#############################
+########################
 
 Kafka-Tools is a library containing tools to interact with kafka clusters and manage them.
 For more information about Apache Kafka see the official `Kafka documentation`_.
@@ -13,6 +13,7 @@ For more information about Apache Kafka see the official `Kafka documentation`_.
    getting_started
    config
    examples
+   kafka_rolling_restart
 
 
 Indices and tables
