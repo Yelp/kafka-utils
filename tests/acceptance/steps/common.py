@@ -17,6 +17,7 @@ from behave import when
 
 from .util import create_consumer_group
 from .util import create_random_topic
+from .util import initialize_kafka_offsets_topic
 from .util import produce_example_msg
 
 TEST_GROUP = 'test_group'
@@ -44,3 +45,8 @@ def step_impl3(context):
     )
     context.group = TEST_GROUP
     context.msgs_consumed = CONSUMED_MSG_COUNT
+
+
+@given(u'we have initialized kafka offsets storage')
+def step_impl4(context):
+    initialize_kafka_offsets_topic()
