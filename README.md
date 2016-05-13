@@ -1,10 +1,8 @@
-Kafka-Tools
-===========
+# Kafka-Tools
 
 A framework for managing library containing tools to interact with kafka clusters and manage them.
 
-Configuration of kafka-clusters
--------------------------------
+## Configuration of kafka-clusters
 
 The cluster configuration is set-up by default from yaml files at /nail/etc/kafka_discovery as <cluster-type>.yaml files
 
@@ -25,8 +23,7 @@ Sample configuration for scribe cluster at /nail/etc/kafka_discovery/scribe.yaml
     cluster: cluster-1
 ```
 
-Install
--------
+## Install
 
 From PyPI:
 ```shell
@@ -34,8 +31,7 @@ From PyPI:
 ```
 
 
-Kafka-tools command-line interface
-----------------------------------
+## Kafka-tools command-line interface
 
 Setup the scribe.yaml as discussed above for cluster configuration.
 
