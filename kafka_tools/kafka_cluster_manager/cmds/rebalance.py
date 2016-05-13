@@ -37,7 +37,7 @@ class RebalanceCmd(ClusterManagerCmd):
             'and changing the preferred replica.',
             help='This command is used to rebalance a Kafka cluster. Based on '
             'the given flags this tool will generate and submit a reassinment '
-            'plan that will evently distributed partitions and leaders '
+            'plan that will evenly distribute partitions and leaders '
             'across the brokers of the cluster. The replication groups option '
             'moves the replicas of the same partition to separate replication '
             'making the cluster resilient to the failure of one of more zones.'

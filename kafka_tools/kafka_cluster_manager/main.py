@@ -65,7 +65,8 @@ def dynamic_import_group_parser(module_full_name):
 def parse_args():
     """Parse the arguments."""
     parser = argparse.ArgumentParser(
-        description='Alter topic-partition layout over brokers.',
+        description='Manage and describe partition layout over brokers of'
+        ' a cluster',
     )
     parser.add_argument(
         '--cluster-type',
@@ -77,8 +78,7 @@ def parse_args():
     parser.add_argument(
         '--cluster-name',
         dest='cluster_name',
-        help='Name of the cluster (example: uswest1-devc;'
-        ' Default to local cluster)',
+        help='Name of the cluster (Default to local cluster)',
     )
     parser.add_argument(
         '--discovery-base-path',

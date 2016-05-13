@@ -40,4 +40,8 @@ class ReplicationGroupParser(object):
 class DefaultReplicationGroupParser(ReplicationGroupParser):
 
     def get_replication_group(self, broker):
+        """Default group is None. All brokers are considered in the same group.
+
+        TODO: Support kafka 0.10 and rack tag.
+        """
         return None
