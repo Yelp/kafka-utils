@@ -14,7 +14,7 @@ Feature: kafka_consumer_manager offset_rewind subcommand
       when we consume some number of messages from the topic
       when we call the offset_rewind command and commit into kafka
       when we call the offset_get command
-      then the correct offset will be shown
+      then the earliest message offsets will be shown
 
   Scenario: Calling the offset_rewind command when the group doesn't exist
      Given we have an existing kafka cluster with a topic

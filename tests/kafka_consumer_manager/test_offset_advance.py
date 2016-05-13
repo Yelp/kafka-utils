@@ -20,7 +20,7 @@ from kafka_tools.kafka_consumer_manager.commands. \
 
 
 @mock.patch('kafka_tools.kafka_consumer_manager.'
-            'commands.offset_advance.KafkaClient')
+            'commands.offset_advance.KafkaToolClient')
 class TestOffsetAdvance(object):
     topics_partitions = {
         "topic1": [0, 1, 2],

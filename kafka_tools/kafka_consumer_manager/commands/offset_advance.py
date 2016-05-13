@@ -18,9 +18,8 @@ from __future__ import unicode_literals
 
 import sys
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetWriter
+from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.offsets import advance_consumer_offsets
 
 
@@ -68,7 +67,7 @@ class OffsetAdvance(OffsetWriter):
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(

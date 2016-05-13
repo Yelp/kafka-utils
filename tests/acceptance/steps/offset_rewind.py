@@ -69,3 +69,10 @@ def step_impl4(context):
     with ZK(cluster_config) as zk:
         offsets = zk.get_group_offsets(context.group)
     assert offsets[context.topic]["0"] == 0
+
+
+@then(u'the earliest message offsets will be shown')
+def step_impl5_2(context):
+    offset = 0
+    pattern = 'Current Offset: {}'.format(offset)
+    assert pattern in context.output
