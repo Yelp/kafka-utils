@@ -45,13 +45,13 @@ def dynamic_import_group_parser(module_full_name):
         path, module_name = module_full_name.rsplit(':', 1)
     except ValueError:
         print(
-            "{0} not a valid module_full_name".format(module_full_name),
+            "{0} is not a valid parser module".format(module_full_name),
             file=sys.stderr,
         )
         sys.exit(1)
 
     if not os.path.isdir(path):
-        print("{0} not a valid directory".format(path), file=sys.stderr)
+        print("{0} is not a valid directory".format(path), file=sys.stderr)
         sys.exit(1)
 
     sys.path.append(path)
@@ -112,7 +112,6 @@ def parse_args():
     )
     parser.add_argument(
         '--group-parser',
-        dest='group_parser',
         type=str,
         help='Module containing an implementation of ReplicationGroupParser.'
         'The module should be specified as path_to_include_to_py_path:module.'
