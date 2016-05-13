@@ -20,7 +20,7 @@ from .util import get_cluster_config
 from kafka_tools.util.zookeeper import ZK
 
 
-def call_offset_advance(groupid, topic=None, storage=None, force=None):
+def call_offset_advance(groupid, topic=None, storage=None, force=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -32,7 +32,7 @@ def call_offset_advance(groupid, topic=None, storage=None, force=None):
     if storage:
         cmd.extend(['--storage', storage])
     if force:
-        cmd.extend(['--force', force])
+        cmd.extend(['--force'])
     return call_cmd(cmd)
 
 
@@ -41,18 +41,23 @@ def step_impl3(context):
     call_offset_advance(context.group)
 
 
-@when(u'we call the offset_advance command and commit into kafka')
+@when(u'we call the offset_advance command and commit into kafka with force')
 def step_impl3_2(context):
-    call_offset_advance(context.group, context.topic, storage='kafka')
+    context.group = 'offset_advance_test_group'
+    call_offset_advance(
+        context.group,
+        topic=context.topic,
+        storage='kafka',
+        force=True,
+    )
 
 
 @when(u'we call the offset_advance command with a new groupid and the force option')
 def step_impl2(context):
-    context.group = 'offset_advance_created_group'
     call_offset_advance(
         context.group,
         topic=context.topic,
-        force='force',
+        force=True,
     )
 
 

@@ -59,6 +59,7 @@ class OffsetRewind(OffsetWriter):
         )
         parser_offset_rewind.add_argument(
             '--force',
+            action='store_true',
             help="Force the offset of the group to be committed even if "
             "it does not already exist."
         )
