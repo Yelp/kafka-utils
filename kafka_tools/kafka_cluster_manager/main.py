@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
@@ -40,16 +41,22 @@ _log = logging.getLogger()
 
 
 def dynamic_import_group_parser(module_full_name):
-    path, module_name = module_full_name.rsplit(':', 1)
+    try:
+        path, module_name = module_full_name.rsplit(':', 1)
+    except ValueError:
+        print(
+            "{0} not a valid module_full_name".format(module_full_name),
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     if not os.path.isdir(path):
-        raise ValueError("{0} not a valid directory".format(path))
+        print("{0} not a valid directory".format(path), file=sys.stderr)
+        sys.exit(1)
+
     sys.path.append(path)
-    print path
-    print module_name
     module = importlib.import_module(module_name)
     for class_name, class_type in inspect.getmembers(module, inspect.isclass):
-        print class_type
         if (issubclass(class_type, ReplicationGroupParser) and
                 class_type is not ReplicationGroupParser):
             return class_type()
