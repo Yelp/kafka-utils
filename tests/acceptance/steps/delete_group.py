@@ -45,3 +45,10 @@ def step_impl5(context):
     pattern = 'Error: Consumer Group ID {} does' \
               ' not exist.'.format(context.group)
     assert pattern in context.output
+
+
+@then(u'the specified group will be found')
+def step_impl5_2(context):
+    pattern = 'Error: Consumer Group ID {} does' \
+              ' not exist.'.format(context.group)
+    assert pattern not in context.output
