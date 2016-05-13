@@ -25,6 +25,16 @@ class ConfigurationError(KafkaToolError):
     pass
 
 
+class MissingConfigurationError(ConfigurationError):
+    """Missing configuration file."""
+    pass
+
+
+class InvalidConfigurationError(ConfigurationError):
+    """Invalid configuration file."""
+    pass
+
+
 class InvalidOffsetStorageError(KafkaToolError):
     """Unknown source of offsets."""
     pass

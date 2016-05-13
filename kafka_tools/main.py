@@ -17,14 +17,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import glob
 import logging
-import os
-import sys
 
 from kafka_tools import __version__
-from kafka_tools.util.config import TopologyConfiguration
-from kafka_tools.util.error import ConfigurationError
+from kafka_tools.util.config import iter_configurations
 
 
 logging.getLogger().addHandler(logging.NullHandler())
@@ -45,9 +41,9 @@ def parse_args():
         '--discovery-base-path',
         dest='discovery_base_path',
         type=str,
-        default='/nail/etc/kafka_discovery',
         help='Path of the directory containing the <cluster_type>.yaml config.'
-        ' Default: %(default)s',
+        ' Default try: '
+        '$KAFKA_DISCOVERY_DIR, $HOME/.kafka_discovery, /etc/kafka_discovery',
     )
 
     return parser.parse_args()
@@ -57,30 +53,8 @@ def run():
     """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
 
-    types = map(
-        lambda x: os.path.basename(x)[:-5],
-        glob.glob('{0}/*.yaml'.format(args.discovery_base_path)),
-    )
-    configs = []
-    for cluster_type in types:
-        try:
-            configs.append(
-                TopologyConfiguration(cluster_type, args.discovery_base_path),
-            )
-        except ConfigurationError:
-            continue
-
-    if not configs:
-        print(
-            "No valid cluster types found in {0}".format(
-                args.discovery_base_path,
-                file=sys.stderr,
-            )
-        )
-        sys.exit(1)
-
-    for config in configs:
-        print("Cluster type {type}:".format(type=cluster_type))
+    for config in iter_configurations(args.discovery_base_path):
+        print("Cluster type {type}:".format(type=config.cluster_type))
         for cluster in config.get_all_clusters():
             print(
                 "\tCluster name: {name}\n"

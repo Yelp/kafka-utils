@@ -282,8 +282,8 @@ class TestTopologyConfig(object):
             topology.get_cluster_by_name('does-not-exist')
 
     def test___eq__(self, mock_yaml):
-        topology1 = TopologyConfiguration("mykafka", "/nail/etc/kafka_discovery")
-        topology2 = TopologyConfiguration("mykafka", "/nail/etc/kafka_discovery")
+        topology1 = TopologyConfiguration("mykafka", "/etc/kafka_discovery")
+        topology2 = TopologyConfiguration("mykafka", "/etc/kafka_discovery")
         assert topology1 == topology2
 
         topology1 = TopologyConfiguration("mykafka")
@@ -291,8 +291,8 @@ class TestTopologyConfig(object):
         assert topology1 == topology2
 
     def test___ne__(self, mock_yaml):
-        topology1 = TopologyConfiguration("mykafka", "/nail/etc/kafka_discovery")
-        topology2 = TopologyConfiguration("somethingelse", "/nail/etc/kafka_discovery")
+        topology1 = TopologyConfiguration("mykafka", "/etc/kafka_discovery")
+        topology2 = TopologyConfiguration("somethingelse", "/etc/kafka_discovery")
         assert topology1 != topology2
 
         topology1 = TopologyConfiguration("mykafka")
