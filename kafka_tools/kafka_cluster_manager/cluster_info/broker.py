@@ -16,9 +16,9 @@ import logging
 
 
 class Broker(object):
-    """Broker class object, consisting of following attributes
-        -id: Id of broker
-        -partitions: partitions under a given broker
+    """Represent a Kafka broker.
+    A broker object contains as attributes the broker id, metadata
+    (content of the broker zookeeper node), partitions and replication group.
     """
 
     log = logging.getLogger(__name__)
