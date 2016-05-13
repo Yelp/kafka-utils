@@ -108,7 +108,7 @@ def parse_args():
         dest='group_parser',
         type=str,
         help='Module containing an implementation of ReplicationGroupParser.'
-        'The module should be specifies as path_to_include_to_py_path:module.'
+        'The module should be specified as path_to_include_to_py_path:module.'
         'Ex: /my/module/path:module.parser',
     )
 
