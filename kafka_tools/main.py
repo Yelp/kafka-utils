@@ -54,7 +54,6 @@ def parse_args():
 
 
 def run():
-    """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
 
     types = map(
