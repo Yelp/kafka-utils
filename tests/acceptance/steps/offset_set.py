@@ -32,7 +32,7 @@ def offsets_data(topic, offset):
     )
 
 
-def call_offset_set(groupid, offsets_data, storage=None, force=None):
+def call_offset_set(groupid, offsets_data, storage=None, force=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -43,7 +43,7 @@ def call_offset_set(groupid, offsets_data, storage=None, force=None):
     if storage:
         cmd.extend(['--storage', storage])
     if force:
-        cmd.extend(['--force', force])
+        cmd.extend(['--force'])
     return call_cmd(cmd)
 
 
@@ -66,7 +66,7 @@ def step_impl2_2(context):
 def step_impl2_3(context):
     context.offsets = offsets_data(context.topic, SET_OFFSET)
     context.group = 'offset_set_created_group'
-    call_offset_set(context.group, context.offsets, force='force')
+    call_offset_set(context.group, context.offsets, force=True)
 
 
 @then(u'the committed offsets will match the specified offsets')

@@ -28,7 +28,7 @@ def offsets_data(topic, offset):
     )
 
 
-def call_offset_rewind(groupid, topic, storage=None, force=None):
+def call_offset_rewind(groupid, topic, storage=None, force=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -39,7 +39,7 @@ def call_offset_rewind(groupid, topic, storage=None, force=None):
     if storage:
         cmd.extend(['--storage', storage])
     if force:
-        cmd.extend(['--force', force])
+        cmd.extend(['--force'])
     return call_cmd(cmd)
 
 
@@ -59,7 +59,7 @@ def step_impl2(context):
     call_offset_rewind(
         context.group,
         topic=context.topic,
-        force='force',
+        force=True,
     )
 
 
