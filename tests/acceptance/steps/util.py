@@ -99,3 +99,23 @@ def create_consumer_group(topic, group_name, num_messages=1):
         consumer.task_done(message)
     consumer.commit()
     return consumer
+
+
+def call_offset_get(group, storage=None):
+    cmd = ['kafka-consumer-manager',
+           '--cluster-type', 'test',
+           '--cluster-name', 'test_cluster',
+           '--discovery-base-path', 'tests/acceptance/config',
+           'offset_get',
+           group]
+    if storage:
+        cmd.extend(['--storage', storage])
+    return call_cmd(cmd)
+
+
+def initialize_kafka_offsets_topic():
+    topic = create_random_topic(1, 1)
+    produce_example_msg(topic, num_messages=1)
+    create_consumer_group(topic, 'foo')
+    call_offset_get('foo', storage='kafka')
+    time.sleep(10)
