@@ -39,17 +39,16 @@ from kafka_tools.util.error import ConfigurationError
 def parse_args():
     parser = argparse.ArgumentParser(
         description="kakfa-consumer-manager provides to ability to view and "
-        "manipulate consumer offsets for a specific consumer group."
+        "manipulate consumer offsets for a specific consumer group.",
     )
     parser.add_argument(
         '--cluster-type', dest='cluster_type', required=True,
-        help='Type of Kafka cluster. This is a mandatory option. Examples:'
-        ' ["datapipe", "scribe", "standard", "spam"].',
+        help='Type of Kafka cluster. This is a mandatory option.',
     )
     parser.add_argument(
         '--cluster-name', dest='cluster_name',
         help='Kafka Cluster Name. If not specified, this defaults to the '
-        'local cluster.'
+        'local cluster.',
     )
     parser.add_argument(
         '--discovery-base-path',
