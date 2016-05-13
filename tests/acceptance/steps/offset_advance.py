@@ -41,9 +41,8 @@ def step_impl3(context):
     call_offset_advance(context.group)
 
 
-@when(u'we call the offset_advance command and commit into kafka with force')
+@when(u'we call the offset_advance command and commit into kafka')
 def step_impl3_2(context):
-    context.group = 'offset_advance_test_group'
     call_offset_advance(
         context.group,
         topic=context.topic,
@@ -54,6 +53,7 @@ def step_impl3_2(context):
 
 @when(u'we call the offset_advance command with a new groupid and the force option')
 def step_impl2(context):
+    context.group = 'offset_advance_test_group'
     call_offset_advance(
         context.group,
         topic=context.topic,
