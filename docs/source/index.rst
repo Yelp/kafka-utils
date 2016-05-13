@@ -13,6 +13,7 @@ For more information about Apache Kafka see the official `Kafka documentation`_.
    getting_started
    config
    examples
+   kafka_rolling_restart
 
 
 Indices and tables
