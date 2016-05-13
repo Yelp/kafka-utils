@@ -1,32 +1,7 @@
 Kafka-Tools
-----------------
+===========
 
-Kafka-Tools is a library containing tools to interact with kafka clusters and manage them.
-
-Kafka-cluster-manager
----------------------
-This tool provides a set of commands to manipulate and modify the cluster topology and get metrics for different states of the cluster. These include balancing the cluster-state, decommissioning brokers, evaluating metrics for the current state of the cluster. Each of these commands is as described below.
-
-Rebalancing cluster
--------------------
-This command provides the functionality to re-distribute partitions across the
-cluster to bring it into a more balanced state. The goal is to load balance the
-cluster based on the distribution of the replicas across replication-groups
-(availability-zones or racks), distribution of partitions across the brokers,
-ingress-rate load on leaders. The imbalance-state of cluster has been
-characterized into 4 different layers :-
-
-Replica-distribution
---------------------
-– Uniform distribution of replicas across replication-groups.
-
-Partition distribution
-----------------------
-– Uniform distribution of partitions across groups and brokers.
-
-Broker as leaders distribution
-------------------------------
-– Some brokers might be elected as leaders for more partitions than others. This creates load-imbalance for these brokers. Balancing this layer ensures the uniform election of brokers as leaders.
+A framework for managing library containing tools to interact with kafka clusters and manage them.
 
 Configuration of kafka-clusters
 -------------------------------
@@ -35,6 +10,7 @@ The cluster configuration is set-up by default from yaml files at /nail/etc/kafk
 
 Sample configuration for scribe cluster at /nail/etc/kafka_discovery/scribe.yaml
 
+```yaml
 ---
   clusters:
     cluster-1:
@@ -47,3 +23,43 @@ Sample configuration for scribe cluster at /nail/etc/kafka_discovery/scribe.yaml
       zookeeper: "11.11.11.211:2181,11.11.11.212:2181,11.11.11.213:2181/kafka-scribe"
   local_config:
     cluster: cluster-1
+```
+
+Install
+-------
+
+From PyPI:
+```shell
+    $ pip install kafka-tools
+```
+
+
+Kafka-tools command-line interface
+----------------------------------
+
+Setup the scribe.yaml as discussed above for cluster configuration.
+
+
+* Rebalances the distribution of leaders across the brokers and generates the plan
+
+```shell
+    $ kafka-cluster-manager --cluster-type scribe rebalance --leaders
+```
+
+* Rebalance all layers of scribe cluster
+
+```shell
+    $ kafka-cluster-manager --cluster-type scribe rebalance --replication-groups --brokers --leaders  --apply
+```
+
+* Get imbalance statistics of the current cluster-state
+
+```shell
+    $ kafka-cluster-manager --cluster-type scribe --cluster-name cluster-2 stats
+```
+
+* Decommission given broker 123
+
+```shell
+    $ kafka-cluster-manager --cluster-type scribe decommission 123
+```
