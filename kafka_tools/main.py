@@ -87,7 +87,7 @@ def run():
                 "\tbroker list: {b_list}\n"
                 "\tzookeeper: {zk}".format(
                     name=cluster.name,
-                    b_list=cluster.broker_list,
+                    b_list=", ".join(cluster.broker_list),
                     zk=cluster.zookeeper,
                 )
             )
