@@ -116,10 +116,6 @@ def call_offset_get(group, storage=None):
 def initialize_kafka_offsets_topic():
     topic = create_random_topic(1, 1)
     produce_example_msg(topic, num_messages=1)
-    create_consumer_group(
-        topic,
-        'foo',
-        num_messages=1,
-    )
+    create_consumer_group(topic, 'foo')
     call_offset_get('foo', storage='kafka')
     time.sleep(10)
