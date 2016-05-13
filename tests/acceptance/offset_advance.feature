@@ -8,12 +8,12 @@ Feature: kafka_consumer_manager offset_advance
       then the committed offsets will match the latest message offsets
 
   @kafka9
-  Scenario: Calling the offset_advance command with kafka storage and force
+  Scenario: Calling the offset_advance command with kafka storage
      Given we have an existing kafka cluster with a topic
      Given we have initialized kafka offsets storage
       when we produce some number of messages into the topic
-      when we call the offset_get command with kafka storage
-      when we call the offset_advance command and commit into kafka with force
+      when we consume some number of messages from the topic
+      when we call the offset_advance command and commit into kafka
       when we call the offset_get command with kafka storage
       then the latest message offsets will be shown
 
