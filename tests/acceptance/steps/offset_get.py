@@ -15,19 +15,7 @@
 from behave import then
 from behave import when
 
-from .util import call_cmd
-
-
-def call_offset_get(group, storage=None):
-    cmd = ['kafka-consumer-manager',
-           '--cluster-type', 'test',
-           '--cluster-name', 'test_cluster',
-           '--discovery-base-path', 'tests/acceptance/config',
-           'offset_get',
-           group]
-    if storage:
-        cmd.extend(['--storage', storage])
-    return call_cmd(cmd)
+from .util import call_offset_get
 
 
 @when(u'we call the offset_get command')
