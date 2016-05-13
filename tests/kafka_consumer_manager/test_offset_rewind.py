@@ -26,7 +26,7 @@ class TestOffsetRewind(object):
     }
 
     @mock.patch('kafka_tools.kafka_consumer_manager.'
-                'commands.offset_rewind.KafkaClient')
+                'commands.offset_rewind.KafkaToolClient')
     def test_run(self, mock_client):
         with mock.patch.object(
             OffsetRewind,
@@ -54,7 +54,7 @@ class TestOffsetRewind(object):
             mock_client.return_value.close.assert_called_once_with()
 
     @mock.patch('kafka_tools.kafka_consumer_manager'
-                '.commands.offset_rewind.KafkaClient')
+                '.commands.offset_rewind.KafkaToolClient')
     def test_run_type_error(self, mock_client):
         with mock.patch.object(
             OffsetRewind,
