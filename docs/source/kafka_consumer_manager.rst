@@ -39,7 +39,7 @@ Subcommands
 Listing consumer groups
 =======================
 
-The `list_groups` command shows all of the consumer groups that exist in
+The :code:`list_groups` command shows all of the consumer groups that exist in
 the cluster.
 
 .. code-block:: bash
@@ -50,7 +50,7 @@ the cluster.
    	 group2
    	 group3
 
-If `list_groups` is called with the `--storage` option, then the groups will
+If :code:`list_groups` is called with the :code:`--storage` option, then the groups will
 only be fetched from Zookeeper or Kafka.
 
 
@@ -73,9 +73,9 @@ For information about the topics subscribed by a consumer group, the
 Getting consumer offsets
 ========================
 
-The `offset_get` subcommand gets information about a specific consumer group.
+The :code:`offset_get` subcommand gets information about a specific consumer group.
 
-The most basic usage is to call `offset_get` with a consumer group id.
+The most basic usage is to call :code:`offset_get` with a consumer group id.
 
 .. code-block:: bash
 
@@ -88,13 +88,13 @@ The most basic usage is to call `offset_get` with a consumer group id.
     		Current Offset: 787645
 
 The offsets for all topics in the consumer group will be shown by default.
-A single topic can be specified using the `--topic` option. If a topic is
+A single topic can be specified using the :code:`--topic` option. If a topic is
 specified, then a list of partitions can also be specified using the
-`--partitions` option.
+:code:`--partitions` option.
 
 By default, the offsets will be fetched from both Zookeeper and Kafka's
 internal offset storage. A specific offset storage location can be speficied
-using the `--storage` option.
+using the :code:`--storage` option.
 
 
 Manipulating consumer offsets
@@ -115,53 +115,53 @@ The save offsets file can then be used to restore the consumer group.
    $ kafka-consumer-manager --cluster-type test --cluster-name my_cluster offset_restore my_group my_offsets.json
      Restored to new offsets {u'topic1': {0: 425447}}
 
-The offsets can also be set directly using the `offset_set` command. This
+The offsets can also be set directly using the :code:`offset_set` command. This
 command takes a group id, and a set of topics, partitions, and offsets.
 
 .. code-block:: bash
 
    $ kafka-consumer-manager --cluster-type test --cluster-name my_cluster offset_set my_group topic1.0.38531
 
-There is also an `offset_advance` command, which will advance the current offset
-to the same value as the high watermark of a topic, and an `offset_rewind`
+There is also an :code:`offset_advance` command, which will advance the current offset
+to the same value as the high watermark of a topic, and an :code:`offset_rewind`
 command, which will rewind to the low watermark.
 
 If the offset needs to be modified for a consumer group does not already
-exist, then the `--force` option can be used. This option can be used with
-`offset_set`, `offset_rewind`, and `offset_advance`.
+exist, then the :code:`--force` option can be used. This option can be used with
+:code:`offset_set`, :code:`offset_rewind`, and :code:`offset_advance`.
 
 
 Copying or renaming consumer group
 ==================================
 
 Consumer groups can have metadata copied into a new group using the
-`rename_group` subcommand.
+:code:`rename_group` subcommand.
 
 .. code-block:: bash
 
    $ kafka-consumer-manager --cluster-type=test copy_group my_group1 my_group2
 
 
-They can also be renamed using `rename_group`.
+They can also be renamed using :code:`rename_group`.
 
 .. code-block:: bash
 
    $ kafka-consumer-manager --cluster-type=test rename_group my_group1 my_group2
 
-When the group is copied, if a topic is specified using the `--topic` option,
+When the group is copied, if a topic is specified using the :code:`--topic` option,
 then only the offsets for that topic will be copied. If a topic is specified,
 then a set of partitions of that topic can also be specified using the
-`--partitions` option.
+:code:`--partitions` option.
 
 Deleting or unsubscribing consumer groups
 =========================================
 
-A consumer group can be deleted using the `delete_group` subcommand.
+A consumer group can be deleted using the :code:`delete_group` subcommand.
 
 .. code-block:: bash
 
    $ kafka-consumer-manager --cluster-type=test delete_group my_group
 
-A consumer group be unsubscribed from topics using the `unsubscribe_topics`
-subcommand. If a single topic is specified using the `--topic` option, then
+A consumer group be unsubscribed from topics using the :code:`unsubscribe_topics`
+subcommand. If a single topic is specified using the :code:`--topic` option, then
 the group will be unsubscribed from only that topic.
