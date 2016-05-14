@@ -1,4 +1,4 @@
-Kafka-Cluster-Manager
+Cluster Manager
 *********************
 This tool provides a set of commands to manipulate and modify the cluster topology
 and get metrics for different states of the cluster. These include balancing the
@@ -117,6 +117,7 @@ maximum of 10 partition movements and 25 leader-only changes after rebalancing
 the cluster for all layers discussed before prior to sending it to zookeeper.
 
 .. code-block:: bash
+
     $ kafka-cluster-manager --cluster-type <type> rebalance --replication-groups
     --brokers --leaders  --apply --max-partition-movements 10 --max-leader-changes 25
 
@@ -126,4 +127,5 @@ Imbalance Statistics
 Get imbalance statistics of the current cluster-state.
 
 .. code-block:: bash
-    kafka-cluster-manager --cluster-type sample_type stats
+
+    $ kafka-cluster-manager --cluster-type sample_type stats

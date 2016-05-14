@@ -25,6 +25,7 @@ Usage Examples
 List available clusters' configuration.
 
 .. code-block:: bash
+
     $ kafka-tools
     Cluster type sample_type:
         Cluster name: cluster-1
@@ -40,6 +41,7 @@ List available clusters' configuration.
    self
    config
    kafka_cluster_manager
+   kafka_consumer_manager
    kafka_rolling_restart
 
 
