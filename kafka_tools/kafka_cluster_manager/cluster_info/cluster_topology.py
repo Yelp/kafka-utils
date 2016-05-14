@@ -19,6 +19,8 @@ from __future__ import unicode_literals
 import logging
 from collections import OrderedDict
 
+import six
+
 from .broker import Broker
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
@@ -72,7 +74,7 @@ class ClusterTopology(object):
 
     def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
-        for broker_id, metadata in brokers.iteritems():
+        for broker_id, metadata in six.iteritems(brokers):
             self.brokers[broker_id] = self._create_broker(broker_id, metadata)
 
     def _create_broker(self, broker_id, metadata=None):
@@ -94,7 +96,7 @@ class ClusterTopology(object):
         topic objects.
         """
         self.partitions = {}
-        for partition_name, replica_ids in assignment.iteritems():
+        for partition_name, replica_ids in six.iteritems(assignment):
             # Get topic
             topic_id = partition_name[0]
             partition_id = partition_name[1]
@@ -476,7 +478,7 @@ class ClusterTopology(object):
         :raises: InvalidPartitionError when partition-name is invalid
         """
         try:
-            for partition_name, replica_ids in assignment.iteritems():
+            for partition_name, replica_ids in six.iteritems(assignment):
                 try:
                     new_replicas = [self.brokers[b_id] for b_id in replica_ids]
                 except KeyError:

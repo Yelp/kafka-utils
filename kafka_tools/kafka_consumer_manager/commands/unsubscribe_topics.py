@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import sys
 
+import six
 from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
@@ -76,7 +77,7 @@ class UnsubscribeTopics(OffsetWriter):
             elif args.topic:
                 zk.delete_topic(args.groupid, args.topic)
             else:
-                for topic, partitions in topics_dict.iteritems():
+                for topic, partitions in six.iteritems(topics_dict):
                     zk.delete_topic(args.groupid, topic)
 
     @classmethod

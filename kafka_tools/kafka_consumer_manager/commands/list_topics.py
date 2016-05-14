@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import sys
 
+import six
 from kafka import KafkaClient
 
 from .offset_manager import OffsetManagerBase
@@ -61,6 +62,6 @@ class ListTopics(OffsetManagerBase):
             sys.exit(1)
 
         print("Consumer Group ID: {groupid}".format(groupid=args.groupid))
-        for topic, partitions in topics_dict.iteritems():
+        for topic, partitions in six.iteritems(topics_dict):
             print("\tTopic: {topic}".format(topic=topic))
             print("\t\tPartitions: {partitions}".format(partitions=partitions))

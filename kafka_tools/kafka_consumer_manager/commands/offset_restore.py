@@ -21,6 +21,8 @@ import sys
 from collections import defaultdict
 from contextlib import closing
 
+import six
+
 from .offset_manager import OffsetManagerBase
 from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.monitoring import get_consumer_offsets_metadata
@@ -65,9 +67,9 @@ class OffsetRestore(OffsetManagerBase):
                 # Create new dict with partition-keys as integers
                 parsed_offsets['groupid'] = parsed_offsets_data['groupid']
                 parsed_offsets['offsets'] = {}
-                for topic, topic_data in parsed_offsets_data['offsets'].iteritems():
+                for topic, topic_data in six.iteritems(parsed_offsets_data['offsets']):
                     parsed_offsets['offsets'][topic] = {}
-                    for partition, offset in topic_data.iteritems():
+                    for partition, offset in six.iteritems(topic_data):
                         parsed_offsets['offsets'][topic][int(partition)] = offset
                 return parsed_offsets
             except ValueError:
@@ -85,7 +87,7 @@ class OffsetRestore(OffsetManagerBase):
         """
         new_offsets = defaultdict(dict)
         try:
-            for topic, partitions in topic_partitions.iteritems():
+            for topic, partitions in six.iteritems(topic_partitions):
                 # Validate current offsets in range of low and highmarks
                 # Currently we only validate for positive offsets and warn
                 # if out of range of low and highmarks
@@ -165,7 +167,7 @@ class OffsetRestore(OffsetManagerBase):
             topics_offset_data = parsed_consumer_offsets['offsets']
             topic_partitions = dict(
                 (topic, [partition for partition in offset_data.keys()])
-                for topic, offset_data in topics_offset_data.iteritems()
+                for topic, offset_data in six.iteritems(topics_offset_data)
             )
         except IndexError:
             print(

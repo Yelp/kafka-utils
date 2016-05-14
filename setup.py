@@ -53,6 +53,7 @@ setup(
         "requests-futures>0.9.0",
         "kafka-python<1.0.0",
         "requests<3.0.0",
+        "six",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

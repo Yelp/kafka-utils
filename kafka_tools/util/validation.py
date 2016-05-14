@@ -16,6 +16,8 @@
 import logging
 from collections import Counter
 
+import six
+
 _log = logging.getLogger(__name__)
 
 
@@ -39,7 +41,7 @@ def assignment_to_plan(assignment):
         [{'topic': t_p[0],
           'partition': t_p[1],
           'replicas': replica
-          } for t_p, replica in assignment.iteritems()]
+          } for t_p, replica in six.iteritems(assignment)]
     }
 
 
@@ -124,7 +126,7 @@ def _validate_plan_base(
         for p_data in new_plan['partitions']
     }
     invalid_replication_factor = False
-    for new_partition, replicas in new_partition_replicas.iteritems():
+    for new_partition, replicas in six.iteritems(new_partition_replicas):
         base_replica_cnt = len(base_partition_replicas[new_partition])
         if len(replicas) != base_replica_cnt:
             invalid_replication_factor = True
@@ -200,7 +202,7 @@ def _validate_format(plan):
             )
             return False
         # Check types
-        if not isinstance(p_data['topic'], unicode):
+        if not isinstance(p_data['topic'], six.text_type):
             _log.error(
                 '"topic" of type unicode expected {p_data}, found {t_type}'
                 .format(p_data=p_data, t_type=type(p_data['topic'])),
@@ -254,7 +256,7 @@ def _validate_plan(plan):
         for p_data in plan['partitions']
     ]
     duplicate_partitions = [
-        partition for partition, count in Counter(partition_names).iteritems()
+        partition for partition, count in six.iteritems(Counter(partition_names))
         if count > 1
     ]
     if duplicate_partitions:

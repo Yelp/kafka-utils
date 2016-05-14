@@ -15,6 +15,7 @@
 import json
 import logging
 
+import six
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
@@ -194,7 +195,7 @@ class ZK:
                 return {}
             # Prepare data for each partition
             partitions_data = {}
-            for p_id, replicas in topic_data['partitions'].iteritems():
+            for p_id, replicas in six.iteritems(topic_data['partitions']):
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
@@ -476,8 +477,8 @@ class ZK:
                 'partition': int(p_id),
                 'replicas': partitions_data['replicas']
             }
-            for topic_id, topic_info in cluster_layout.iteritems()
-            for p_id, partitions_data in topic_info['partitions'].iteritems()
+            for topic_id, topic_info in six.iteritems(cluster_layout)
+            for p_id, partitions_data in six.iteritems(topic_info['partitions'])
         ]
         return {
             'version': 1,

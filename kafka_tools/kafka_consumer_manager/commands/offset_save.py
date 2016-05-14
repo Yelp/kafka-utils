@@ -20,6 +20,7 @@ import json
 import sys
 from collections import defaultdict
 
+import six
 from kafka import KafkaClient
 from kafka.common import KafkaUnavailableError
 
@@ -135,7 +136,7 @@ class OffsetSave(OffsetManagerBase):
         """
         # Build consumer-offset data in desired format
         current_consumer_offsets = defaultdict(dict)
-        for topic, topic_offsets in consumer_offsets_metadata.iteritems():
+        for topic, topic_offsets in six.iteritems(consumer_offsets_metadata):
             for partition_offset in topic_offsets:
                 current_consumer_offsets[topic][partition_offset.partition] = \
                     partition_offset.current

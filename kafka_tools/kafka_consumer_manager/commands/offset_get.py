@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 import sys
 
+import six
 from kafka import KafkaClient
 
 from .offset_manager import OffsetManagerBase
@@ -122,7 +123,7 @@ class OffsetGet(OffsetManagerBase):
 
     @classmethod
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
-        for topic, metadata_tuples in consumer_offsets_metadata.iteritems():
+        for topic, metadata_tuples in six.iteritems(consumer_offsets_metadata):
             print ("Topic Name: {topic}".format(topic=topic))
             for metadata_tuple in metadata_tuples:
                 print (

@@ -18,6 +18,7 @@ import logging
 import os
 from collections import namedtuple
 
+import six
 import yaml
 
 from kafka_tools.util.error import ConfigurationError
@@ -153,7 +154,7 @@ class TopologyConfiguration(object):
                 broker_list=cluster['broker_list'],
                 zookeeper=cluster['zookeeper'],
             )
-            for name, cluster in self.clusters.iteritems()
+            for name, cluster in six.iteritems(self.clusters)
         ]
 
     def get_cluster_by_name(self, name):

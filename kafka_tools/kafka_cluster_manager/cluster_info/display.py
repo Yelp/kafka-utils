@@ -18,6 +18,8 @@ from __future__ import print_function
 
 import logging
 
+import six
+
 from kafka_tools.util.validation import assignment_to_plan
 _log = logging.getLogger('kafka-cluster-manager')
 
@@ -34,7 +36,7 @@ def display_same_replica_count_rg(
     print("=" * 40)
     print("Replication-group Extra-Same-replica-count")
     print("=" * 40)
-    for rg_id, replica_count in duplicate_replica_count_per_rg.iteritems():
+    for rg_id, replica_count in six.iteritems(duplicate_replica_count_per_rg):
         count = int(replica_count)
         print("{b:^7s} {cnt:^10d}".format(b=rg_id, cnt=int(count)))
     print("=" * 40)
@@ -53,7 +55,7 @@ def display_same_topic_partition_count_broker(
     print("Broker   Extra-Topic-Partition Count")
     print("=" * 40)
     for broker_id, partition_count in \
-            same_topic_partition_count.iteritems():
+            six.iteritems(same_topic_partition_count):
         print(
             "{b:^7d} {partition_count:^18d}"
             .format(b=broker_id, partition_count=partition_count),
@@ -74,7 +76,7 @@ def display_partition_count_per_broker(
     print("=" * 25)
     print("Broker   Partition Count")
     print("=" * 25)
-    for broker_id, count in partition_count.iteritems():
+    for broker_id, count in six.iteritems(partition_count):
         print(
             "{b:^7d} {cnt:^18d}".format(
                 b=broker_id,
@@ -96,7 +98,7 @@ def display_leader_count_per_broker(leader_count, stdev_imbalance, imbalance):
     print("=" * 33)
     print("Broker   Preferred Leader Count")
     print("=" * 33)
-    for broker_id, count in leader_count.iteritems():
+    for broker_id, count in six.iteritems(leader_count):
         print(
             "{b:^7d} {cnt:^20d}".format(
                 b=broker_id,

@@ -14,6 +14,7 @@
 # limitations under the License.
 import mock
 import pytest
+import six
 
 from kafka_tools.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
@@ -417,7 +418,7 @@ class TestClusterTopology(object):
 
         # Verify that partitions remain same
         assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
-        for t_p, new_replicas in new_assignment.iteritems():
+        for t_p, new_replicas in six.iteritems(new_assignment):
             orig_replicas = orig_assignment[t_p]
             # Verify that new-replicas are amongst given broker-list
             assert all([broker in orig_brokers for broker in new_replicas])
@@ -872,7 +873,7 @@ class TestClusterTopology(object):
         # Partition-list remains unchanged
         assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
         # Replica-set remains same
-        for partition, orig_replicas in orig_assignment.iteritems():
+        for partition, orig_replicas in six.iteritems(orig_assignment):
             set(orig_replicas) == set(new_assignment[partition])
 
     def test_replace_broker_leader(self):

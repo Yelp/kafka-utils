@@ -19,6 +19,7 @@ import logging
 import sys
 from collections import defaultdict
 
+import six
 from kafka.common import ConsumerTimeout
 from kafka.common import FailedPayloadsError
 from kafka.common import KafkaUnavailableError
@@ -175,7 +176,7 @@ class KafkaGroupReader:
             [CONSUMER_OFFSET_TOPIC],
         )
         return {partition: offset for partition, offset
-                in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
+                in six.iteritems(offsets[CONSUMER_OFFSET_TOPIC])
                 if offset.highmark > offset.lowmark}
 
     def get_max_offset(self, partition):

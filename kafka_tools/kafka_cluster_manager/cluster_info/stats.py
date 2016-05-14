@@ -18,6 +18,8 @@ cluster at any given time.
 from collections import defaultdict
 from math import sqrt
 
+import six
+
 from .display import display_leader_count_per_broker
 from .display import display_partition_count_per_broker
 from .display import display_same_replica_count_rg
@@ -126,7 +128,7 @@ def get_leader_imbalance_stats(brokers):
     net_imbalance = get_net_imbalance(leaders_per_broker.values())
     leaders_per_broker_id = dict(
         (broker.id, count)
-        for broker, count in leaders_per_broker.iteritems()
+        for broker, count in six.iteritems(leaders_per_broker)
     )
     return stdev_imbalance, net_imbalance, leaders_per_broker_id
 
@@ -185,7 +187,7 @@ def get_partition_imbalance_stats(brokers):
     net_imbalance = get_net_imbalance(partitions_per_broker.values())
     partitions_per_broker_id = dict(
         (partition.id, count)
-        for partition, count in partitions_per_broker.iteritems()
+        for partition, count in six.iteritems(partitions_per_broker)
     )
     return stdev_imbalance, net_imbalance, partitions_per_broker_id
 
@@ -201,7 +203,7 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
     """
     total_movements = 0
     movements = {}
-    for prev_partition, prev_replicas in prev_assignment.iteritems():
+    for prev_partition, prev_replicas in six.iteritems(prev_assignment):
         curr_replicas = curr_assignment[prev_partition]
         diff = len(set(curr_replicas) - set(prev_replicas))
         if diff:

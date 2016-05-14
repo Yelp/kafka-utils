@@ -18,6 +18,8 @@ import logging
 import sys
 from collections import defaultdict
 
+import six
+
 from kafka_tools.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
 from kafka_tools.util.validation import assignment_to_plan
@@ -171,7 +173,7 @@ class ClusterManagerCmd(object):
         # The replica set stays the same for leaders only changes
         leaders_changes = [
             (t_p, new_assignment[t_p])
-            for t_p, replica in original_assignment.iteritems()
+            for t_p, replica in six.iteritems(original_assignment)
             if replica != new_assignment[t_p] and
             set(replica) == set(new_assignment[t_p])
         ]
@@ -183,7 +185,7 @@ class ClusterManagerCmd(object):
                 t_p,
                 len(set(replica) - set(new_assignment[t_p])),
             )
-            for t_p, replica in original_assignment.iteritems()
+            for t_p, replica in six.iteritems(original_assignment)
             if set(replica) != set(new_assignment[t_p])
         ]
 
@@ -238,7 +240,7 @@ class ClusterManagerCmd(object):
         action_available = True
         while curr_movements < max_movements and action_available:
             action_available = False
-            for topic, actions in topic_actions.iteritems():
+            for topic, actions in six.iteritems(topic_actions):
                 for action in actions:
                     if curr_movements + action[1] > max_movements:
                         # Remove action since it won't be possible to use it

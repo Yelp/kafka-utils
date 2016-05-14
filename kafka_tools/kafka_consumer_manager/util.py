@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 import sys
 from collections import defaultdict
 
+import six
 from kazoo.exceptions import NodeExistsError
 
 
@@ -66,8 +67,8 @@ def create_offsets(zk, consumer_group, offsets):
     :type offsets: dict(topic, dict(partition, offset))
     """
     # Create new offsets
-    for topic, partition_offsets in offsets.iteritems():
-        for partition, offset in partition_offsets.iteritems():
+    for topic, partition_offsets in six.iteritems(offsets):
+        for partition, offset in six.iteritems(partition_offsets):
             new_path = "/consumers/{groupid}/offsets/{topic}/{partition}".format(
                 groupid=consumer_group,
                 topic=topic,
@@ -93,7 +94,7 @@ def fetch_offsets(zk, consumer_group, topics):
     :rtype: dict(topic, dict(partition, offset))
     """
     source_offsets = defaultdict(dict)
-    for topic, partitions in topics.iteritems():
+    for topic, partitions in six.iteritems(topics):
         for partition in partitions:
             offset, _ = zk.get(
                 "/consumers/{groupid}/offsets/{topic}/{partition}".format(

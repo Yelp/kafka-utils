@@ -15,6 +15,7 @@
 import logging
 from collections import namedtuple
 
+import six
 from kafka.common import ConsumerCoordinatorNotAvailableCode
 from kafka.common import KafkaUnavailableError
 
@@ -79,7 +80,7 @@ def get_consumer_offsets_metadata(
     )
 
     result = {}
-    for topic, partitions in group_offsets.iteritems():
+    for topic, partitions in six.iteritems(group_offsets):
         result[topic] = [
             ConsumerPartitionOffsets(
                 topic=topic,
@@ -161,7 +162,7 @@ def merge_partition_offsets(*partition_offsets):
     """
     output = dict()
     for partition_offset in partition_offsets:
-        for partition, offset in partition_offset.iteritems():
+        for partition, offset in six.iteritems(partition_offset):
             prev_offset = output.get(partition, None)
             output[partition] = max(prev_offset, offset)
     return output
