@@ -12,8 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
-
+import glob
 import logging
 import os
 from collections import namedtuple
@@ -21,12 +20,12 @@ from collections import namedtuple
 import yaml
 
 from kafka_tools.util.error import ConfigurationError
+from kafka_tools.util.error import InvalidConfigurationError
+from kafka_tools.util.error import MissingConfigurationError
 
 
-conf = None  # The content of the config file
-debug = False  # Set to true to print debug info
-
-DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/nail/etc/kafka_discovery'
+DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/etc/kafka_discovery'
+HOME_OVERRIDE = '.kafka_discovery'
 
 
 class ClusterConfig(
@@ -129,7 +128,7 @@ class TopologyConfiguration(object):
         if os.path.isfile(config_path):
             topology_config = load_yaml_config(config_path)
         else:
-            raise ConfigurationError(
+            raise MissingConfigurationError(
                 "Topology configuration {0} for cluster {1} "
                 "does not exist".format(
                     config_path,
@@ -142,7 +141,7 @@ class TopologyConfiguration(object):
             self.local_config = topology_config['local_config']
         except KeyError:
             self.log.exception("Invalid topology file")
-            raise ConfigurationError("Invalid topology file {0}".format(
+            raise InvalidConfigurationError("Invalid topology file {0}".format(
                 config_path))
 
     def get_all_clusters(self):
@@ -178,7 +177,7 @@ class TopologyConfiguration(object):
                     zookeeper=local_cluster['zookeeper'])
         except KeyError:
             self.log.exception("Invalid topology file")
-            raise ConfigurationError("Invalid topology file.")
+            raise InvalidConfigurationError("Invalid topology file")
 
     def __repr__(self):
         return ("TopologyConfig: cluster_type {0}, clusters: {1},"
@@ -187,6 +186,21 @@ class TopologyConfiguration(object):
                     self.clusters,
                     self.local_config
                 ))
+
+
+def get_conf_dirs():
+    config_dirs = []
+    if "KAFKA_DISCOVERY_DIR" in os.environ and os.environ["KAFKA_DISCOVERY_DIR"]:
+        config_dirs.append(os.environ["KAFKA_DISCOVERY_DIR"])
+    if os.environ["HOME"]:
+        home_config = os.path.join(
+            os.path.abspath(os.environ['HOME']),
+            HOME_OVERRIDE,
+        )
+        if os.path.isdir(home_config):
+            config_dirs.append(home_config)
+    config_dirs.append(DEFAULT_KAFKA_TOPOLOGY_BASE_PATH)
+    return config_dirs
 
 
 def get_cluster_config(
@@ -206,10 +220,24 @@ def get_cluster_config(
     :returns: the cluster
     :rtype: ClusterConfig
     """
-    if kafka_topology_base_path:
-        topology = TopologyConfiguration(cluster_type, kafka_topology_base_path)
+    if not kafka_topology_base_path:
+        config_dirs = get_conf_dirs()
     else:
-        topology = TopologyConfiguration(cluster_type)
+        config_dirs = [kafka_topology_base_path]
+
+    topology = None
+    for config_dir in config_dirs:
+        try:
+            topology = TopologyConfiguration(
+                cluster_type,
+                kafka_topology_base_path,
+            )
+        except MissingConfigurationError:
+            pass
+    if not topology:
+        raise MissingConfigurationError(
+            "No available configuration for type {0}".format(cluster_type),
+        )
 
     if cluster_name:
         return topology.get_cluster_by_name(cluster_name)
@@ -217,8 +245,31 @@ def get_cluster_config(
         return topology.get_local_cluster()
 
 
-def load(path):
-    global conf
-    with open(path, 'r') as config_file:
-        conf = yaml.load(config_file)
-    return conf
+def iter_configurations(kafka_topology_base_path=None):
+    """Cluster topology iterator.
+    Iterate over all the topologies available in config.
+    """
+    if not kafka_topology_base_path:
+        config_dirs = get_conf_dirs()
+    else:
+        config_dirs = [kafka_topology_base_path]
+
+    types = set()
+    for config_dir in config_dirs:
+        new_types = filter(
+            lambda x: x not in types,
+            map(
+                lambda x: os.path.basename(x)[:-5],
+                glob.glob('{0}/*.yaml'.format(config_dir)),
+            )
+        )
+        for cluster_type in new_types:
+            try:
+                topology = TopologyConfiguration(
+                    cluster_type,
+                    config_dir,
+                )
+            except ConfigurationError:
+                continue
+            types.add(cluster_type)
+            yield topology
