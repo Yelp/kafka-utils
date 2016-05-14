@@ -1,5 +1,5 @@
 Cluster Manager
-*********************
+***************
 This tool provides a set of commands to manipulate and modify the cluster topology
 and get metrics for different states of the cluster. These include balancing the
 cluster-state, decommissioning brokers, evaluating metrics for the current state of
@@ -82,10 +82,10 @@ Decommission-Brokers
 ====================
 This command provides functionality for decommissioning a given list of brokers. The key
 idea is to move all partitions from brokers that are going to be decommissioned to other
-brokers in their replication-group while keeping the cluster balanced as above.
+brokers in preferably their replication-group or others while keeping the cluster balanced as above.
 
 .. note:: While decommissioning brokers we need to ensure that we have at least 'n' number
-   of brokers per replication group where n is the max replication-factor of a partition.
+   of active brokers where n is the max replication-factor of a partition.
 
 .. code-block:: python
 
@@ -103,8 +103,7 @@ layers for the overall cluster, each broker and across each replication-group.
 
 Store assignments
 =================
-Display the current cluster-topology in valid json format.
-
+Dump the current cluster-topology in json format.
 
 Usage examples
 ==============
