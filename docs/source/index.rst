@@ -22,15 +22,14 @@ This tool provides the version information of the library and lists the cluster 
 Usage Examples
 --------------
 
-List of the version of tool.
-
-.. option::
-    kafka-tools -v
-
 List available clusters' configuration.
 
-.. option::
-    kafka-tools
+.. code-block:: bash
+    $ kafka-tools
+    Cluster type sample_type:
+        Cluster name: cluster-1
+        broker list: cluster-elb-1:9092
+        zookeeper: 11.11.11.111:2181,11.11.11.112:2181,11.11.11.113:2181/kafka-1
 
 
 .. _Kafka documentation: http://kafka.apache.org/documentation.html#introduction
