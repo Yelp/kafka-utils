@@ -6,7 +6,7 @@ A suite of tools to interact and manage Apache Kafka cluster.
 
 The cluster configuration is set-up by default from yaml files at /etc/kafka_discovery as <cluster-type>.yaml files
 
-Sample configuration for sample_type cluster at /nail/etc/kafka_discovery/sample_type.yaml
+Sample configuration for sample_type cluster at /etc/kafka_discovery/sample_type.yaml
 
 ```yaml
 ---

@@ -1,7 +1,4 @@
-Getting Started
-###############
-
-Kafka-cluster-manager
+Kafka-Cluster-Manager
 *********************
 This tool provides a set of commands to manipulate and modify the cluster topology
 and get metrics for different states of the cluster. These include balancing the
@@ -10,35 +7,50 @@ the cluster. Each of these commands is as described below.
 
 Rebalancing cluster
 ===================
-This command provides the functionality to re-distribute partitions across the cluster
-to bring it into a more balanced state. The goal is to load balance the cluster based
-on the distribution of the replicas across availability-zones (replication-groups or racks),
-distribution of partitions across the brokers, ingress-rate load on leaders. The
-imbalance-state of cluster has been characterized into 4 different layers :-
+This command provides the functionality to re-distribute partitions across the
+cluster to bring it into a more balanced state. The goal is to load balance the
+cluster based on the distribution of the replicas across replication-groups
+(availability-zones or racks), distribution of partitions and leaderships across
+brokers. The imbalance state of a cluster has been characterized into 4 different layers.
+
+.. note:: The tool is very conservative while rebalancing the cluster, ensuring
+    that large assignments are executed in smaller chunks, controlling the number of
+    partition movements and preferred-leader changes.
 
 Replica-distribution
 --------------------
-    -- Uniform distribution of replicas across availability-zones.
+    * Uniform distribution of replicas across availability-zones.
+
+    .. code-block:: bash
+
+      $ kafka-cluster-manager --cluster-type sample_type rebalance --replication-groups
 
 Partition distribution
 -----------------------
-    -- Uniform distribution of partitions across groups and brokers.
+    * Uniform distribution of partitions across groups and brokers.
+
+    .. code-block:: bash
+
+       $ kafka-cluster-manager --cluster-type sample_type rebalance --brokers
 
 Broker as leaders distribution
 ------------------------------
-    -- Some brokers might be elected as leaders for more partitions than others.
-    This creates load-imbalance for these brokers. Balancing this layer ensures
-    the uniform election of brokers as leaders.
+    * Some brokers might be elected as leaders for more partitions than others.
+      This creates load-imbalance for these brokers. Balancing this layer ensures
+      the uniform election of brokers as leaders.
 
-.. note:: The rebalancing of this layer doesn't move any partitions across brokers.
+      .. note:: The rebalancing of this layer doesn't move any partitions across brokers.
 
-It re-elects a new leader for the partitions to ensure that every broker is chosen
-as a leader uniformly. Also, we consider each partition equally, independently from
-the partition size/rate.
+      It re-elects a new leader for the partitions to ensure that every broker is chosen
+      as a leader uniformly. The tool does not take into account partition size.
+
+      .. code-block:: bash
+
+          $ kafka-cluster-manager --cluster-type sample_type rebalance --leaders
 
 Topic-partition distribution
 ----------------------------
-    -- Uniform distribution of partitions of the same topic across brokers.
+    * Uniform distribution of partitions of the same topic across brokers.
 
 The command provides the ability to balance one or more of these layers except for
 the topic-partition imbalance layer which will be balanced implicitly with replica or
@@ -87,30 +99,31 @@ Stats
 This command provides statistics for the current imbalance state of the cluster. It also
 provides imbalance statistics of the cluster if a given partition-assignment plan were
 to be applied to the cluster. The details include the imbalance value of each of the above
-layers for the overall cluster, each broker and across each availability-zone.
+layers for the overall cluster, each broker and across each replication-group.
 
 Store assignments
 =================
 Display the current cluster-topology in valid json format.
 
-Kafka-consumer-manager
-**********************
 
-This kafka tool provides the ability to view and manipulate consumer offsets for a specific
-consumer group. For a given cluster, this tool provides  us with the following functionalities:-
+Usage examples
+==============
 
-Manipulating consumer-groups
-============================
+Rebalancing all layers
+----------------------
 
-Listing consumer-groups subscribed to the cluster. Copying, deleting and renaming of the group.
+Rebalance all layers for given cluster. This command will generate a plan with a
+maximum of 10 partition movements and 25 leader-only changes after rebalancing
+the cluster for all layers discussed before prior to sending it to zookeeper.
 
-Manipulating offsets
-====================
-For a given consumer-group, fetching current offsets, low and high watermarks for topics and
-partitions subscribed to the group.
-Setting, advancing, rewinding, saving and restoring of current-offsets.
+.. code-block:: bash
+    $ kafka-cluster-manager --cluster-type <type> rebalance --replication-groups
+    --brokers --leaders  --apply --max-partition-movements 10 --max-leader-changes 25
 
-Manipulating topics
-===================
 
-For a given consumer-group and cluster, listing and unsubscribing topics.
+Imbalance Statistics
+--------------------
+Get imbalance statistics of the current cluster-state.
+
+.. code-block:: bash
+    kafka-cluster-manager --cluster-type sample_type stats
