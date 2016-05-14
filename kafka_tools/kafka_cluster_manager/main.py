@@ -13,13 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
 import ConfigParser
+import importlib
+import inspect
 import logging
+import os
+import sys
 from logging.config import fileConfig
 
+from kafka_tools.kafka_cluster_manager.cluster_info.replication_group_parser \
+    import DefaultReplicationGroupParser
+from kafka_tools.kafka_cluster_manager.cluster_info.replication_group_parser \
+    import ReplicationGroupParser
 from kafka_tools.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 from kafka_tools.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 from kafka_tools.kafka_cluster_manager.cmds.replace import ReplaceBrokerCmd
@@ -29,6 +38,28 @@ from kafka_tools.util import config
 
 
 _log = logging.getLogger()
+
+
+def dynamic_import_group_parser(module_full_name):
+    try:
+        path, module_name = module_full_name.rsplit(':', 1)
+    except ValueError:
+        print(
+            "{0} is not a valid parser module".format(module_full_name),
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if not os.path.isdir(path):
+        print("{0} is not a valid directory".format(path), file=sys.stderr)
+        sys.exit(1)
+
+    sys.path.append(path)
+    module = importlib.import_module(module_name)
+    for class_name, class_type in inspect.getmembers(module, inspect.isclass):
+        if (issubclass(class_type, ReplicationGroupParser) and
+                class_type is not ReplicationGroupParser):
+            return class_type()
 
 
 def parse_args():
@@ -79,6 +110,13 @@ def parse_args():
         help='Write the partition reassignment plan '
              'to a json file.',
     )
+    parser.add_argument(
+        '--group-parser',
+        type=str,
+        help='Module containing an implementation of ReplicationGroupParser.'
+        'The module should be specified as path_to_include_to_py_path:module.'
+        'Ex: /my/module/path:module.parser',
+    )
 
     subparsers = parser.add_subparsers()
     RebalanceCmd().add_subparser(subparsers)
@@ -105,7 +143,6 @@ def configure_logging(log_conf=None):
 
 
 def run():
-    """Verify command-line arguments and run reassignment functionalities."""
     args = parse_args()
 
     configure_logging(args.logconf)
@@ -115,4 +152,9 @@ def run():
         args.cluster_name,
         args.discovery_base_path,
     )
-    args.command(cluster_config, args)
+    if args.group_parser:
+        rg_parser = dynamic_import_group_parser(args.group_parser)
+    else:
+        rg_parser = DefaultReplicationGroupParser()
+
+    args.command(cluster_config, rg_parser, args)

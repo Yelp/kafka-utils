@@ -20,8 +20,6 @@ from collections import defaultdict
 
 from kafka_tools.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
-from kafka_tools.kafka_cluster_manager. \
-    replication_group.yelp_group import extract_yelp_replication_group
 from kafka_tools.util.validation import assignment_to_plan
 from kafka_tools.util.zookeeper import ZK
 
@@ -53,7 +51,7 @@ class ClusterManagerCmd(object):
         """
         raise NotImplementedError("Implement in subclass")
 
-    def run(self, cluster_config, args):
+    def run(self, cluster_config, rg_parser, args):
         self.cluster_config = cluster_config
         self.args = args
         with ZK(self.cluster_config) as self.zk:
@@ -65,7 +63,11 @@ class ClusterManagerCmd(object):
             )
             brokers = self.zk.get_brokers()
             assignment = self.zk.get_cluster_assignment()
-            ct = ClusterTopology(assignment, brokers, extract_yelp_replication_group)
+            ct = ClusterTopology(
+                assignment,
+                brokers,
+                rg_parser.get_replication_group,
+            )
             self.run_command(ct)
 
     def add_subparser(self, subparsers):
