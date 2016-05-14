@@ -18,7 +18,7 @@ import logging
 class Broker(object):
     """Represent a Kafka broker.
     A broker object contains as attributes the broker id, metadata
-    (content of the broker zookeeper node), partitions and replication group.
+    (content of the broker node in zookeeper), partitions and replication group.
     """
 
     log = logging.getLogger(__name__)
@@ -36,9 +36,13 @@ class Broker(object):
         return self._metadata
 
     def mark_decommissioned(self):
+        """Mark a broker as decommissioned. Decommissioned brokers can still
+        have partitions assigned.
+        """
         self._decommissioned = True
 
     def mark_inactive(self):
+        """Mark a broker as inactive. Inactive brokers may not have metadata."""
         self._inactive = True
 
     @property

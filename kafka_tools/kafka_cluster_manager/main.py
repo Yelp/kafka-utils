@@ -33,7 +33,8 @@ from kafka_tools.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 from kafka_tools.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 from kafka_tools.kafka_cluster_manager.cmds.replace import ReplaceBrokerCmd
 from kafka_tools.kafka_cluster_manager.cmds.stats import StatsCmd
-from kafka_tools.kafka_cluster_manager.cmds.store_assignments import StoreAssignmentsCmd
+from kafka_tools.kafka_cluster_manager.cmds.store_assignments \
+    import StoreAssignmentsCmd
 from kafka_tools.util import config
 
 
@@ -66,19 +67,19 @@ def parse_args():
     """Parse the arguments."""
     parser = argparse.ArgumentParser(
         description='Manage and describe partition layout over brokers of'
-        ' a cluster',
+        ' a cluster.',
     )
     parser.add_argument(
         '--cluster-type',
         dest='cluster_type',
-        help='Type of cluster',
+        help='Type of the cluster.',
         type=str,
         required=True,
     )
     parser.add_argument(
         '--cluster-name',
         dest='cluster_name',
-        help='Name of the cluster (Default to local cluster)',
+        help='Name of the cluster (Default to local cluster).',
     )
     parser.add_argument(
         '--discovery-base-path',
@@ -115,7 +116,9 @@ def parse_args():
         type=str,
         help='Module containing an implementation of ReplicationGroupParser.'
         'The module should be specified as path_to_include_to_py_path:module.'
-        'Ex: /my/module/path:module.parser',
+        'Ex: "/module/path:module.parser".'
+        'If not specified the default replication group parser will create '
+        'only one group for all brokers.',
     )
 
     subparsers = parser.add_subparsers()
