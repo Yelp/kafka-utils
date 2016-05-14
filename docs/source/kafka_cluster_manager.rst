@@ -14,7 +14,7 @@ cluster based on the distribution of the replicas across replication-groups
 brokers. The imbalance state of a cluster has been characterized into 4 different layers.
 
 .. note:: The tool is very conservative while rebalancing the cluster, ensuring
-    that assignment is sent to zookeeper in chunks, controlling the number of
+    that large assignments are executed in smaller chunks, controlling the number of
     partition movements and preferred-leader changes.
 
 Replica-distribution
@@ -42,8 +42,7 @@ Broker as leaders distribution
       .. note:: The rebalancing of this layer doesn't move any partitions across brokers.
 
       It re-elects a new leader for the partitions to ensure that every broker is chosen
-      as a leader uniformly. Also, we consider each partition equally, independently from
-      the partition size/rate.
+      as a leader uniformly. The tool does not take into account partition size.
 
       .. code-block:: bash
 
