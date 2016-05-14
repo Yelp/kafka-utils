@@ -39,6 +39,13 @@ Setup the sample_type.yaml as discussed above for cluster configuration.
 
 ```shell
     $ kafka-tools
+    Cluster type sample_type:
+        Cluster name: cluster-1
+        broker list: cluster-elb-1:9092
+        zookeeper: 11.11.11.111:2181,11.11.11.112:2181,11.11.11.113:2181/kafka-1
+        Cluster name: cluster-2
+        broker list: cluster-elb-2:9092
+        zookeeper: 11.11.11.211:2181,11.11.11.212:2181,11.11.11.213:2181/kafka-2
 ```
 
 * Rebalance cluster cluster1 of type sample_cluster
