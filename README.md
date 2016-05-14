@@ -1,7 +1,7 @@
 # Kafka-Tools
 
 A suite of python tools to interact and manage Apache Kafka clusters.
-Kafka-Tools currently runs on python2.7. 
+Kafka-Tools currently runs on python2.7.
 
 ## Configuration
 
