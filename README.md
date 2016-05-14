@@ -31,7 +31,7 @@ Broker as leaders distribution
 Configuration of kafka-clusters
 -------------------------------
 
-The cluster configuration is set-up by default from yaml files at /nail/etc/kafka_discovery as <cluster-type>.yaml files
+The cluster configuration is set-up by default from yaml files at /etc/kafka_discovery as <cluster-type>.yaml files
 
 Sample configuration for scribe cluster at /nail/etc/kafka_discovery/scribe.yaml
 
