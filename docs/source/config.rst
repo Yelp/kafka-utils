@@ -12,11 +12,11 @@ Sample configuration for sample_type cluster can be found at /etc/kafka_discover
       clusters:
         cluster-1:
           broker_list:
-            - "broker_list-1:9092"
+            - "cluster-elb-1:9092"
           zookeeper: "11.11.11.111:2181,11.11.11.112:2181,11.11.11.113:2181/kafka-1"
         cluster-2:
           broker_list:
-            - "broker_list-2:9092"
+            - "cluster-elb-2:9092"
           zookeeper: "11.11.11.211:2181,11.11.11.212:2181,11.11.11.213:2181/kafka-2"
       local_config:
         cluster: cluster-1

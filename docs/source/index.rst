@@ -5,12 +5,15 @@ Description
 ***********
 Kafka-Tools is a library containing tools to interact with kafka clusters and manage them. The tool provides utilities
 like listing of all the clusters, balancing the partition distribution across brokers and replication-groups, managing
-consumer groups, rolling-restarts of the cluster, checking of min-isr status of cluster partitions.
+consumer groups, rolling-restart of the cluster, cluster healthchecks.
 
 For more information about Apache Kafka see the official `Kafka documentation`_.
 
 How to install
 **************
+.. code-block:: bash
+
+    $ pip install kafka-tools
 
 Kafka-tools
 ***********
@@ -24,7 +27,7 @@ List of the version of tool.
 .. option::
     kafka-tools -v
 
-List available clusters configuration data.
+List available clusters' configuration.
 
 .. option::
     kafka-tools
