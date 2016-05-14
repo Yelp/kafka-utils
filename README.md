@@ -35,15 +35,22 @@ From PyPI:
 
 Setup the sample_type.yaml as discussed above for cluster configuration.
 
-
-* Rebalance all layers of sample_type cluster
+* List all clusters
 
 ```shell
-    $ kafka-cluster-manager --cluster-type sample_type rebalance --replication-groups --brokers --leaders  --apply
+    $ kafka-tools
 ```
 
-* Get imbalance statistics of the current cluster-state
+* Rebalance cluster cluster1 of type sample_cluster
 
 ```shell
-    $ kafka-cluster-manager --cluster-type sample_type --cluster-name cluster-2 stats
+    $ kafka-cluster-manager --cluster-type --cluster-name cluster1 sample_type
+    --apply rebalance --brokers --leaders --max-partition-movements 10
+    --max-leader-changes 15
+```
+
+* Rolling-restart a cluster
+
+```shell
+    $ kafka-rolling-restart --cluster-type sample_type
 ```
