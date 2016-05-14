@@ -46,7 +46,8 @@ class ListGroups(OffsetManagerBase):
             add_help=False,
         )
         parser_list_groups.add_argument(
-            '--storage', choices=['zookeeper', 'kafka', 'dual'],
+            '--storage',
+            choices=['zookeeper', 'kafka', 'dual'],
             help="String describing where to fetch the committed offsets.",
             default='dual'
         )
@@ -94,12 +95,12 @@ class ListGroups(OffsetManagerBase):
     def run(cls, args, cluster_config):
         groups = set()
 
-        if args.storage in ['dual', 'zookeeper']:
+        if args.storage in ('dual', 'zookeeper'):
             zk_groups = cls.get_zookeeper_groups(cluster_config)
             if zk_groups:
                 groups.update(zk_groups)
 
-        if args.storage in ['dual', 'kafka']:
+        if args.storage in ('dual', 'kafka'):
             kafka_groups = cls.get_kafka_groups(cluster_config)
             if kafka_groups:
                 groups.update(kafka_groups)
