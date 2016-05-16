@@ -1,10 +1,13 @@
 Configuration
 #############
 
-The cluster configuration is set up by default from yaml files located at /etc/kafka_discovery.
-The naming convention of the yaml files is <cluster-type>.yaml.
+Kafka-Tools reads the cluster configuration needed to access Kafka clusters from yaml files.
+Each cluster is identified by *type* and *name*.
+Multiple clusters of the same type should be listed in the same `type.yaml` file.
+The yaml files are read from :code:`$KAFKA_DISCOVERY_DIR`, :code:`$HOME/.kafka_discovery` and :code:`/etc/kafka_discovery`,
+the former overrides the latter.
 
-Sample configuration for sample_type cluster can be found at /etc/kafka_discovery/sample_type.yaml
+Sample configuration for :code:`sample_type` cluster at :code:`/etc/kafka_discovery/sample_type.yaml`
 
 .. code-block:: yaml
 
@@ -21,12 +24,11 @@ Sample configuration for sample_type cluster can be found at /etc/kafka_discover
       local_config:
         cluster: cluster-1
 
-For example the kafka-cluster-manager command :-
+For example the kafka-cluster-manager command:
 
-.. option::
-    kafka-cluster-manager --cluster-type sample_type stats
+.. code:: bash
+
+    $ kafka-cluster-manager --cluster-type sample_type stats
 
 will pick up default cluster `cluster-1` from the local_config at /etc/kafka_discovery/sample_type.yaml to display
 statistics of default kafka-configuration.
-
-.. note:: For kafka-cluster-manager the path can be overridden with --discovery-base-path param
