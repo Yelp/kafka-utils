@@ -45,6 +45,7 @@ setup(
         "scripts/kafka-cluster-manager",
         "scripts/kafka-rolling-restart",
         "scripts/kafka-tools",
+        "scripts/kafka-check",
     ],
     install_requires=[
         "kazoo>=2.0.post2,<3.0.0",

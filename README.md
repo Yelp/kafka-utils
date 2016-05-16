@@ -61,3 +61,8 @@ Setup the sample_type.yaml as discussed above for cluster configuration.
 ```shell
     $ kafka-rolling-restart --cluster-type sample_type
 ```
+
+* Check in-sync replicas for each topic-partition in the cluster with configuration for that topic in Zookeeper or default min.isr param if it is specified and there is no settings in Zookeeper for partition.
+```shell
+    $ kafka-check --cluster-type sample_type min_isr
+```
