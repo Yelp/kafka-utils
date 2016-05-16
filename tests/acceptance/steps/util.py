@@ -48,6 +48,21 @@ def create_topic(topic_name, replication_factor, partitions):
     time.sleep(1)
 
 
+def list_topics():
+    cmd = ['kafka-topics.sh', '--list',
+           '--zookeeper', ZOOKEEPER_URL]
+
+    return call_cmd(cmd)
+
+
+def delete_topic(topic_name):
+    cmd = ['kafka-topics.sh', '--delete',
+           '--zookeeper', ZOOKEEPER_URL,
+           '--topic', topic_name]
+
+    return call_cmd(cmd)
+
+
 def call_cmd(cmd):
     output = ''
     try:
