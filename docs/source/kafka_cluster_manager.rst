@@ -124,9 +124,9 @@ the cluster for all layers discussed before prior to sending it to zookeeper.
     --cluster-type sample_type rebalance --replication-groups --brokers --leaders
     --max-partition-movements 10 --max-leader-changes 25
 
-Brokers decommission
-====================
-This command provides functionality for decommissioning a given list of brokers. The key
+Brokers decommissioning
+=======================
+This command provides functionalities to decommission a given list of brokers. The key
 idea is to move all partitions from brokers that are going to be decommissioned to other
 brokers in either their replication group (preferred) or others replication groups
 while keeping the cluster balanced as above.
