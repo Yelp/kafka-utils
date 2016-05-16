@@ -1,10 +1,5 @@
 Feature: kafka_check
 
-  Scenario: Calling the min_isr command on empty cluster
-     Given we have an existing kafka cluster
-      when we call the min_isr command
-      then OK will be printed
-
   Scenario: Calling the min_isr command on a cluster with isr greater or equal to min.isr for each topic
      Given we have an existing kafka cluster with a topic
       when we change min.isr settings for a topic to 1

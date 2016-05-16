@@ -50,8 +50,3 @@ def step_impl3(context):
 @given(u'we have initialized kafka offsets storage')
 def step_impl4(context):
     initialize_kafka_offsets_topic()
-
-
-@given(u'we have an existing kafka cluster')
-def step_impl5(context):
-    pass
