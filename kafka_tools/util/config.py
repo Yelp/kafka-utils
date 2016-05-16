@@ -230,7 +230,7 @@ def get_cluster_config(
         try:
             topology = TopologyConfiguration(
                 cluster_type,
-                kafka_topology_base_path,
+                config_dir,
             )
         except MissingConfigurationError:
             pass
