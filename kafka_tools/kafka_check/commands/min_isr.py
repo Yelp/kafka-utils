@@ -53,8 +53,7 @@ class MinIsrCmd(KafkaCheckCmd):
         not_in_sync = 0
 
         for name, topic_data in topics.items():
-            zk_min_isr = self.get_min_isr(name)
-            min_isr = zk_min_isr or self.args.default_min_isr
+            min_isr = self.get_min_isr(name) or self.args.default_min_isr
             if min_isr is None:
                 continue
             for p_id, partition in topic_data['partitions'].items():

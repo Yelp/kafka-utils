@@ -49,15 +49,13 @@ def parse_args():
         "--cluster-type",
         dest='cluster_type',
         required=True,
-        help='Type of cluster (Required; examples: ["datapipe", "scribe",'
-        ' "standard", "spam"])',
+        help='Type of cluster',
         default=None,
     )
     parser.add_argument(
         "--cluster-name",
         dest='cluster_name',
-        help="Name of the cluster (example: uswest1-devc;"
-        " Default to local cluster).",
+        help='Name of the cluster',
     )
     parser.add_argument(
         '--discovery-base-path',
