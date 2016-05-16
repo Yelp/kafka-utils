@@ -53,11 +53,11 @@ def run():
     args = parse_args()
 
     for config in iter_configurations(args.discovery_base_path):
-        print("Cluster type {type}:".format(type=config.cluster_type))
+        print("cluster-type {type}:".format(type=config.cluster_type))
         for cluster in config.get_all_clusters():
             print(
-                "\tCluster name: {name}\n"
-                "\tbroker list: {b_list}\n"
+                "\tcluster-name: {name}\n"
+                "\tbroker-list: {b_list}\n"
                 "\tzookeeper: {zk}".format(
                     name=cluster.name,
                     b_list=", ".join(cluster.broker_list),
