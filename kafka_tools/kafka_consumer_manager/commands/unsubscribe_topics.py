@@ -21,6 +21,9 @@ from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
 from .offset_manager import OffsetWriter
+from kafka_tools.util.offsets import get_current_consumer_offsets
+from kafka_tools.util.offsets import nullify_offsets
+from kafka_tools.util.offsets import set_consumer_offsets
 from kafka_tools.util.zookeeper import ZK
 
 
@@ -54,6 +57,11 @@ class UnsubscribeTopics(OffsetWriter):
             "partitions are specified, all partitions within the topic shall "
             "be deleted."
         )
+        parser_unsubscribe_topics.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing where to store the committed offsets.",
+            default='zookeeper'
+        )
         parser_unsubscribe_topics.set_defaults(command=cls.run)
 
     @classmethod
@@ -66,23 +74,68 @@ class UnsubscribeTopics(OffsetWriter):
             args.groupid, args.topic, args.partitions, cluster_config, client
         )
         with ZK(cluster_config) as zk:
-            if args.topic and args.partitions:
-                cls.unsubscribe_partitions(
-                    zk,
-                    args.groupid,
-                    args.topic,
-                    args.partitions,
-                )
-            elif args.topic:
-                zk.delete_topic(args.groupid, args.topic)
+            if args.storage == 'zookeeper':
+                unsubscriber = ZookeeperUnsubscriber(zk)
+            elif args.storage == 'kafka':
+                unsubscriber = KafkaUnsubscriber(client)
             else:
-                for topic, partitions in topics_dict.iteritems():
-                    zk.delete_topic(args.groupid, topic)
+                print(
+                    "Invalid storage option: {}".format(args.storage),
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
-    @classmethod
-    def unsubscribe_partitions(cls, zk, groupid, topic, partitions):
+            unsubscriber.unsubscribe_topic(
+                args.groupid,
+                args.topic,
+                args.partitions,
+                topics_dict,
+            )
+
+
+class TopicUnsubscriber(object):
+    """Base class used to unsubscribe consumer groups from
+    topic partitions stored using different offset storage.
+    """
+
+    def unsubscribe_topic(self, group, topic, partitions, topics_dict):
+        # If the topic and partitions are both specified,
+        # then unsubscribe the group from the individual partitions
+
+        # If only the topic is specified, the unsubscribe the group
+        # from all the partitions of the topic.
+
+        # If neither the topic nor partitions are specified, then
+        # unsubscribe the group from all of the topics and partitions
+        # that are found in the topics_dict that was preprocessed.
+        print('unsubscribing_topic...', file=sys.stderr)
+        if topic and partitions:
+            self.unsubscribe_partitions(group, topic, partitions)
+        elif topic:
+            self.delete_topic(group, topic)
+        else:
+            for topic, partitions in topics_dict.iteritems():
+                self.delete_topic(group, topic)
+
+    def unsubscribe_partitions(self, group, topic, partitions):
+        raise NotImplementedError()
+
+    def delete_topic(self, group, topic):
+        raise NotImplementedError()
+
+
+class ZookeeperUnsubscriber(TopicUnsubscriber):
+    """Class used to unsubscribe consumer groups using
+    offset storage in Zookeeper.
+    """
+
+    def __init__(self, zk):
+        self.zk = zk
+
+    def unsubscribe_partitions(self, group, topic, partitions):
+        print('unsubscribing_partitions...', file=sys.stderr)
         try:
-            zk.delete_topic_partitions(groupid, topic, partitions)
+            self.zk.delete_topic_partitions(group, topic, partitions)
         except NoNodeError:
             print(
                 "WARNING: No node found for topic {}, partition {}".format(
@@ -91,5 +144,45 @@ class UnsubscribeTopics(OffsetWriter):
                 ),
                 file=sys.stderr,
             )
-        if not zk.get_my_subscribed_partitions(groupid, topic):
-            zk.delete_topic(groupid, topic)
+        if not self.zk.get_my_subscribed_partitions(group, topic):
+            self.zk.delete_topic(group, topic)
+
+    def delete_topic(self, group, topic):
+        self.zk.delete_topic(group, topic)
+
+
+class KafkaUnsubscriber(TopicUnsubscriber):
+    """Class used to unsubscribe consumer groups using
+    offset storage in Kafka.
+    """
+
+    def __init__(self, client):
+        self.client = client
+
+    def unsubscribe_partitions(self, group, topic, partitions):
+        offsets = {
+            topic: {
+                partition: 0
+                for partition in partitions
+            }
+        }
+        set_consumer_offsets(
+            self.client,
+            group,
+            nullify_offsets(offsets),
+            offset_storage='kafka',
+        )
+
+    def delete_topic(self, group, topic):
+        offsets = get_current_consumer_offsets(
+            self.client,
+            group,
+            [topic],
+            offset_storage='kafka',
+        )
+        set_consumer_offsets(
+            self.client,
+            group,
+            nullify_offsets(offsets),
+            offset_storage='kafka',
+        )

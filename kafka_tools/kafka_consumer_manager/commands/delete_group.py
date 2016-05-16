@@ -78,6 +78,7 @@ class DeleteGroup(OffsetWriter):
         offsets = get_current_consumer_offsets(
             client,
             group,
+            [],
             offset_storage='kafka',
         )
         set_consumer_offsets(

@@ -12,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import contextlib
-
 import mock
 import pytest
 from kazoo.exceptions import ZookeeperError
@@ -22,45 +20,84 @@ from kafka_tools.kafka_consumer_manager.commands. \
     delete_group import DeleteGroup
 
 
-@mock.patch('kafka_tools.kafka_consumer_manager.'
-            'commands.delete_group.KafkaClient')
 class TestDeleteGroup(object):
 
-    @contextlib.contextmanager
-    def mock_kafka_info(self):
+    @pytest.yield_fixture
+    def client(self):
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
-            'commands.delete_group.ZK',
-            autospec=True
-        ) as mock_ZK:
-            mock_ZK.return_value.__enter__.return_value = mock_ZK.return_value
-            yield mock_ZK
+                'kafka_tools.kafka_consumer_manager.'
+                'commands.delete_group.KafkaClient',
+                autospec=True,
+        ) as mock_client:
+            yield mock_client
 
-    def test_run_wipe_delete_group(self, mock_client):
-        with self.mock_kafka_info() as mock_ZK:
-            args = mock.Mock(
-                groupid="some_group",
-                storage="zookeeper",
-            )
-            cluster_config = mock.Mock(zookeeper='some_ip')
+    @pytest.yield_fixture
+    def zk(self):
+        with mock.patch(
+                'kafka_tools.kafka_consumer_manager.'
+                'commands.delete_group.ZK',
+                autospec=True
+        ) as mock_zk:
+            mock_zk.return_value.__enter__.return_value = mock_zk.return_value
+            yield mock_zk
 
+    def test_run_wipe_delete_group(self, client, zk):
+        args = mock.Mock(
+            groupid="some_group",
+            storage="zookeeper",
+        )
+        cluster_config = mock.Mock(zookeeper='some_ip')
+
+        DeleteGroup.run(args, cluster_config)
+
+        obj = zk.return_value
+        assert obj.delete_group.call_args_list == [
+            mock.call(args.groupid),
+        ]
+
+    def test_run_wipe_delete_group_error(self, client, zk):
+        obj = zk.return_value.__enter__.return_value
+        obj.__exit__.return_value = False
+        obj.delete_group.side_effect = ZookeeperError("Boom!")
+        args = mock.Mock(
+            groupid="some_group",
+            storage="zookeeper",
+        )
+        cluster_config = mock.Mock(zookeeper='some_ip')
+
+        with pytest.raises(ZookeeperError):
             DeleteGroup.run(args, cluster_config)
 
-            obj = mock_ZK.return_value
-            assert obj.delete_group.call_args_list == [
-                mock.call(args.groupid),
+    def test_delete_topic_kafka_storage(self, client):
+        offsets = {
+            'topic1': {0: 100}
+        }
+
+        new_offsets = {
+            'topic1': {0: -1}
+        }
+
+        with mock.patch(
+                'kafka_tools.kafka_consumer_manager.'
+                'commands.delete_group.get_current_consumer_offsets',
+                autospec=True,
+                return_value=offsets,
+        ) as mock_get, mock.patch(
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.delete_group.set_consumer_offsets',
+            autospec=True,
+        ) as mock_set:
+
+            DeleteGroup.delete_group_kafka(client, 'some_group')
+
+            assert mock_get.call_count == 1
+            assert mock_set.call_count == 1
+
+            assert mock_set.call_args_list == [
+                mock.call(
+                    client,
+                    'some_group',
+                    new_offsets,
+                    offset_storage='kafka',
+                ),
             ]
-
-    def test_run_wipe_delete_group_error(self, mock_client):
-        with self.mock_kafka_info() as mock_ZK:
-            obj = mock_ZK.return_value.__enter__.return_value
-            obj.__exit__.return_value = False
-            obj.delete_group.side_effect = ZookeeperError("Boom!")
-            args = mock.Mock(
-                groupid="some_group",
-                storage="zookeeper",
-            )
-            cluster_config = mock.Mock(zookeeper='some_ip')
-
-            with pytest.raises(ZookeeperError):
-                DeleteGroup.run(args, cluster_config)
