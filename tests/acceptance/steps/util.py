@@ -89,6 +89,10 @@ def create_random_topic(replication_factor, partitions, topic_name=None):
     return topic_name
 
 
+def create_random_group_id():
+    return str(uuid.uuid1())
+
+
 def produce_example_msg(topic, num_messages=1):
     kafka = KafkaToolClient(KAFKA_URL)
     producer = SimpleProducer(kafka)
