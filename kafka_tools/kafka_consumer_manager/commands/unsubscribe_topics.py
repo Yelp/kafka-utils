@@ -108,7 +108,6 @@ class TopicUnsubscriber(object):
         # If neither the topic nor partitions are specified, then
         # unsubscribe the group from all of the topics and partitions
         # that are found in the topics_dict that was preprocessed.
-        print('unsubscribing_topic...', file=sys.stderr)
         if topic and partitions:
             self.unsubscribe_partitions(group, topic, partitions)
         elif topic:
@@ -133,7 +132,6 @@ class ZookeeperUnsubscriber(TopicUnsubscriber):
         self.zk = zk
 
     def unsubscribe_partitions(self, group, topic, partitions):
-        print('unsubscribing_partitions...', file=sys.stderr)
         try:
             self.zk.delete_topic_partitions(group, topic, partitions)
         except NoNodeError:
