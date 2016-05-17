@@ -18,9 +18,9 @@ from collections import defaultdict
 import mock
 import pytest
 
-from kafka_tools.kafka_consumer_manager. \
+from kafka_utils.kafka_consumer_manager. \
     commands.offset_set import OffsetSet
-from kafka_tools.util.error import OffsetCommitError
+from kafka_utils.util.error import OffsetCommitError
 
 
 class TestOffsetSet(object):
@@ -54,7 +54,7 @@ class TestOffsetSet(object):
             mock_exit.assert_called_once_with(1)
 
     @mock.patch(
-        'kafka_tools.kafka_consumer_manager.'
+        'kafka_utils.kafka_consumer_manager.'
         'commands.offset_set.KafkaToolClient',
         autospec=True,
     )
@@ -76,7 +76,7 @@ class TestOffsetSet(object):
             'get_topics_from_consumer_group_id',
             spec=OffsetSet.get_topics_from_consumer_group_id,
         ), mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.offset_set.set_consumer_offsets",
             return_value=[],
             autospec=True
@@ -97,7 +97,7 @@ class TestOffsetSet(object):
             assert ordered_args[2] == OffsetSet.new_offsets_dict
 
     @mock.patch(
-        'kafka_tools.kafka_consumer_manager.'
+        'kafka_utils.kafka_consumer_manager.'
         'commands.offset_set.KafkaToolClient',
         autospec=True,
     )
@@ -117,7 +117,7 @@ class TestOffsetSet(object):
             'get_topics_from_consumer_group_id',
             spec=OffsetSet.get_topics_from_consumer_group_id,
         ), mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.offset_set.set_consumer_offsets",
             return_value=[
                 OffsetCommitError("topic1", 1, "my_error 1"),
@@ -146,7 +146,7 @@ class TestOffsetSet(object):
             mock_exit.assert_called_with(1)
 
     @mock.patch(
-        'kafka_tools.kafka_consumer_manager.'
+        'kafka_utils.kafka_consumer_manager.'
         'commands.offset_set.KafkaToolClient',
         autospec=True,
     )

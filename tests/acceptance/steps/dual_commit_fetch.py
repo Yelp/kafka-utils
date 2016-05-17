@@ -17,9 +17,9 @@ from behave import when
 
 from .util import create_random_group_id
 from .util import get_cluster_config
-from kafka_tools.util.client import KafkaToolClient
-from kafka_tools.util.monitoring import get_current_offsets
-from kafka_tools.util.offsets import set_consumer_offsets
+from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.monitoring import get_current_offsets
+from kafka_utils.util.offsets import set_consumer_offsets
 
 
 TEST_OFFSET = 56

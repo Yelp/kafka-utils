@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from kafka_tools.kafka_cluster_manager.cluster_info.broker import Broker
-from kafka_tools.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_utils.kafka_cluster_manager.cluster_info.broker import Broker
+from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 
 
 def create_broker(broker_id, partitions):

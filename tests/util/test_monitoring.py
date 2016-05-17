@@ -19,12 +19,12 @@ from kafka.common import KafkaUnavailableError
 from test_offsets import MyKafkaToolClient
 from test_offsets import TestOffsetsBase
 
-from kafka_tools.util.error import UnknownPartitions
-from kafka_tools.util.error import UnknownTopic
-from kafka_tools.util.monitoring import ConsumerPartitionOffsets
-from kafka_tools.util.monitoring import get_consumer_offsets_metadata
-from kafka_tools.util.monitoring import merge_offsets_metadata
-from kafka_tools.util.monitoring import merge_partition_offsets
+from kafka_utils.util.error import UnknownPartitions
+from kafka_utils.util.error import UnknownTopic
+from kafka_utils.util.monitoring import ConsumerPartitionOffsets
+from kafka_utils.util.monitoring import get_consumer_offsets_metadata
+from kafka_utils.util.monitoring import merge_offsets_metadata
+from kafka_utils.util.monitoring import merge_partition_offsets
 
 
 class TestMonitoring(TestOffsetsBase):

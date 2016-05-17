@@ -15,10 +15,10 @@
 import mock
 import pytest
 
-from kafka_tools.kafka_consumer_manager. \
+from kafka_utils.kafka_consumer_manager. \
     commands.offset_restore import OffsetRestore
-from kafka_tools.util.client import KafkaToolClient
-from kafka_tools.util.monitoring import ConsumerPartitionOffsets
+from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.monitoring import ConsumerPartitionOffsets
 
 
 class TestOffsetRestore(object):
@@ -53,7 +53,7 @@ class TestOffsetRestore(object):
 
     def test_restore_offsets_zk(self, mock_kafka_client):
         with mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.offset_restore.set_consumer_offsets",
             return_value=[],
             autospec=True,
@@ -63,7 +63,7 @@ class TestOffsetRestore(object):
             spec=OffsetRestore.parse_consumer_offsets,
             return_value=self.parsed_consumer_offsets,
         ), mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.offset_restore.get_consumer_offsets_metadata",
             return_value=self.consumer_offsets_metadata,
             autospec=True,

@@ -31,7 +31,7 @@ Sample configuration for `sample_type` cluster at `/etc/kafka_discovery/sample_t
 
 From PyPI:
 ```shell
-    $ pip install kafka-tools
+    $ pip install kafka-utils
 ```
 
 
@@ -40,7 +40,7 @@ From PyPI:
 ### List all clusters
 
 ```shell
-    $ kafka-tools
+    $ kafka-utils
     cluster-type sample_type:
         cluster-name: cluster-1
         broker-list: cluster-elb-1:9092
@@ -78,7 +78,7 @@ From PyPI:
 
 ## Documentation
 
-Read the documentation at [Read the Docs](http://kafka-tools.readthedocs.io/en/latest/).
+Read the documentation at [Read the Docs](http://kafka-utils.readthedocs.io/en/latest/).
 
 ## License
 
@@ -87,4 +87,4 @@ Kafka-Tools is licensed under the Apache License, Version 2.0: http://www.apache
 ## Contributing
 
 Everyone is encouraged to contribute to Kafka-Tools by forking the
-[Github repository](http://github.com/Yelp/kafka-tools) and making a pull request or opening an issue.
+[Github repository](http://github.com/Yelp/kafka-utils) and making a pull request or opening an issue.

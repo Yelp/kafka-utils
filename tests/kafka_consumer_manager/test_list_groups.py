@@ -18,7 +18,7 @@ import sys
 import mock
 from kazoo.exceptions import NoNodeError
 
-from kafka_tools.kafka_consumer_manager. \
+from kafka_utils.kafka_consumer_manager. \
     commands.list_groups import ListGroups
 
 
@@ -27,11 +27,11 @@ class TestListGroups(object):
     @contextlib.contextmanager
     def mock_kafka_info(self):
         with mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.list_groups.ZK",
             autospec=True
         ) as mock_ZK, mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.list_groups.KafkaGroupReader",
             autospec=True
         ) as mock_kafka_reader:
@@ -51,7 +51,7 @@ class TestListGroups(object):
             assert ListGroups.get_zookeeper_groups(cluster_config) == expected_groups
             assert obj.get_children.call_count == 1
 
-    @mock.patch("kafka_tools.kafka_consumer_manager.commands.list_groups.print", create=True)
+    @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_get_zookeeper_groups_error(self, mock_print):
         with self.mock_kafka_info() as (mock_ZK, _):
             obj = mock_ZK.return_value.__enter__.return_value
@@ -82,7 +82,7 @@ class TestListGroups(object):
             assert result == expected_groups.keys()
             assert m.read_groups.call_count == 1
 
-    @mock.patch("kafka_tools.kafka_consumer_manager.commands.list_groups.print", create=True)
+    @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_get_kafka_groups_error(self, mock_print):
         with self.mock_kafka_info() as (_, mock_kafka_reader):
             m = mock_kafka_reader.return_value
@@ -97,7 +97,7 @@ class TestListGroups(object):
                 file=sys.stderr,
             )
 
-    @mock.patch("kafka_tools.kafka_consumer_manager.commands.list_groups.print", create=True)
+    @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_print_groups(self, mock_print):
         groups = ['group1', 'group2', 'group3']
 

@@ -16,8 +16,8 @@ import pytest
 from mock import Mock
 from mock import sentinel
 
-from kafka_tools.kafka_cluster_manager.cluster_info.partition import Partition
-from kafka_tools.kafka_cluster_manager.cluster_info.topic import Topic
+from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
 
 
 class TestTopic(object):

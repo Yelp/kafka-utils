@@ -13,14 +13,14 @@ How to install
 **************
 .. code-block:: bash
 
-    $ pip install kafka-tools
+    $ pip install kafka-utils
 
 
 List available clusters.
 
 .. code-block:: bash
 
-    $ kafka-tools
+    $ kafka-utils
     Cluster type sample_type:
         Cluster name: cluster-1
         broker list: cluster-elb-1:9092

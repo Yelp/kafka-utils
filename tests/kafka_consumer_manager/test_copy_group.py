@@ -18,12 +18,12 @@ import mock
 import pytest
 from kazoo.exceptions import ZookeeperError
 
-from kafka_tools.kafka_consumer_manager. \
+from kafka_utils.kafka_consumer_manager. \
     commands.copy_group import CopyGroup
 
 
 @mock.patch(
-    'kafka_tools.kafka_consumer_manager.'
+    'kafka_utils.kafka_consumer_manager.'
     'commands.copy_group.KafkaToolClient',
     autospec=True,
 )
@@ -37,10 +37,10 @@ class TestCopyGroup(object):
             spec=CopyGroup.preprocess_args,
             return_value=topics_partitions,
         ) as mock_process_args, mock.patch(
-            "kafka_tools.kafka_consumer_manager.util.prompt_user_input",
+            "kafka_utils.kafka_consumer_manager.util.prompt_user_input",
             autospec=True,
         ) as mock_user_confirm, mock.patch(
-            "kafka_tools.kafka_consumer_manager."
+            "kafka_utils.kafka_consumer_manager."
             "commands.copy_group.ZK",
             autospec=True
         ) as mock_ZK:

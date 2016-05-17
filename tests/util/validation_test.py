@@ -12,10 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from kafka_tools.util.validation import _validate_format
-from kafka_tools.util.validation import _validate_plan
-from kafka_tools.util.validation import _validate_plan_base
-from kafka_tools.util.validation import validate_plan
+from kafka_utils.util.validation import _validate_format
+from kafka_utils.util.validation import _validate_plan
+from kafka_utils.util.validation import _validate_plan_base
+from kafka_utils.util.validation import validate_plan
 
 
 def test_validate_format():

@@ -4,7 +4,7 @@ set -e
 
 function do_at_exit {
   exit_status=$?
-  rm -rf build/ dist/ kafka_tools.egg-info/
+  rm -rf build/ dist/ kafka_utils.egg-info/
   rm -rf .tox/log .tox/dist .tox/acceptance
   find . -name '*.pyc' -delete
   find . -name '__pycache__' -print0 | xargs -0 rm -rf

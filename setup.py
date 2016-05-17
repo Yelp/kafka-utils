@@ -17,7 +17,7 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
-from kafka_tools import __version__
+from kafka_utils import __version__
 
 
 with open(
@@ -30,13 +30,13 @@ with open(
 
 
 setup(
-    name="kafka-tools",
+    name="kafka-utils",
     version=__version__,
     author="Distributed Systems Team",
     author_email="team-dist-sys@yelp.com",
     description="Kafka management tools",
     packages=find_packages(exclude=["scripts", "tests"]),
-    url="https://github.com/Yelp/kafka-tools",
+    url="https://github.com/Yelp/kafka-utils",
     license="Apache License 2.0",
     long_description=README,
     keywords="apache kafka",
@@ -44,7 +44,7 @@ setup(
         "scripts/kafka-consumer-manager",
         "scripts/kafka-cluster-manager",
         "scripts/kafka-rolling-restart",
-        "scripts/kafka-tools",
+        "scripts/kafka-utils",
         "scripts/kafka-check",
     ],
     install_requires=[

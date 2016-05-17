@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from kafka_tools.kafka_cluster_manager.main import run
+from kafka_utils.kafka_cluster_manager.main import run
 
 if __name__ == '__main__':
     run()

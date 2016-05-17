@@ -26,7 +26,7 @@
 # serve to show the default.
 import sphinx_rtd_theme
 
-from kafka_tools import __version__
+from kafka_utils import __version__
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
