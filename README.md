@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Yelp/kafka-utils.svg?branch=master)](https://travis-ci.org/Yelp/kafka-utils)
+
 # Kafka-Utils
 
 A suite of python tools to interact and manage Apache Kafka clusters.
