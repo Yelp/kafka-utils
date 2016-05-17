@@ -11,6 +11,18 @@ partition is equal or greater than the minimum number of in-sync replicas
 configured for the topic the partition belongs to. A topic specific
 :code:`min.insync.replicas` overrides the given default.
 
+Parameters
+==========
+
+The parameters for min_isr check are:
+
+* :code:`--default_min_isr DEFAULT_MIN_ISR`: Default min.isr value for cases without
+  settings in Zookeeper for some topics.
+* :code:`--data-path DATA_PATH`: Path to the Kafka data folder.
+* :code:`--controller-only`: If this parameter is specified, it will do nothing and
+  succeed on non-controller brokers. If :code:`--broker-id` is also set as -1
+  then broker-id will be computed from given data-path.
+
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type min_isr 
@@ -25,13 +37,3 @@ In case of min isr violations:
     CRITICAL: 1 partition(s) have the number of replicas in sync that is lower
     than the specified min ISR.
 
-Parameters
-==========
-
-The parameters specific for kafka-check are:
-
-* :code:`--default_min_isr DEFAULT_MIN_ISR`: Default min.isr value for cases without
-  settings in Zookeeper for some topics.
-* :code:`--data-path DATA_PATH`: Path to the Kafka data folder.
-* :code:`--controller-only`: If this parameter is specified, it will do nothing and
-  succeed on non-controller brokers.
