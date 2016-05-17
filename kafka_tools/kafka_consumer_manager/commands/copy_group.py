@@ -18,13 +18,13 @@ from __future__ import unicode_literals
 
 import sys
 
-from kafka import KafkaClient
 from kazoo.exceptions import NoNodeError
 
 from .offset_manager import OffsetManagerBase
 from kafka_tools.kafka_consumer_manager.util import create_offsets
 from kafka_tools.kafka_consumer_manager.util import fetch_offsets
 from kafka_tools.kafka_consumer_manager.util import preprocess_topics
+from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.zookeeper import ZK
 
 
@@ -68,7 +68,7 @@ class CopyGroup(OffsetManagerBase):
             )
             sys.exit(1)
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
         source_topics = cls.preprocess_args(
             args.source_groupid,

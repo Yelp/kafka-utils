@@ -16,9 +16,8 @@ from __future__ import absolute_import
 
 import sys
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetManagerBase
+from kafka_tools.util.client import KafkaToolClient
 
 
 class ListTopics(OffsetManagerBase):
@@ -43,7 +42,7 @@ class ListTopics(OffsetManagerBase):
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(

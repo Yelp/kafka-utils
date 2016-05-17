@@ -17,10 +17,10 @@ import sys
 
 import mock
 import pytest
-from kafka.client import KafkaClient
 
 from kafka_tools.kafka_consumer_manager. \
     commands.offset_manager import OffsetManagerBase
+from kafka_tools.util.client import KafkaToolClient
 
 
 class TestOffsetManagerBase(object):
@@ -41,7 +41,7 @@ class TestOffsetManagerBase(object):
     @pytest.fixture
     def mock_kafka_client(self):
         mock_kafka_client = mock.MagicMock(
-            spec=KafkaClient
+            spec=KafkaToolClient
         )
         mock_kafka_client.get_partition_ids_for_topic. \
             side_effect = self._get_partition_ids_for_topic

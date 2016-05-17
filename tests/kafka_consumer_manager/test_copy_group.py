@@ -24,7 +24,7 @@ from kafka_tools.kafka_consumer_manager. \
 
 @mock.patch(
     'kafka_tools.kafka_consumer_manager.'
-    'commands.copy_group.KafkaClient',
+    'commands.copy_group.KafkaToolClient',
     autospec=True,
 )
 class TestCopyGroup(object):

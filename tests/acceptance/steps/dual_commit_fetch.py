@@ -15,13 +15,13 @@
 from behave import then
 from behave import when
 
+from .util import create_random_group_id
 from .util import get_cluster_config
 from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.monitoring import get_current_offsets
 from kafka_tools.util.offsets import set_consumer_offsets
 
 
-TEST_KAFKA_COMMIT_GROUP = 'kafka_commit_group'
 TEST_OFFSET = 56
 
 
@@ -50,7 +50,7 @@ def fetch_offsets(group, topics, storage):
 @when(u'we commit some offsets for a group into kafka')
 def step_impl4(context):
     context.offsets = {context.topic: {0: TEST_OFFSET}}
-    context.group = TEST_KAFKA_COMMIT_GROUP
+    context.group = create_random_group_id()
     commit_offsets(context.offsets, context.group, 'kafka')
 
 
@@ -58,7 +58,7 @@ def step_impl4(context):
 def step_impl4_2(context):
     topics = context.offsets.keys()
     context.fetched_offsets = fetch_offsets(
-        TEST_KAFKA_COMMIT_GROUP,
+        context.group,
         topics,
         'dual'
     )
@@ -68,7 +68,7 @@ def step_impl4_2(context):
 def step_impl4_3(context):
     topics = context.offsets.keys()
     context.fetched_offsets = fetch_offsets(
-        TEST_KAFKA_COMMIT_GROUP,
+        context.group,
         topics,
         'kafka'
     )

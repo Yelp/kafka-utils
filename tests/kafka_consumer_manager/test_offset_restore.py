@@ -14,10 +14,10 @@
 # limitations under the License.
 import mock
 import pytest
-from kafka.client import KafkaClient
 
 from kafka_tools.kafka_consumer_manager. \
     commands.offset_restore import OffsetRestore
+from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.monitoring import ConsumerPartitionOffsets
 
 
@@ -45,7 +45,7 @@ class TestOffsetRestore(object):
     @pytest.fixture
     def mock_kafka_client(self):
         mock_kafka_client = mock.MagicMock(
-            spec=KafkaClient
+            spec=KafkaToolClient
         )
         mock_kafka_client.get_partition_ids_for_topic. \
             side_effect = self.topics_partitions

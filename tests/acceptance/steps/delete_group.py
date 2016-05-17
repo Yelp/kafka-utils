@@ -37,7 +37,7 @@ def step_impl2(context):
 
 @when('we call the delete_group command with kafka storage')
 def step_impl2_2(context):
-    call_delete_group(context.group)
+    call_delete_group(context.group, storage='kafka')
 
 
 @then(u'the specified group will not be found')

@@ -16,7 +16,7 @@ import mock
 import pytest
 from kafka.common import ConsumerCoordinatorNotAvailableCode
 from kafka.common import KafkaUnavailableError
-from test_offsets import MyKafkaClient
+from test_offsets import MyKafkaToolClient
 from test_offsets import TestOffsetsBase
 
 from kafka_tools.util.error import UnknownPartitions
@@ -100,7 +100,7 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_get_metadata_kafka_error(self, kafka_client_mock):
         with mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'load_metadata_for_topics',
             side_effect=KafkaUnavailableError("Boom!"),
             autospec=True
@@ -197,7 +197,7 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_dual_offsets_zk_empty(self, kafka_client_mock):
         with mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'send_offset_fetch_request',
             return_value={},
             autospec=True,
@@ -214,7 +214,7 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_dual_offsets_kafka_empty(self, kafka_client_mock):
         with mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'send_offset_fetch_request_kafka',
             return_value={},
             autospec=True,
@@ -231,12 +231,12 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_dual_offsets_both_empty(self, kafka_client_mock):
         with mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'send_offset_fetch_request',
             return_value={},
             autospec=True,
         ) as mock_get_zk, mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'send_offset_fetch_request_kafka',
             return_value={},
             autospec=True,
@@ -254,12 +254,12 @@ class TestMonitoring(TestOffsetsBase):
 
     def test_dual_offsets_kafka_error(self, kafka_client_mock):
         with mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'send_offset_fetch_request',
             return_value={},
             autospec=True,
         ) as mock_get_zk, mock.patch.object(
-            MyKafkaClient,
+            MyKafkaToolClient,
             'send_offset_fetch_request_kafka',
             side_effect=ConsumerCoordinatorNotAvailableCode('Boom!'),
             autospec=True,

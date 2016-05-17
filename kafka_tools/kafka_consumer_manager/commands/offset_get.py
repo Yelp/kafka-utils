@@ -18,10 +18,9 @@ from __future__ import unicode_literals
 
 import sys
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetManagerBase
 from kafka_tools.util import print_json
+from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.monitoring import get_consumer_offsets_metadata
 
 
@@ -78,7 +77,7 @@ class OffsetGet(OffsetManagerBase):
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
