@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Kafka-Tools v0.1.0 &mdash; Kafka-Tools 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Kafka-Tools 0.1.0 documentation" href="#"/>
+        <link rel="next" title="Configuration" href="config.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="#" class="icon icon-home"> Kafka-Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling restart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="#">Kafka-Tools</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="#">Docs</a> &raquo;</li>
+      
+    <li>Kafka-Tools v0.1.0</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/index.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="kafka-tools-vversion">
+<h1>Kafka-Tools v0.1.0<a class="headerlink" href="#kafka-tools-vversion" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>Kafka-Tools is a library containing tools to interact with kafka clusters and manage them. The tool provides utilities
+like listing of all the clusters, balancing the partition distribution across brokers and replication-groups, managing
+consumer groups, rolling-restart of the cluster, cluster healthchecks.</p>
+<p>For more information about Apache Kafka see the official <a class="reference external" href="http://kafka.apache.org/documentation.html#introduction">Kafka documentation</a>.</p>
+</div>
+<div class="section" id="how-to-install">
+<h2>How to install<a class="headerlink" href="#how-to-install" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ pip install kafka-tools
+</pre></div>
+</div>
+<p>List available clusters.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-tools
+Cluster <span class="nb">type</span> sample_type:
+    Cluster name: cluster-1
+    broker list: cluster-elb-1:9092
+    zookeeper: 11.11.11.111:2181,11.11.11.112:2181,11.11.11.113:2181/kafka-1
+</pre></div>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kafka_cluster_manager.html#replication-group-parser">Replication group parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_cluster_manager.html#cluster-rebalance">Cluster rebalance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kafka_cluster_manager.html#replica-distribution">Replica-distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kafka_cluster_manager.html#partition-distribution">Partition distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kafka_cluster_manager.html#broker-as-leaders-distribution">Broker as leaders distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kafka_cluster_manager.html#topic-partition-distribution">Topic-partition distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kafka_cluster_manager.html#rebalancing-all-layers">Rebalancing all layers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_cluster_manager.html#brokers-decommissioning">Brokers decommissioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_cluster_manager.html#stats">Stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_cluster_manager.html#store-assignments">Store assignments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#subcommands">Subcommands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#listing-consumer-groups">Listing consumer groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#listing-topics">Listing topics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#getting-consumer-offsets">Getting consumer offsets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#manipulating-consumer-offsets">Manipulating consumer offsets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#copying-or-renaming-consumer-group">Copying or renaming consumer group</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_consumer_manager.html#deleting-or-unsubscribing-consumer-groups">Deleting or unsubscribing consumer groups</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling restart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kafka_rolling_restart.html#cluster-health">Cluster health</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_rolling_restart.html#parameters">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kafka_rolling_restart.html#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kafka_check.html#checking-in-sync-replicas">Checking in-sync replicas</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="indices-and-tables">
+<h3>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="config.html" class="btn btn-neutral float-right" title="Configuration" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2016, Yelp-Inc..
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

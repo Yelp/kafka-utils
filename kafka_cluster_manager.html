@@ -1,0 +1,364 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Cluster Manager &mdash; Kafka-Tools 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Kafka-Tools 0.1.0 documentation" href="index.html"/>
+        <link rel="next" title="Consumer Manager" href="kafka_consumer_manager.html"/>
+        <link rel="prev" title="Configuration" href="config.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Kafka-Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Cluster Manager</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#replication-group-parser">Replication group parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cluster-rebalance">Cluster rebalance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#replica-distribution">Replica-distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#partition-distribution">Partition distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#broker-as-leaders-distribution">Broker as leaders distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#topic-partition-distribution">Topic-partition distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rebalancing-all-layers">Rebalancing all layers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#brokers-decommissioning">Brokers decommissioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stats">Stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#store-assignments">Store assignments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling restart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Kafka-Tools</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Cluster Manager</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/kafka_cluster_manager.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="cluster-manager">
+<h1>Cluster Manager<a class="headerlink" href="#cluster-manager" title="Permalink to this headline">¶</a></h1>
+<p>This tool provides a set of commands to manipulate and modify the cluster topology
+and get metrics for different states of the cluster. These include balancing the
+cluster-state, decommissioning brokers, evaluating metrics for the current state of
+the cluster. Each of these commands is as described below.</p>
+<div class="section" id="replication-group-parser">
+<h2>Replication group parser<a class="headerlink" href="#replication-group-parser" title="Permalink to this headline">¶</a></h2>
+<p>The tool supports the grouping of brokers in replication groups.
+<code class="code docutils literal"><span class="pre">kafka-cluster-manager</span></code> will try to distribute replicas of the same partition
+across different replication group.
+The user can use this feature to map replication groups to failure zones, so that
+a balanced cluster will be more resilient to zone failures.</p>
+<p>By default all brokers are considered as part of a single replication group.
+Custom replication group parsers can be defined by extending the class
+<code class="code docutils literal"><span class="pre">ReplicationGroupParser</span></code> as shown in the example below:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">kafka_tools.kafka_cluster_manager.cluster_info.replication_group_parser</span> \
+        <span class="kn">import</span> <span class="nn">ReplicationGroupParser</span>
+
+
+<span class="k">class</span> <span class="nc">SampleGroupParser</span><span class="p">(</span><span class="n">ReplicationGroupParser</span><span class="p">):</span>
+
+        <span class="k">def</span> <span class="nf">get_replication_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">broker</span><span class="p">):</span>
+                <span class="sd">&quot;&quot;&quot;Extract the replication group from a Broker instance.</span>
+<span class="sd">                Suppose each broker hostname is in the form broker-rack&lt;n&gt;, this</span>
+<span class="sd">                function will return &quot;rack&lt;n&gt;&quot; as replication group</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+                <span class="k">if</span> <span class="n">broker</span><span class="o">.</span><span class="n">inactive</span><span class="p">:</span>
+                        <span class="c1"># Can&#39;t extract replication group from inactive brokers because they</span>
+                        <span class="c1"># don&#39;t have metadata</span>
+                        <span class="k">return</span> <span class="kc">None</span>
+                <span class="n">hostname</span> <span class="o">=</span> <span class="n">broker</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;host&#39;</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">hostname</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Create a file named <code class="code docutils literal"><span class="pre">sample_parser.py</span></code> into a directory containing the
+<code class="code docutils literal"><span class="pre">__init__.py</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$HOME/parser
+  |-- __init__.py
+  |-- sample_parser.py
+</pre></div>
+</div>
+<p>To use the custom parser:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --cluster-type sample_type --group-parser <span class="nv">$HOME</span>/parser:sample_parser rebalance --replication-groups
+</pre></div>
+</div>
+</div>
+<div class="section" id="cluster-rebalance">
+<h2>Cluster rebalance<a class="headerlink" href="#cluster-rebalance" title="Permalink to this headline">¶</a></h2>
+<p>This command provides the functionality to re-distribute partitions across the
+cluster to bring it into a more balanced state. The goal is to load balance the
+cluster based on the distribution of the replicas across replication-groups
+(availability-zones or racks), distribution of partitions and leaderships across
+brokers. The imbalance state of a cluster has been characterized into 4 different layers.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The tool is very conservative while rebalancing the cluster, ensuring
+that large assignments are executed in smaller chunks, controlling the number of
+partition movements and preferred-leader changes.</p>
+</div>
+<div class="section" id="replica-distribution">
+<h3>Replica-distribution<a class="headerlink" href="#replica-distribution" title="Permalink to this headline">¶</a></h3>
+<p>Uniform distribution of replicas across replication groups.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --cluster-type sample_type rebalance --replication-groups
+</pre></div>
+</div>
+</div>
+<div class="section" id="partition-distribution">
+<h3>Partition distribution<a class="headerlink" href="#partition-distribution" title="Permalink to this headline">¶</a></h3>
+<p>Uniform distribution of partitions across groups and brokers.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --cluster-type sample_type rebalance --brokers
+</pre></div>
+</div>
+</div>
+<div class="section" id="broker-as-leaders-distribution">
+<h3>Broker as leaders distribution<a class="headerlink" href="#broker-as-leaders-distribution" title="Permalink to this headline">¶</a></h3>
+<p>Some brokers might be elected as leaders for more partitions than others.
+This creates load-imbalance for these brokers. Balancing this layer ensures
+the uniform election of brokers as leaders.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The rebalancing of this layer doesn&#8217;t move any partitions across brokers.</p>
+</div>
+<p>It re-elects a new leader for the partitions to ensure that every broker is chosen
+as a leader uniformly. The tool does not take into account partition size.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --cluster-type sample_type rebalance --leaders
+</pre></div>
+</div>
+</div>
+<div class="section" id="topic-partition-distribution">
+<h3>Topic-partition distribution<a class="headerlink" href="#topic-partition-distribution" title="Permalink to this headline">¶</a></h3>
+<p>Uniform distribution of partitions of the same topic across brokers.</p>
+<p>The command provides the ability to balance one or more of these layers except for
+the topic-partition imbalance layer which will be balanced implicitly with replica or
+partition rebalancing.</p>
+<p><code class="xref py py-mod docutils literal"><span class="pre">kafka_tools.kafka_cluster_manager.cluster_topology</span></code> provides APIs to create
+a cluster-topology object based on the distribution of topics, partitions, brokers and
+replication-groups across the cluster.</p>
+</div>
+<div class="section" id="rebalancing-all-layers">
+<h3>Rebalancing all layers<a class="headerlink" href="#rebalancing-all-layers" title="Permalink to this headline">¶</a></h3>
+<p>Rebalance all layers for given cluster. This command will generate a plan with a
+maximum of 10 partition movements and 25 leader-only changes after rebalancing
+the cluster for all layers discussed before prior to sending it to zookeeper.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --group-parser <span class="nv">$HOME</span>/parser:sample_parser --apply
+--cluster-type sample_type rebalance --replication-groups --brokers --leaders
+--max-partition-movements <span class="m">10</span> --max-leader-changes 25
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="brokers-decommissioning">
+<h2>Brokers decommissioning<a class="headerlink" href="#brokers-decommissioning" title="Permalink to this headline">¶</a></h2>
+<p>This command provides functionalities to decommission a given list of brokers. The key
+idea is to move all partitions from brokers that are going to be decommissioned to other
+brokers in either their replication group (preferred) or others replication groups
+while keeping the cluster balanced as above.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">While decommissioning brokers we need to ensure that we have at least &#8216;n&#8217; number
+of active brokers where n is the max replication-factor of a partition.</p>
+</div>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --cluster-type sample_type decommission <span class="m">123456</span> <span class="m">123457</span> 123458
+</pre></div>
+</div>
+</div>
+<div class="section" id="stats">
+<h2>Stats<a class="headerlink" href="#stats" title="Permalink to this headline">¶</a></h2>
+<p>This command provides statistics for the current imbalance state of the cluster. It also
+provides imbalance statistics of the cluster if a given partition-assignment plan were
+to be applied to the cluster. The details include the imbalance value of each of the above
+layers for the overall cluster, each broker and across each replication-group.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --group-parser <span class="nv">$HOME</span>/parser:sample_parser --cluster-type
+sample_type stats
+</pre></div>
+</div>
+</div>
+<div class="section" id="store-assignments">
+<h2>Store assignments<a class="headerlink" href="#store-assignments" title="Permalink to this headline">¶</a></h2>
+<p>Dump the current cluster-topology in json format.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --group-parser <span class="nv">$HOME</span>/parser:sample_parser --cluster-type
+sample_type store_assignments
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="kafka_consumer_manager.html" class="btn btn-neutral float-right" title="Consumer Manager" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="config.html" class="btn btn-neutral" title="Configuration" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2016, Yelp-Inc..
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

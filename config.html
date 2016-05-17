@@ -1,0 +1,232 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Configuration &mdash; Kafka-Tools 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Kafka-Tools 0.1.0 documentation" href="index.html"/>
+        <link rel="next" title="Cluster Manager" href="kafka_cluster_manager.html"/>
+        <link rel="prev" title="Kafka-Tools v0.1.0" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Kafka-Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling restart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Kafka-Tools</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/config.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h1>
+<p>Kafka-Tools reads the cluster configuration needed to access Kafka clusters from yaml files.
+Each cluster is identified by <em>type</em> and <em>name</em>.
+Multiple clusters of the same type should be listed in the same <cite>type.yaml</cite> file.
+The yaml files are read from <code class="code docutils literal"><span class="pre">$KAFKA_DISCOVERY_DIR</span></code>, <code class="code docutils literal"><span class="pre">$HOME/.kafka_discovery</span></code> and <code class="code docutils literal"><span class="pre">/etc/kafka_discovery</span></code>,
+the former overrides the latter.</p>
+<p>Sample configuration for <code class="code docutils literal"><span class="pre">sample_type</span></code> cluster at <code class="code docutils literal"><span class="pre">/etc/kafka_discovery/sample_type.yaml</span></code></p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="nn">---</span>
+  <span class="l l-Scalar l-Scalar-Plain">clusters</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">cluster-1</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">broker_list</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="s">&quot;cluster-elb-1:9092&quot;</span>
+      <span class="l l-Scalar l-Scalar-Plain">zookeeper</span><span class="p p-Indicator">:</span> <span class="s">&quot;11.11.11.111:2181,11.11.11.112:2181,11.11.11.113:2181/kafka-1&quot;</span>
+    <span class="l l-Scalar l-Scalar-Plain">cluster-2</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">broker_list</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="s">&quot;cluster-elb-2:9092&quot;</span>
+      <span class="l l-Scalar l-Scalar-Plain">zookeeper</span><span class="p p-Indicator">:</span> <span class="s">&quot;11.11.11.211:2181,11.11.11.212:2181,11.11.11.213:2181/kafka-2&quot;</span>
+  <span class="l l-Scalar l-Scalar-Plain">local_config</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">cluster</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">cluster-1</span>
+</pre></div>
+</div>
+<p>For example the kafka-cluster-manager command:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>$ kafka-cluster-manager --cluster-type sample_type stats
+</pre></div>
+</div>
+<p>will pick up default cluster <cite>cluster-1</cite> from the local_config at /etc/kafka_discovery/sample_type.yaml to display
+statistics of default kafka-configuration.</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="kafka_cluster_manager.html" class="btn btn-neutral float-right" title="Cluster Manager" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Kafka-Tools v0.1.0" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2016, Yelp-Inc..
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

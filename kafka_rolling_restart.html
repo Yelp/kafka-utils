@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Rolling restart &mdash; Kafka-Tools 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Kafka-Tools 0.1.0 documentation" href="index.html"/>
+        <link rel="next" title="Kafka Check" href="kafka_check.html"/>
+        <link rel="prev" title="Consumer Manager" href="kafka_consumer_manager.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Kafka-Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Rolling restart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#cluster-health">Cluster health</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Kafka-Tools</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Rolling restart</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/kafka_rolling_restart.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="rolling-restart">
+<h1>Rolling restart<a class="headerlink" href="#rolling-restart" title="Permalink to this headline">¶</a></h1>
+<p>The kafka-rolling-restart script can be used to safely restart an entire
+cluster, one server at a time. The script finds all the servers in a cluster,
+checks their health status and executes the restart.</p>
+<div class="section" id="cluster-health">
+<h2>Cluster health<a class="headerlink" href="#cluster-health" title="Permalink to this headline">¶</a></h2>
+<p>The health of the cluster is defined in terms of broker availability and under
+replicated partitions. Kafka-rolling-restart will check that all brokers are
+answering to JMX requests, and that the total numer of under replicated
+partitions is zero. If both conditions are fulfilled, the cluster is considered
+healthy and the next broker will be restarted.</p>
+<p>The JMX metrics are accessed via <a class="reference external" href="https://jolokia.org">Jolokia</a>, which must be
+running on all brokers.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If a broker is not registered in Zookeeper when the tool is executed,
+it will not appear in the list of known brokers and it will be ignored.</p>
+</div>
+</div>
+<div class="section" id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<p>The parameters specific for kafka-rolling-restart are:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">--check-interval</span> <span class="pre">INTERVAL</span></code>: the number of seconds between each check.
+Default 10.</li>
+<li><code class="code docutils literal"><span class="pre">--check-count</span> <span class="pre">COUNT</span></code>: the number of consecutive checks that must result
+in cluster healthy before restarting the next server. Default 12.</li>
+<li><code class="code docutils literal"><span class="pre">--unhealthy-time-limit</span> <span class="pre">LIMIT</span></code>: the maximum time in seconds that a
+cluster can be unhealthy for. If the limit is reached, the script will
+terminate with an error. Default 600.</li>
+<li><code class="code docutils literal"><span class="pre">--jolokia-port</span> <span class="pre">PORT</span></code>: The Jolokia port. Default 8778.</li>
+<li><code class="code docutils literal"><span class="pre">--jolokia-prefix</span> <span class="pre">PREFIX</span></code>: The Jolokia prefix. Default &#8220;jolokia/&#8221;.</li>
+<li><code class="code docutils literal"><span class="pre">--no-confirm</span></code>: If specified, the script will not ask for confirmation.</li>
+<li><code class="code docutils literal"><span class="pre">--skip</span> <span class="pre">N</span></code>: Skip the first N servers. Useful to recover from a partial
+rolling restart. Default 0.</li>
+<li><code class="code docutils literal"><span class="pre">--verbose</span></code>: Turn on verbose output.</li>
+</ul>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>Restart the generic dev cluster, checking the JXM metrics every 30 seconds, and
+restarting the next broker after 5 consecutive checks have confirmed the health
+of the cluster:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>kafka-rolling-restart --cluster-type generic --cluster-name dev --check-interval <span class="m">30</span> --check-count 5
+</pre></div>
+</div>
+<p>Check the generic prod cluster. It will report an error if the cluster is
+unhealthy for more than 900 seconds:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>kafka-rolling-restart --cluster-type generic --cluster-name prod --unhealthy-time-limit 900
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="kafka_check.html" class="btn btn-neutral float-right" title="Kafka Check" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="kafka_consumer_manager.html" class="btn btn-neutral" title="Consumer Manager" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2016, Yelp-Inc..
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

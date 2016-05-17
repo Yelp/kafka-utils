@@ -1,0 +1,346 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Consumer Manager &mdash; Kafka-Tools 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Kafka-Tools 0.1.0 documentation" href="index.html"/>
+        <link rel="next" title="Rolling restart" href="kafka_rolling_restart.html"/>
+        <link rel="prev" title="Cluster Manager" href="kafka_cluster_manager.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Kafka-Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Consumer Manager</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#subcommands">Subcommands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#listing-consumer-groups">Listing consumer groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#listing-topics">Listing topics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-consumer-offsets">Getting consumer offsets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#manipulating-consumer-offsets">Manipulating consumer offsets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#copying-or-renaming-consumer-group">Copying or renaming consumer group</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#deleting-or-unsubscribing-consumer-groups">Deleting or unsubscribing consumer groups</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling restart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Kafka-Tools</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Consumer Manager</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/kafka_consumer_manager.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="consumer-manager">
+<h1>Consumer Manager<a class="headerlink" href="#consumer-manager" title="Permalink to this headline">¶</a></h1>
+<p>This kafka tool provides the ability to view and manipulate consumer offsets
+for a specific consumer group. For a given cluster, this tool provides us with
+the following functionalities:</p>
+<ul class="simple">
+<li><strong>Manipulating consumer-groups</strong>: Listing consumer-groups subscribed to the
+cluster. Copying, deleting and renaming of the group.</li>
+<li><strong>Manipulating offsets</strong>: For a given consumer-group, fetching current offsets,
+low and high watermarks for topics and partitions subscribed to the group.
+Setting, advancing, rewinding, saving and restoring of current-offsets.</li>
+<li><strong>Manipulating topics</strong>: For a given consumer-group and cluster, listing and
+unsubscribing topics.</li>
+<li><strong>Offset storage choice</strong>: Supports Kafka 0.8.2 and 0.9.0, using offsets
+stored in either Zookeeper or Kafka. Version 0 and 2 of the Kafka Protocol
+are supported for committing offsets.</li>
+</ul>
+<div class="section" id="subcommands">
+<h2>Subcommands<a class="headerlink" href="#subcommands" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>copy_group</li>
+<li>delete_group</li>
+<li>list_groups</li>
+<li>list_topics</li>
+<li>offset_advance</li>
+<li>offset_get</li>
+<li>offset_restore</li>
+<li>offset_rewind</li>
+<li>offset_save</li>
+<li>offset_set</li>
+<li>rename_group</li>
+<li>unsubscribe_topics</li>
+</ul>
+</div>
+<div class="section" id="listing-consumer-groups">
+<h2>Listing consumer groups<a class="headerlink" href="#listing-consumer-groups" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="code docutils literal"><span class="pre">list_groups</span></code> command shows all of the consumer groups that exist in
+the cluster.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type<span class="o">=</span><span class="nb">test</span> list_groups
+  Consumer Groups:
+      group1
+      group2
+      group3
+</pre></div>
+</div>
+<p>If <code class="code docutils literal"><span class="pre">list_groups</span></code> is called with the <code class="code docutils literal"><span class="pre">--storage</span></code> option, then the groups will
+only be fetched from Zookeeper or Kafka.</p>
+</div>
+<div class="section" id="listing-topics">
+<h2>Listing topics<a class="headerlink" href="#listing-topics" title="Permalink to this headline">¶</a></h2>
+<p>For information about the topics subscribed by a consumer group, the
+<cite>list_topics</cite> subcommand can be used.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type<span class="o">=</span><span class="nb">test</span> list_topics group3
+  Consumer Group ID: group3
+      Topic: topic_foo
+             Partitions: <span class="o">[</span>0, 1, 2, 3, 4, 5<span class="o">]</span>
+      Topic: topic_bar
+             Partitions: <span class="o">[</span>0, 1, 2<span class="o">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="getting-consumer-offsets">
+<h2>Getting consumer offsets<a class="headerlink" href="#getting-consumer-offsets" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="code docutils literal"><span class="pre">offset_get</span></code> subcommand gets information about a specific consumer group.</p>
+<p>The most basic usage is to call <code class="code docutils literal"><span class="pre">offset_get</span></code> with a consumer group id.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type <span class="nb">test</span> --cluster-name my_cluster offset_get my_group
+  Cluster name: my_cluster, consumer group: my_group
+  Topic Name: topic1
+     Partition ID: 0
+             High Watermark: 787656
+             Low Watermark: 787089
+             Current Offset: 787645
+</pre></div>
+</div>
+<p>The offsets for all topics in the consumer group will be shown by default.
+A single topic can be specified using the <code class="code docutils literal"><span class="pre">--topic</span></code> option. If a topic is
+specified, then a list of partitions can also be specified using the
+<code class="code docutils literal"><span class="pre">--partitions</span></code> option.</p>
+<p>By default, the offsets will be fetched from both Zookeeper and Kafka&#8217;s
+internal offset storage. A specific offset storage location can be speficied
+using the <code class="code docutils literal"><span class="pre">--storage</span></code> option.</p>
+</div>
+<div class="section" id="manipulating-consumer-offsets">
+<h2>Manipulating consumer offsets<a class="headerlink" href="#manipulating-consumer-offsets" title="Permalink to this headline">¶</a></h2>
+<p>The offsets for a consumer group can also be saved into a json file.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type <span class="nb">test</span> --cluster-name my_cluster offset_save my_group my_offsets.json
+  Cluster name: my_cluster, consumer group: my_group
+  Consumer offset data saved in json-file my_offsets.json
+</pre></div>
+</div>
+<p>The save offsets file can then be used to restore the consumer group.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type <span class="nb">test</span> --cluster-name my_cluster offset_restore my_group my_offsets.json
+  Restored to new offsets <span class="o">{</span>u<span class="s1">&#39;topic1&#39;</span>: <span class="o">{</span>0: 425447<span class="o">}}</span>
+</pre></div>
+</div>
+<p>The offsets can also be set directly using the <code class="code docutils literal"><span class="pre">offset_set</span></code> command. This
+command takes a group id, and a set of topics, partitions, and offsets.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type <span class="nb">test</span> --cluster-name my_cluster offset_set my_group topic1.0.38531
+</pre></div>
+</div>
+<p>There is also an <code class="code docutils literal"><span class="pre">offset_advance</span></code> command, which will advance the current offset
+to the same value as the high watermark of a topic, and an <code class="code docutils literal"><span class="pre">offset_rewind</span></code>
+command, which will rewind to the low watermark.</p>
+<p>If the offset needs to be modified for a consumer group does not already
+exist, then the <code class="code docutils literal"><span class="pre">--force</span></code> option can be used. This option can be used with
+<code class="code docutils literal"><span class="pre">offset_set</span></code>, <code class="code docutils literal"><span class="pre">offset_rewind</span></code>, and <code class="code docutils literal"><span class="pre">offset_advance</span></code>.</p>
+</div>
+<div class="section" id="copying-or-renaming-consumer-group">
+<h2>Copying or renaming consumer group<a class="headerlink" href="#copying-or-renaming-consumer-group" title="Permalink to this headline">¶</a></h2>
+<p>Consumer groups can have metadata copied into a new group using the
+<code class="code docutils literal"><span class="pre">rename_group</span></code> subcommand.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type<span class="o">=</span><span class="nb">test</span> copy_group my_group1 my_group2
+</pre></div>
+</div>
+<p>They can also be renamed using <code class="code docutils literal"><span class="pre">rename_group</span></code>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type<span class="o">=</span><span class="nb">test</span> rename_group my_group1 my_group2
+</pre></div>
+</div>
+<p>When the group is copied, if a topic is specified using the <code class="code docutils literal"><span class="pre">--topic</span></code> option,
+then only the offsets for that topic will be copied. If a topic is specified,
+then a set of partitions of that topic can also be specified using the
+<code class="code docutils literal"><span class="pre">--partitions</span></code> option.</p>
+</div>
+<div class="section" id="deleting-or-unsubscribing-consumer-groups">
+<h2>Deleting or unsubscribing consumer groups<a class="headerlink" href="#deleting-or-unsubscribing-consumer-groups" title="Permalink to this headline">¶</a></h2>
+<p>A consumer group can be deleted using the <code class="code docutils literal"><span class="pre">delete_group</span></code> subcommand.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-consumer-manager --cluster-type<span class="o">=</span><span class="nb">test</span> delete_group my_group
+</pre></div>
+</div>
+<p>A consumer group be unsubscribed from topics using the <code class="code docutils literal"><span class="pre">unsubscribe_topics</span></code>
+subcommand. If a single topic is specified using the <code class="code docutils literal"><span class="pre">--topic</span></code> option, then
+the group will be unsubscribed from only that topic.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="kafka_rolling_restart.html" class="btn btn-neutral float-right" title="Rolling restart" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="kafka_cluster_manager.html" class="btn btn-neutral" title="Cluster Manager" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2016, Yelp-Inc..
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
