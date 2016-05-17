@@ -30,36 +30,36 @@ class TestUnsubscribeTopics(object):
     @pytest.yield_fixture
     def client(self):
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
-                'commands.unsubscribe_topics.KafkaClient',
-                autospec=True,
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.unsubscribe_topics.KafkaClient',
+            autospec=True,
         ) as mock_client:
             yield mock_client
 
     @pytest.yield_fixture
     def zk(self):
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
-                'commands.unsubscribe_topics.ZK',
-                autospec=True
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.unsubscribe_topics.ZK',
+            autospec=True
         ) as mock_zk:
             yield mock_zk
 
     @pytest.yield_fixture
     def zk_unsubscriber(self):
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
-                'commands.unsubscribe_topics.ZookeeperUnsubscriber',
-                autospec=True,
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.unsubscribe_topics.ZookeeperUnsubscriber',
+            autospec=True,
         ) as mock_zk_unsub:
             yield mock_zk_unsub
 
     @pytest.yield_fixture
     def kafka_unsubscriber(self):
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
-                'commands.unsubscribe_topics.KafkaUnsubscriber',
-                autospec=True,
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.unsubscribe_topics.KafkaUnsubscriber',
+            autospec=True,
         ) as mock_kafka_unsub:
             yield mock_kafka_unsub
 
@@ -77,9 +77,7 @@ class TestUnsubscribeTopics(object):
                 spec=UnsubscribeTopics.preprocess_args,
                 return_value=self.topics_partitions,
         ):
-            args = mock.Mock(
-                storage='zookeeper',
-            )
+            args = mock.Mock(storage='zookeeper')
 
             UnsubscribeTopics.run(args, self.cluster_config)
 
@@ -96,9 +94,7 @@ class TestUnsubscribeTopics(object):
                 spec=UnsubscribeTopics.preprocess_args,
                 return_value=self.topics_partitions,
         ):
-            args = mock.Mock(
-                storage='kafka',
-            )
+            args = mock.Mock(storage='kafka')
 
             UnsubscribeTopics.run(args, self.cluster_config)
 
@@ -124,7 +120,7 @@ class TestUnsubscribeTopics(object):
             mock.call(
                 'some_group',
                 'topic1',
-                [0, 1, 2]
+                [0, 1, 2],
             ),
         ]
 
@@ -149,7 +145,7 @@ class TestUnsubscribeTopics(object):
             mock.call(
                 'some_group',
                 'topic1',
-                [0, 1, 2]
+                [0, 1, 2],
             ),
         ]
 
@@ -223,31 +219,24 @@ class TestUnsubscribeTopics(object):
             )
 
     def test_unsubscribe_topic_kafka_storage(self, client):
-        offsets = {
-            'topic1': {0: 100}
-        }
-
-        new_offsets = {
-            'topic1': {0: -1}
-        }
+        offsets = {'topic1': {0: 100}}
+        new_offsets = {'topic1': {0: -1}}
 
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
-                'commands.unsubscribe_topics.get_current_consumer_offsets',
-                autospec=True,
-                return_value=offsets,
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.unsubscribe_topics.get_current_consumer_offsets',
+            autospec=True,
+            return_value=offsets,
         ) as mock_get, mock.patch(
             'kafka_tools.kafka_consumer_manager.'
             'commands.unsubscribe_topics.set_consumer_offsets',
             autospec=True,
         ) as mock_set:
-
             unsubscriber = KafkaUnsubscriber(client)
             unsubscriber.delete_topic('some_group', 'topic1')
 
             assert mock_get.call_count == 1
             assert mock_set.call_count == 1
-
             assert mock_set.call_args_list == [
                 mock.call(
                     client,

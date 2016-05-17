@@ -69,19 +69,14 @@ class TestDeleteGroup(object):
             DeleteGroup.run(args, cluster_config)
 
     def test_delete_topic_kafka_storage(self, client):
-        offsets = {
-            'topic1': {0: 100}
-        }
-
-        new_offsets = {
-            'topic1': {0: -1}
-        }
+        offsets = {'topic1': {0: 100}}
+        new_offsets = {'topic1': {0: -1}}
 
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
-                'commands.delete_group.get_current_consumer_offsets',
-                autospec=True,
-                return_value=offsets,
+            'kafka_tools.kafka_consumer_manager.'
+            'commands.delete_group.get_current_consumer_offsets',
+            autospec=True,
+            return_value=offsets,
         ) as mock_get, mock.patch(
             'kafka_tools.kafka_consumer_manager.'
             'commands.delete_group.set_consumer_offsets',

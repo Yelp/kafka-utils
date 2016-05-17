@@ -58,9 +58,10 @@ class UnsubscribeTopics(OffsetWriter):
             "be deleted."
         )
         parser_unsubscribe_topics.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
+            '--storage',
+            choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets.",
-            default='zookeeper'
+            default='zookeeper',
         )
         parser_unsubscribe_topics.set_defaults(command=cls.run)
 
