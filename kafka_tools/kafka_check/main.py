@@ -77,7 +77,7 @@ def parse_args():
         action="store_true",
         help='If this parameter is specified, it will do nothing and succeed on '
         'non-controller brokers. Set --broker-id to -1 to read broker-id from '
-        '--data-path.,
+        '--data-path.',
     )
 
     subparsers = parser.add_subparsers()
