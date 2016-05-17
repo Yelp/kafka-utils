@@ -106,10 +106,6 @@ def produce_example_msg(topic, num_messages=1):
             producer.send_messages(topic, b'some message')
 
 
-def create_random_group_id():
-    return str(uuid.uuid1())
-
-
 def create_consumer_group(topic, group_name, num_messages=1):
     consumer = KafkaConsumer(
         topic,
