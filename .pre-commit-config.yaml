@@ -16,7 +16,7 @@
         language_version: python2.7
         args: [--ignore=E501]
 
--   repo: git@github.com:asottile/reorder_python_imports.git
+-   repo: https://github.com/asottile/reorder_python_imports.git
     sha: f3dfe379d2ea341c6cf54d926d4585b35dea9251
     hooks:
     -   id: reorder-python-imports
