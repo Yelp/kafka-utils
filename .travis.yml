@@ -1,0 +1,8 @@
+language: python
+python: 2.7
+install:
+ - pip install tox
+script:
+ - tox
+ - tox -e docker_itest_8
+ - tox -e docker_itest_9
