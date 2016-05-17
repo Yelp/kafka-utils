@@ -11,9 +11,6 @@ partition is equal or greater than the minimum number of in-sync replicas
 configured for the topic the partition belongs to. A topic specific
 :code:`min.insync.replicas` overrides the given default.
 
-Parameters
-==========
-
 The parameters for min_isr check are:
 
 * :code:`--default_min_isr DEFAULT_MIN_ISR`: Default min.isr value for cases without
