@@ -15,8 +15,8 @@
 import mock
 import pytest
 
-from kafka_tools.kafka_check import status_code
-from kafka_tools.kafka_check.commands.min_isr import MinIsrCmd
+from kafka_utils.kafka_check import status_code
+from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
 
 
 class TestMinIsrCommand(object):

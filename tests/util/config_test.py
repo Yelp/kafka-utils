@@ -18,10 +18,10 @@ from StringIO import StringIO
 import mock
 import pytest
 
-from kafka_tools.util.config import ClusterConfig
-from kafka_tools.util.config import load_yaml_config
-from kafka_tools.util.config import TopologyConfiguration
-from kafka_tools.util.error import ConfigurationError
+from kafka_utils.util.config import ClusterConfig
+from kafka_utils.util.config import load_yaml_config
+from kafka_utils.util.config import TopologyConfiguration
+from kafka_utils.util.error import ConfigurationError
 
 TEST_BASE_KAFKA = '/base/kafka_discovery'
 
@@ -175,7 +175,7 @@ def mock_yaml():
 
     with contextlib.nested(
         mock.patch(
-            'kafka_tools.util.config.load_yaml_config',
+            'kafka_utils.util.config.load_yaml_config',
             side_effect=get_fake_yaml,
             create=True,
         ),

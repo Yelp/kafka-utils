@@ -18,9 +18,9 @@ import sys
 import mock
 import pytest
 
-from kafka_tools.kafka_consumer_manager. \
+from kafka_utils.kafka_consumer_manager. \
     commands.offset_manager import OffsetManagerBase
-from kafka_tools.util.client import KafkaToolClient
+from kafka_utils.util.client import KafkaToolClient
 
 
 class TestOffsetManagerBase(object):

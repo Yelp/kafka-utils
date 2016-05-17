@@ -14,8 +14,8 @@
 # limitations under the License.
 import pytest
 
-from kafka_tools.kafka_cluster_manager.cluster_info.util import compute_optimum
-from kafka_tools.kafka_cluster_manager.cluster_info.util import separate_groups
+from kafka_utils.kafka_cluster_manager.cluster_info.util import compute_optimum
+from kafka_utils.kafka_cluster_manager.cluster_info.util import separate_groups
 
 
 def test_compute_optimum():

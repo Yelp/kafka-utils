@@ -20,8 +20,8 @@ from kafka import KafkaConsumer
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
 
-from kafka_tools.util import config
-from kafka_tools.util.client import KafkaToolClient
+from kafka_utils.util import config
+from kafka_utils.util.client import KafkaToolClient
 
 
 ZOOKEEPER_URL = 'zookeeper:2181'

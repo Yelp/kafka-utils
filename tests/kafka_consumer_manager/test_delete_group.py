@@ -16,7 +16,7 @@ import mock
 import pytest
 from kazoo.exceptions import ZookeeperError
 
-from kafka_tools.kafka_consumer_manager.commands. \
+from kafka_utils.kafka_consumer_manager.commands. \
     delete_group import DeleteGroup
 
 
@@ -25,7 +25,7 @@ class TestDeleteGroup(object):
     @pytest.yield_fixture
     def client(self):
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
+                'kafka_utils.kafka_consumer_manager.'
                 'commands.delete_group.KafkaToolClient',
                 autospec=True,
         ) as mock_client:
@@ -34,7 +34,7 @@ class TestDeleteGroup(object):
     @pytest.yield_fixture
     def zk(self):
         with mock.patch(
-                'kafka_tools.kafka_consumer_manager.'
+                'kafka_utils.kafka_consumer_manager.'
                 'commands.delete_group.ZK',
                 autospec=True
         ) as mock_zk:
@@ -88,7 +88,7 @@ class TestDeleteGroup(object):
         new_offsets = {'topic1': {0: -1}}
 
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.delete_group.set_consumer_offsets',
             autospec=True,
         ) as mock_set:

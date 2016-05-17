@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 from pytest import fixture
 
-from kafka_tools.kafka_cluster_manager.cmds.command import ClusterManagerCmd
+from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
 
 
 @fixture

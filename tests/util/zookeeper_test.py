@@ -16,12 +16,12 @@ import json
 
 import mock
 
-from kafka_tools.util.config import ClusterConfig
-from kafka_tools.util.zookeeper import ZK
+from kafka_utils.util.config import ClusterConfig
+from kafka_utils.util.zookeeper import ZK
 
 
 @mock.patch(
-    'kafka_tools.util.zookeeper.KazooClient',
+    'kafka_utils.util.zookeeper.KazooClient',
     autospec=True
 )
 class TestZK(object):

@@ -17,11 +17,11 @@ import pytest
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import ZookeeperError
 
-from kafka_tools.kafka_consumer_manager.commands. \
+from kafka_utils.kafka_consumer_manager.commands. \
     unsubscribe_topics import KafkaUnsubscriber
-from kafka_tools.kafka_consumer_manager.commands. \
+from kafka_utils.kafka_consumer_manager.commands. \
     unsubscribe_topics import UnsubscribeTopics
-from kafka_tools.kafka_consumer_manager.commands. \
+from kafka_utils.kafka_consumer_manager.commands. \
     unsubscribe_topics import ZookeeperUnsubscriber
 
 
@@ -30,7 +30,7 @@ class TestUnsubscribeTopics(object):
     @pytest.yield_fixture
     def client(self):
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.unsubscribe_topics.KafkaToolClient',
             autospec=True,
         ) as mock_client:
@@ -39,7 +39,7 @@ class TestUnsubscribeTopics(object):
     @pytest.yield_fixture
     def zk(self):
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.unsubscribe_topics.ZK',
             autospec=True
         ) as mock_zk:
@@ -48,7 +48,7 @@ class TestUnsubscribeTopics(object):
     @pytest.yield_fixture
     def zk_unsubscriber(self):
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.unsubscribe_topics.ZookeeperUnsubscriber',
             autospec=True,
         ) as mock_zk_unsub:
@@ -57,7 +57,7 @@ class TestUnsubscribeTopics(object):
     @pytest.yield_fixture
     def kafka_unsubscriber(self):
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.unsubscribe_topics.KafkaUnsubscriber',
             autospec=True,
         ) as mock_kafka_unsub:
@@ -223,12 +223,12 @@ class TestUnsubscribeTopics(object):
         new_offsets = {'topic1': {0: -1}}
 
         with mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.unsubscribe_topics.get_current_consumer_offsets',
             autospec=True,
             return_value=offsets,
         ) as mock_get, mock.patch(
-            'kafka_tools.kafka_consumer_manager.'
+            'kafka_utils.kafka_consumer_manager.'
             'commands.unsubscribe_topics.set_consumer_offsets',
             autospec=True,
         ) as mock_set:

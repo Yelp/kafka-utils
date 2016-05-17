@@ -1,7 +1,7 @@
 Configuration
 #############
 
-Kafka-Tools reads the cluster configuration needed to access Kafka clusters from yaml files.
+Kafka-Utils reads the cluster configuration needed to access Kafka clusters from yaml files.
 Each cluster is identified by *type* and *name*.
 Multiple clusters of the same type should be listed in the same `type.yaml` file.
 The yaml files are read from :code:`$KAFKA_DISCOVERY_DIR`, :code:`$HOME/.kafka_discovery` and :code:`/etc/kafka_discovery`,

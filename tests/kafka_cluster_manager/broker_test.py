@@ -18,9 +18,9 @@ from pytest import fixture
 
 from .helper import create_and_attach_partition
 from .helper import create_broker
-from kafka_tools.kafka_cluster_manager.cluster_info.broker import Broker
-from kafka_tools.kafka_cluster_manager.cluster_info.partition import Partition
-from kafka_tools.kafka_cluster_manager.cluster_info.topic import Topic
+from kafka_utils.kafka_cluster_manager.cluster_info.broker import Broker
+from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
 
 
 class TestBroker(object):

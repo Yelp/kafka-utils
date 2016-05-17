@@ -15,21 +15,21 @@
 import mock
 import pytest
 
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .cluster_topology import ClusterTopology
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .error import BrokerDecommissionError
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .error import InvalidBrokerIdError
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .error import InvalidPartitionError
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .error import RebalanceError
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import get_leader_imbalance_stats
-from kafka_tools.kafka_cluster_manager.cluster_info \
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import get_replication_group_imbalance_stats
 
 

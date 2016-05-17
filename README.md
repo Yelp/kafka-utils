@@ -1,11 +1,11 @@
-# Kafka-Tools
+# Kafka-Utils
 
 A suite of python tools to interact and manage Apache Kafka clusters.
-Kafka-Tools currently runs on python2.7.
+Kafka-Utils currently runs on python2.7.
 
 ## Configuration
 
-Kafka-Tools reads cluster configuration needed to access Kafka clusters from yaml files. Each cluster is identified by *type* and *name*.
+Kafka-Utils reads cluster configuration needed to access Kafka clusters from yaml files. Each cluster is identified by *type* and *name*.
 Multiple clusters of the same type should be listed in the same `type.yaml` file.
 The yaml files are read from `$KAFKA_DISCOVERY_DIR`, `$HOME/.kafka_discovery` and `/etc/kafka_discovery`, the former overrides the latter.
 
@@ -31,16 +31,16 @@ Sample configuration for `sample_type` cluster at `/etc/kafka_discovery/sample_t
 
 From PyPI:
 ```shell
-    $ pip install kafka-tools
+    $ pip install kafka-utils
 ```
 
 
-## Kafka-tools command-line interface
+## Kafka-Utils command-line interface
 
 ### List all clusters
 
 ```shell
-    $ kafka-tools
+    $ kafka-utils
     cluster-type sample_type:
         cluster-name: cluster-1
         broker-list: cluster-elb-1:9092
@@ -78,13 +78,13 @@ From PyPI:
 
 ## Documentation
 
-Read the documentation at [Read the Docs](http://kafka-tools.readthedocs.io/en/latest/).
+Read the documentation at [Read the Docs](http://kafka-utils.readthedocs.io/en/latest/).
 
 ## License
 
-Kafka-Tools is licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+Kafka-Utils is licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 
 ## Contributing
 
-Everyone is encouraged to contribute to Kafka-Tools by forking the
-[Github repository](http://github.com/Yelp/kafka-tools) and making a pull request or opening an issue.
+Everyone is encouraged to contribute to Kafka-Utils by forking the
+[Github repository](http://github.com/Yelp/kafka-utils) and making a pull request or opening an issue.

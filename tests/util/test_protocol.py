@@ -16,7 +16,7 @@ import struct
 
 from kafka.common import OffsetCommitRequest
 
-from kafka_tools.util.protocol import KafkaToolProtocol
+from kafka_utils.util.protocol import KafkaToolProtocol
 
 
 class TestProtocol(object):
