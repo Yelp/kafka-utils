@@ -35,7 +35,7 @@ From PyPI:
 ```
 
 
-## Kafka-utils command-line interface
+## Kafka-Utils command-line interface
 
 ### List all clusters
 

@@ -34,7 +34,7 @@ setup(
     version=__version__,
     author="Distributed Systems Team",
     author_email="team-dist-sys@yelp.com",
-    description="Kafka management tools",
+    description="Kafka management utils",
     packages=find_packages(exclude=["scripts", "tests"]),
     url="https://github.com/Yelp/kafka-utils",
     license="Apache License 2.0",
