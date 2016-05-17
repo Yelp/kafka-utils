@@ -61,9 +61,9 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/YelpKafka.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Kafka-Tools.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/YelpKafka.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Kafka-Tools.qhc"
 
 latex:
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
