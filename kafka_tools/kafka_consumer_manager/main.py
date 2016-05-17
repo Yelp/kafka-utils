@@ -38,7 +38,7 @@ from kafka_tools.util.error import ConfigurationError
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="kakfa-consumer-manager provides to ability to view and "
+        description="kafka-consumer-manager provides to ability to view and "
         "manipulate consumer offsets for a specific consumer group.",
     )
     parser.add_argument(

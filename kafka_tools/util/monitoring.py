@@ -64,7 +64,7 @@ def get_consumer_offsets_metadata(
     """
     # Refresh client metadata. We do now use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
-    # If Kafka is unavailable, let's retry loading client metadata (YELPKAFKA-30)
+    # If Kafka is unavailable, let's retry loading client metadata
     try:
         kafka_client.load_metadata_for_topics()
     except KafkaUnavailableError:
