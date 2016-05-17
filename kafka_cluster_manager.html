@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Cluster Manager &mdash; Kafka-Tools 0.1.0 documentation</title>
+  <title>Cluster Manager &mdash; Kafka-Utils 0.1.0 documentation</title>
   
 
   
@@ -30,7 +30,7 @@
   
 
   
-    <link rel="top" title="Kafka-Tools 0.1.0 documentation" href="index.html"/>
+    <link rel="top" title="Kafka-Utils 0.1.0 documentation" href="index.html"/>
         <link rel="next" title="Consumer Manager" href="kafka_consumer_manager.html"/>
         <link rel="prev" title="Configuration" href="config.html"/> 
 
@@ -50,7 +50,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Kafka-Tools
+            <a href="index.html" class="icon icon-home"> Kafka-Utils
           
 
           
@@ -114,7 +114,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Kafka-Tools</a>
+        <a href="index.html">Kafka-Utils</a>
       </nav>
 
 
@@ -161,7 +161,7 @@ a balanced cluster will be more resilient to zone failures.</p>
 <p>By default all brokers are considered as part of a single replication group.
 Custom replication group parsers can be defined by extending the class
 <code class="code docutils literal"><span class="pre">ReplicationGroupParser</span></code> as shown in the example below:</p>
-<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">kafka_tools.kafka_cluster_manager.cluster_info.replication_group_parser</span> \
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser</span> \
         <span class="kn">import</span> <span class="nn">ReplicationGroupParser</span>
 
 
@@ -241,7 +241,7 @@ as a leader uniformly. The tool does not take into account partition size.</p>
 <p>The command provides the ability to balance one or more of these layers except for
 the topic-partition imbalance layer which will be balanced implicitly with replica or
 partition rebalancing.</p>
-<p><code class="xref py py-mod docutils literal"><span class="pre">kafka_tools.kafka_cluster_manager.cluster_topology</span></code> provides APIs to create
+<p><code class="xref py py-mod docutils literal"><span class="pre">kafka_utils.kafka_cluster_manager.cluster_topology</span></code> provides APIs to create
 a cluster-topology object based on the distribution of topics, partitions, brokers and
 replication-groups across the cluster.</p>
 </div>

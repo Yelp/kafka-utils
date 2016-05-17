@@ -1,9 +1,9 @@
-Kafka-Tools v\ |version|
+Kafka-Utils v\ |version|
 ########################
 
 Description
 ***********
-Kafka-Tools is a library containing tools to interact with kafka clusters and manage them. The tool provides utilities
+Kafka-Utils is a library containing tools to interact with kafka clusters and manage them. The tool provides utilities
 like listing of all the clusters, balancing the partition distribution across brokers and replication-groups, managing
 consumer groups, rolling-restart of the cluster, cluster healthchecks.
 
@@ -13,14 +13,14 @@ How to install
 **************
 .. code-block:: bash
 
-    $ pip install kafka-tools
+    $ pip install kafka-utils
 
 
 List available clusters.
 
 .. code-block:: bash
 
-    $ kafka-tools
+    $ kafka-utils
     Cluster type sample_type:
         Cluster name: cluster-1
         broker list: cluster-elb-1:9092
