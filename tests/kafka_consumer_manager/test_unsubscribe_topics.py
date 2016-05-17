@@ -31,7 +31,7 @@ class TestUnsubscribeTopics(object):
     def client(self):
         with mock.patch(
             'kafka_tools.kafka_consumer_manager.'
-            'commands.unsubscribe_topics.KafkaClient',
+            'commands.unsubscribe_topics.KafkaToolClient',
             autospec=True,
         ) as mock_client:
             yield mock_client

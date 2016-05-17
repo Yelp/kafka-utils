@@ -25,7 +25,7 @@ class TestOffsetGet(object):
     def client(self):
         with mock.patch(
                 'kafka_tools.kafka_consumer_manager.'
-                'commands.offset_get.KafkaClient',
+                'commands.offset_get.KafkaToolClient',
                 autospec=True,
         ) as mock_client:
             yield mock_client

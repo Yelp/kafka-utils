@@ -185,7 +185,7 @@ def get_current_consumer_offsets(
     other topics. This is the tradeoff of sending all topic requests in batch
     and save both in performance and Kafka load.
 
-    :param kafka_client: a connected KafkaClient
+    :param kafka_client: a connected KafkaToolClient
     :param group: kafka group_id
     :param topics: topic list or dict {<topic>: [partitions]}
     :param raise_on_error: if False the method ignores missing topics and
@@ -249,7 +249,7 @@ def get_topics_watermarks(kafka_client, topics, raise_on_error=True):
     other topics. This is the tradeoff of sending all topic requests in batch
     and save both in performance and Kafka load.
 
-    :param kafka_client: a connected KafkaClient
+    :param kafka_client: a connected KafkaToolClient
     :param topics: topic list or dict {<topic>: [partitions]}
     :param raise_on_error: if False the method ignores missing topics
       and missing partitions. It still may fail on the request send.
@@ -399,7 +399,7 @@ def advance_consumer_offsets(
     other topics. This is the tradeoff of sending all topic requests in batch
     and save both in performance and Kafka load.
 
-    :param kafka_client: a connected KafkaClient
+    :param kafka_client: a connected KafkaToolClient
     :param group: kafka group_id
     :param topics: topic list or dict {<topic>: [partitions]}
     :param raise_on_error: if False the method does not raise exceptions
@@ -442,7 +442,7 @@ def rewind_consumer_offsets(
     other topics. This is the tradeoff of sending all topic requests in batch
     and save both in performance and Kafka load.
 
-    :param kafka_client: a connected KafkaClient
+    :param kafka_client: a connected KafkaToolClient
     :param group: kafka group_id
     :param topics: topic list or dict {<topic>: [partitions]}
     :param raise_on_error: if False the method does not raise exceptions

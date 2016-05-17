@@ -43,7 +43,7 @@ def topics(request):
     return request.param
 
 
-class MyKafkaClient(object):
+class MyKafkaToolClient(object):
 
     def __init__(
         self,
@@ -254,7 +254,7 @@ class TestOffsetsBase(object):
 
     @pytest.fixture
     def kafka_client_mock(self):
-        return MyKafkaClient(
+        return MyKafkaToolClient(
             self.topics,
             copy.deepcopy(self.group_offsets),
             self.high_offsets,

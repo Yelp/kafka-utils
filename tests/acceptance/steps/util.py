@@ -16,12 +16,12 @@ import subprocess
 import time
 import uuid
 
-from kafka import KafkaClient
 from kafka import KafkaConsumer
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
 
 from kafka_tools.util import config
+from kafka_tools.util.client import KafkaToolClient
 
 
 ZOOKEEPER_URL = 'zookeeper:2181'
@@ -75,7 +75,7 @@ def create_random_topic(replication_factor, partitions, topic_name=None):
 
 
 def produce_example_msg(topic, num_messages=1):
-    kafka = KafkaClient(KAFKA_URL)
+    kafka = KafkaToolClient(KAFKA_URL)
     producer = SimpleProducer(kafka)
     for i in xrange(num_messages):
         try:
@@ -85,6 +85,10 @@ def produce_example_msg(topic, num_messages=1):
             # topic
             time.sleep(10)
             producer.send_messages(topic, b'some message')
+
+
+def create_random_group_id():
+    return str(uuid.uuid1())
 
 
 def create_consumer_group(topic, group_name, num_messages=1):

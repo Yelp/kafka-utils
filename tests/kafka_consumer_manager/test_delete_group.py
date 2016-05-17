@@ -26,7 +26,7 @@ class TestDeleteGroup(object):
     def client(self):
         with mock.patch(
                 'kafka_tools.kafka_consumer_manager.'
-                'commands.delete_group.KafkaClient',
+                'commands.delete_group.KafkaToolClient',
                 autospec=True,
         ) as mock_client:
             yield mock_client

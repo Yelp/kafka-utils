@@ -24,7 +24,7 @@ from kafka_tools.kafka_consumer_manager. \
 
 @mock.patch(
     'kafka_tools.kafka_consumer_manager.'
-    'commands.rename_group.KafkaClient',
+    'commands.rename_group.KafkaToolClient',
     autospec=True,
 )
 class TestRenameGroup(object):

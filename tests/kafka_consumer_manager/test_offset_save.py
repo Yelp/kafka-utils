@@ -36,7 +36,7 @@ class TestOffsetSave(object):
     json_data = {'groupid': 'group1', 'offsets': {'topic1': {'0': 10, '1': 20}}}
 
     @mock.patch('kafka_tools.kafka_consumer_manager.'
-                'commands.offset_save.KafkaClient')
+                'commands.offset_save.KafkaToolClient')
     def test_save_offsets(self, mock_client):
         with mock.patch.object(
             OffsetSave,
@@ -58,7 +58,7 @@ class TestOffsetSave(object):
             assert ordered_args[1] == self.offset_data_file
 
     @mock.patch('kafka_tools.kafka_consumer_manager.'
-                'commands.offset_save.KafkaClient')
+                'commands.offset_save.KafkaToolClient')
     def test_run(self, mock_client):
         with mock.patch.object(
             OffsetSave,

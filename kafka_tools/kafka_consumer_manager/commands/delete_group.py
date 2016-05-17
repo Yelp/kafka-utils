@@ -17,9 +17,8 @@ from __future__ import print_function
 
 import sys
 
-from kafka import KafkaClient
-
 from .offset_manager import OffsetWriter
+from kafka_tools.util.client import KafkaToolClient
 from kafka_tools.util.offsets import nullify_offsets
 from kafka_tools.util.offsets import set_consumer_offsets
 from kafka_tools.util.zookeeper import ZK
@@ -52,7 +51,7 @@ class DeleteGroup(OffsetWriter):
     @classmethod
     def run(cls, args, cluster_config):
         # Setup the Kafka client
-        client = KafkaClient(cluster_config.broker_list)
+        client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(

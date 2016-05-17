@@ -51,7 +51,7 @@ def get_consumer_offsets_metadata(
         * fetches group offsets
         * fetches watermarks
 
-    :param kafka_client: KafkaClient instance
+    :param kafka_client: KafkaToolClient instance
     :param group: group id
     :param topics: list of topics
     :param raise_on_error: if False the method ignores missing topics and
