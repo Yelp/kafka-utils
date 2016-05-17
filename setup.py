@@ -48,7 +48,7 @@ setup(
         "scripts/kafka-check",
     ],
     install_requires=[
-        "kazoo>=2.0.post2,<3.0.0",
+        "kazoo>=2.0,<3.0.0",
         "fabric>=1.8.0,<1.11.0",
         "PyYAML<4.0.0",
         "requests-futures>0.9.0",
