@@ -16,7 +16,7 @@ the following functionalities:
   unsubscribing topics.
 
 * **Offset storage choice**: Supports Kafka 0.8.2 and 0.9.0, using offsets
-  stored in either Zookeeper or Kafka. Version 0 and 2 of the Kakfa Protocol
+  stored in either Zookeeper or Kafka. Version 0 and 2 of the Kafka Protocol
   are supported for committing offsets.
 
 Subcommands
