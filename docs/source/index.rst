@@ -43,6 +43,7 @@ List available clusters' configuration.
    kafka_cluster_manager
    kafka_consumer_manager
    kafka_rolling_restart
+   kafka_check
 
 
 Indices and tables

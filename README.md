@@ -69,6 +69,13 @@ From PyPI:
 ```shell
     $ kafka-rolling-restart --cluster-type sample_type
 ```
+
+### Check in-sync replicas
+
+```shell
+    $ kafka-check --cluster-type sample_type min_isr
+```
+
 ## Documentation
 
 Read the documentation at [Read the Docs](http://kafka-tools.readthedocs.io/en/latest/).
