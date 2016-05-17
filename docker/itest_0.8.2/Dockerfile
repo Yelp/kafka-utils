@@ -1,7 +1,7 @@
 FROM ubuntu:14.04
 MAINTAINER Team Distributed Systems <team-dist-sys@yelp.com>
 
-# We need to install Java and Kafka in order to use Kafka CLI. The Kakfa server
+# We need to install Java and Kafka in order to use Kafka CLI. The Kafka server
 # will never run in this container; the Kafka server will run in the "kafka"
 # container.
 

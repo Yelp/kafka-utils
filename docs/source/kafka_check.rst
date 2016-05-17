@@ -26,6 +26,7 @@ The parameters for min_isr check are:
    OK: All replicas in sync.
 
 In case of min isr violations:
+
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type min_isr --default_min_isr 3
