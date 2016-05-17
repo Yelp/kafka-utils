@@ -1,28 +1,31 @@
-Check ISR
-*********
+Kafka Check
+***********
 
+Checking in-sync replicas
+=========================
 This kafka tool provides the ability to check in-sync replicas for each topic-partition
 in the cluster with configuration for that topic in Zookeeper or default min.isr param
-if it is specified and there is no settings in Zookeeper for partition. 
+if it is specified and there is no settings in Zookeeper.
+
+The :code:`min_isr` command checks if the number of in-sync replicas for a
+partition is equal or greater than the minimum number of in-sync replicas
+configured for the topic the partition belongs to. A topic specific
+:code:`min.insync.replicas` overrides the given default.
 
 Subcommands
 ===========
 
 * min_isr
 
-Checking in-sync replicas
-=========================
-
-The :code:`min_isr` command checks if replicas of each topic-partition is in-sync
-with configuration for that topic in Zookeeper or with :code:`--default_min_isr`,
-if provided.
+Examples
+========
 
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type min_isr 
    OK: All replicas in sync.
 
-In case of mismatch in isr:
+In case of min isr violations:
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type min_isr --default_min_isr 3
