@@ -15,14 +15,8 @@ How to install
 
     $ pip install kafka-tools
 
-Kafka-tools
-***********
-This tool provides the version information of the library and lists the cluster information.
 
-Usage Examples
---------------
-
-List available clusters' configuration.
+List available clusters.
 
 .. code-block:: bash
 
@@ -38,7 +32,6 @@ List available clusters' configuration.
 .. toctree::
    :maxdepth: -1
 
-   self
    config
    kafka_cluster_manager
    kafka_consumer_manager
