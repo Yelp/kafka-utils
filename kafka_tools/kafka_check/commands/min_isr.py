@@ -33,7 +33,9 @@ class MinIsrCmd(KafkaCheckCmd):
         subparser.add_argument(
             '--default_min_isr',
             type=int,
-            help='Default min.isr value for cases without settings in Zookeeper for some topics.',
+            default=1,
+            help='Default min.isr value for cases without settings in Zookeeper '
+            'for some topics. Default: %(default)s',
         )
         return subparser
 
