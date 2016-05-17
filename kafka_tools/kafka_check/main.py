@@ -65,18 +65,19 @@ def parse_args():
     )
     parser.add_argument(
         "--broker-id",
-        help='Kafka current broker id. If -1 then broker-id will be read from given --data-path',
+        help='Kafka current broker id.',
         type=convert_to_broker_id,
     )
     parser.add_argument(
         "--data-path",
-        help='Path to the Kafka data folder. If specified --broker-id should be '
-        'given as -1.',
+        help='Path to the Kafka data folder.',
     )
     parser.add_argument(
         '--controller-only',
         action="store_true",
-        help='If this parameter is specified, it will do nothing and succeed on non-controller brokers',
+        help='If this parameter is specified, it will do nothing and succeed on '
+        'non-controller brokers. Set --broker-id to -1 to read broker-id from '
+        '--data-path.,
     )
 
     subparsers = parser.add_subparsers()
