@@ -1,9 +1,9 @@
-Kafka-Tools v\ |version|
+Kafka-Utils v\ |version|
 ########################
 
 Description
 ***********
-Kafka-Tools is a library containing tools to interact with kafka clusters and manage them. The tool provides utilities
+Kafka-Utils is a library containing tools to interact with kafka clusters and manage them. The tool provides utilities
 like listing of all the clusters, balancing the partition distribution across brokers and replication-groups, managing
 consumer groups, rolling-restart of the cluster, cluster healthchecks.
 

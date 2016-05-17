@@ -14,7 +14,7 @@
 # limitations under the License.
 # -*- coding: utf-8 -*-
 #
-# Kafka-Tools documentation build configuration file, created by
+# Kafka-Utils documentation build configuration file, created by
 # sphinx-quickstart on Thu Jan 22 14:07:09 2015.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -59,7 +59,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Kafka-Tools'
+project = u'Kafka-Utils'
 copyright = u'2015-2016, Yelp-Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -193,7 +193,7 @@ htmlhelp_basename = 'kafkatoolsdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ('index', 'Kafka_Tools.tex', u'Kafka-Tools Documentation',
+    ('index', 'Kafka_Utils.tex', u'Kafka-Utils Documentation',
      u'Yelp Inc.', 'manual'),
 ]
 
