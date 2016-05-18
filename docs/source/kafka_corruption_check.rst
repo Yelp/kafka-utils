@@ -20,7 +20,7 @@ The parameters specific for kafka-corruption-check are:
 * ``--data-path``: the path to the data files on the Kafka broker.
 * ``--java-home``: the JAVA_HOME on the Kafka broker.
 * ``--batch-size BATCH_SIZE``: the number of files that will be checked
-  in parallel on each broker..
+  in parallel on each broker. Default: 5.
 * ``--check-replicas``: if set it will also check the data on replicas.
   Default: false.
 * ``--verbose``: enable verbose output.
@@ -54,15 +54,14 @@ Check all the files modified after the specified date, in both leaders and repli
 
 .. code-block:: bash
 
-  $ kafka-corruption-check --cluster-type generic --cluster-name dev --start-time "2015-11-26 11:00:00" --check-replicas
+  $ kafka-corruption-check [...] --start-time "2015-11-26 11:00:00" --check-replicas
 
 Check all the files that were modified in the specified range and that do not start with 'services':
 
 .. code-block:: bash
 
-  $ kafka-corruption-check --cluster-type generic --cluster-name dev --start-time "2015-11-26 11:00:00" --end-time "2015-11-26 12:00:00" --prefix "!services"
+  $ kafka-corruption-check [...] --start-time "2015-11-26 11:00:00" --end-time "2015-11-26 12:00:00" --prefix "!services"
 
-For more information refer to ``--help``.
-
-Even though this too executes the log check with a low ionice priority, it can
-slow down the cluster given the high number of io operations required.
+Even though this tool executes the log check with a low ionice priority, it can
+slow down the cluster given the high number of io operations required. Consider
+decreasing the batch size to reduce the additional load.

@@ -88,11 +88,11 @@ def parse_args():
     parser.add_argument(
         '--cluster-type',
         required=True,
-        help='cluster type, e.g. "standard"',
+        help='cluster type, e.g. "generic"',
     )
     parser.add_argument(
         '--cluster-name',
-        help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
+        help='cluster name, e.g. "dev" (defaults to local cluster)',
     )
     parser.add_argument(
         '--discovery-base-path',
@@ -364,7 +364,7 @@ def get_tp_from_file(file_path):
 
     :param file_path: the path to the log file
     :type file_path: str
-    :returns: the name of the topic-partition, ex. "ranger-0"
+    :returns: the name of the topic-partition, ex. "topic_name-0"
     :rtype: str
     """
     match = TP_FROM_FILE_REGEX.match(file_path)
