@@ -13,10 +13,10 @@ from operator import itemgetter
 
 import paramiko
 from kafka import KafkaClient
-from yelp_kafka.error import ConfigurationError
 
-from yelp_kafka_tool.util.config import get_cluster_config
-from yelp_kafka_tool.util.zookeeper import ZK
+from kafka_utils.util import config
+from kafka_utils.util.error import ConfigurationError
+from kafka_utils.util.zookeeper import ZK
 
 
 DATA_PATH = "/nail/var/kafka/md1/kafka-logs"
@@ -83,7 +83,7 @@ def report_stderr(host, stderr):
             print(line.rstrip(), file=sys.stderr)
 
 
-def parse_opts():
+def parse_args():
     parser = argparse.ArgumentParser(
         description=('Run a distributed check on all the brokers of a cluster, '
                      'looking for data corruption.')
@@ -96,6 +96,12 @@ def parse_opts():
     parser.add_argument(
         '--cluster-name',
         help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
+    )
+    parser.add_argument(
+        '--discovery-base-path',
+        dest='discovery_base_path',
+        type=str,
+        help='Path of the directory containing the <cluster_type>.yaml config',
     )
     parser.add_argument(
         '--minutes',
@@ -140,7 +146,7 @@ def get_broker_list(cluster_config):
     """Returns a dictionary of brokers in the form {id: host}
 
     :param cluster_config: the configuration of the cluster
-    :type cluster_config: yelp_kafka.config.ClusterConfig
+    :type cluster_config: kafka_utils.utils.config.ClusterConfig
     :returns: all the brokers in the cluster
     :rtype: map of (broker_id, host) pairs
     """
@@ -327,7 +333,7 @@ def get_partition_leaders(cluster_config):
     returned as a "topic-partition" string.
 
     :param cluster_config: the cluster
-    :type cluster_config: yelp_kafka.config.ClusterConfig
+    :type cluster_config: kafka_utils.utils.config.ClusterConfig
     :returns: leaders for partitions
     :rtype: map of ("topic-partition", broker_id) pairs
     """
@@ -360,7 +366,7 @@ def filter_leader_files(cluster_config, broker_files):
     are in the replicas.
 
     :param cluster_config: the cluster
-    :type cluster_config: yelp_kafka.config.ClusterConfig
+    :type cluster_config: kafka_utils.utils.config.ClusterConfig
     :param broker_files: the broker files
     :type broker_files: list of (b_id, host, [file_path, file_path ...]) tuples
     :returns: the filtered list
@@ -442,58 +448,62 @@ def check_cluster(
         sys.exit(1)
 
 
-def validate_opts(opts):
+def validate_args(args):
     """Basic option validation. Returns False if the options are not valid,
     True otherwise.
 
-    :param opts: the command line options
-    :type opts: map
+    :param args: the command line options
+    :type args: map
     :param brokers_num: the number of brokers
     """
-    if not opts.minutes and not opts.start_time:
+    if not args.minutes and not args.start_time:
         print("Error: missing --minutes or --start-time")
         return False
-    if opts.minutes and opts.start_time:
+    if args.minutes and args.start_time:
         print("Error: --minutes shouldn't be specified if --start-time is used")
         return False
-    if opts.end_time and not opts.start_time:
+    if args.end_time and not args.start_time:
         print("Error: --end-time can't be used without --start-time")
         return False
-    if opts.minutes and opts.minutes <= 0:
+    if args.minutes and args.minutes <= 0:
         print("Error: --minutes must be > 0")
         return False
-    if opts.start_time and not TIME_FORMAT_REGEX.match(opts.start_time):
+    if args.start_time and not TIME_FORMAT_REGEX.match(args.start_time):
         print("Error: --start-time format is not valid")
         print("Example format: '2015-11-26 11:00:00'")
         return False
-    if opts.end_time and not TIME_FORMAT_REGEX.match(opts.end_time):
+    if args.end_time and not TIME_FORMAT_REGEX.match(args.end_time):
         print("Error: --end-time format is not valid")
         print("Example format: '2015-11-26 11:00:00'")
         return False
-    if opts.batch_size <= 0:
+    if args.batch_size <= 0:
         print("Error: --batch-size must be > 0")
         return False
     return True
 
 
 def run():
-    opts = parse_opts()
-    if opts.verbose:
+    args = parse_args()
+    if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARN)
     try:
-        cluster = get_cluster_config(opts.cluster_type, opts.cluster_name)
+        cluster = config.get_cluster_config(
+            args.cluster_type,
+            args.cluster_name,
+            args.discovery_base_path,
+        )
     except ConfigurationError as e:
         print(e, file=sys.stderr)
         sys.exit(1)
-    if not validate_opts(opts):
+    if not validate_args(args):
         sys.exit(1)
     check_cluster(
         cluster,
-        opts.check_replicas,
-        opts.batch_size,
-        opts.minutes,
-        opts.start_time,
-        opts.end_time,
+        args.check_replicas,
+        args.batch_size,
+        args.minutes,
+        args.start_time,
+        args.end_time,
     )

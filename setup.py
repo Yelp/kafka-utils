@@ -46,6 +46,7 @@ setup(
         "scripts/kafka-rolling-restart",
         "scripts/kafka-utils",
         "scripts/kafka-check",
+        "scripts/kafka-corruption-check",
     ],
     install_requires=[
         "kazoo>=2.0,<3.0.0",

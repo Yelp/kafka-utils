@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import mock
 
-from yelp_kafka_tool.kafka_check_corruption import main
+from kafka_utils.kafka_corruption_check import main
 
 
 FILE_LINE = "Dumping /path/to/file"
@@ -32,7 +32,7 @@ def test_find_files_cmd_range():
 
 
 @mock.patch(
-    "yelp_kafka_tool.kafka_check_corruption."
+    "kafka_utils.kafka_corruption_check."
     "main.print_line",
 )
 def test_parse_output_correct(mock_print):
@@ -41,7 +41,7 @@ def test_parse_output_correct(mock_print):
 
 
 @mock.patch(
-    "yelp_kafka_tool.kafka_check_corruption."
+    "kafka_utils.kafka_corruption_check."
     "main.print_line",
 )
 def test_parse_output_invalid(mock_print):
@@ -50,7 +50,7 @@ def test_parse_output_invalid(mock_print):
 
 
 @mock.patch(
-    "yelp_kafka_tool.kafka_check_corruption."
+    "kafka_utils.kafka_corruption_check."
     "main.get_partition_leaders",
     return_value={"t0-0": 1, "t0-1": 2},
 )
