@@ -19,9 +19,6 @@ from kafka_utils.util.error import ConfigurationError
 from kafka_utils.util.zookeeper import ZK
 
 
-DATA_PATH = "/nail/var/kafka/md1/kafka-logs"
-JAVA_HOME = "/usr/lib/jvm/java-8-oracle-1.8.0.20/"
-
 DEFAULT_BATCH_SIZE = 5
 IONICE = "ionice -c 3"
 
@@ -102,6 +99,18 @@ def parse_args():
         dest='discovery_base_path',
         type=str,
         help='Path of the directory containing the <cluster_type>.yaml config',
+    )
+    parser.add_argument(
+        '--data-path',
+        help=('Path of the log data directory on the Kafka broker'),
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        '--java-home',
+        help=('The JAVA_HOME of the Kafka broker. Default: %(default)s'),
+        type=str,
+        default="/usr/lib/jvm/java-8-oracle-1.8.0.20/",
     )
     parser.add_argument(
         '--minutes',
@@ -227,13 +236,15 @@ def get_output_lines_from_command(host, command):
     return lines
 
 
-def find_files(brokers, minutes, start_time, end_time):
+def find_files(data_path, brokers, minutes, start_time, end_time):
     """Find all the Kafka log files on the broker that have been modified
     in the speficied time range.
 
     start_time and end_time should be in the format specified
     by TIME_FORMAT_REGEX.
 
+    :param data_path: the path to the lof files on the broker
+    :type data_path: str
     :param brokers: the brokers
     :type brokers: list of (broker_id, host) pairs
     :param minutes: check the files modified in the last N minutes
@@ -245,7 +256,7 @@ def find_files(brokers, minutes, start_time, end_time):
     :returns: the files
     :rtype: list of (broker, host, file_path) tuples
     """
-    command = find_files_cmd(DATA_PATH, minutes, start_time, end_time)
+    command = find_files_cmd(data_path, minutes, start_time, end_time)
     pool = Pool(len(brokers))
     result = pool.map(
         partial(get_output_lines_from_command, command=command),
@@ -301,11 +312,13 @@ def print_line(host, path, line, line_type):
     print("{ltype} Output: {line}".format(ltype=line_type, line=line))
 
 
-def check_files_on_host(host, files, batch_size):
+def check_files_on_host(java_home, host, files, batch_size):
     """Check the files on the host. Files are grouped together in groups
     of batch_size files. The dump class will be executed on each batch,
     sequentially.
 
+    :param java_home: the JAVA_HOME of the broker
+    :type java_home: str
     :param host: the host where the tool will be executed
     :type host: str
     :param files: the list of files to be analyzed
@@ -315,7 +328,7 @@ def check_files_on_host(host, files, batch_size):
     """
     with closing(ssh_client(host)) as ssh:
         for i, batch in enumerate(chunks(files, batch_size)):
-            command = check_corrupted_files_cmd(JAVA_HOME, batch)
+            command = check_corrupted_files_cmd(java_home, batch)
             _, stdout, stderr = ssh.exec_command(command)
             report_stderr(host, stderr)
             print(
@@ -394,6 +407,8 @@ def filter_leader_files(cluster_config, broker_files):
 
 def check_cluster(
     cluster_config,
+    data_path,
+    java_home,
     check_replicas,
     batch_size,
     minutes,
@@ -405,6 +420,10 @@ def check_cluster(
     start_time and end_time should be in the format specified
     by TIME_FORMAT_REGEX.
 
+    :param data_path: the path to the log folder on the broker
+    :type data_path: str
+    :param java_home: the JAVA_HOME of the broker
+    :type java_home: str
     :param check_replicas: also checks the replica files
     :type check_replicas: bool
     :param batch_size: the size of the batch
@@ -417,7 +436,7 @@ def check_cluster(
     :type end_time: str
     """
     brokers = get_broker_list(cluster_config)
-    broker_files = find_files(brokers, minutes, start_time, end_time)
+    broker_files = find_files(data_path, brokers, minutes, start_time, end_time)
     if not check_replicas:  # remove replicas
         broker_files = filter_leader_files(cluster_config, broker_files)
     processes = []
@@ -432,7 +451,7 @@ def check_cluster(
             p = Process(
                 name="dump_process_" + host,
                 target=check_files_on_host,
-                args=(host, files, batch_size),
+                args=(java_home, host, files, batch_size),
             )
             p.start()
             processes.append(p)
@@ -501,6 +520,8 @@ def run():
         sys.exit(1)
     check_cluster(
         cluster,
+        args.data_path,
+        args.java_home,
         args.check_replicas,
         args.batch_size,
         args.minutes,
