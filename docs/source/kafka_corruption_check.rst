@@ -3,10 +3,10 @@ Corruption Check
 
 The kafka-corruption-check script performs a check on the log files stored on
 the Kafka brokers. This tool finds all the log files modified in the specified
-time range and runs
-`DumpLogSegments <https://github.com/apache/kafka/blob/0.9.0/core/src/main/scala/kafka/tools/DumpLogSegments.scala>`_
-on them. The output is collected and filtered. All the output lines that
-are related to corrupted messages will be reported to the user.
+time range and runs `DumpLogSegments
+<https://github.com/apache/kafka/blob/0.9.0/core/src/main/scala/kafka/tools/DumpLogSegments.scala>`_
+on them. The output is collected and filtered, and all information related to
+corrupted messages will be reported to the user.
 
 Parameters
 ==========
@@ -15,8 +15,9 @@ The parameters specific for kafka-corruption-check are:
 
 * ``--minutes N``: check the log files modified in the last ``N`` minutes.
 * ``--start-time START_TIME``: check the log files modified after
-  ``START_TIME``.
-* ``--end-time END_TIME``: the number of seconds between each check.
+  ``START_TIME``. Example format: ``--start-time "2015-11-26 11:00:00"``
+* ``--end-time END_TIME``: check the log files modified before ``END_TIME``.
+  Example format: ``--end-time "2015-11-26 12:00:00"``
 * ``--data-path``: the path to the data files on the Kafka broker.
 * ``--java-home``: the JAVA_HOME on the Kafka broker.
 * ``--batch-size BATCH_SIZE``: the number of files that will be checked
@@ -28,13 +29,12 @@ The parameters specific for kafka-corruption-check are:
 Examples
 ========
 
-Check all the files (leaders only) in the generic dev cluster, whose
-topic name starts with 'services' and that were modified in the last 30
-minutes:
+Check all the files (leaders only) in the generic dev cluster and which were
+modified in the last 30 minutes:
 
 .. code-block:: bash
 
-   $ kafka-corruption-check --cluster-type generic --cluster-name dev --data-path /var/kafka-logs --minutes 30 --prefix "services"
+   $ kafka-corruption-check --cluster-type generic --cluster-name dev --data-path /var/kafka-logs --minutes 30
    Filtering leaders
    Broker: 0, leader of 9 over 13 files
    Broker: 1, leader of 4 over 11 files
@@ -56,11 +56,11 @@ Check all the files modified after the specified date, in both leaders and repli
 
   $ kafka-corruption-check [...] --start-time "2015-11-26 11:00:00" --check-replicas
 
-Check all the files that were modified in the specified range and that do not start with 'services':
+Check all the files that were modified in the specified range:
 
 .. code-block:: bash
 
-  $ kafka-corruption-check [...] --start-time "2015-11-26 11:00:00" --end-time "2015-11-26 12:00:00" --prefix "!services"
+  $ kafka-corruption-check [...] --start-time "2015-11-26 11:00:00" --end-time "2015-11-26 12:00:00"
 
 Even though this tool executes the log check with a low ionice priority, it can
 slow down the cluster given the high number of io operations required. Consider
