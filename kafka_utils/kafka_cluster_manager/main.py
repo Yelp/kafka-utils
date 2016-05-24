@@ -41,22 +41,20 @@ from kafka_utils.util import config
 _log = logging.getLogger()
 
 
-def dynamic_import_group_parser(module_full_name):
-    try:
+def get_module(module_full_name):
+    if ':' in module_full_name:
         path, module_name = module_full_name.rsplit(':', 1)
-    except ValueError:
-        print(
-            "{0} is not a valid parser module".format(module_full_name),
-            file=sys.stderr,
-        )
-        sys.exit(1)
+        if not os.path.isdir(path):
+            print("{0} is not a valid directory".format(path), file=sys.stderr)
+            sys.exit(1)
+        sys.path.append(path)
+        return importlib.import_module(module_name)
+    else:
+        return importlib.import_module(module_full_name)
 
-    if not os.path.isdir(path):
-        print("{0} is not a valid directory".format(path), file=sys.stderr)
-        sys.exit(1)
 
-    sys.path.append(path)
-    module = importlib.import_module(module_name)
+def dynamic_import_group_parser(module_full_name):
+    module = get_module(module_full_name)
     for class_name, class_type in inspect.getmembers(module, inspect.isclass):
         if (issubclass(class_type, ReplicationGroupParser) and
                 class_type is not ReplicationGroupParser):
