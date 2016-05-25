@@ -48,6 +48,21 @@ def create_topic(topic_name, replication_factor, partitions):
     time.sleep(1)
 
 
+def list_topics():
+    cmd = ['kafka-topics.sh', '--list',
+           '--zookeeper', ZOOKEEPER_URL]
+
+    return call_cmd(cmd)
+
+
+def delete_topic(topic_name):
+    cmd = ['kafka-topics.sh', '--delete',
+           '--zookeeper', ZOOKEEPER_URL,
+           '--topic', topic_name]
+
+    return call_cmd(cmd)
+
+
 def call_cmd(cmd):
     output = ''
     try:
@@ -74,6 +89,10 @@ def create_random_topic(replication_factor, partitions, topic_name=None):
     return topic_name
 
 
+def create_random_group_id():
+    return str(uuid.uuid1())
+
+
 def produce_example_msg(topic, num_messages=1):
     kafka = KafkaToolClient(KAFKA_URL)
     producer = SimpleProducer(kafka)
@@ -85,10 +104,6 @@ def produce_example_msg(topic, num_messages=1):
             # topic
             time.sleep(10)
             producer.send_messages(topic, b'some message')
-
-
-def create_random_group_id():
-    return str(uuid.uuid1())
 
 
 def create_consumer_group(topic, group_name, num_messages=1):
