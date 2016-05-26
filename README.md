@@ -78,6 +78,12 @@ From PyPI:
     $ kafka-check --cluster-type sample_type min_isr
 ```
 
+### Check number of under replicated partitions
+
+```shell
+    $ kafka-check --cluster-type sample_type under_replicated
+```
+
 ## Documentation
 
 Read the documentation at [Read the Docs](http://kafka-utils.readthedocs.io/en/latest/).

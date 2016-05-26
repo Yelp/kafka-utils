@@ -22,7 +22,7 @@ The parameters for min_isr check are:
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type min_isr 
+   $ kafka-check --cluster-type=sample_type min_isr
    OK: All replicas in sync.
 
 In case of min isr violations:
@@ -35,3 +35,39 @@ In case of min isr violations:
     CRITICAL: 1 partition(s) have the number of replicas in sync that is lower
     than the specified min ISR.
 
+Checking under replicated partitions
+====================================
+This kafka tool provides the ability to check and report number of under replicated
+partitions for all brokers in the cluster.
+
+The :code:`under_replicated` command checks if the number of under replicated partitions
+is equal to zero. It will report the aggregated result of under replicated partitions
+of each broker if any.
+
+The parameters specific to under_replicated check are:
+
+* :code:`--first-broker-only`: If this parameter is specified, the command will
+  check for under-replicated partitions for given broker only if it's the first
+  broker in broker-list fetched from zookeeper. Otherwise, it does nothing and succeeds.
+  If :code:`--broker-id` is also set as -1 then broker-id will be computed from given
+  data-path.
+* :code:`--jolokia-port JOLOKIA_PORT`: Port to access to jolokia collector.
+
+.. code-block:: bash
+
+   $ kafka-check --cluster-type=sample_type under_replicated
+   OK: No under replicated partitions
+
+In case of not first broker in the broker list in Zookeeper:
+
+.. code-block:: bash
+
+   $ kafka-check --cluster-type=sample_type --broker-id 3 under_replicated --first-broker-only
+   OK: Provided broker is not the first in broker-list
+
+In case where some partitions are under-replicated.
+
+.. code-block:: bash
+
+   $ kafka-check --cluster-type=sample_type under_replicated
+   CRITICAL: 2 under replicated partitions

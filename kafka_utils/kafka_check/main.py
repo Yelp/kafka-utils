@@ -23,6 +23,7 @@ import argparse
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
+from kafka_utils.kafka_check.commands.under_replicated import UnderReplicatedCmd
 from kafka_utils.kafka_check.status_code import terminate
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -77,11 +78,12 @@ def parse_args():
         action="store_true",
         help='If this parameter is specified, it will do nothing and succeed on '
         'non-controller brokers. Set --broker-id to -1 to read broker-id from '
-        '--data-path.',
+        '--data-path. Default: %(default)s',
     )
 
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)
+    UnderReplicatedCmd().add_subparser(subparsers)
 
     return parser.parse_args()
 
@@ -100,6 +102,6 @@ def run():
     except ConfigurationError as e:
         terminate(status_code.CRITICAL, "ConfigurationError {0}".format(e))
     except Exception as e:
-        terminate(status_code.CRITICAL, "Got Exception: {0}".format(e))
+        terminate(status_code.WARNING, "Got Exception: {0}".format(e))
 
     terminate(code, msg)
