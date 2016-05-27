@@ -8,6 +8,10 @@ time range and runs `DumpLogSegments
 on them. The output is collected and filtered, and all information related to
 corrupted messages will be reported to the user.
 
+Even though this tool executes the log check with a low ionice priority, it can
+slow down the cluster given the high number of io operations required. Consider
+decreasing the batch size to reduce the additional load.
+
 Parameters
 ==========
 
@@ -61,7 +65,3 @@ Check all the files that were modified in the specified range:
 .. code-block:: bash
 
   $ kafka-corruption-check [...] --start-time "2015-11-26 11:00:00" --end-time "2015-11-26 12:00:00"
-
-Even though this tool executes the log check with a low ionice priority, it can
-slow down the cluster given the high number of io operations required. Consider
-decreasing the batch size to reduce the additional load.
