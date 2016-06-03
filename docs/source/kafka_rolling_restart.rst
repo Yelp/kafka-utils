@@ -1,4 +1,4 @@
-Rolling restart
+Rolling Restart
 ***************
 
 The kafka-rolling-restart script can be used to safely restart an entire
@@ -25,19 +25,19 @@ Parameters
 
 The parameters specific for kafka-rolling-restart are:
 
-* :code:`--check-interval INTERVAL`: the number of seconds between each check.
+* ``--check-interval INTERVAL``: the number of seconds between each check.
   Default 10.
-* :code:`--check-count COUNT`: the number of consecutive checks that must result
+* ``--check-count COUNT``: the number of consecutive checks that must result
   in cluster healthy before restarting the next server. Default 12.
-* :code:`--unhealthy-time-limit LIMIT`: the maximum time in seconds that a
+* ``--unhealthy-time-limit LIMIT``: the maximum time in seconds that a
   cluster can be unhealthy for. If the limit is reached, the script will
   terminate with an error. Default 600.
-* :code:`--jolokia-port PORT`: The Jolokia port. Default 8778.
-* :code:`--jolokia-prefix PREFIX`: The Jolokia prefix. Default "jolokia/".
-* :code:`--no-confirm`: If specified, the script will not ask for confirmation.
-* :code:`--skip N`: Skip the first N servers. Useful to recover from a partial
+* ``--jolokia-port PORT``: The Jolokia port. Default 8778.
+* ``--jolokia-prefix PREFIX``: The Jolokia prefix. Default "jolokia/".
+* ``--no-confirm``: If specified, the script will not ask for confirmation.
+* ``--skip N``: Skip the first N servers. Useful to recover from a partial
   rolling restart. Default 0.
-* :code:`--verbose`: Turn on verbose output.
+* ``--verbose``: Turn on verbose output.
 
 Examples
 ========
@@ -48,11 +48,11 @@ of the cluster:
 
 .. code-block:: bash
 
-   kafka-rolling-restart --cluster-type generic --cluster-name dev --check-interval 30 --check-count 5
+   $ kafka-rolling-restart --cluster-type generic --cluster-name dev --check-interval 30 --check-count 5
 
 Check the generic prod cluster. It will report an error if the cluster is
 unhealthy for more than 900 seconds:
 
 .. code-block:: bash
 
-   kafka-rolling-restart --cluster-type generic --cluster-name prod --unhealthy-time-limit 900
+   $ kafka-rolling-restart --cluster-type generic --cluster-name prod --unhealthy-time-limit 900

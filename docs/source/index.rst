@@ -37,6 +37,7 @@ List available clusters.
    kafka_consumer_manager
    kafka_rolling_restart
    kafka_check
+   kafka_corruption_check
 
 
 Indices and tables
