@@ -1,3 +1,7 @@
+0.1.2 (June 8, 2016)
+----------------------
+* Fix bug for no available under-loaded brokers
+
 0.1.1 (May 17, 2016)
 ----------------------
 
