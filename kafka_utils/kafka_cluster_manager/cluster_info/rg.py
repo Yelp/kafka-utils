@@ -369,14 +369,17 @@ class ReplicationGroup(object):
         )
 
         # Get source and destination broker
-        source_broker = max(
-            over_brokers,
-            key=lambda broker: len(broker.partitions),
-        )
-        dest_broker = min(
-            under_brokers,
-            key=lambda broker: len(broker.partitions),
-        )
+        source_broker, dest_broker = None, None
+        if over_brokers:
+            source_broker = max(
+                over_brokers,
+                key=lambda broker: len(broker.partitions),
+            )
+        if under_brokers:
+            dest_broker = min(
+                under_brokers,
+                key=lambda broker: len(broker.partitions),
+            )
         return (source_broker, dest_broker)
 
     def __str__(self):

@@ -804,6 +804,25 @@ class TestClusterTopology(object):
         # Verify replica-count imbalance remains 0
         assert net_imbal == 0
 
+    def test__rebalance_groups_partition_cnt_case4(self):
+        # rg1 has 4 partitions
+        # rg2 has 2 partitions
+        # Both rg's are balanced(based on replica-count) initially
+        # Result: rg's couldn't be balanced partition-count since
+        # no available broker without partition movement
+        assignment = dict(
+            [
+                ((u'T1', 1), ['0', '1', '2']),
+                ((u'T2', 0), ['0', '1', '2']),
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, self.srange(3))
+        # Re-balance replication-groups for partition-count
+        ct._rebalance_groups_partition_cnt()
+
+        # Verify no change in assignment
+        assert ct.assignment == assignment
+
     def test_update_cluster_topology_invalid_broker(self):
         assignment = dict([((u'T0', 0), ['1', '2'])])
         new_assignment = dict([((u'T0', 0), ['1', '3'])])
