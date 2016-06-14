@@ -192,7 +192,7 @@ def get_conf_dirs():
     config_dirs = []
     if "KAFKA_DISCOVERY_DIR" in os.environ and os.environ["KAFKA_DISCOVERY_DIR"]:
         config_dirs.append(os.environ["KAFKA_DISCOVERY_DIR"])
-    if os.environ["HOME"]:
+    if os.environ.get("HOME"):
         home_config = os.path.join(
             os.path.abspath(os.environ['HOME']),
             HOME_OVERRIDE,
