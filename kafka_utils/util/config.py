@@ -190,7 +190,7 @@ class TopologyConfiguration(object):
 
 def get_conf_dirs():
     config_dirs = []
-    if "KAFKA_DISCOVERY_DIR" in os.environ and os.environ["KAFKA_DISCOVERY_DIR"]:
+    if os.environ.get("KAFKA_DISCOVERY_DIR"):
         config_dirs.append(os.environ["KAFKA_DISCOVERY_DIR"])
     if os.environ.get("HOME"):
         home_config = os.path.join(
