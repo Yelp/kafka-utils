@@ -92,19 +92,24 @@ def separate_groups(groups, key, total):
     :returns: sorted lists of over loaded (descending) and under
         loaded (ascending) group
     """
-    optimum, _ = compute_optimum(len(groups), total)
+    optimum, extra = compute_optimum(len(groups), total)
     over_loaded, under_loaded, optimal = _smart_separate_groups(groups, key, total)
     # If every group is optimal return
-    if not over_loaded:
+    if not extra:
         return over_loaded, under_loaded
     # Some groups in optimal may have a number of elements that is optimum + 1.
     # In this case they should be considered over_loaded.
+    potential_under_loaded = [
+        group for group in optimal
+        if key(group) == optimum
+    ]
     potential_over_loaded = [
         group for group in optimal
         if key(group) > optimum
     ]
+    revised_under_loaded = under_loaded + potential_under_loaded
     revised_over_loaded = over_loaded + potential_over_loaded
     return (
         sorted(revised_over_loaded, key=key, reverse=True),
-        sorted(under_loaded, key=key),
+        sorted(revised_under_loaded, key=key),
     )

@@ -53,8 +53,8 @@ def test_separate_groups_almost_balanced():
 
     overloaded, underloaded = separate_groups(groups, lambda x: x, total)
 
-    assert not overloaded
-    assert not underloaded
+    assert overloaded == [5, 5]
+    assert underloaded == [4]
 
 
 def test_separate_groups_unbalanced():
@@ -64,7 +64,7 @@ def test_separate_groups_unbalanced():
     overloaded, underloaded = separate_groups(groups, lambda x: x, total)
 
     assert overloaded == [4, 4]
-    assert underloaded == [2]
+    assert underloaded == [2, 3]
 
 
 def test_separate_groups_balanced_greater_total():
@@ -73,7 +73,7 @@ def test_separate_groups_balanced_greater_total():
 
     overloaded, underloaded = separate_groups(groups, lambda x: x, total)
 
-    assert underloaded == [4]
+    assert underloaded == [4, 4, 4]
 
 
 def test_separate_groups_balanced_much_greater_total():

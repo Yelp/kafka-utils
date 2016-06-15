@@ -200,6 +200,28 @@ class TestReplicationGroup(object):
 
         assert not b2.empty()
 
+    def test_decommission_multi_replicas_edge_case(self, create_partition):
+        # After decommissioning there will be 2 brokers with 5 partitions and 1
+        # with 4. Because of replication constraints (2 replicas of the same
+        # partition can't live in the same broker) the algorithm has to be smart
+        # enough to find a solution.
+        p10 = create_partition('topic1', 0)
+        p11 = create_partition('topic1', 1)
+        p20 = create_partition('topic2', 0, replication_factor=3)
+        p21 = create_partition('topic2', 1, replication_factor=3)
+        p22 = create_partition('topic2', 2, replication_factor=3)
+        p23 = create_partition('topic2', 3, replication_factor=3)
+        b1 = create_broker('b1', [p10, p20, p23])
+        b2 = create_broker('b2', [p11, p21, p22, p23])
+        b3 = create_broker('b3', [p20, p21, p22, p23])
+        b4 = create_broker('b4', [p20, p21, p22])
+
+        rg = ReplicationGroup('rg', set([b1, b2, b3, b4]))
+        b1.mark_decommissioned()
+
+        rg.rebalance_brokers()
+        assert b1.empty()
+
     def test_rebalance_empty_replication_group(self):
         rg = ReplicationGroup('empty_rg')
 
@@ -522,9 +544,9 @@ class TestReplicationGroup(object):
         rg = ReplicationGroup('rg', set([b1, b2, b3]))
 
         expected = {
-            b1: {b2: {t1: 1, t2: 0}, b3: {t1: 0, t2: 1}},
-            b2: {b1: {t1: -1, t2: 0, t3: -2}, b3: {t1: -1, t2: 1}},
-            b3: {b1: {t1: 0, t2: -1, t3: -2}, b2: {t1: 1, t2: -1}},
+            b1: {b2: {t1: 1, t2: 0, t3: 2}, b3: {t1: 0, t2: 1, t3: 2}},
+            b2: {b1: {t1: -1, t2: 0, t3: -2}, b3: {t1: -1, t2: 1, t3: 0}},
+            b3: {b1: {t1: 0, t2: -1, t3: -2}, b2: {t1: 1, t2: -1, t3: 0}},
         }
         actual = rg.generate_sibling_distance()
 

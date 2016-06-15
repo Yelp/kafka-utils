@@ -151,21 +151,31 @@ class TestClusterTopology(object):
         # All partitions from 3 should now be in 2
         assert len(ct.brokers['2'].partitions) == 3
 
-    def test_broker_decommission_failover(self):
+    def test_broker_decommission_force(self):
         assignment = {
             (u'T0', 0): ['0', '1', '2'],
             (u'T0', 1): ['0', '1', '2'],
             (u'T1', 0): ['0', '1'],
-            (u'T1', 1): ['1', '5'],
-            (u'T1', 2): ['1', '5'],
+            (u'T1', 1): ['1', '4'],
+            (u'T1', 2): ['1', '4'],
             (u'T2', 0): ['0', '3'],
         }
-        ct = self.build_cluster_topology(assignment)
+        # r1 b0 t00, t01, t10, t20
+        # r1 b1 t00, t01, t10, t11, t12
+        # r2 b2 t00, t01
+        # r2 b3 t20
+        # r3 b5 t11, t12
+        brokers_rg = {'0': 'rg1', '1': 'rg1', '2': 'rg2', '3': 'rg2', '4': 'r3'}
+
+        ct = ClusterTopology(
+            assignment,
+            brokers_rg,
+            lambda x: x.metadata,
+        )
         partitions_count = len(ct.partitions)
 
         ct.decommission_brokers(['0'])
 
-        # Partition T00, T01, and T10 should move to 5 and 6
         assert len(ct.partitions) == partitions_count
         assert ct.brokers['0'].empty()
 

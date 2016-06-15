@@ -234,6 +234,7 @@ class ClusterTopology(object):
                 )
                 try:
                     group.acquire_partition(partition, broker)
+                    break
                 except NotEligibleGroupError:
                     pass
 
@@ -257,7 +258,9 @@ class ClusterTopology(object):
                 partition.replace(source, dest)
         except KeyError as e:
             self.log.error("Invalid broker id %s.", e[0])
-            raise InvalidBrokerIdError("Broker id {} does not exist in cluster".format(e[0]))
+            raise InvalidBrokerIdError(
+                "Broker id {} does not exist in cluster".format(e[0])
+            )
 
     def _rebalance_partition(self, partition):
         """Rebalance replication group for given partition."""
@@ -487,7 +490,9 @@ class ClusterTopology(object):
                         partition_name[1],
                     )
                     raise InvalidBrokerIdError(
-                        "Invalid replicas {0}.".format(', '.join([str(id) for id in replica_ids])),
+                        "Invalid replicas {0}.".format(
+                            ', '.join([str(id) for id in replica_ids])
+                        ),
                     )
                 try:
                     partition = self.partitions[partition_name]
