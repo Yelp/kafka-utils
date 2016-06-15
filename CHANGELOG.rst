@@ -1,3 +1,10 @@
+0.2.0 (June 15, 2016)
+----------------------
+* Add under replicated partition check
+* Add log segment corruption check
+* Fix decommission command bug that caused decommission to fail in some cases
+* Fix config when HOME env variable is not defined
+
 0.1.2 (June 8, 2016)
 ----------------------
 * Fix bug for no available under-loaded brokers
