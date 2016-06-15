@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Rolling restart &mdash; Kafka-Utils 0.1.0 documentation</title>
+  <title>Rolling Restart &mdash; Kafka-Utils 0.2.0 documentation</title>
   
 
   
@@ -30,7 +30,7 @@
   
 
   
-    <link rel="top" title="Kafka-Utils 0.1.0 documentation" href="index.html"/>
+    <link rel="top" title="Kafka-Utils 0.2.0 documentation" href="index.html"/>
         <link rel="next" title="Kafka Check" href="kafka_check.html"/>
         <link rel="prev" title="Consumer Manager" href="kafka_consumer_manager.html"/> 
 
@@ -41,6 +41,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0
+                0.2.0
               </div>
             
           
@@ -85,13 +86,14 @@
 <li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Rolling restart</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Rolling Restart</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#cluster-health">Cluster health</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_corruption_check.html">Corruption Check</a></li>
 </ul>
 
             
@@ -118,18 +120,22 @@
 
 
 
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>Rolling restart</li>
-      <li class="wy-breadcrumbs-aside">
-        
+    <li>Rolling Restart</li>
+    <li class="wy-breadcrumbs-aside">
+      
           
-            <a href="_sources/kafka_rolling_restart.txt" rel="nofollow"> View page source</a>
-          
+          <a href="_sources/kafka_rolling_restart.txt" rel="nofollow"> View page source</a>
         
-      </li>
+      
+    </li>
   </ul>
   <hr/>
 </div>
@@ -137,7 +143,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="rolling-restart">
-<h1>Rolling restart<a class="headerlink" href="#rolling-restart" title="Permalink to this headline">¶</a></h1>
+<h1>Rolling Restart<a class="headerlink" href="#rolling-restart" title="Permalink to this headline">¶</a></h1>
 <p>The kafka-rolling-restart script can be used to safely restart an entire
 cluster, one server at a time. The script finds all the servers in a cluster,
 checks their health status and executes the restart.</p>
@@ -160,19 +166,19 @@ it will not appear in the list of known brokers and it will be ignored.</p>
 <h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
 <p>The parameters specific for kafka-rolling-restart are:</p>
 <ul class="simple">
-<li><code class="code docutils literal"><span class="pre">--check-interval</span> <span class="pre">INTERVAL</span></code>: the number of seconds between each check.
+<li><code class="docutils literal"><span class="pre">--check-interval</span> <span class="pre">INTERVAL</span></code>: the number of seconds between each check.
 Default 10.</li>
-<li><code class="code docutils literal"><span class="pre">--check-count</span> <span class="pre">COUNT</span></code>: the number of consecutive checks that must result
+<li><code class="docutils literal"><span class="pre">--check-count</span> <span class="pre">COUNT</span></code>: the number of consecutive checks that must result
 in cluster healthy before restarting the next server. Default 12.</li>
-<li><code class="code docutils literal"><span class="pre">--unhealthy-time-limit</span> <span class="pre">LIMIT</span></code>: the maximum time in seconds that a
+<li><code class="docutils literal"><span class="pre">--unhealthy-time-limit</span> <span class="pre">LIMIT</span></code>: the maximum time in seconds that a
 cluster can be unhealthy for. If the limit is reached, the script will
 terminate with an error. Default 600.</li>
-<li><code class="code docutils literal"><span class="pre">--jolokia-port</span> <span class="pre">PORT</span></code>: The Jolokia port. Default 8778.</li>
-<li><code class="code docutils literal"><span class="pre">--jolokia-prefix</span> <span class="pre">PREFIX</span></code>: The Jolokia prefix. Default &#8220;jolokia/&#8221;.</li>
-<li><code class="code docutils literal"><span class="pre">--no-confirm</span></code>: If specified, the script will not ask for confirmation.</li>
-<li><code class="code docutils literal"><span class="pre">--skip</span> <span class="pre">N</span></code>: Skip the first N servers. Useful to recover from a partial
+<li><code class="docutils literal"><span class="pre">--jolokia-port</span> <span class="pre">PORT</span></code>: The Jolokia port. Default 8778.</li>
+<li><code class="docutils literal"><span class="pre">--jolokia-prefix</span> <span class="pre">PREFIX</span></code>: The Jolokia prefix. Default &#8220;jolokia/&#8221;.</li>
+<li><code class="docutils literal"><span class="pre">--no-confirm</span></code>: If specified, the script will not ask for confirmation.</li>
+<li><code class="docutils literal"><span class="pre">--skip</span> <span class="pre">N</span></code>: Skip the first N servers. Useful to recover from a partial
 rolling restart. Default 0.</li>
-<li><code class="code docutils literal"><span class="pre">--verbose</span></code>: Turn on verbose output.</li>
+<li><code class="docutils literal"><span class="pre">--verbose</span></code>: Turn on verbose output.</li>
 </ul>
 </div>
 <div class="section" id="examples">
@@ -180,12 +186,12 @@ rolling restart. Default 0.</li>
 <p>Restart the generic dev cluster, checking the JXM metrics every 30 seconds, and
 restarting the next broker after 5 consecutive checks have confirmed the health
 of the cluster:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>kafka-rolling-restart --cluster-type generic --cluster-name dev --check-interval <span class="m">30</span> --check-count 5
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-rolling-restart --cluster-type generic --cluster-name dev --check-interval <span class="m">30</span> --check-count 5
 </pre></div>
 </div>
 <p>Check the generic prod cluster. It will report an error if the cluster is
 unhealthy for more than 900 seconds:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>kafka-rolling-restart --cluster-type generic --cluster-name prod --unhealthy-time-limit 900
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-rolling-restart --cluster-type generic --cluster-name prod --unhealthy-time-limit 900
 </pre></div>
 </div>
 </div>
@@ -232,7 +238,7 @@ unhealthy for more than 900 seconds:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.1.0',
+            VERSION:'0.2.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Corruption Check &mdash; Kafka-Utils 0.2.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Kafka-Utils 0.2.0 documentation" href="index.html"/>
+        <link rel="prev" title="Kafka Check" href="kafka_check.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Kafka-Utils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling Restart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_check.html">Kafka Check</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Corruption Check</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Kafka-Utils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Corruption Check</li>
+    <li class="wy-breadcrumbs-aside">
+      
+          
+          <a href="_sources/kafka_corruption_check.txt" rel="nofollow"> View page source</a>
+        
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="corruption-check">
+<h1>Corruption Check<a class="headerlink" href="#corruption-check" title="Permalink to this headline">¶</a></h1>
+<p>The kafka-corruption-check script performs a check on the log files stored on
+the Kafka brokers. This tool finds all the log files modified in the specified
+time range and runs <a class="reference external" href="https://github.com/apache/kafka/blob/0.9.0/core/src/main/scala/kafka/tools/DumpLogSegments.scala">DumpLogSegments</a>
+on them. The output is collected and filtered, and all information related to
+corrupted messages will be reported to the user.</p>
+<p>Even though this tool executes the log check with a low ionice priority, it can
+slow down the cluster given the high number of io operations required. Consider
+decreasing the batch size to reduce the additional load.</p>
+<div class="section" id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<p>The parameters specific for kafka-corruption-check are:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--minutes</span> <span class="pre">N</span></code>: check the log files modified in the last <code class="docutils literal"><span class="pre">N</span></code> minutes.</li>
+<li><code class="docutils literal"><span class="pre">--start-time</span> <span class="pre">START_TIME</span></code>: check the log files modified after
+<code class="docutils literal"><span class="pre">START_TIME</span></code>. Example format: <code class="docutils literal"><span class="pre">--start-time</span> <span class="pre">&quot;2015-11-26</span> <span class="pre">11:00:00&quot;</span></code></li>
+<li><code class="docutils literal"><span class="pre">--end-time</span> <span class="pre">END_TIME</span></code>: check the log files modified before <code class="docutils literal"><span class="pre">END_TIME</span></code>.
+Example format: <code class="docutils literal"><span class="pre">--end-time</span> <span class="pre">&quot;2015-11-26</span> <span class="pre">12:00:00&quot;</span></code></li>
+<li><code class="docutils literal"><span class="pre">--data-path</span></code>: the path to the data files on the Kafka broker.</li>
+<li><code class="docutils literal"><span class="pre">--java-home</span></code>: the JAVA_HOME on the Kafka broker.</li>
+<li><code class="docutils literal"><span class="pre">--batch-size</span> <span class="pre">BATCH_SIZE</span></code>: the number of files that will be checked
+in parallel on each broker. Default: 5.</li>
+<li><code class="docutils literal"><span class="pre">--check-replicas</span></code>: if set it will also check the data on replicas.
+Default: false.</li>
+<li><code class="docutils literal"><span class="pre">--verbose</span></code>: enable verbose output.</li>
+</ul>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>Check all the files (leaders only) in the generic dev cluster and which were
+modified in the last 30 minutes:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-corruption-check --cluster-type generic --cluster-name dev --data-path /var/kafka-logs --minutes 30
+Filtering leaders
+Broker: 0, leader of <span class="m">9</span> over <span class="m">13</span> files
+Broker: 1, leader of <span class="m">4</span> over <span class="m">11</span> files
+Starting <span class="m">2</span> parallel processes
+  Broker: broker0.example.org, <span class="m">9</span> files to check
+  Broker: broker1.example.org, <span class="m">4</span> files to check
+Processes running:
+  broker0.example.org: file <span class="m">0</span> of 9
+  broker0.example.org: file <span class="m">5</span> of 9
+ERROR Host: broker0.example.org: /var/kafka-logs/test_topic-0/00000000000000003363.log
+ERROR Output: offset: <span class="m">3371</span> position: <span class="m">247</span> isvalid: <span class="nb">false</span> payloadsize: <span class="m">22</span> magic: <span class="m">0</span> compresscodec: NoCompressionCodec crc: 2230473982
+  broker1.example.org: file <span class="m">0</span> of 4
+</pre></div>
+</div>
+<p>In this example, one corrupted file was found in broker 0.</p>
+<p>Check all the files modified after the specified date, in both leaders and replicas:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-corruption-check <span class="o">[</span>...<span class="o">]</span> --start-time <span class="s2">&quot;2015-11-26 11:00:00&quot;</span> --check-replicas
+</pre></div>
+</div>
+<p>Check all the files that were modified in the specified range:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-corruption-check <span class="o">[</span>...<span class="o">]</span> --start-time <span class="s2">&quot;2015-11-26 11:00:00&quot;</span> --end-time <span class="s2">&quot;2015-11-26 12:00:00&quot;</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="kafka_check.html" class="btn btn-neutral" title="Kafka Check" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2016, Yelp-Inc..
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.2.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

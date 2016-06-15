@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Kafka Check &mdash; Kafka-Utils 0.1.0 documentation</title>
+  <title>Kafka Check &mdash; Kafka-Utils 0.2.0 documentation</title>
   
 
   
@@ -30,8 +30,9 @@
   
 
   
-    <link rel="top" title="Kafka-Utils 0.1.0 documentation" href="index.html"/>
-        <link rel="prev" title="Rolling restart" href="kafka_rolling_restart.html"/> 
+    <link rel="top" title="Kafka-Utils 0.2.0 documentation" href="index.html"/>
+        <link rel="next" title="Corruption Check" href="kafka_corruption_check.html"/>
+        <link rel="prev" title="Rolling Restart" href="kafka_rolling_restart.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -40,6 +41,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -59,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0
+                0.2.0
               </div>
             
           
@@ -84,11 +86,13 @@
 <li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kafka_cluster_manager.html">Cluster Manager</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kafka_consumer_manager.html">Consumer Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling restart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_rolling_restart.html">Rolling Restart</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Kafka Check</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#checking-in-sync-replicas">Checking in-sync replicas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#checking-under-replicated-partitions">Checking under replicated partitions</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="kafka_corruption_check.html">Corruption Check</a></li>
 </ul>
 
             
@@ -115,18 +119,22 @@
 
 
 
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
     <li>Kafka Check</li>
-      <li class="wy-breadcrumbs-aside">
-        
+    <li class="wy-breadcrumbs-aside">
+      
           
-            <a href="_sources/kafka_check.txt" rel="nofollow"> View page source</a>
-          
+          <a href="_sources/kafka_check.txt" rel="nofollow"> View page source</a>
         
-      </li>
+      
+    </li>
   </ul>
   <hr/>
 </div>
@@ -165,6 +173,37 @@ OK: All replicas in sync.
 </pre></div>
 </div>
 </div>
+<div class="section" id="checking-under-replicated-partitions">
+<h2>Checking under replicated partitions<a class="headerlink" href="#checking-under-replicated-partitions" title="Permalink to this headline">¶</a></h2>
+<p>This kafka tool provides the ability to check and report number of under replicated
+partitions for all brokers in the cluster.</p>
+<p>The <code class="code docutils literal"><span class="pre">under_replicated</span></code> command checks if the number of under replicated partitions
+is equal to zero. It will report the aggregated result of under replicated partitions
+of each broker if any.</p>
+<p>The parameters specific to under_replicated check are:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">--first-broker-only</span></code>: If this parameter is specified, the command will
+check for under-replicated partitions for given broker only if it&#8217;s the first
+broker in broker-list fetched from zookeeper. Otherwise, it does nothing and succeeds.
+If <code class="code docutils literal"><span class="pre">--broker-id</span></code> is also set as -1 then broker-id will be computed from given
+data-path.</li>
+<li><code class="code docutils literal"><span class="pre">--jolokia-port</span> <span class="pre">JOLOKIA_PORT</span></code>: Port to access to jolokia collector.</li>
+</ul>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-check --cluster-type<span class="o">=</span>sample_type under_replicated
+OK: No under replicated partitions
+</pre></div>
+</div>
+<p>In case of not first broker in the broker list in Zookeeper:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-check --cluster-type<span class="o">=</span>sample_type --broker-id <span class="m">3</span> under_replicated --first-broker-only
+OK: Provided broker is not the first in broker-list
+</pre></div>
+</div>
+<p>In case where some partitions are under-replicated.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ kafka-check --cluster-type<span class="o">=</span>sample_type under_replicated
+CRITICAL: <span class="m">2</span> under replicated partitions
+</pre></div>
+</div>
+</div>
 </div>
 
 
@@ -174,8 +213,10 @@ OK: All replicas in sync.
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="kafka_corruption_check.html" class="btn btn-neutral float-right" title="Corruption Check" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
-        <a href="kafka_rolling_restart.html" class="btn btn-neutral" title="Rolling restart" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+        <a href="kafka_rolling_restart.html" class="btn btn-neutral" title="Rolling Restart" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -206,7 +247,7 @@ OK: All replicas in sync.
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.1.0',
+            VERSION:'0.2.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
