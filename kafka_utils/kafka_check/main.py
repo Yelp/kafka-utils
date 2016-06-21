@@ -80,6 +80,13 @@ def parse_args():
         'non-controller brokers. Set --broker-id to -1 to read broker-id from '
         '--data-path. Default: %(default)s',
     )
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        help='print verbose execution information. Default: %(default)s',
+        action="store_true",
+        default=False,
+    )
 
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)

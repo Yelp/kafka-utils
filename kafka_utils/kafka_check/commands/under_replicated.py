@@ -73,12 +73,13 @@ class UnderReplicatedCmd(KafkaCheckCmd):
         else:
             count = 0
             for broker, stats in under_replicated.items():
-                print('broker {broker} has {count}:'.format(broker=broker, count=len(stats)))
+                print('broker {broker} has {count}'.format(broker=broker, count=len(stats)))
 
                 for topic_partition in stats:
                     topic, partition = topic_partition
-                    print('{broker} {topic}:{partition}'.format(
-                        broker=broker, topic=topic, partition=partition))
+                    if self.args.verbose:
+                        print('{broker} {topic}:{partition}'.format(
+                            broker=broker, topic=topic, partition=partition))
 
                 count += len(stats)
 
