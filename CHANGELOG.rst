@@ -1,3 +1,7 @@
+0.2.1 (June 21, 2016)
+---------------------
+* Add verbose option to kafka-check
+
 0.2.0 (June 15, 2016)
 ----------------------
 * Add under replicated partition check
