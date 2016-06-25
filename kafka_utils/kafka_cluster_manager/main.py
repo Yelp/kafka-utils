@@ -132,7 +132,7 @@ def parse_args():
 def configure_logging(log_conf=None):
     if log_conf:
         try:
-            fileConfig(log_conf)
+            fileConfig(log_conf, disable_existing_loggers=False)
         except ConfigParser.NoSectionError:
             logging.basicConfig(level=logging.INFO)
             _log.error(
