@@ -20,6 +20,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import argparse
+import logging
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
@@ -99,6 +100,11 @@ def run():
     """Verify command-line arguments and run commands"""
     args = parse_args()
 
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARN)
+
     try:
         cluster_config = config.get_cluster_config(
             args.cluster_type,
@@ -108,7 +114,5 @@ def run():
         code, msg = args.command(cluster_config, args)
     except ConfigurationError as e:
         terminate(status_code.CRITICAL, "ConfigurationError {0}".format(e))
-    except Exception as e:
-        terminate(status_code.WARNING, "Got Exception: {0}".format(e))
 
     terminate(code, msg)

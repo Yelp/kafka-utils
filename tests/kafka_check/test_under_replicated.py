@@ -12,125 +12,180 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
-import pytest
-import requests
-from mock import MagicMock
+from kafka.common import PartitionMetadata
 
-from kafka_utils.kafka_check.commands.under_replicated import get_under_replicated
-from kafka_utils.kafka_check.commands.under_replicated import get_under_replicated_from_broker
-from kafka_utils.kafka_check.commands.under_replicated import parse_topic_partition
+from kafka_utils.kafka_check.commands.under_replicated import _prepare_host_list
+from kafka_utils.kafka_check.commands.under_replicated import _process_topic_partition_metadata
 
-FAKE_PORT = 9090
-FAKE_HOST0 = 'hostname0'
-FAKE_HOST1 = 'hostname1'
-FAKE_HOST2 = 'hostname2'
-QUERY_URL = 'http://{host}:{port}/jolokia/read/kafka.cluster:type=Partition,name=UnderReplicated,topic=*,partition=*'
-EMPTY_RESPONSE = '{"value": {}}'
 
-RESPONSE = """{
-    "value": {
-        "kafka.cluster:name=UnderReplicated,partition=1,topic=topic2,type=Partition": {
-            "Value": 0
+BROKER_LIST_WITH_ONE = {
+    1000: {
+        'host': 'hostname00',
+        'port': 1234,
+    },
+}
+
+BROKER_LIST = {
+    101: {
+        'host': 'hostname1',
+        'port': 1234,
+    },
+    100: {
+        'host': 'hostname0',
+        'port': 1234,
+    },
+    1001: {
+        'host': 'hostname2',
+        'port': 1234,
+    },
+}
+
+
+def test__process_topic_partition_metadata_empty():
+    assert _process_topic_partition_metadata({}, 10) == {}
+
+
+def test__process_topic_partition_metadata_all_good():
+    METADATA_RESPONSE = {
+        'topic0': {
+            0: PartitionMetadata(
+                topic='topic0',
+                partition=0,
+                leader=13,
+                replicas=(13, 100),
+                isr=(13, 100),
+                error=0,
+            ),
+            1: PartitionMetadata(
+                topic='topic0',
+                partition=1,
+                leader=100,
+                replicas=(13, 100),
+                isr=(13, 100),
+                error=0,
+            ),
         },
-        "kafka.cluster:name=UnderReplicated,partition=3,topic=topic3,type=Partition": {
-            "Value": 0
+        'topic1': {
+            0: PartitionMetadata(
+                topic='topic1',
+                partition=0,
+                leader=666,
+                replicas=(300, 500, 666),
+                isr=(300, 500, 666),
+                error=0,
+            ),
+            1: PartitionMetadata(
+                topic='topic1',
+                partition=1,
+                leader=300,
+                replicas=(300, 500, 666),
+                isr=(300, 500, 666),
+                error=0,
+            ),
         },
-        "kafka.cluster:name=UnderReplicated,partition=0,topic=topic0,type=Partition": {
-            "Value": 1
-        },
-        "kafka.cluster:name=UnderReplicated,partition=0,topic=topic1,type=Partition": {
-            "Value": 0
-        },
-        "kafka.cluster:name=UnderReplicated,partition=4,topic=topic4,type=Partition": {
-            "Value": 1
-        },
-        "kafka.cluster:name=UnderReplicated,partition=0,topic=topic5,type=Partition": {
-            "Value": 0
-        }
     }
-}"""
+    result = _process_topic_partition_metadata(METADATA_RESPONSE, 2)
+    assert result == {}
 
 
-def _prepare_answer(content):
-    mock = MagicMock(spec=requests.Response())
-    mock.content = content
-    return mock
-
-
-@mock.patch(
-    'kafka_utils.kafka_check.commands.under_replicated.requests.get',
-    return_value=_prepare_answer(EMPTY_RESPONSE),
-    autospec=True,
-)
-def test_get_under_replicated_from_broker_empty(mock_get):
-    result = get_under_replicated_from_broker(FAKE_HOST0, FAKE_PORT)
-
-    mock_get.assert_called_once_with(
-        QUERY_URL.format(host=FAKE_HOST0, port=FAKE_PORT),
-        timeout=10,
-    )
-    assert mock_get.return_value.method_calls == [mock.call.raise_for_status()]
-    assert result == []
-
-
-@mock.patch(
-    'kafka_utils.kafka_check.commands.under_replicated.requests.get',
-    return_value=_prepare_answer(RESPONSE),
-    autospec=True,
-)
-def test_get_under_replicated_from_broker_regular(mock_get):
-    result = get_under_replicated_from_broker(FAKE_HOST0, FAKE_PORT)
-
-    mock_get.assert_called_once_with(
-        QUERY_URL.format(host=FAKE_HOST0, port=FAKE_PORT),
-        timeout=10,
-    )
-    assert mock_get.return_value.method_calls == [mock.call.raise_for_status()]
-    assert sorted(result) == sorted([('topic4', 4), ('topic0', 0)])
-
-
-def test_get_under_replicated_empty():
-    assert get_under_replicated({}, FAKE_PORT) == {}
-
-
-@mock.patch(
-    'kafka_utils.kafka_check.commands.under_replicated.get_under_replicated_from_broker',
-    return_value=[('topic1', 13)],
-    autospec=True,
-)
-def test_get_under_replicated_regular(mock_call):
-    brokers = {
-        2: {'host': FAKE_HOST0},
-        6: {'host': FAKE_HOST1},
-        13: {'host': FAKE_HOST2},
+def test__process_topic_partition_metadata():
+    METADATA_RESPONSE = {
+        'topic0': {
+            0: PartitionMetadata(
+                topic='topic0',
+                partition=0,
+                leader=13,
+                replicas=(13, 100),
+                isr=(13, 100),
+                error=0,
+            ),
+            1: PartitionMetadata(
+                topic='topic0',
+                partition=1,
+                leader=100,
+                replicas=(13, 100),
+                isr=(13, 100),
+                error=0,
+            ),
+        },
+        'topic1': {
+            0: PartitionMetadata(
+                topic='topic1',
+                partition=0,
+                leader=666,
+                replicas=(300, 500, 666),  # one more replica
+                isr=(500, 666),
+                error=0,
+            ),
+            1: PartitionMetadata(
+                topic='topic1',
+                partition=1,
+                leader=300,
+                replicas=(300, 500, 666),
+                isr=(300, 500, 666),
+                error=0,
+            ),
+        },
     }
+    result = _process_topic_partition_metadata(METADATA_RESPONSE, 2)
+    assert result == {}
 
-    result = get_under_replicated(brokers, FAKE_PORT)
+    result = _process_topic_partition_metadata(METADATA_RESPONSE, 3)
+    assert result == {300: [('topic1', 0)]}
 
-    calls = [
-        mock.call(FAKE_HOST0, FAKE_PORT),
-        mock.call(FAKE_HOST1, FAKE_PORT),
-        mock.call(FAKE_HOST2, FAKE_PORT),
-    ]
-    assert sorted(mock_call.mock_calls) == sorted(calls)
-    assert result == {
-        FAKE_HOST0: [('topic1', 13)],
-        FAKE_HOST1: [('topic1', 13)],
-        FAKE_HOST2: [('topic1', 13)],
+
+def test__process_topic_partition_metadata_few_for_one_broker():
+    METADATA_RESPONSE = {
+        'topic0': {
+            0: PartitionMetadata(
+                topic='topic0',
+                partition=0,
+                leader=100,
+                replicas=(13, 100),
+                isr=(100,),
+                error=0,
+            ),
+            1: PartitionMetadata(
+                topic='topic0',
+                partition=1,
+                leader=100,
+                replicas=(13, 100),
+                isr=(13, 100),
+                error=0,
+            ),
+        },
+        'topic1': {
+            0: PartitionMetadata(
+                topic='topic1',
+                partition=0,
+                leader=666,
+                replicas=(13, 500, 666),
+                isr=(13, 500, 666),
+                error=0,
+            ),
+            1: PartitionMetadata(
+                topic='topic1',
+                partition=1,
+                leader=666,
+                replicas=(13, 500, 666),
+                isr=(666,),
+                error=0,
+            ),
+        },
     }
+    result = _process_topic_partition_metadata(METADATA_RESPONSE, 2)
+
+    expected = {13: [('topic0', 0), ('topic1', 1)], 500: [('topic1', 1)]}
+
+    result_ordered = {}
+    for k, v in result.items():
+        result_ordered[k] = sorted(v)
+    assert result_ordered == expected
 
 
-def test_parse_topic_partition():
-    JSON_KEY = 'kafka.cluster:name=UnderReplicated,partition=1,topic=topic2,type=Partition'
-    assert parse_topic_partition(JSON_KEY) == ('topic2', 1)
+def test__prepare_host_list():
+    assert _prepare_host_list(BROKER_LIST) == 'hostname2:1234,hostname0:1234,hostname1:1234'
 
 
-def test_parse_topic_partition_empty():
-    with pytest.raises(ValueError):
-        parse_topic_partition('')
-
-
-def test_parse_topic_partition_wrong():
-    with pytest.raises(ValueError):
-        parse_topic_partition('asdfasdfasdf')
+def test__prepare_host_list_only_one():
+    assert _prepare_host_list(BROKER_LIST_WITH_ONE) == 'hostname00:1234'
