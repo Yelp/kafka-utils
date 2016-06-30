@@ -37,7 +37,7 @@ def set_min_isr(topic, min_isr):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
         config = zk.get_topic_config(topic)
-        config[ISR_CONF_NAME] = str(min_isr)
+        config['config'] = {ISR_CONF_NAME: str(min_isr)}
         zk.set_topic_config(topic, config)
 
 
@@ -63,8 +63,7 @@ def step_impl5(context):
 
 @then(u'CRITICAL min_isr will be printed')
 def step_impl6(context):
-    error_msg = ("isr=1 is lower than min_isr=2 for {topic}:0\n"
-                 "CRITICAL: 1 partition(s) have the number of "
+    error_msg = ("CRITICAL: 1 partition(s) have the number of "
                  "replicas in sync that is lower than the specified min ISR.\n").format(
         topic=context.topic)
     assert context.min_isr_out == error_msg, context.min_isr_out
