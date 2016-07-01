@@ -1,3 +1,9 @@
+0.3.0 (July 1, 2016)
+---------------------
+* Refactor under replicated partition check to use metadata request
+* Add minimum replica number parameter to under replicated check
+* Fix cluster manager logging
+
 0.2.1 (June 21, 2016)
 ---------------------
 * Add verbose option to kafka-check
