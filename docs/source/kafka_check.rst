@@ -51,23 +51,25 @@ The parameters specific to under_replicated check are:
   broker in broker-list fetched from zookeeper. Otherwise, it does nothing and succeeds.
   If :code:`--broker-id` is also set as -1 then broker-id will be computed from given
   data-path.
-* :code:`--jolokia-port JOLOKIA_PORT`: Port to access to jolokia collector.
+* :code:`--minimum-replication MINIMUM_REPLICATION`: Minimum number of in-sync replicas
+  for under replicated partition. If the current number of in-sync replicas for partition which has
+  under replicated replicas below that param, the check will tell about this topic-partition.
 
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type under_replicated
-   OK: No under replicated partitions
+   OK: No under replicated partitions.
 
 In case of not first broker in the broker list in Zookeeper:
 
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type --broker-id 3 under_replicated --first-broker-only
-   OK: Provided broker is not the first in broker-list
+   OK: Provided broker is not the first in broker-list.
 
 In case where some partitions are under-replicated.
 
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type under_replicated
-   CRITICAL: 2 under replicated partitions
+   CRITICAL: 2 under replicated partitions.

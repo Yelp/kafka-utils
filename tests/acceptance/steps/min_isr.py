@@ -56,12 +56,12 @@ def step_impl4(context):
     set_min_isr(context.topic, 2)
 
 
-@then(u'OK will be printed')
+@then(u'OK min_isr will be printed')
 def step_impl5(context):
     assert context.min_isr_out == 'OK: All replicas in sync.\n', context.min_isr_out
 
 
-@then(u'CRITICAL will be printed')
+@then(u'CRITICAL min_isr will be printed')
 def step_impl6(context):
     error_msg = ("isr=1 is lower than min_isr=2 for {topic}:0\n"
                  "CRITICAL: 1 partition(s) have the number of "

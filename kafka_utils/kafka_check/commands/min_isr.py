@@ -15,6 +15,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+from kazoo.exceptions import NoNodeError
+
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 
@@ -42,7 +44,11 @@ class MinIsrCmd(KafkaCheckCmd):
     def get_min_isr(self, topic):
         """Return the min-isr for topic, or None if not specified"""
         ISR_CONF_NAME = 'min.insync.replicas'
-        config = self.zk.get_topic_config(topic)
+        try:
+            config = self.zk.get_topic_config(topic)
+        except NoNodeError:
+            return None
+
         if ISR_CONF_NAME in config:
             return int(config[ISR_CONF_NAME])
         else:
