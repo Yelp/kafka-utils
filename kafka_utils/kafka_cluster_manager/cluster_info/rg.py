@@ -56,7 +56,7 @@ class ReplicationGroup(object):
                 'Broker {broker_id} already present in '
                 'replication-group {rg_id}'.format(
                     broker_id=broker.id,
-                    rg_id=self.id,
+                    rg_id=self._id,
                 )
             )
 
@@ -200,7 +200,7 @@ class ReplicationGroup(object):
         blacklist = set(b for b in self.brokers if b.decommissioned)
         active_brokers = self.get_active_brokers() - blacklist
         if not active_brokers:
-            raise EmptyReplicationGroupError("No active brokers in %s", self.id)
+            raise EmptyReplicationGroupError("No active brokers in %s", self._id)
         # Separate brokers based on partition count
         over_loaded_brokers, under_loaded_brokers = separate_groups(
             active_brokers,
