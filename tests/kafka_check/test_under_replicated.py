@@ -42,7 +42,7 @@ BROKER_LIST = {
 
 
 def test__process_topic_partition_metadata_empty():
-    assert _process_topic_partition_metadata({}, 10) == {}
+    assert _process_topic_partition_metadata({}) == set()
 
 
 def test__process_topic_partition_metadata_all_good():
@@ -84,8 +84,8 @@ def test__process_topic_partition_metadata_all_good():
             ),
         },
     }
-    result = _process_topic_partition_metadata(METADATA_RESPONSE, 2)
-    assert result == {}
+    result = _process_topic_partition_metadata(METADATA_RESPONSE)
+    assert result == set()
 
 
 def test__process_topic_partition_metadata():
@@ -115,23 +115,21 @@ def test__process_topic_partition_metadata():
                 leader=666,
                 replicas=(300, 500, 666),  # one more replica
                 isr=(500, 666),
-                error=0,
+                error=9,
             ),
             1: PartitionMetadata(
                 topic='topic1',
                 partition=1,
                 leader=300,
                 replicas=(300, 500, 666),
-                isr=(300, 500, 666),
+                isr=(500, 666),
                 error=0,
             ),
         },
     }
-    result = _process_topic_partition_metadata(METADATA_RESPONSE, 2)
-    assert result == {}
 
-    result = _process_topic_partition_metadata(METADATA_RESPONSE, 3)
-    assert result == {300: [('topic1', 0)]}
+    result = _process_topic_partition_metadata(METADATA_RESPONSE)
+    assert result == set([('topic1', 0)])
 
 
 def test__process_topic_partition_metadata_few_for_one_broker():
@@ -141,9 +139,9 @@ def test__process_topic_partition_metadata_few_for_one_broker():
                 topic='topic0',
                 partition=0,
                 leader=100,
-                replicas=(13, 100),
+                replicas=(100),
                 isr=(100,),
-                error=0,
+                error=9,
             ),
             1: PartitionMetadata(
                 topic='topic0',
@@ -167,20 +165,15 @@ def test__process_topic_partition_metadata_few_for_one_broker():
                 topic='topic1',
                 partition=1,
                 leader=666,
-                replicas=(13, 500, 666),
+                replicas=(666),
                 isr=(666,),
-                error=0,
+                error=9,
             ),
         },
     }
-    result = _process_topic_partition_metadata(METADATA_RESPONSE, 2)
+    result = _process_topic_partition_metadata(METADATA_RESPONSE)
 
-    expected = {13: [('topic0', 0), ('topic1', 1)], 500: [('topic1', 1)]}
-
-    result_ordered = {}
-    for k, v in result.items():
-        result_ordered[k] = sorted(v)
-    assert result_ordered == expected
+    assert result == set([('topic0', 0), ('topic1', 1)])
 
 
 def test__prepare_host_list():
