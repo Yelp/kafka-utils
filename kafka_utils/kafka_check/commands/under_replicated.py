@@ -14,13 +14,16 @@
 # limitations under the License.
 from __future__ import absolute_import
 
-from collections import defaultdict
-
 from kafka import KafkaClient
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import get_broker_id
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
+
+
+# This check will look on lines with that error-code in error field
+# from kafka metadata response.
+REPLICA_NOT_AVAILABLE_ERROR = 9
 
 
 class UnderReplicatedCmd(KafkaCheckCmd):
@@ -41,13 +44,6 @@ class UnderReplicatedCmd(KafkaCheckCmd):
                  'on not first brokers from Kafka cluster. Set --broker-id to -1 '
                  'to read broker-id from --data-path. Default: %(default)s',
         )
-        subparser.add_argument(
-            '--minimum-replication',
-            type=int,
-            default=2,
-            help='Minimum number of in-sync replicas for under replicated partition. '
-                 'Default: %(default)s',
-        )
 
         return subparser
 
@@ -63,37 +59,20 @@ class UnderReplicatedCmd(KafkaCheckCmd):
             if not _check_run_on_first_broker(broker_list, self.args.broker_id, self.args.data_path):
                 return status_code.OK, 'Provided broker is not the first in broker-list.'
 
-        under_replicated = _get_under_replicated(
-            broker_list,
-            self.args.minimum_replication,
-        )
+        under_replicated = _get_under_replicated(broker_list)
 
         if not under_replicated:
             return status_code.OK, 'No under replicated partitions.'
         else:
-            count = 0
-            for broker_id, stats in under_replicated.items():
-                broker = broker_list[broker_id]['host']
-                print(
-                    'broker {broker} has {count} under-replicated partitions'.format(
-                        broker=broker,
-                        count=len(stats),
-                    )
-                )
-
-                for topic_partition in stats:
-                    topic, partition = topic_partition
-                    if self.args.verbose:
-                        print('{broker} {topic}:{partition}'.format(
-                            broker=broker,
-                            topic=topic,
-                            partition=partition,
-                        ))
-
-                count += len(stats)
+            if self.args.verbose:
+                for (topic, partition) in under_replicated:
+                    print('{topic}:{partition}'.format(
+                        topic=topic,
+                        partition=partition,
+                    ))
 
             msg = "{under_replicated} under replicated partitions.".format(
-                under_replicated=count
+                under_replicated=len(under_replicated),
             )
             return status_code.CRITICAL, msg
 
@@ -127,32 +106,29 @@ def _prepare_host_list(broker_list):
     )
 
 
-def _process_topic_partition_metadata(topic_partitions_metadata, min_replication):
-    """Return dict with under replicated topic-partition for each broker"""
-    under_replicated = defaultdict(list)
+def _process_topic_partition_metadata(topic_partitions_metadata):
+    """Return set with under replicated partitions."""
+    under_replicated = set()
     for partitions in topic_partitions_metadata.values():
         for metadata in partitions.values():
-            not_in_sync = set(metadata.replicas) - set(metadata.isr)
-            if len(not_in_sync) > 0 and len(metadata.isr) < min_replication:
-                for broker in not_in_sync:
-                    under_replicated[broker].append((metadata.topic, metadata.partition))
+            if int(metadata.error) == REPLICA_NOT_AVAILABLE_ERROR:
+                under_replicated.add((metadata.topic, metadata.partition))
 
     return under_replicated
 
 
-def _get_under_replicated(broker_list, min_replication):
+def _get_under_replicated(broker_list):
     """Requests kafka-broker for metadata info for topics.
     Then checks if topic-partition is under replicated and there are not enough
-    replicas in sync. Returns dict of under replicated partitions grouped by brokers.
+    replicas in sync. Returns set of under replicated partitions.
 
     :param dictionary broker_list: dictionary with brokers information, broker_id is key
-    :param int default_replication: minimun in sync replicas
-    :returns dict: with under replicated topic-partition for each broker
+    :returns set: with under replicated partitions
 
-        * dict: { broker: [(topic, partition), ...], ... }
+        * set: { (topic, partition), ... }
     """
     metadata = _get_topic_partition_metadata(
         _prepare_host_list(broker_list)
     )
 
-    return _process_topic_partition_metadata(metadata, min_replication)
+    return _process_topic_partition_metadata(metadata)
