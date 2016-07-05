@@ -1,3 +1,8 @@
+0.3.1 (July 5, 2016)
+---------------------
+* Use error field from metadata response in under replicated partition check
+* Fix small typo in cluster manager logging
+
 0.3.0 (July 1, 2016)
 ---------------------
 * Refactor under replicated partition check to use metadata request
