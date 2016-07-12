@@ -45,8 +45,7 @@ class MinIsrCmd(KafkaCheckCmd):
     def run_command(self):
         """Min_isr command, checks number of actual min-isr
         for each topic-partition with configuration for that topic."""
-        broker_list = self.zk.get_brokers()
-        topics = get_topic_partition_metadata(broker_list)
+        topics = get_topic_partition_metadata(self.cluster_config.broker_list)
         not_in_sync = process_metadata_response(
             topics,
             self.zk,
