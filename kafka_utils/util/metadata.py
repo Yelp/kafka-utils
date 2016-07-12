@@ -15,19 +15,6 @@
 from kafka import KafkaClient
 
 
-def prepare_host_list(broker_list):
-    """Returns string with broker_list hosts, compatible format with KafkaClient ctor.
-    String format:
-        * string: '{host}:{port}, ...'
-    """
-    return ','.join(
-        [
-            '{host}:{port}'.format(host=broker_info['host'], port=broker_info['port'])
-            for broker_info in broker_list.values()
-        ]
-    )
-
-
 def get_topic_partition_metadata(hosts):
     """Returns topic-partition metadata from Kafka broker."""
     kafka_client = KafkaClient(hosts, timeout=10)
