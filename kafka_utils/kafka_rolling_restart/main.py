@@ -325,7 +325,7 @@ def execute_rolling_restart(
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
             )
-            print("Restarting {0} ({1}/{2})".format(host, n, len(all_hosts) - skip))
+            print("Restarting {0} ({1}/{2})".format(host, n+1, len(all_hosts) - skip))
             execute(restart_broker, hosts=host)
     # Wait before terminating the script
     wait_for_stable_cluster(
