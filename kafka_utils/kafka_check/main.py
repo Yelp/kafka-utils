@@ -99,11 +99,10 @@ def parse_args():
 def run():
     """Verify command-line arguments and run commands"""
     args = parse_args()
+    logging.basicConfig(level=logging.WARN)
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARN)
+    # to prevent flooding for sensu-check.
+    logging.getLogger('kafka').setLevel(logging.CRITICAL)
 
     try:
         cluster_config = config.get_cluster_config(
