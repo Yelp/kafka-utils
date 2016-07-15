@@ -14,31 +14,7 @@
 # limitations under the License.
 from kafka.common import PartitionMetadata
 
-from kafka_utils.kafka_check.commands.under_replicated import _prepare_host_list
 from kafka_utils.kafka_check.commands.under_replicated import _process_topic_partition_metadata
-
-
-BROKER_LIST_WITH_ONE = {
-    1000: {
-        'host': 'hostname00',
-        'port': 1234,
-    },
-}
-
-BROKER_LIST = {
-    101: {
-        'host': 'hostname1',
-        'port': 1234,
-    },
-    100: {
-        'host': 'hostname0',
-        'port': 1234,
-    },
-    1001: {
-        'host': 'hostname2',
-        'port': 1234,
-    },
-}
 
 
 def test__process_topic_partition_metadata_empty():
@@ -174,11 +150,3 @@ def test__process_topic_partition_metadata_few_for_one_broker():
     result = _process_topic_partition_metadata(METADATA_RESPONSE)
 
     assert result == set([('topic0', 0), ('topic1', 1)])
-
-
-def test__prepare_host_list():
-    assert _prepare_host_list(BROKER_LIST) == 'hostname2:1234,hostname0:1234,hostname1:1234'
-
-
-def test__prepare_host_list_only_one():
-    assert _prepare_host_list(BROKER_LIST_WITH_ONE) == 'hostname00:1234'

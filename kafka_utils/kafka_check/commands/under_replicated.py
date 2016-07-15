@@ -14,11 +14,10 @@
 # limitations under the License.
 from __future__ import absolute_import
 
-from kafka import KafkaClient
-
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import get_broker_id
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
+from kafka_utils.util.metadata import get_topic_partition_metadata
 
 
 # This check will look on lines with that error-code in error field
@@ -59,7 +58,9 @@ class UnderReplicatedCmd(KafkaCheckCmd):
             if not _check_run_on_first_broker(broker_list, self.args.broker_id, self.args.data_path):
                 return status_code.OK, 'Provided broker is not the first in broker-list.'
 
-        under_replicated = _get_under_replicated(broker_list)
+        under_replicated = _get_under_replicated(
+            self.cluster_config.broker_list
+        )
 
         if not under_replicated:
             return status_code.OK, 'No under replicated partitions.'
@@ -86,26 +87,6 @@ def _check_run_on_first_broker(broker_list, broker_id, data_path):
     return broker_id == first_broker_id
 
 
-def _get_topic_partition_metadata(hosts):
-    """Returns topic-partition metadata from Kafka broker."""
-    kafka_client = KafkaClient(hosts, timeout=10)
-    return kafka_client.topic_partitions
-
-
-def _prepare_host_list(broker_list):
-    """Returns string with broker_list hosts, compatible format with KafkaClient ctor.
-    String format:
-
-        * string: '{host}:{port}, ...'
-    """
-    return ','.join(
-        [
-            '{host}:{port}'.format(host=broker_info['host'], port=broker_info['port'])
-            for broker_info in broker_list.values()
-        ]
-    )
-
-
 def _process_topic_partition_metadata(topic_partitions_metadata):
     """Return set with under replicated partitions."""
     under_replicated = set()
@@ -127,8 +108,6 @@ def _get_under_replicated(broker_list):
 
         * set: { (topic, partition), ... }
     """
-    metadata = _get_topic_partition_metadata(
-        _prepare_host_list(broker_list)
-    )
+    metadata = get_topic_partition_metadata(broker_list)
 
     return _process_topic_partition_metadata(metadata)
