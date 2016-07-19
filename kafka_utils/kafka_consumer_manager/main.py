@@ -32,6 +32,7 @@ from .commands.offset_save import OffsetSave
 from .commands.offset_set import OffsetSet
 from .commands.rename_group import RenameGroup
 from .commands.unsubscribe_topics import UnsubscribeTopics
+from .commands.watermark_get import WatermarkGet
 from kafka_utils.util.config import get_cluster_config
 from kafka_utils.util.error import ConfigurationError
 
@@ -63,6 +64,7 @@ def parse_args():
     OffsetSet.add_parser(subparsers)
     OffsetAdvance.add_parser(subparsers)
     OffsetRewind.add_parser(subparsers)
+    WatermarkGet.add_parser(subparsers)
     ListTopics.add_parser(subparsers)
     ListGroups.add_parser(subparsers)
     UnsubscribeTopics.add_parser(subparsers)

@@ -178,6 +178,18 @@ class MyKafkaToolClient(object):
             callback,
         )
 
+    def send_watermark_fetch_request(
+        self,
+        payloads,
+        fail_on_error,
+        callback,
+    ):
+        return self._send_offset_fetch_request_either(
+            payloads,
+            fail_on_error,
+            callback,
+        )
+
     def send_offset_fetch_request_kafka(
         self,
         group,

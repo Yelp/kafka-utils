@@ -92,6 +92,35 @@ def get_consumer_offsets_metadata(
     return result
 
 
+def get_watermark_for_topic(
+    kafka_client,
+    topic
+):
+    """This method:
+        * refreshes metadata for the kafka client
+        * fetches watermarks
+
+    :param kafka_client: KafkaToolClient instance
+    :param topic: the topic
+    :returns: dict <topic>: [ConsumerPartitionOffsets]
+    :raises:
+      :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
+      offset_storage choice.
+    """
+    # Refresh client metadata. We do now use the topic list, because we
+    # don't want to accidentally create the topic if it does not exist.
+    # If Kafka is unavailable, let's retry loading client metadata
+    try:
+        kafka_client.load_metadata_for_topics()
+    except KafkaUnavailableError:
+        kafka_client.load_metadata_for_topics()
+
+    watermarks = get_topics_watermarks(
+        kafka_client, [topic]
+    )
+    return watermarks
+
+
 def get_current_offsets(
         kafka_client,
         group,
