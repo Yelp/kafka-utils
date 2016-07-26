@@ -164,13 +164,13 @@ class TestClusterTopology(object):
         # r1 b1 t00, t01, t10, t11, t12
         # r2 b2 t00, t01
         # r2 b3 t20
-        # r3 b5 t11, t12
+        # r3 b4 t11, t12
         brokers_rg = {'0': 'rg1', '1': 'rg1', '2': 'rg2', '3': 'rg2', '4': 'r3'}
 
         ct = ClusterTopology(
             assignment,
             brokers_rg,
-            lambda x: x.metadata,
+            lambda x: x.metadata,  # The value of the broker dict is metadata
         )
         partitions_count = len(ct.partitions)
 
@@ -178,6 +178,34 @@ class TestClusterTopology(object):
 
         assert len(ct.partitions) == partitions_count
         assert ct.brokers['0'].empty()
+
+    def test_broker_decommission_empty_replication_group(self):
+        assignment = {
+            (u'T0', 0): ['0', '1', '2'],
+            (u'T0', 1): ['0', '1', '2'],
+            (u'T1', 0): ['0', '1'],
+            (u'T1', 1): ['1', '2'],
+            (u'T1', 2): ['1', '2'],
+            (u'T2', 0): ['0', '2'],
+        }
+        # r0 b0 t00, t01, t10, t20
+        # r1 b1 t00, t01, t10, t11, t12
+        # __ b2 t00, t01, t11, t12, t20 let's assume b2 is down and there is no
+        # metadata for it (it was in r2 before the failure)
+        # r2 b3 empty this broker came up to replace b2
+        brokers_rg = {'0': 'rg0', '1': 'rg1', '3': 'rg2'}  # NOTE: b2 is not in this list
+
+        ct = ClusterTopology(
+            assignment,
+            brokers_rg,
+            lambda x: x.metadata,  # The value of the broker dict is the metadata attribute
+        )
+        partitions_count = len(ct.partitions)
+
+        ct.decommission_brokers(['2'])
+
+        assert len(ct.partitions) == partitions_count
+        assert ct.brokers['2'].empty()
 
     def test_broker_decommission_error(self):
         assignment = {
