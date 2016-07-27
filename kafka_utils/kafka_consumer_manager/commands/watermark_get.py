@@ -86,7 +86,7 @@ class WatermarkGet(OffsetManagerBase):
                 print("\tPartition ID: {id}".format(
                     id=partition[1]
                 ))
-                print("\ttHigh Watermark: {highmark}".format(
+                print("\tHigh Watermark: {highmark}".format(
                     highmark=partition[2]
                 ))
                 print("\tLow Watermark: {lowmark}\n".format(
