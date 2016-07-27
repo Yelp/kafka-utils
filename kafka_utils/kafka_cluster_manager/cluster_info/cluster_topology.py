@@ -21,6 +21,7 @@ from collections import OrderedDict
 
 from .broker import Broker
 from .error import BrokerDecommissionError
+from .error import EmptyReplicationGroupError
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
 from .error import NotEligibleGroupError
@@ -183,8 +184,10 @@ class ClusterTopology(object):
 
     def _decommission_brokers_in_group(self, group):
         """Decommission the marked brokers of a group."""
-        group.rebalance_brokers()
-        failed = False
+        try:
+            group.rebalance_brokers()
+        except EmptyReplicationGroupError:
+            self.log.warning("No active brokers left in replication group %s", group)
         for broker in group.brokers:
             if broker.decommissioned and not broker.empty():
                 # In this case we need to reassign the remaining partitions
@@ -207,11 +210,7 @@ class ClusterTopology(object):
                         broker,
                         broker.partitions,
                     )
-                    failed = True
-            if failed:
-                raise BrokerDecommissionError(
-                    "Broker decommission failed."
-                )
+                    raise BrokerDecommissionError("Broker decommission failed.")
 
     def _force_broker_decommission(self, broker):
         available_groups = [
