@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import re
 from collections import namedtuple
 
 from kafka.common import ConsumerCoordinatorNotAvailableCode
@@ -92,7 +93,7 @@ def get_consumer_offsets_metadata(
     return result
 
 
-def get_watermark_for_topic(
+def get_watermark_for_topics_or_regexes(
     kafka_client,
     topic
 ):
@@ -115,8 +116,15 @@ def get_watermark_for_topic(
     except KafkaUnavailableError:
         kafka_client.load_metadata_for_topics()
 
+    topics_to_be_considered = []
+    topic_regex = re.compile(topic)
+
+    for topic in kafka_client.topic_partitions:
+        if topic_regex.match(topic):
+            topics_to_be_considered.append(topic)
+
     watermarks = get_topics_watermarks(
-        kafka_client, [topic]
+        kafka_client, topics_to_be_considered
     )
     return watermarks
 

@@ -21,7 +21,7 @@ import sys
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
 from kafka_utils.util.client import KafkaToolClient
-from kafka_utils.util.monitoring import get_watermark_for_topic
+from kafka_utils.util.monitoring import get_watermark_for_topics_or_regexes
 
 
 class WatermarkGet(OffsetManagerBase):
@@ -39,10 +39,8 @@ class WatermarkGet(OffsetManagerBase):
             help="Show this help message and exit."
         )
         parser_offset_get.add_argument(
-            "--topic",
-            help="Kafka topic whose offsets shall be fetched. If no topic is "
-            "specified, offsets from all topics that the consumer is "
-            "subscribed to, shall be fetched."
+            "topic",
+            help="Kafka topic whose offsets shall be fetched."
         )
         parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
@@ -70,9 +68,7 @@ class WatermarkGet(OffsetManagerBase):
     @classmethod
     def get_watermarks(cls, client, topic):
         try:
-            return get_watermark_for_topic(
-                client, topic
-            )
+            return get_watermark_for_topics_or_regexes(client, topic)
         except:
             print(
                 "Error: Encountered error with Kafka, please try again later.",
@@ -81,8 +77,8 @@ class WatermarkGet(OffsetManagerBase):
             raise
 
     @classmethod
-    def print_output(cls, watermark_filter):
-        for key, value in watermark_filter.iteritems():
+    def print_output(cls, watermark):
+        for key, value in watermark.iteritems():
             print("Topic Name: {topic}".format(
                 topic=key
             ))

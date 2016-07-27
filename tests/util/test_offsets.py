@@ -58,6 +58,7 @@ class MyKafkaToolClient(object):
         self.low_offsets = low_offsets
         self.commit_error = False
         self.offset_request_error = False
+        self.topic_partitions = {}
 
     def load_metadata_for_topics(self):
         pass
@@ -173,18 +174,6 @@ class MyKafkaToolClient(object):
     ):
         return self._send_offset_fetch_request_either(
             group,
-            payloads,
-            fail_on_error,
-            callback,
-        )
-
-    def send_watermark_fetch_request(
-        self,
-        payloads,
-        fail_on_error,
-        callback,
-    ):
-        return self._send_offset_fetch_request_either(
             payloads,
             fail_on_error,
             callback,

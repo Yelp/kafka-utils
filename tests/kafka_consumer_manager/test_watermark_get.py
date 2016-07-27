@@ -32,10 +32,10 @@ class TestGetWatermark(object):
 
     def test_get_watermark(self, client):
         topics = '__consumer_offsets'
-
+        client.topic_partitions = {}
         with mock.patch(
                 'kafka_utils.util.monitoring.'
-                'get_watermark_for_topic',
+                'get_watermark_for_topics_or_regexes',
                 return_value=topics,
                 autospec=True,
         ) as get_watermark:
