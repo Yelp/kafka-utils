@@ -210,9 +210,7 @@ class ClusterTopology(object):
                         broker,
                         broker.partitions,
                     )
-                    raise BrokerDecommissionError(
-                        "Broker decommission failed."
-                    )
+                    raise BrokerDecommissionError("Broker decommission failed.")
 
     def _force_broker_decommission(self, broker):
         available_groups = [
