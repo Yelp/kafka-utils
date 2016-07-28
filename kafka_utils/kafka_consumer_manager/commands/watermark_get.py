@@ -16,8 +16,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import sys
-
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
 from kafka_utils.util.client import KafkaToolClient
@@ -69,10 +67,10 @@ class WatermarkGet(OffsetManagerBase):
     def get_watermarks(cls, client, topic):
         try:
             return get_watermark_for_topics_or_regexes(client, topic)
-        except:
+        except Exception as e:
             print(
-                "Error: Encountered error with Kafka, please try again later.",
-                file=sys.stderr
+                "Error: Encountered error with Kafka, please try again later: ",
+                e.message
             )
             raise
 
