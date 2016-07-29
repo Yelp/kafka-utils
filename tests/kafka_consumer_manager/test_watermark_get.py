@@ -34,13 +34,13 @@ class TestGetWatermark(object):
         topics = '__consumer_offsets'
         client.topic_partitions = {}
         with mock.patch(
-                'kafka_utils.util.monitoring.'
-                'get_watermark_for_topics_or_regexes',
-                return_value=topics,
+                'kafka_utils.kafka_consumer_manager.commands.'
+                'watermark_get.get_watermark_for_topics_or_regexes',
+                return_value={'test_topic': [1, 99, 3]},
                 autospec=True,
-        ) as get_watermark:
+        ) as mock_get_watermark:
             WatermarkGet.get_watermarks(
                 client,
                 topics
             )
-            get_watermark.call_count == 1
+            assert mock_get_watermark.call_count == 1
