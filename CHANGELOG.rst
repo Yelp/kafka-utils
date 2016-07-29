@@ -1,3 +1,11 @@
+0.3.3 (July 29, 2016)
+---------------------
+* Fix bug in decommissioning of failed brokers
+
+0.3.2 (July 14, 2016)
+---------------------
+* Make min_isr and under replicated partitions check much faster
+
 0.3.1 (July 5, 2016)
 ---------------------
 * Use error field from metadata response in under replicated partition check
