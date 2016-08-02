@@ -61,7 +61,7 @@ From PyPI:
 ### Get consumer watermarks
 
 ```shell
-    $ kafka-consumer-manager --cluster-type sample_type get_topic_watermark --topic sample.topic
+    $ kafka-consumer-manager --cluster-type sample_type get_topic_watermark sample.topic
 
 ```
 
