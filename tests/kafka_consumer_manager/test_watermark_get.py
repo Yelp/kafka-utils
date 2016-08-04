@@ -24,9 +24,9 @@ class TestGetWatermark(object):
     @pytest.yield_fixture
     def client(self):
         with mock.patch(
-                'kafka_utils.kafka_consumer_manager.'
-                'commands.watermark_get.KafkaToolClient',
-                autospec=True,
+            'kafka_utils.kafka_consumer_manager.'
+            'commands.watermark_get.KafkaToolClient',
+            autospec=True,
         ) as mock_client:
             yield mock_client
 
@@ -34,10 +34,10 @@ class TestGetWatermark(object):
         topics = '__consumer_offsets'
         client.topic_partitions = {}
         with mock.patch(
-                'kafka_utils.kafka_consumer_manager.commands.'
-                'watermark_get.get_watermark_for_topics_or_regexes',
-                return_value={'test_topic': [1, 99, 3]},
-                autospec=True,
+            'kafka_utils.kafka_consumer_manager.commands.'
+            'watermark_get.get_watermark_for_topics_or_regexes',
+            return_value={'test_topic': [1, 99, 3]},
+            autospec=True,
         ) as mock_get_watermark:
             WatermarkGet.get_watermarks(
                 client,

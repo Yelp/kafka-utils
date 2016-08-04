@@ -16,9 +16,13 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from kafka.common import FailedPayloadsError
+
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.error import UnknownPartitions
+from kafka_utils.util.error import UnknownTopic
 from kafka_utils.util.monitoring import get_watermark_for_topics_or_regexes
 
 
@@ -27,18 +31,14 @@ class WatermarkGet(OffsetManagerBase):
     @classmethod
     def setup_subparser(cls, subparsers):
         parser_offset_get = subparsers.add_parser(
-            "get_topic_watermark",
-            description="Get consumer offsets for the"
-            " specified topics",
-            add_help=False
+            "get_topic_watermark", description="Get consumer offsets for the"
+            " specified topics", add_help=False
         )
         parser_offset_get.add_argument(
-            "-h", "--help", action="help",
-            help="Show this help message and exit."
+            "-h", "--help", action="help", help="Show help message and exit."
         )
         parser_offset_get.add_argument(
-            "topic",
-            help="Kafka topic whose offsets shall be fetched."
+            "topic", help="Kafka topic whose offsets shall be fetched."
         )
         parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
@@ -67,7 +67,7 @@ class WatermarkGet(OffsetManagerBase):
     def get_watermarks(cls, client, topic):
         try:
             return get_watermark_for_topics_or_regexes(client, topic)
-        except Exception as e:
+        except (UnknownPartitions, UnknownTopic, FailedPayloadsError) as e:
             print(
                 "Error: Encountered error with Kafka, please try again later: ",
                 e.message

@@ -63,7 +63,7 @@ def get_consumer_offsets_metadata(
       :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
       offset_storage choice.
     """
-    # Refresh client metadata. We do now use the topic list, because we
+    # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
     # If Kafka is unavailable, let's retry loading client metadata
     try:
@@ -108,7 +108,7 @@ def get_watermark_for_topics_or_regexes(
       :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
       offset_storage choice.
     """
-    # Refresh client metadata. We do now use the topic list, because we
+    # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
     # If Kafka is unavailable, let's retry loading client metadata
     try:

@@ -20,7 +20,7 @@ from .util import call_watermark_get
 
 @when(u'we call the watermark_get command')
 def step_impl4(context):
-    context.output = call_watermark_get(context.group, context.topic)
+    context.output = call_watermark_get(context.topic)
 
 
 @then(u'the correct watermark will be shown')
