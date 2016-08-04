@@ -25,8 +25,8 @@ def step_impl4(context):
 
 @then(u'the correct watermark will be shown')
 def step_impl5(context):
-    offsets = context.consumer.offsets(group='highwater')
-    key = (context.topic, 0)
-    highmark = offsets[key]
-    pattern = 'High Watermark: {}'.format(highmark)
-    assert pattern in context.output
+    highmark = context.msgs_produced
+    highmark_pattern = 'High Watermark: {}'.format(highmark)
+    lowmark_pattern = 'Low Watermark: 0'
+    assert highmark_pattern in context.output
+    assert lowmark_pattern in context.output
