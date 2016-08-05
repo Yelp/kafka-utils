@@ -38,7 +38,8 @@ class WatermarkGet(OffsetManagerBase):
             "-h", "--help", action="help", help="Show help message and exit."
         )
         parser_offset_get.add_argument(
-            "topic", help="Kafka topic whose offsets shall be fetched."
+            "topic", help="Kafka topic whose offsets shall be fetched. Regex"
+            "are also supported, for example <partial_topic_name>*"
         )
         parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
