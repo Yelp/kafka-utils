@@ -39,7 +39,12 @@ class WatermarkGet(OffsetManagerBase):
         )
         parser_offset_get.add_argument(
             "topic", help="Kafka topic whose offsets shall be fetched. Regex"
-            "are also supported, for example <partial_topic_name>*"
+            "are also supported. default is regex, unless -e or --exact is "
+            "entered"
+        )
+        parser_offset_get.add_argument(
+            "-e", "--exact", action="store_true", help="Exactly match the "
+            "topic, if not provided, topic will be considered as a regex input"
         )
         parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
@@ -52,11 +57,20 @@ class WatermarkGet(OffsetManagerBase):
         # Setup the Kafka client
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
+        watermarks = {}
 
-        watermarks = cls.get_watermarks(
-            client,
-            args.topic
-        )
+        if args.exact:
+            watermarks = cls.get_watermarks(
+                client,
+                args.topic,
+                True,
+            )
+        else:
+            watermarks = cls.get_watermarks(
+                client,
+                args.topic,
+                exact=False,
+            )
 
         client.close()
         if args.json:
@@ -65,9 +79,9 @@ class WatermarkGet(OffsetManagerBase):
             cls.print_output(watermarks)
 
     @classmethod
-    def get_watermarks(cls, client, topic):
+    def get_watermarks(cls, client, topic, exact=False):
         try:
-            return get_watermark_for_topics_or_regexes(client, topic)
+            return get_watermark_for_topics_or_regexes(client, topic, exact)
         except (UnknownPartitions, UnknownTopic, FailedPayloadsError) as e:
             print(
                 "Error: Encountered error with Kafka, please try again later: ",

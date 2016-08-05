@@ -95,7 +95,8 @@ def get_consumer_offsets_metadata(
 
 def get_watermark_for_topics_or_regexes(
     kafka_client,
-    topic
+    topic,
+    exact=False,
 ):
     """This method:
         * refreshes metadata for the kafka client
@@ -119,9 +120,12 @@ def get_watermark_for_topics_or_regexes(
     topics_to_be_considered = []
     topic_regex = re.compile(topic)
 
-    for topic in kafka_client.topic_partitions:
-        if topic_regex.match(topic):
-            topics_to_be_considered.append(topic)
+    if exact is not True:
+        for topic in kafka_client.topic_partitions:
+            if topic_regex.match(topic):
+                topics_to_be_considered.append(topic)
+    else:
+        topics_to_be_considered.append(topic)
 
     watermarks = get_topics_watermarks(
         kafka_client, topics_to_be_considered
