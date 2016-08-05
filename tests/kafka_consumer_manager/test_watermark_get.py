@@ -30,17 +30,35 @@ class TestGetWatermark(object):
         ) as mock_client:
             yield mock_client
 
-    def test_get_watermark(self, client):
+    def test_get_watermark_for_topic(self, client):
         topics = '__consumer_offsets'
         client.topic_partitions = {}
         with mock.patch(
             'kafka_utils.kafka_consumer_manager.commands.'
-            'watermark_get.get_watermark_for_topics_or_regexes',
+            'watermark_get.get_watermark_for_topic',
             return_value={'test_topic': [1, 99, 3]},
             autospec=True,
         ) as mock_get_watermark:
             WatermarkGet.get_watermarks(
                 client,
-                topics
+                topics,
+                exact=True
+            )
+            assert mock_get_watermark.call_count == 1
+
+    def test_get_watermark_for_regex(self, client):
+        topics = '__consumer_*'
+        client.topic_partitions = {}
+        with mock.patch(
+            'kafka_utils.kafka_consumer_manager.commands.'
+            'watermark_get.get_watermark_for_regex',
+            return_value={'__consumer_1': [1, 99, 3],
+                          '__consumer_2': [2, 100, 2]},
+            autospec=True,
+        ) as mock_get_watermark:
+            WatermarkGet.get_watermarks(
+                client,
+                topics,
+                exact=False
             )
             assert mock_get_watermark.call_count == 1

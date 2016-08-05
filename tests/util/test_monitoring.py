@@ -23,7 +23,8 @@ from kafka_utils.util.error import UnknownPartitions
 from kafka_utils.util.error import UnknownTopic
 from kafka_utils.util.monitoring import ConsumerPartitionOffsets
 from kafka_utils.util.monitoring import get_consumer_offsets_metadata
-from kafka_utils.util.monitoring import get_watermark_for_topics_or_regexes
+from kafka_utils.util.monitoring import get_watermark_for_regex
+from kafka_utils.util.monitoring import get_watermark_for_topic
 from kafka_utils.util.monitoring import merge_offsets_metadata
 from kafka_utils.util.monitoring import merge_partition_offsets
 
@@ -283,7 +284,21 @@ class TestMonitoring(TestOffsetsBase):
                 return_value={'test_topic': [1, 99]},
                 autospec=True,
         ):
-            result = get_watermark_for_topics_or_regexes(
+            result = get_watermark_for_topic(
                 kafka_client_mock,
                 'test_topic')
             assert result['test_topic'][1] == 99
+
+    def test_get_watermark_for_topic_regex(self, kafka_client_mock):
+        with mock.patch(
+                'kafka_utils.util.monitoring.'
+                'get_topics_watermarks',
+                return_value=[{'test_topic_1': [1, 99]},
+                              {'test_topic_2': [1, 100]}],
+                autospec=True,
+        ):
+            result = get_watermark_for_regex(
+                kafka_client_mock,
+                'test_topic*')
+            assert result[0]['test_topic_1'][1] == 99
+            assert result[1]['test_topic_2'][1] == 100

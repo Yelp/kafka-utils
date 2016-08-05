@@ -23,7 +23,8 @@ from kafka_utils.util import print_json
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.error import UnknownPartitions
 from kafka_utils.util.error import UnknownTopic
-from kafka_utils.util.monitoring import get_watermark_for_topics_or_regexes
+from kafka_utils.util.monitoring import get_watermark_for_regex
+from kafka_utils.util.monitoring import get_watermark_for_topic
 
 
 class WatermarkGet(OffsetManagerBase):
@@ -39,8 +40,8 @@ class WatermarkGet(OffsetManagerBase):
         )
         parser_offset_get.add_argument(
             "topic", help="Kafka topic whose offsets shall be fetched. Regex"
-            "are also supported. default is regex, unless -e or --exact is "
-            "entered"
+            "are also supported. Default is regex, unless -e or --exact is "
+            "provided, when exact topic name is considered"
         )
         parser_offset_get.add_argument(
             "-e", "--exact", action="store_true", help="Exactly match the "
@@ -63,7 +64,7 @@ class WatermarkGet(OffsetManagerBase):
             watermarks = cls.get_watermarks(
                 client,
                 args.topic,
-                True,
+                exact=True,
             )
         else:
             watermarks = cls.get_watermarks(
@@ -81,7 +82,11 @@ class WatermarkGet(OffsetManagerBase):
     @classmethod
     def get_watermarks(cls, client, topic, exact=False):
         try:
-            return get_watermark_for_topics_or_regexes(client, topic, exact)
+            if exact is False:
+                return get_watermark_for_regex(client, topic)
+
+            else:
+                return get_watermark_for_topic(client, topic)
         except (UnknownPartitions, UnknownTopic, FailedPayloadsError) as e:
             print(
                 "Error: Encountered error with Kafka, please try again later: ",
