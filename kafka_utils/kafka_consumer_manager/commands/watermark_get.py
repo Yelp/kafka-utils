@@ -84,7 +84,6 @@ class WatermarkGet(OffsetManagerBase):
         try:
             if exact is False:
                 return get_watermark_for_regex(client, topic)
-
             else:
                 return get_watermark_for_topic(client, topic)
         except (UnknownPartitions, UnknownTopic, FailedPayloadsError) as e:
