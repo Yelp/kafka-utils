@@ -82,7 +82,7 @@ class WatermarkGet(OffsetManagerBase):
     @classmethod
     def get_watermarks(cls, client, topic, exact=False):
         try:
-            if exact is False:
+            if not exact:
                 return get_watermark_for_regex(client, topic)
             else:
                 return get_watermark_for_topic(client, topic)
