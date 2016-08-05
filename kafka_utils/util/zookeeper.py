@@ -18,6 +18,7 @@ import logging
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
+from kazoo.retry import KazooRetry
 
 from kafka_utils.util.validation import validate_plan
 
@@ -35,9 +36,13 @@ class ZK:
         self.cluster_config = cluster_config
 
     def __enter__(self):
+        kazooRetry = KazooRetry(
+            max_tries=5,
+        )
         self.zk = KazooClient(
             hosts=self.cluster_config.zookeeper,
             read_only=True,
+            connection_retry=kazooRetry,
         )
         _log.debug(
             "ZK: Creating new zookeeper connection: {zookeeper}"
