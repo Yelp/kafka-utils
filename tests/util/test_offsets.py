@@ -58,6 +58,7 @@ class MyKafkaToolClient(object):
         self.low_offsets = low_offsets
         self.commit_error = False
         self.offset_request_error = False
+        self.topic_partitions = {}
 
     def load_metadata_for_topics(self):
         pass

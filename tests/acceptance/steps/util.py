@@ -120,6 +120,14 @@ def create_consumer_group(topic, group_name, num_messages=1):
     return consumer
 
 
+def call_watermark_get(topic_name, storage=None):
+    cmd = ['kafka-consumer-manager',
+           '--cluster-type', 'test',
+           '--discovery-base-path', 'tests/acceptance/config',
+           'get_topic_watermark', topic_name]
+    return call_cmd(cmd)
+
+
 def call_offset_get(group, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',

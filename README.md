@@ -58,6 +58,14 @@ From PyPI:
     $ kafka-consumer-manager --cluster-type sample_type offset_get sample_consumer
 ```
 
+### Get consumer watermarks
+
+```shell
+    $ kafka-consumer-manager --cluster-type sample_type get_topic_watermark sample.topic
+
+```
+
+
 ### Rebalance cluster cluster1 of type sample_cluster
 
 ```shell
