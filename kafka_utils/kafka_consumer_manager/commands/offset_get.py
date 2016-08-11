@@ -81,7 +81,8 @@ class OffsetGet(OffsetManagerBase):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, args.topic, args.partitions, cluster_config, client
+            args.groupid, args.topic, args.partitions, cluster_config, client,
+            quiet=args.json
         )
 
         consumer_offsets_metadata = cls.get_offsets(
@@ -90,20 +91,20 @@ class OffsetGet(OffsetManagerBase):
             topics_dict,
             args.storage,
         )
-
-        # Warn the user if a topic being subscribed to does not exist in
-        # Kafka.
-        for topic in topics_dict:
-            if topic not in consumer_offsets_metadata:
-                print(
-                    "Warning: Topic {topic} or one or more of it's partitions "
-                    "do not exist in Kafka".format(topic=topic),
-                    file=sys.stderr,
-                )
         client.close()
+
         if args.json:
-            print_json(consumer_offsets_metadata)
+            print_json([p._asdict() for partitions in consumer_offsets_metadata.values() for p in partitions])
         else:
+            # Warn the user if a topic being subscribed to does not exist in
+            # Kafka.
+            for topic in topics_dict:
+                if topic not in consumer_offsets_metadata:
+                    print(
+                        "Warning: Topic {topic} or one or more of it's partitions "
+                        "do not exist in Kafka".format(topic=topic),
+                        file=sys.stderr,
+                    )
             cls.print_output(consumer_offsets_metadata, args.watermark)
 
     @classmethod

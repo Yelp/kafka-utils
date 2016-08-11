@@ -59,7 +59,8 @@ class OffsetManagerBase(object):
         partitions,
         cluster_config,
         client,
-        fail_on_error=True
+        fail_on_error=True,
+        quiet=False
     ):
         if (partitions and (not topic)):
             print(
@@ -69,12 +70,13 @@ class OffsetManagerBase(object):
             sys.exit(1)
 
         # Get all the topics that this consumer is subscribed to.
-        print(
-            "Cluster name: {cluster_name}, consumer group: {groupid}".format(
-                cluster_name=cluster_config.name,
-                groupid=groupid,
-            ),
-        )
+        if not quiet:
+            print(
+                "Cluster name: {cluster_name}, consumer group: {groupid}".format(
+                    cluster_name=cluster_config.name,
+                    groupid=groupid,
+                ),
+            )
         topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
