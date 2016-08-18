@@ -128,7 +128,7 @@ def call_watermark_get(topic_name, storage=None):
     return call_cmd(cmd)
 
 
-def call_offset_get(group, storage=None):
+def call_offset_get(group, storage=None, json=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -137,6 +137,8 @@ def call_offset_get(group, storage=None):
            group]
     if storage:
         cmd.extend(['--storage', storage])
+    if json:
+        cmd.extend(['--json'])
     return call_cmd(cmd)
 
 

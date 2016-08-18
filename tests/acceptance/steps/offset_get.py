@@ -38,6 +38,11 @@ def step_impl4_4(context):
     context.output = call_offset_get(context.group, storage='zookeeper')
 
 
+@when(u'we call the offset_get command with the json option')
+def step_impl4_5(context):
+    context.output = call_offset_get(context.group, json=True)
+
+
 @then(u'the correct offset will be shown')
 def step_impl5(context):
     offsets = context.consumer.offsets(group='commit')
@@ -52,3 +57,20 @@ def step_impl5_2(context):
     offset = context.set_offset_kafka
     pattern = 'Current Offset: {}'.format(offset)
     assert pattern in context.output
+
+
+@then(u'the correct json output will be shown')
+def step_impl5_3(context):
+    offsets = context.consumer.offsets(group='commit')
+    key = (context.topic, 0)
+    offset = offsets[key]
+    import json
+    assert json.loads(context.output) == [
+        {
+            "topic": context.topic,
+            "partition": 0,
+            "current": offset,
+            "highmark": context.msgs_produced,
+            "lowmark": 0
+        }
+    ]
