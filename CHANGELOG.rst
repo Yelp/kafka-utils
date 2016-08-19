@@ -1,3 +1,8 @@
+0.4.0 (August 19, 2016)
+-----------------------
+* Add get topic watermark command
+* Fix offset get json output
+
 0.3.3 (July 29, 2016)
 ---------------------
 * Fix bug in decommissioning of failed brokers
