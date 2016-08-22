@@ -106,7 +106,7 @@ class RebalanceCmd(ClusterManagerCmd):
         if self.args.replication_groups:
             self.log.info(
                 'Re-balancing replica-count over replication groups: %s',
-                ', '.join(ct.rgs.keys()),
+                ', '.join([str(rg) for rg in ct.rgs.keys()]),
             )
             ct.rebalance_replication_groups()
 
