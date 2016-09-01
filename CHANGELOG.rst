@@ -1,3 +1,7 @@
+0.4.1 (September 1, 2016)
+-------------------------
+* Fix bug in cluster rebalance when replication group is None
+
 0.4.0 (August 19, 2016)
 -----------------------
 * Add get topic watermark command
