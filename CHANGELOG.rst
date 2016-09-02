@@ -1,3 +1,7 @@
+0.4.2 (September 2, 2016)
+-------------------------
+* Fix bug in cluster rebalance while updating sibling_distance
+
 0.4.1 (September 1, 2016)
 -------------------------
 * Fix bug in cluster rebalance when replication group is None
