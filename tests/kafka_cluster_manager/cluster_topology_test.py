@@ -31,8 +31,6 @@ from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import get_leader_imbalance_stats
 from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import get_replication_group_imbalance_stats
-from kafka_utils.kafka_cluster_manager.cluster_info \
-    .stats import get_topic_imbalance_stats
 
 
 class TestClusterTopology(object):
@@ -237,34 +235,6 @@ class TestClusterTopology(object):
             self._initial_assignment,
             ct.brokers.keys(),
         )
-
-    def test_rebalance_brokers_for_topic_partition_imbalance(self):
-        # T0: 6 partitions, T1: 2 partitions, T2 and T3: 1 partition
-        # All on brokers 0 and 1
-        # New broker 4 is added
-        # All are in same replication group
-        assignment = dict(
-            [
-                ((u'T0', 0), ['0', '1']),
-                ((u'T0', 1), ['0', '1']),
-                ((u'T0', 2), ['0', '1']),
-                ((u'T0', 3), ['0', '1']),
-                ((u'T0', 4), ['0', '1']),
-                ((u'T0', 5), ['0', '1']),
-                ((u'T1', 0), ['0', '1']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T2', 0), ['0', '1']),
-                ((u'T3', 0), ['0', '1']),
-            ]
-        )
-        brokers_info = {'0': {'host': 'host0'}, '1': {'host': 'host1'}, '4': {'host': 'host4'}}
-        ct = self.build_cluster_topology(assignment, brokers_info)
-        ct.rebalance_brokers()
-        net_imbal, _ = get_topic_imbalance_stats(
-            ct.brokers.values(),
-            ct.topics.values(),
-        )
-        assert net_imbal == 0
 
     def test_rebalance_replication_groups_balanced(self):
         # Replication-group is already balanced
