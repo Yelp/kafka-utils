@@ -467,6 +467,92 @@ class ClusterTopology(object):
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
 
+    def add_replica(self, partition, count=1):
+        """Increase the replication-factor for a partition.
+
+        The replication-group to add to is determined as follows:
+            1. Find all replication-groups that have brokers not already
+                replicating the partition.
+            2. Of these, find replication-groups that have fewer than the
+                average number of replicas for this partition.
+            3. Choose the replication-group with the fewest overall partitions.
+
+        :param partition: Partition of which the replication-factor should be
+        increased.
+        :param count: The number of replicas to add.
+        """
+        assert(len(partition.replicas) + count <= len(self.brokers))
+        non_full_rgs = [
+            rg
+            for rg in self.rgs.values()
+            if rg.count_replica(partition) < len(rg.brokers)
+        ]
+        for _ in xrange(count):
+            total_replicas = sum(
+                rg.count_replica(partition)
+                for rg in non_full_rgs
+            )
+            opt_replicas = total_replicas // len(non_full_rgs)
+            under_replicated_rgs = [
+                rg
+                for rg in non_full_rgs
+                if rg.count_replica(partition) < opt_replicas
+            ]
+            candidate_rgs = under_replicated_rgs or non_full_rgs
+            rg = min(candidate_rgs, key=lambda rg: len(rg.partitions))
+
+            rg.add_replica(partition)
+
+            if rg.count_replica(partition) >= len(rg.brokers):
+                non_full_rgs.remove(rg)
+
+    def remove_replica(self, partition, count=1):
+        """Remove one replica of a partition from the cluster.
+
+        The replication-group to remove from is determined as follows:
+            1. Find all replication-groups that contain at least one replica
+                for this partition.
+            2. Of these, find replication-groups with more than the average
+                number of replicas of this partition.
+            3. Choose the replication-group with the most overall partitions.
+
+        After this operation, the preferred leader for this partition will
+        be set to the broker that leads the fewest other partitions, even if
+        the current preferred leader is not removed.
+        This is done to keep the number of preferred replicas balanced across
+        brokers in the cluster.
+
+        :param partition: Partition of which the replication-factor should be
+        decreased.
+        :param count: The number of replicas to remove.
+        """
+        assert(len(partition.replicas) - count > 0)
+        non_empty_rgs = [
+            rg
+            for rg in self.rgs.values()
+            if rg.count_replica(partition) > 0
+        ]
+        for _ in xrange(count):
+            opt_replica_cnt = partition.replication_factor // len(non_empty_rgs)
+            over_replicated_rgs = [
+                rg
+                for rg in non_empty_rgs
+                if rg.count_replica(partition) > opt_replica_cnt
+            ]
+            candidate_rgs = over_replicated_rgs or non_empty_rgs
+            rg = max(candidate_rgs, key=lambda rg: len(rg.partitions))
+
+            rg.remove_replica(partition)
+
+            if rg.count_replica(partition) == 0:
+                non_empty_rgs.remove(rg)
+
+        new_leader = min(
+            partition.replicas,
+            key=lambda broker: broker.count_preferred_replica(),
+        )
+        partition.swap_leader(new_leader)
+
     def update_cluster_topology(self, assignment):
         """Modify the cluster-topology with given assignment.
 

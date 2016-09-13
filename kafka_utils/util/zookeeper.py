@@ -424,13 +424,13 @@ class ZK:
         )
         self.delete(path, True)
 
-    def execute_plan(self, plan):
+    def execute_plan(self, plan, allow_rf_change=False):
         """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         plan_json = json.dumps(plan)
         base_plan = self.get_cluster_plan()
-        if not validate_plan(plan, base_plan):
+        if not validate_plan(plan, base_plan, allow_rf_change=allow_rf_change):
             _log.error('Given plan is invalid. ABORTING reassignment...')
             return False
         # Send proposed-plan to zookeeper

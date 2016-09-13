@@ -983,3 +983,23 @@ class TestClusterTopology(object):
 
         with pytest.raises(InvalidBrokerIdError):
             ct.replace_broker('0', '444')
+
+    def test_add_replica(self):
+        assignment = dict([((u'T1', 0), ['1', '3'])])
+        ct = self.build_cluster_topology(assignment, self.srange(6))
+        partition = ct.partitions[(u'T1', 0)]
+
+        ct.add_replica(ct.partitions[(u'T1', 0)], count=3)
+
+        assert partition.replication_factor == 5
+        assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 5
+
+    def test_remove_replica(self):
+        assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
+        ct = self.build_cluster_topology(assignment, self.srange(6))
+        partition = ct.partitions[(u'T1', 0)]
+
+        ct.remove_replica(partition, count=3)
+
+        assert partition.replication_factor == 2
+        assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 2

@@ -383,6 +383,28 @@ class ReplicationGroup(object):
             )
         return (source_broker, dest_broker)
 
+    def add_replica(self, partition):
+        broker = self._elect_dest_broker(partition)
+        self.log.debug(
+            'Adding partition {p_name} to broker {broker}'
+            .format(
+                p_name=partition.name,
+                broker=broker.id,
+            ),
+        )
+        broker.add_partition(partition)
+
+    def remove_replica(self, partition):
+        broker = self._elect_source_broker(partition)
+        self.log.debug(
+            'Removing partition {p_name} from broker {broker}'
+            .format(
+                p_name=partition.name,
+                broker=broker.id,
+            ),
+        )
+        broker.remove_partition(partition)
+
     def __str__(self):
         return "{0}".format(self._id)
 

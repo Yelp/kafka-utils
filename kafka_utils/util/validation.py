@@ -47,6 +47,7 @@ def validate_plan(
     new_plan,
     base_plan=None,
     is_partition_subset=True,
+    allow_rf_change=False,
 ):
     """Verify that the new plan is valid for execution.
 
@@ -70,6 +71,7 @@ def validate_plan(
             new_plan,
             base_plan,
             is_partition_subset,
+            allow_rf_change
         ):
             return False
     # Plan validation successful
@@ -80,6 +82,7 @@ def _validate_plan_base(
     new_plan,
     base_plan,
     is_partition_subset=True,
+    allow_rf_change=False,
 ):
     """Validate if given plan is valid comparing with given base-plan.
 
@@ -123,21 +126,23 @@ def _validate_plan_base(
         (p_data['topic'], p_data['partition']): p_data['replicas']
         for p_data in new_plan['partitions']
     }
-    invalid_replication_factor = False
-    for new_partition, replicas in new_partition_replicas.iteritems():
-        base_replica_cnt = len(base_partition_replicas[new_partition])
-        if len(replicas) != base_replica_cnt:
-            invalid_replication_factor = True
-            _log.error(
-                'Replication-factor Mismatch: Partition: {partition}: '
-                'Base-replicas: {expected}, Proposed-replicas: {actual}'.format(
-                    partition=new_partition,
-                    expected=base_partition_replicas[new_partition],
-                    actual=replicas,
-                ),
-            )
-    if invalid_replication_factor:
-        return False
+    if not allow_rf_change:
+        invalid_replication_factor = False
+        for new_partition, replicas in new_partition_replicas.iteritems():
+            base_replica_cnt = len(base_partition_replicas[new_partition])
+            if len(replicas) != base_replica_cnt:
+                invalid_replication_factor = True
+                _log.error(
+                    'Replication-factor Mismatch: Partition: {partition}: '
+                    'Base-replicas: {expected}, Proposed-replicas: {actual}'
+                    .format(
+                        partition=new_partition,
+                        expected=base_partition_replicas[new_partition],
+                        actual=replicas,
+                    ),
+                )
+        if invalid_replication_factor:
+            return False
 
     # Validation successful
     return True

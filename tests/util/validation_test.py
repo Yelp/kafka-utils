@@ -353,6 +353,7 @@ def test_validate_plan_base_replication_factor_changed():
 
     # Verify validation failed
     assert _validate_plan_base(assignment, base_assignment) is False
+    assert _validate_plan_base(assignment, base_assignment, allow_rf_change=True)
 
 
 def test_validate_plan_1():
