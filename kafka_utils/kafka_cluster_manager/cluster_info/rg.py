@@ -134,16 +134,17 @@ class ReplicationGroup(object):
         broker_destination = rg_destination._elect_dest_broker(victim_partition)
         return broker_source, broker_destination
 
-    def _elect_source_broker(self, victim_partition):
+    def _elect_source_broker(self, victim_partition, broker_subset=None):
         """Select first over loaded broker having victim_partition.
 
         Note: The broker with maximum siblings of victim-partitions (same topic)
         is selected to reduce topic-partition imbalance.
         """
+        broker_subset = broker_subset or self._brokers
         over_loaded_brokers = sorted(
             [
                 broker
-                for broker in self._brokers
+                for broker in broker_subset
                 if victim_partition in broker.partitions and not broker.inactive
             ],
             key=lambda b: len(b.partitions),
@@ -394,8 +395,8 @@ class ReplicationGroup(object):
         )
         broker.add_partition(partition)
 
-    def remove_replica(self, partition):
-        broker = self._elect_source_broker(partition)
+    def remove_replica(self, partition, osr):
+        broker = self._elect_source_broker(partition, osr)
         self.log.debug(
             'Removing partition {p_name} from broker {broker}'
             .format(

@@ -31,7 +31,8 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             help='This command is used to increase or decrease the replication'
             ' factor of a topic. The brokers that the replicas are added to or'
             ' removed from are chosen to maintain or increase the balance of'
-            ' the cluster.',
+            ' the cluster. The only exception is that out-of-sync replicas are'
+            ' always removed before in-sync replicas.',
         )
         subparser.add_argument(
             '--topic',
@@ -102,9 +103,20 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                     new_rf=self.args.replication_factor,
                 ),
             )
+            topic_data = self.zk.get_topics(topic.id)[topic.id]
             for partition in topic.partitions:
+                partition_data = topic_data['partitions'][str(partition.partition_id)]
+                isr = [ct.brokers[b_id] for b_id in partition_data['isr']]
+                osr = [b for b in partition.replicas if b not in isr]
+                if osr:
+                    self.log.info(
+                        "The out of sync replica(s) {osr} will be prioritized "
+                        "for removal."
+                        .format(osr=osr)
+                    )
                 ct.remove_replica(
                     partition,
+                    osr,
                     partition.replication_factor - self.args.replication_factor,
                 )
 

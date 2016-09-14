@@ -506,15 +506,16 @@ class ClusterTopology(object):
             if rg.count_replica(partition) >= len(rg.brokers):
                 non_full_rgs.remove(rg)
 
-    def remove_replica(self, partition, count=1):
+    def remove_replica(self, partition, osr, count=1):
         """Remove one replica of a partition from the cluster.
 
         The replication-group to remove from is determined as follows:
-            1. Find all replication-groups that contain at least one replica
-                for this partition.
+            1. Find all replication-groups that contain at least one
+                out-of-sync replica for this partition.
             2. Of these, find replication-groups with more than the average
                 number of replicas of this partition.
             3. Choose the replication-group with the most overall partitions.
+            4. Repeat steps 1-3 with in-sync replicas
 
         After this operation, the preferred leader for this partition will
         be set to the broker that leads the fewest other partitions, even if
@@ -524,26 +525,43 @@ class ClusterTopology(object):
 
         :param partition: Partition of which the replication-factor should be
         decreased.
+        :param osr: A list of the partition's out-of-sync replicas.
         :param count: The number of replicas to remove.
         """
         assert(len(partition.replicas) - count > 0)
+
         non_empty_rgs = [
             rg
             for rg in self.rgs.values()
             if rg.count_replica(partition) > 0
         ]
+        rgs_with_osr = [
+            rg
+            for rg in non_empty_rgs
+            if any(b in osr for b in rg.brokers)
+        ]
+
         for _ in xrange(count):
-            opt_replica_cnt = partition.replication_factor // len(non_empty_rgs)
+            candidate_rgs = rgs_with_osr or non_empty_rgs
+            total_replicas = sum(
+                rg.count_replica(partition)
+                for rg in candidate_rgs
+            )
+            opt_replica_cnt = total_replicas // len(candidate_rgs)
             over_replicated_rgs = [
                 rg
-                for rg in non_empty_rgs
+                for rg in candidate_rgs
                 if rg.count_replica(partition) > opt_replica_cnt
             ]
-            candidate_rgs = over_replicated_rgs or non_empty_rgs
+            candidate_rgs = over_replicated_rgs or candidate_rgs
             rg = max(candidate_rgs, key=lambda rg: len(rg.partitions))
 
-            rg.remove_replica(partition)
+            rg_osr = [b for b in rg.brokers if b in osr]
+            rg.remove_replica(partition, rg_osr)
 
+            osr = [b for b in osr if b in partition.replicas]
+            if rg in rgs_with_osr and len(rg_osr) == 1:
+                rgs_with_osr.remove(rg)
             if rg.count_replica(partition) == 0:
                 non_empty_rgs.remove(rg)
 

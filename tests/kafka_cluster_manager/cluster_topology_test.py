@@ -998,8 +998,19 @@ class TestClusterTopology(object):
         assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
         ct = self.build_cluster_topology(assignment, self.srange(6))
         partition = ct.partitions[(u'T1', 0)]
+        osr = [ct.brokers['1'], ct.brokers['2']]
 
-        ct.remove_replica(partition, count=3)
+        ct.remove_replica(partition, osr, count=3)
 
         assert partition.replication_factor == 2
         assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 2
+
+    def test_remove_replica_prioritize_osr(self):
+        assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
+        ct = self.build_cluster_topology(assignment, self.srange(6))
+        partition = ct.partitions[(u'T1', 0)]
+        osr = [ct.brokers['1'], ct.brokers['2']]
+
+        ct.remove_replica(partition, osr, count=2)
+
+        assert set(b.id for b in partition.replicas) == set(['0', '3', '5'])
