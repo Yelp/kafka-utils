@@ -590,8 +590,8 @@ class TestReplicationGroup(object):
 
     def test_rebalance_brokers_for_topic_partition_imbalance(self, create_partition):
         # Broker Topics:Partition
-        #   1    all partitions: 4 from topic1, 2 from topic2 and 1 each from topic3 and topic4
-        #   2    newly added broker: empty
+        #   1    All partitions: 4 from topic1, 2 from topic2 and 1 each from topic3 and topic4
+        #   2    Newly added broker:(empty)
         # total partitions: 8
         p10 = create_partition('topic1', 0)
         p11 = create_partition('topic1', 1)
@@ -605,15 +605,13 @@ class TestReplicationGroup(object):
         b2 = create_broker('b2', [])
         rg = ReplicationGroup('test_rg', set([b1, b2]))
         rg.rebalance_brokers()
-        b1_topics = sorted([str(p.topic) for p in b1.partitions])
-        b2_topics = sorted([str(p.topic) for p in b2.partitions])
 
-        possible_topics_1 = ['topic1', 'topic1', 'topic2', 'topic3']
-        possible_topics_2 = ['topic1', 'topic1', 'topic2', 'topic4']
+        possible_topics1 = set([p10.topic, p11.topic, p20.topic, p30.topic])
+        possible_topics2 = set([p10.topic, p11.topic, p20.topic, p40.topic])
         assert (
-            sorted(b1_topics) == possible_topics_1 and
-            sorted(b2_topics) == possible_topics_2
+            b1.topics == possible_topics1 and
+            b2.topics == possible_topics2
         ) or (
-            sorted(b1_topics) == possible_topics_2 and
-            sorted(b2_topics) == possible_topics_1
+            b1.topics == possible_topics2 and
+            b2.topics == possible_topics1
         )
