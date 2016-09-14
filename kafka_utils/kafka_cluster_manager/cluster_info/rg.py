@@ -243,7 +243,7 @@ class ReplicationGroup(object):
                 sibling_distance = self.update_sibling_distance(
                     sibling_distance,
                     broker_destination,
-                    victim_partition,
+                    victim_partition.topic,
                 )
             else:
                 # Brokers are balanced or could not be balanced further
