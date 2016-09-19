@@ -78,10 +78,9 @@ class ClusterManagerCmd(object):
         if self.should_execute():
             # Exit if there is an on-going reassignment
             if self.is_reassignment_pending():
-                self.log.error('Previous reassignment pending.')
-                sys.exit(1)
-            result = self.zk.execute_plan(plan)
-            if not result:
+                self.log.warning('Previous reassignment pending.')
+                sys.exit(0)
+            if not self.zk.execute_plan(plan):
                 self.log.error('Plan execution unsuccessful.')
                 sys.exit(1)
             else:
