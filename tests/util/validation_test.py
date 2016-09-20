@@ -353,6 +353,26 @@ def test_validate_plan_base_replication_factor_changed():
 
     # Verify validation failed
     assert _validate_plan_base(assignment, base_assignment) is False
+
+
+def test_validate_plan_base_replication_factor_changed_allowed():
+    # replication-factor of (t1, 0) is 1 in assignment and 2 in base-assignment
+    assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": u't1', "replicas": [1]},
+            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+        ]
+    }
+    base_assignment = {
+        "version": 1,
+        "partitions": [
+            {"partition": 0, "topic": u't1', "replicas": [0, 2]},
+            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+        ]
+    }
+
+    # Verify validation failed
     assert _validate_plan_base(assignment, base_assignment, allow_rf_change=True)
 
 

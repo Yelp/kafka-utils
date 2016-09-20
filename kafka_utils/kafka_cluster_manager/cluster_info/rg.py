@@ -17,6 +17,7 @@ import sys
 from collections import defaultdict
 
 from .error import EmptyReplicationGroupError
+from .error import InvalidBrokerError
 from .error import NotEligibleGroupError
 from .util import separate_groups
 
@@ -395,8 +396,14 @@ class ReplicationGroup(object):
         )
         broker.add_partition(partition)
 
-    def remove_replica(self, partition, osr):
-        broker = self._elect_source_broker(partition, osr)
+    def remove_replica(self, partition, broker_subset=None):
+        for broker in broker_subset:
+            if broker not in self.brokers:
+                raise InvalidBrokerError(
+                    "Broker {0} can not be found in replication group {1}."
+                    .format(broker, self)
+                )
+        broker = self._elect_source_broker(partition, broker_subset)
         self.log.debug(
             'Removing partition {p_name} from broker {broker}'
             .format(

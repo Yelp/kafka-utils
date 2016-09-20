@@ -615,3 +615,30 @@ class TestReplicationGroup(object):
             b1.topics == possible_topics2 and
             b2.topics == possible_topics1
         )
+
+    def test_add_replica(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p20 = create_partition('topic2', 0)
+        b1 = create_broker('b1', [p10, p20])
+        b2 = create_broker('b2', [p10, p20])
+        b3 = create_broker('b3', [p20])
+        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
+        rg.add_replica(p10)
+
+        assert b1.partitions == set([p10, p20])
+        assert b2.partitions == set([p10, p20])
+        assert b3.partitions == set([p10, p20])
+
+    def test_remove_replica(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p20 = create_partition('topic2', 0)
+        p30 = create_partition('topic3', 0)
+        b1 = create_broker('b1', [p10])
+        b2 = create_broker('b2', [p10, p20])
+        b3 = create_broker('b3', [p10, p20, p30])
+        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
+        rg.remove_replica(p10, [b1, b2])
+
+        assert b1.partitions == set([p10])
+        assert b2.partitions == set([p20])
+        assert b3.partitions == set([p10, p20, p30])

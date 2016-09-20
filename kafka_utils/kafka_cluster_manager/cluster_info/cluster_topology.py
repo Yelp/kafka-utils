@@ -24,6 +24,7 @@ from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
+from .error import InvalidReplicationFactorError
 from .error import NotEligibleGroupError
 from .error import RebalanceError
 from .partition import Partition
@@ -480,8 +481,18 @@ class ClusterTopology(object):
         :param partition: Partition of which the replication-factor should be
         increased.
         :param count: The number of replicas to add.
+        :raises InvalidReplicationFactorError when the resulting replication
+        factor is greater than the number of brokers in the cluster.
         """
-        assert(len(partition.replicas) + count <= len(self.brokers))
+        if partition.replication_factor + count > len(self.brokers):
+            raise InvalidReplicationFactorError(
+                "Replication factor {0} is greater than the broker count {1}"
+                .format(
+                    partition.replication_factor + count,
+                    len(self.brokers),
+                )
+            )
+
         non_full_rgs = [
             rg
             for rg in self.rgs.values()
@@ -492,7 +503,10 @@ class ClusterTopology(object):
                 rg.count_replica(partition)
                 for rg in non_full_rgs
             )
-            opt_replicas = total_replicas // len(non_full_rgs)
+            opt_replicas, _ = compute_optimum(
+                len(non_full_rgs),
+                total_replicas,
+            )
             under_replicated_rgs = [
                 rg
                 for rg in non_full_rgs
@@ -527,8 +541,14 @@ class ClusterTopology(object):
         decreased.
         :param osr: A list of the partition's out-of-sync replicas.
         :param count: The number of replicas to remove.
+        :raises: InvalidReplicationFactorError when count is greater than the
+        replication factor of the partition.
         """
-        assert(len(partition.replicas) - count > 0)
+        if partition.replication_factor <= count:
+            raise InvalidReplicationFactorError(
+                "Replication factor {} is less than 1."
+                .format(partition.replication_factor - count)
+            )
 
         non_empty_rgs = [
             rg
@@ -547,7 +567,10 @@ class ClusterTopology(object):
                 rg.count_replica(partition)
                 for rg in candidate_rgs
             )
-            opt_replica_cnt = total_replicas // len(candidate_rgs)
+            opt_replica_cnt, _ = compute_optimum(
+                len(candidate_rgs),
+                total_replicas,
+            )
             over_replicated_rgs = [
                 rg
                 for rg in candidate_rgs
@@ -556,11 +579,11 @@ class ClusterTopology(object):
             candidate_rgs = over_replicated_rgs or candidate_rgs
             rg = max(candidate_rgs, key=lambda rg: len(rg.partitions))
 
-            rg_osr = [b for b in rg.brokers if b in osr]
-            rg.remove_replica(partition, rg_osr)
+            osr_in_rg = [b for b in rg.brokers if b in osr]
+            rg.remove_replica(partition, osr_in_rg)
 
             osr = [b for b in osr if b in partition.replicas]
-            if rg in rgs_with_osr and len(rg_osr) == 1:
+            if rg in rgs_with_osr and len(osr_in_rg) == 1:
                 rgs_with_osr.remove(rg)
             if rg.count_replica(partition) == 0:
                 non_empty_rgs.remove(rg)

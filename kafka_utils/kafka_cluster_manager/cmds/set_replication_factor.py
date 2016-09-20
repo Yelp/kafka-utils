@@ -125,7 +125,8 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
             assignment,
-            max_partition_movements=1,
-            max_leader_only_changes=1,
+            # Only the partitions of the chosen topic should change.
+            max_partition_movements=len(topic.partitions),
+            max_leader_only_changes=len(topic.partitions),
         )
         self.process_assignment(reduced_assignment, allow_rf_change=True)
