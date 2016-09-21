@@ -288,6 +288,7 @@ class TestClusterManagerCmd(object):
         )
         rg_parser = mock.MagicMock()
         cmd.run_command = mock.MagicMock()
+
         cmd.run(cluster_config, rg_parser, args)
 
         assert cmd.run_command.call_count == 0
