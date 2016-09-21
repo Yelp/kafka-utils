@@ -486,7 +486,8 @@ class ClusterTopology(object):
         """
         if partition.replication_factor + count > len(self.brokers):
             raise InvalidReplicationFactorError(
-                "Replication factor {0} is greater than the broker count {1}"
+                "Cannot increase replication factor to {0}. There are only "
+                "{1} brokers."
                 .format(
                     partition.replication_factor + count,
                     len(self.brokers),
@@ -546,8 +547,8 @@ class ClusterTopology(object):
         """
         if partition.replication_factor <= count:
             raise InvalidReplicationFactorError(
-                "Replication factor {} is less than 1."
-                .format(partition.replication_factor - count)
+                "Cannot remove {0} replicas. Replication factor is only {1}."
+                .format(count, partition.replication_factor)
             )
 
         non_empty_rgs = [
