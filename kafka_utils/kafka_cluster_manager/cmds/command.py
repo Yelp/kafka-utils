@@ -68,6 +68,9 @@ class ClusterManagerCmd(object):
                 brokers,
                 rg_parser.get_replication_group,
             )
+            if len(ct.partitions) == 0:
+                self.log.info("The cluster is empty. No actions to perform.")
+                return
             self.run_command(ct)
 
     def add_subparser(self, subparsers):
