@@ -642,3 +642,14 @@ class TestReplicationGroup(object):
         assert b1.partitions == set([p10])
         assert b2.partitions == set([p20])
         assert b3.partitions == set([p10, p20, p30])
+
+    def test_remove_replica_invalid_broker(self, create_partition):
+        p10 = create_partition('topic1', 0)
+        p20 = create_partition('topic2', 0)
+        b1 = create_broker('b1', [p10])
+        b2 = create_broker('b2', [p20])
+        b3 = create_broker('b3', [p10])
+        rg = ReplicationGroup('test_rg', set([b1, b2]))
+
+        with pytest.raises(AssertionError):
+            rg.remove_replica(p10, [b2, b3])

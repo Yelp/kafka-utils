@@ -20,11 +20,6 @@ class InvalidBrokerIdError(KafkaToolError):
     pass
 
 
-class InvalidBrokerError(KafkaToolError):
-    """Raised when a broker doesn't exist within a replication-group."""
-    pass
-
-
 class InvalidPartitionError(KafkaToolError):
     """Raised when a partition tuple (topic, partition) doesn't exist in the cluster"""
     pass

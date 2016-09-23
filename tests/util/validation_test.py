@@ -372,7 +372,7 @@ def test_validate_plan_base_replication_factor_changed_allowed():
         ]
     }
 
-    # Verify validation failed
+    # Verify validation passed
     assert _validate_plan_base(assignment, base_assignment, allow_rf_change=True)
 
 
