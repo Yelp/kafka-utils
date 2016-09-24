@@ -25,6 +25,13 @@ class InvalidPartitionError(KafkaToolError):
     pass
 
 
+class InvalidReplicationFactorError(KafkaToolError):
+    """Raised when an operation would result in an replication factor that is
+    too small or too large for the cluster.
+    """
+    pass
+
+
 class EmptyReplicationGroupError(KafkaToolError):
     """Raised when there are no brokers in a replication group."""
     pass

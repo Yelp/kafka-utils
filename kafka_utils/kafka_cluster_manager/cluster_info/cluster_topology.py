@@ -24,6 +24,7 @@ from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
+from .error import InvalidReplicationFactorError
 from .error import NotEligibleGroupError
 from .error import RebalanceError
 from .partition import Partition
@@ -466,6 +467,133 @@ class ClusterTopology(object):
             for broker in over_brokers:
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
+
+    def add_replica(self, partition, count=1):
+        """Increase the replication-factor for a partition.
+
+        The replication-group to add to is determined as follows:
+            1. Find all replication-groups that have brokers not already
+                replicating the partition.
+            2. Of these, find replication-groups that have fewer than the
+                average number of replicas for this partition.
+            3. Choose the replication-group with the fewest overall partitions.
+
+        :param partition: Partition of which the replication-factor should be
+        increased.
+        :param count: The number of replicas to add.
+        :raises InvalidReplicationFactorError when the resulting replication
+        factor is greater than the number of brokers in the cluster.
+        """
+        if partition.replication_factor + count > len(self.brokers):
+            raise InvalidReplicationFactorError(
+                "Cannot increase replication factor to {0}. There are only "
+                "{1} brokers."
+                .format(
+                    partition.replication_factor + count,
+                    len(self.brokers),
+                )
+            )
+
+        non_full_rgs = [
+            rg
+            for rg in self.rgs.values()
+            if rg.count_replica(partition) < len(rg.brokers)
+        ]
+        for _ in xrange(count):
+            total_replicas = sum(
+                rg.count_replica(partition)
+                for rg in non_full_rgs
+            )
+            opt_replicas, _ = compute_optimum(
+                len(non_full_rgs),
+                total_replicas,
+            )
+            under_replicated_rgs = [
+                rg
+                for rg in non_full_rgs
+                if rg.count_replica(partition) < opt_replicas
+            ]
+            candidate_rgs = under_replicated_rgs or non_full_rgs
+            rg = min(candidate_rgs, key=lambda rg: len(rg.partitions))
+
+            rg.add_replica(partition)
+
+            if rg.count_replica(partition) >= len(rg.brokers):
+                non_full_rgs.remove(rg)
+
+    def remove_replica(self, partition, osr, count=1):
+        """Remove one replica of a partition from the cluster.
+
+        The replication-group to remove from is determined as follows:
+            1. Find all replication-groups that contain at least one
+                out-of-sync replica for this partition.
+            2. Of these, find replication-groups with more than the average
+                number of replicas of this partition.
+            3. Choose the replication-group with the most overall partitions.
+            4. Repeat steps 1-3 with in-sync replicas
+
+        After this operation, the preferred leader for this partition will
+        be set to the broker that leads the fewest other partitions, even if
+        the current preferred leader is not removed.
+        This is done to keep the number of preferred replicas balanced across
+        brokers in the cluster.
+
+        :param partition: Partition of which the replication-factor should be
+        decreased.
+        :param osr: A list of the partition's out-of-sync replicas.
+        :param count: The number of replicas to remove.
+        :raises: InvalidReplicationFactorError when count is greater than the
+        replication factor of the partition.
+        """
+        if partition.replication_factor <= count:
+            raise InvalidReplicationFactorError(
+                "Cannot remove {0} replicas. Replication factor is only {1}."
+                .format(count, partition.replication_factor)
+            )
+
+        non_empty_rgs = [
+            rg
+            for rg in self.rgs.values()
+            if rg.count_replica(partition) > 0
+        ]
+        rgs_with_osr = [
+            rg
+            for rg in non_empty_rgs
+            if any(b in osr for b in rg.brokers)
+        ]
+
+        for _ in xrange(count):
+            candidate_rgs = rgs_with_osr or non_empty_rgs
+            total_replicas = sum(
+                rg.count_replica(partition)
+                for rg in candidate_rgs
+            )
+            opt_replica_cnt, _ = compute_optimum(
+                len(candidate_rgs),
+                total_replicas,
+            )
+            over_replicated_rgs = [
+                rg
+                for rg in candidate_rgs
+                if rg.count_replica(partition) > opt_replica_cnt
+            ]
+            candidate_rgs = over_replicated_rgs or candidate_rgs
+            rg = max(candidate_rgs, key=lambda rg: len(rg.partitions))
+
+            osr_in_rg = [b for b in rg.brokers if b in osr]
+            rg.remove_replica(partition, osr_in_rg)
+
+            osr = [b for b in osr if b in partition.replicas]
+            if rg in rgs_with_osr and len(osr_in_rg) == 1:
+                rgs_with_osr.remove(rg)
+            if rg.count_replica(partition) == 0:
+                non_empty_rgs.remove(rg)
+
+        new_leader = min(
+            partition.replicas,
+            key=lambda broker: broker.count_preferred_replica(),
+        )
+        partition.swap_leader(new_leader)
 
     def update_cluster_topology(self, assignment):
         """Modify the cluster-topology with given assignment.
