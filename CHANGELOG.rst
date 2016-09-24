@@ -1,3 +1,8 @@
+0.5.0 (September 23, 2016)
+-------------------------
+* Add command set_replication_factor command
+* Fix kafka-cluster-manager error on empty clusters
+
 0.4.2 (September 2, 2016)
 -------------------------
 * Fix bug in cluster rebalance while updating sibling_distance
