@@ -138,6 +138,17 @@ while keeping the cluster balanced as above.
 
   $ kafka-cluster-manager --cluster-type sample_type decommission 123456 123457 123458
 
+Set Replication Factor
+======================
+This command provides the ability to increase or decrease the replication-factor
+of a topic. Replicas are added or removed in such a way that the balance of the
+cluster is maintained. Additionally, when the replication-factor is decreased,
+any out-of-sync replicas will be removed first.
+
+.. code-block:: bash
+
+  $ kafka-cluster-manager --cluster-type sample_type set_replication_factor --topic sample_topic 3
+
 Stats
 =====
 This command provides statistics for the current imbalance state of the cluster. It also
