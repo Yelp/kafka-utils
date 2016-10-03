@@ -56,11 +56,13 @@ class OffsetGet(OffsetManagerBase):
         )
         parser_offset_get.add_argument(
             "--watermark",
-            choices=["high", "low", "current", "all"],
+            choices=["high", "low", "current", "distance", "all"],
             help="Type of offset watermark. \"high\" represents the offset "
             "corresponding to the latest message. \"low\" represents "
             "the offset corresponding to the earliest message. \"current\" "
-            "represents the current commited offset for this consumer",
+            "represents the current commited offset for this consumer. "
+            "\"distance\" represents the offset distance b/w high-watermark "
+            "and current-offset.",
             default="all"
         )
         parser_offset_get.add_argument(
@@ -146,5 +148,20 @@ class OffsetGet(OffsetManagerBase):
                     print(
                         "\t\tCurrent Offset: {current}".format(
                             current=metadata_tuple.current
+                        )
+                    )
+                if watermark_filter == "all" or watermark_filter == "distance":
+                    if metadata_tuple.highmark > 0:
+                        per_behind = float(metadata_tuple.highmark - metadata_tuple.current) / \
+                            metadata_tuple.highmark
+                    else:
+                        per_behind = 0.0
+                    per_behind = 0.0
+
+                    print(
+                        "\t\tOffset Distance: {distance} (Percentage behind: "
+                        "{per_behind:.2f}%)".format(
+                            distance=(metadata_tuple.highmark - metadata_tuple.current),
+                            per_behind=per_behind
                         )
                     )
