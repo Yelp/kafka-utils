@@ -156,8 +156,6 @@ class OffsetGet(OffsetManagerBase):
                             metadata_tuple.highmark
                     else:
                         per_behind = 0.0
-                    per_behind = 0.0
-
                     print(
                         "\t\tOffset Distance: {distance} (Percentage behind: "
                         "{per_behind:.2f}%)".format(
