@@ -60,7 +60,7 @@ class OffsetGet(OffsetManagerBase):
             help="Type of offset watermark. \"high\" represents the offset "
             "corresponding to the latest message. \"low\" represents "
             "the offset corresponding to the earliest message. \"current\" "
-            "represents the current commited offset for this consumer. "
+            "represents the current committed offset for this consumer. "
             "\"distance\" represents the offset distance b/w high-watermark "
             "and current-offset.",
             default="all"
@@ -96,7 +96,17 @@ class OffsetGet(OffsetManagerBase):
         client.close()
 
         if args.json:
-            print_json([p._asdict() for partitions in consumer_offsets_metadata.values() for p in partitions])
+            partitions_info = []
+            for partitions in consumer_offsets_metadata.values():
+                for partition in partitions:
+                    partition_info = partition._asdict()
+                    partition_info['offset_distance'] = partition_info['highmark'] - partition_info['current']
+                    partition_info['percentage_distance'] = cls.percentage_distance(
+                        partition_info['highmark'],
+                        partition_info['current']
+                    )
+                    partitions_info.append(partition_info)
+            print_json(partitions_info)
         else:
             # Warn the user if a topic being subscribed to does not exist in
             # Kafka.
@@ -151,15 +161,25 @@ class OffsetGet(OffsetManagerBase):
                         )
                     )
                 if watermark_filter == "all" or watermark_filter == "distance":
-                    if metadata_tuple.highmark > 0:
-                        per_behind = float(metadata_tuple.highmark - metadata_tuple.current) / \
-                            metadata_tuple.highmark
-                    else:
-                        per_behind = 0.0
+                    per_distance = cls.percentage_distance(metadata_tuple.highmark, metadata_tuple.current)
                     print(
-                        "\t\tOffset Distance: {distance} (Percentage behind: "
-                        "{per_behind:.2f}%)".format(
-                            distance=(metadata_tuple.highmark - metadata_tuple.current),
-                            per_behind=per_behind
+                        "\t\tOffset Distance: {distance}".format(
+                            distance=(metadata_tuple.highmark - metadata_tuple.current)
                         )
                     )
+                    print(
+                        "\t\tPercentage Distance:{per_distance}%".format(
+                            per_distance=per_distance
+                        )
+                    )
+
+    @classmethod
+    def percentage_distance(cls, highmark, current):
+        """Percentage of distance the current offset is behind the highmark."""
+        if int(highmark) > 0:
+            return round(
+                (int(highmark) - int(current)) * 100.0 / int(highmark),
+                2,
+            )
+        else:
+            return 0.0
