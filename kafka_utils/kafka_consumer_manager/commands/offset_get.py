@@ -168,7 +168,7 @@ class OffsetGet(OffsetManagerBase):
                         )
                     )
                     print(
-                        "\t\tPercentage Distance:{per_distance}%".format(
+                        "\t\tPercentage Distance: {per_distance}%".format(
                             per_distance=per_distance
                         )
                     )
