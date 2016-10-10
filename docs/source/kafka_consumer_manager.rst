@@ -135,14 +135,14 @@ Copying or renaming consumer group
 ==================================
 
 Consumer groups can have metadata copied into a new group using the
-:code:`rename_group` subcommand.
+:code:`copy_group` subcommand.
 
 .. code-block:: bash
 
    $ kafka-consumer-manager --cluster-type=test copy_group my_group1 my_group2
 
 
-They can also be renamed using :code:`rename_group`.
+They can be renamed using :code:`rename_group`.
 
 .. code-block:: bash
 
