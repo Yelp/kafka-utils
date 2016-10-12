@@ -65,12 +65,18 @@ def step_impl5_3(context):
     key = (context.topic, 0)
     offset = offsets[key]
     import json
+    if context.msgs_produced > 0.0:
+        percentage_distance = round((context.msgs_produced - offset) * 100.0 / context.msgs_produced, 2)
+    else:
+        percentage_distance = 0.0
     assert json.loads(context.output) == [
         {
             "topic": context.topic,
             "partition": 0,
             "current": offset,
             "highmark": context.msgs_produced,
-            "lowmark": 0
+            "lowmark": 0,
+            "offset_distance": context.msgs_produced - offset,
+            "percentage_distance": percentage_distance
         }
     ]
