@@ -102,8 +102,8 @@ class OffsetGet(OffsetManagerBase):
                     partition_info = partition._asdict()
                     partition_info['offset_distance'] = partition_info['highmark'] - partition_info['current']
                     partition_info['percentage_distance'] = cls.percentage_distance(
-                        partition_info['highmark'],
-                        partition_info['current']
+                        int(partition_info['highmark']),
+                        int(partition_info['current'])
                     )
                     partitions_info.append(partition_info)
             print_json(partitions_info)
@@ -161,7 +161,10 @@ class OffsetGet(OffsetManagerBase):
                         )
                     )
                 if watermark_filter == "all" or watermark_filter == "distance":
-                    per_distance = cls.percentage_distance(metadata_tuple.highmark, metadata_tuple.current)
+                    per_distance = cls.percentage_distance(
+                        int(metadata_tuple.highmark),
+                        int(metadata_tuple.current)
+                    )
                     print(
                         "\t\tOffset Distance: {distance}".format(
                             distance=(metadata_tuple.highmark - metadata_tuple.current)
@@ -176,9 +179,9 @@ class OffsetGet(OffsetManagerBase):
     @classmethod
     def percentage_distance(cls, highmark, current):
         """Percentage of distance the current offset is behind the highmark."""
-        if int(highmark) > 0:
+        if highmark > 0:
             return round(
-                (int(highmark) - int(current)) * 100.0 / int(highmark),
+                (highmark - current) * 100.0 / highmark,
                 2,
             )
         else:
