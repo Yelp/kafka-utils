@@ -77,6 +77,6 @@ def step_impl5_3(context):
             "highmark": context.msgs_produced,
             "lowmark": 0,
             "offset_distance": context.msgs_produced - offset,
-            "percentage_distance": percentage_distance,
+            "percentage_distance": percentage_distance
         }
     ]
