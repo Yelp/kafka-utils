@@ -1,5 +1,9 @@
+0.5.1 (September 23, 2016)
+--------------------------
+* Add option to see offset-distance for a consumer-group
+
 0.5.0 (September 23, 2016)
--------------------------
+--------------------------
 * Add command set_replication_factor command
 * Fix kafka-cluster-manager error on empty clusters
 
