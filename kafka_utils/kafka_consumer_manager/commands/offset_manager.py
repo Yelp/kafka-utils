@@ -20,6 +20,7 @@ import sys
 
 from kazoo.exceptions import NoNodeError
 
+from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
 from kafka_utils.kafka_consumer_manager.util import prompt_user_input
 from kafka_utils.util.zookeeper import ZK
 
@@ -59,6 +60,7 @@ class OffsetManagerBase(object):
         partitions,
         cluster_config,
         client,
+        storage='zookeeper',
         fail_on_error=True,
         quiet=False
     ):
@@ -77,11 +79,15 @@ class OffsetManagerBase(object):
                     groupid=groupid,
                 ),
             )
-        topics = cls.get_topics_from_consumer_group_id(
-            cluster_config,
-            groupid,
-            fail_on_error,
-        )
+        if storage == 'zookeeper':
+            topics = cls.get_topics_from_consumer_group_id(
+                cluster_config,
+                groupid,
+                fail_on_error,
+            )
+        else:
+            kafka_group_reader = KafkaGroupReader(cluster_config)
+            topics = kafka_group_reader.read_groups().get(groupid, [])
         topics_dict = {}
         if topic:
             if topic not in topics:
