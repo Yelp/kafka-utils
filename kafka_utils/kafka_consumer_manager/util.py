@@ -158,6 +158,7 @@ class KafkaGroupReader:
                 max_offset = self.get_max_offset(message.partition)
                 if message.offset >= max_offset - 1:
                     self.finished_partitions.add(message.partition)
+                self.process_consumer_offset_message(message)
             except ConsumerTimeout:
                 break
             except (
@@ -167,7 +168,6 @@ class KafkaGroupReader:
                     NotLeaderForPartitionError,
             ) as e:
                 self.log.warning("Got %s, retrying", e.__class__.__name__)
-            self.process_consumer_offset_message(message)
         return self.kafka_groups
 
     def parse_consumer_offset_message(self, message):
