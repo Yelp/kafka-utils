@@ -88,7 +88,8 @@ class OffsetGet(OffsetManagerBase):
             partitions=args.partitions,
             cluster_config=cluster_config,
             client=client,
-            quiet=args.json
+            quiet=args.json,
+            storage=args.storage,
         )
 
         consumer_offsets_metadata = cls.get_offsets(
