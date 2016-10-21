@@ -45,7 +45,7 @@ class StatsCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, cluster_topology):
+    def run_command(self, cluster_topology, cluster_balancer):
         if self.args.plan_file_path:
             base_assignment = cluster_topology.assignment
 

@@ -44,14 +44,21 @@ class ClusterManagerCmd(object):
         """
         raise NotImplementedError("Implement in subclass")
 
-    def run_command(self, cluster_topology):
+    def run_command(self, cluster_topology, cluster_balancer):
         """Implement the command logic.
         When run_command is called cluster_config, args, and zk are already
         initialized.
         """
         raise NotImplementedError("Implement in subclass")
 
-    def run(self, cluster_config, rg_parser, args):
+    def run(
+            self,
+            cluster_config,
+            rg_parser,
+            cluster_balancer,
+            args
+    ):
+        """Initialize cluster_config, args, and zk then call run_command."""
         self.cluster_config = cluster_config
         self.args = args
         with ZK(self.cluster_config) as self.zk:
@@ -71,7 +78,8 @@ class ClusterManagerCmd(object):
             if len(ct.partitions) == 0:
                 self.log.info("The cluster is empty. No actions to perform.")
                 return
-            self.run_command(ct)
+            cb = cluster_balancer(ct, args)
+            self.run_command(ct, cb)
 
     def add_subparser(self, subparsers):
         self.build_subparser(subparsers).set_defaults(command=self.run)

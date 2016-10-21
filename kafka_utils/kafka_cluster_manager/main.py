@@ -25,6 +25,8 @@ import os
 import sys
 from logging.config import fileConfig
 
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
+    import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
     import DefaultReplicationGroupParser
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
@@ -54,12 +56,12 @@ def get_module(module_full_name):
         return importlib.import_module(module_full_name)
 
 
-def dynamic_import_group_parser(module_full_name):
+def dynamic_import(module_full_name, base_class):
     module = get_module(module_full_name)
-    for class_name, class_type in inspect.getmembers(module, inspect.isclass):
-        if (issubclass(class_type, ReplicationGroupParser) and
-                class_type is not ReplicationGroupParser):
-            return class_type()
+    for _, class_type in inspect.getmembers(module, inspect.isclass):
+        if (issubclass(class_type, base_class) and
+                class_type is not base_class):
+            return class_type
 
 
 def parse_args():
@@ -119,7 +121,13 @@ def parse_args():
         'If not specified the default replication group parser will create '
         'only one group for all brokers.',
     )
+    parser.add_argument(
+        '--cluster-balancer',
+        type=str,
+        help='Module containing an implementation of ClusterBalancer.'
+        'The module should be specified as path_to_include_to_py_path:module.'
 
+    )
     subparsers = parser.add_subparsers()
     RebalanceCmd().add_subparser(subparsers)
     DecommissionCmd().add_subparser(subparsers)
@@ -156,8 +164,18 @@ def run():
         args.discovery_base_path,
     )
     if args.group_parser:
-        rg_parser = dynamic_import_group_parser(args.group_parser)
+        rg_parser = dynamic_import(args.group_parser, ReplicationGroupParser)()
     else:
         rg_parser = DefaultReplicationGroupParser()
+    if args.cluster_balancer:
+        cluster_balancer = dynamic_import(
+            args.cluster_balancer,
+            ClusterBalancer
+        )
 
-    args.command(cluster_config, rg_parser, args)
+    args.command(
+        cluster_config,
+        rg_parser,
+        cluster_balancer,
+        args,
+    )

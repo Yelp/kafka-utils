@@ -63,9 +63,10 @@ class DecommissionCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, cluster_topology):
+    def run_command(self, cluster_topology, cluster_balancer):
         base_assignment = cluster_topology.assignment
-        cluster_topology.decommission_brokers(self.args.broker_ids)
+
+        cluster_balancer.decommission_brokers(self.args.broker_ids)
 
         if not validate_plan(
             assignment_to_plan(cluster_topology.assignment),

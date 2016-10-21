@@ -68,7 +68,7 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, cluster_topology):
+    def run_command(self, cluster_topology, cluster_balancer):
         if self.args.source_broker == self.args.dest_broker:
             print("Error: Destination broker is same as source broker.")
             sys.exit()

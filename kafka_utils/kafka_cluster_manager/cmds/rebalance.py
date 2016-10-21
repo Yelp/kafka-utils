@@ -75,10 +75,11 @@ class RebalanceCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, ct):
+    def run_command(self, cluster_topology, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
-        base_assignment = ct.assignment
-        assignment = self.build_balanced_assignment(ct)
+        base_assignment = cluster_topology.assignment
+        cluster_balancer.rebalance()
+        assignment = cluster_topology.assignment
 
         if not validate_plan(
             assignment_to_plan(assignment),
@@ -99,30 +100,3 @@ class RebalanceCmd(ClusterManagerCmd):
             self.process_assignment(reduced_assignment)
         else:
             self.log.info("Cluster already balanced. No actions to perform.")
-
-    def build_balanced_assignment(self, ct):
-        # Balancing to be done in the given order only
-        # Rebalance replication-groups
-        if self.args.replication_groups:
-            self.log.info(
-                'Re-balancing replica-count over replication groups: %s',
-                ', '.join([str(rg) for rg in ct.rgs.keys()]),
-            )
-            ct.rebalance_replication_groups()
-
-        # Rebalance broker-partition count per replication-groups
-        if self.args.brokers:
-            self.log.info(
-                'Re-balancing partition-count across brokers: %s',
-                ', '.join(str(e) for e in ct.brokers.keys()),
-            )
-            ct.rebalance_brokers()
-
-        # Rebalance broker as leader count per broker
-        if self.args.leaders:
-            self.log.info(
-                'Re-balancing leader-count across brokers: %s',
-                ', '.join(str(e) for e in ct.brokers.keys()),
-            )
-            ct.rebalance_leaders()
-        return ct.assignment

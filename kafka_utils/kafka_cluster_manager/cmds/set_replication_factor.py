@@ -46,7 +46,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, ct):
+    def run_command(self, ct, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
         if self.args.topic in ct.topics:
             topic = ct.topics[self.args.topic]
@@ -89,7 +89,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                 ),
             )
             for partition in topic.partitions:
-                ct.add_replica(
+                cluster_balancer.add_replica(
                     partition,
                     self.args.replication_factor - partition.replication_factor,
                 )
@@ -114,7 +114,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                         "for removal."
                         .format(osr=osr)
                     )
-                ct.remove_replica(
+                cluster_balancer.remove_replica(
                     partition,
                     osr,
                     partition.replication_factor - self.args.replication_factor,
