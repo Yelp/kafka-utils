@@ -27,6 +27,8 @@ from logging.config import fileConfig
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
+    import PartitionCountBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
     import DefaultReplicationGroupParser
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
@@ -126,8 +128,10 @@ def parse_args():
         type=str,
         help='Module containing an implementation of ClusterBalancer.'
         'The module should be specified as path_to_include_to_py_path:module.'
-
+        'If not specified the default cluster balancer used will be'
+        'PartitionCountBalancer.',
     )
+
     subparsers = parser.add_subparsers()
     RebalanceCmd().add_subparser(subparsers)
     DecommissionCmd().add_subparser(subparsers)
@@ -172,6 +176,8 @@ def run():
             args.cluster_balancer,
             ClusterBalancer
         )
+    else:
+        cluster_balancer = PartitionCountBalancer
 
     args.command(
         cluster_config,
