@@ -98,9 +98,10 @@ class TestPartitionCountBalancer(object):
         # rg4:      (6) = 1
         # rg1 and rg2 are over-replicated and rg3 being under-replicated
         # source-replication-group should be rg1 having the highest replicas
-        p1 = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
-        assignment = dict([p1])
+        p1_info = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
+        assignment = dict([p1_info])
         ct = create_cluster_topology(assignment, broker_range(7))
+        p1 = ct.partitions[p1_info[0]]
         cb = create_balancer(ct)
         # Case-1: rg's have only 1 unique max replica count
         # 'rg1' and 'rg2' are over-replicated groups

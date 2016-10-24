@@ -73,7 +73,7 @@ class ReplicationGroup(object):
 
     def count_replica(self, partition):
         """Return count of replicas of given partition."""
-        return self.partitions.count(partition)
+        return sum(1 for b in partition.replicas if b in self.brokers)
 
     def acquire_partition(self, partition, source_broker):
         """Move a partition from a broker to any of the eligible brokers
