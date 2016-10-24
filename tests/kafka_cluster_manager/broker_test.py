@@ -72,6 +72,26 @@ class TestBroker(object):
 
         assert broker.topics == set([sentinel.t1, sentinel.t2])
 
+    def test_weight(self):
+        partitions = set([
+            Mock(spec=Partition, topic=sentinel.t1, weight=1),
+            Mock(spec=Partition, topic=sentinel.t1, weight=2),
+            Mock(spec=Partition, topic=sentinel.t2, weight=3),
+        ])
+        broker = Broker('test-broker', partitions=partitions)
+
+        assert broker.weight == 6
+
+    def test_size(self):
+        partitions = set([
+            Mock(spec=Partition, topic=sentinel.t1, size=1),
+            Mock(spec=Partition, topic=sentinel.t1, size=2),
+            Mock(spec=Partition, topic=sentinel.t2, size=3),
+        ])
+        broker = Broker('test-broker', partitions=partitions)
+
+        assert broker.size == 6
+
     def test_count_partition(self):
         t1 = sentinel.t1
         partitions = set([

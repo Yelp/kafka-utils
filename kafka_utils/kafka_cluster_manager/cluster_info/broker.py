@@ -74,6 +74,16 @@ class Broker(object):
         """Return the set of topics current in broker."""
         return set([partition.topic for partition in self._partitions])
 
+    @property
+    def weight(self):
+        """Return the total weight of all partitions on this broker."""
+        return sum(partition.weight for partition in self.partitions)
+
+    @property
+    def size(self):
+        """Return the total size of all partitions on this broker."""
+        return sum(partition.size for partition in self.partitions)
+
     def empty(self):
         """Return true if the broker has no replicas assigned"""
         return len(self.partitions) == 0
