@@ -20,11 +20,13 @@ class Partition(object):
     (list of brokers).
     """
 
-    def __init__(self, topic, id, replicas=None):
+    def __init__(self, topic, id, replicas=None, weight=0, size=0):
         # Every partition name has (topic, partition) tuple
         self._name = (topic.id, id)
         self._replicas = replicas or []
         self._topic = topic
+        self._weight = weight
+        self._size = size
 
     @property
     def name(self):
@@ -60,6 +62,23 @@ class Partition(object):
         for a particular partition.
         """
         return self._replicas[1:]
+
+    @property
+    def weight(self):
+        """Return a number representing the relative weight of this partition
+        compared to the other partitions in the cluster. The weight is a
+        measure of how much load this partition will place on any broker that
+        it is assigned to.
+        """
+        return self._weight
+
+    @property
+    def size(self):
+        """Return a number representing the size of this partition. The size is
+        a measure of how expensive it is to move this partition from one broker
+        to another.
+        """
+        return self._size
 
     def add_replica(self, broker):
         """Add broker to existing set of replicas."""

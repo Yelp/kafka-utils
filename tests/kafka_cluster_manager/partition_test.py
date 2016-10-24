@@ -28,6 +28,8 @@ class TestPartition(object):
             mock_topic,
             0,
             [sentinel.r1, sentinel.r2],
+            2,
+            3,
         )
 
     def test_name(self, partition):
@@ -41,6 +43,12 @@ class TestPartition(object):
 
     def test_leader(self, partition):
         assert partition.leader == sentinel.r1
+
+    def test_weight(self, partition):
+        assert partition.weight == 2
+
+    def test_size(self, partition):
+        assert partition.size == 3
 
     def test_replication_factor(self, partition):
         assert partition.replication_factor == 2
