@@ -34,58 +34,6 @@ from kafka_utils.kafka_cluster_manager.cluster_info \
 
 
 class TestClusterTopology(object):
-    # replication-group to broker map
-    # rg1: 0, 1, 4; rg2: 2, 3; rg3: 5; rg4: 6;
-    broker_rg = {
-        '0': 'rg1', '1': 'rg1', '2': 'rg2', '3': 'rg2',
-        '4': 'rg1', '5': 'rg3', '6': 'rg4',
-    }
-    topic_ids = ['T0', 'T1', 'T2', 'T3']
-    brokers = {
-        '0': {'host': 'host1'},
-        '1': {'host': 'host2'},
-        '2': {'host': 'host3'},
-        '3': {'host': 'host4'},
-        '4': {'host': 'host5'},
-    }
-    # Example assignment properties:
-    # * Brokers:(0,1,2,3): rg-count = 2
-    # case 1: replication-factor % rg-count == 0
-    #    -- T0, T1:
-    #   * 1a) T1: replication-factor > rg-count
-    # case 2: replication-factor % rg-count != 0
-    #   -- T2, T3
-    #   * 2a): replication-factor > rg-count: T1
-    #   * 2b): replication-factor < rg-count: T2
-    # rg-imbalance-status per partition:
-    #
-    # rg-imbalanced-partitions: T0-1, T1-1, T3-1
-    # rg-balanced-partitions:   T0-0, T1-0, T3-0, T2-0
-    _initial_assignment = dict(
-        [
-            ((u'T0', 0), ['1', '2']),
-            ((u'T0', 1), ['2', '3']),
-            ((u'T1', 0), ['0', '1', '2', '3']),
-            ((u'T1', 1), ['0', '1', '2', '4']),
-            ((u'T2', 0), ['2']),
-            ((u'T3', 0), ['0', '1', '2']),
-            ((u'T3', 1), ['0', '1', '4']),
-        ]
-    )
-
-    def get_replication_group_id(self, broker):
-        try:
-            return self.broker_rg[broker.id]
-        except KeyError:  # inactive brokers
-            return None
-
-    def build_cluster_topology(self, assignment=None, brokers=None):
-        """Create cluster topology from given assignment."""
-        if not assignment:
-            assignment = self._initial_assignment
-        if not brokers:
-            brokers = self.brokers
-        return ClusterTopology(assignment, brokers, self.get_replication_group_id)
 
     def test_cluster_topology_inactive_brokers(self):
         assignment = {
@@ -110,13 +58,13 @@ class TestClusterTopology(object):
         assert ct.brokers['9'].inactive
         assert None in ct.rgs
 
-    def test_broker_decommission(self):
+    def test_broker_decommission(self, create_cluster_topology):
         assignment = {
             (u'T0', 0): ['0', '2'],
             (u'T0', 1): ['0', '3'],
             (u'T1', 0): ['0', '5'],
         }
-        ct = self.build_cluster_topology(assignment)
+        ct = create_cluster_topology(assignment)
         partitions_count = len(ct.partitions)
 
         # should move all partitions from broker 0 to either 1 or 4 because they
@@ -128,7 +76,7 @@ class TestClusterTopology(object):
         assert len(ct.partitions) == partitions_count
         assert ct.brokers['0'].empty()
 
-    def test_broker_decommission_many(self):
+    def test_broker_decommission_many(self, create_cluster_topology):
         assignment = {
             (u'T0', 0): ['0', '2'],
             (u'T0', 1): ['0', '3'],
@@ -137,7 +85,7 @@ class TestClusterTopology(object):
             (u'T1', 2): ['1', '5'],
             (u'T2', 0): ['0', '3'],
         }
-        ct = self.build_cluster_topology(assignment)
+        ct = create_cluster_topology(assignment)
         partitions_count = len(ct.partitions)
 
         ct.decommission_brokers(['0', '1', '3'])
@@ -207,19 +155,23 @@ class TestClusterTopology(object):
         assert len(ct.partitions) == partitions_count
         assert ct.brokers['2'].empty()
 
-    def test_broker_decommission_error(self):
+    def test_broker_decommission_error(self, create_cluster_topology):
         assignment = {
             (u'T1', 0): ['0', '1', '2', '3', '4'],
             (u'T1', 1): ['0', '1', '2', '4'],
             (u'T2', 1): ['0', '1', '2', '4'],
         }
-        ct = self.build_cluster_topology(assignment)
+        ct = create_cluster_topology(assignment)
 
         with pytest.raises(BrokerDecommissionError):
             ct.decommission_brokers(['0'])
 
-    def test_rebalance_replication_groups(self):
-        ct = self.build_cluster_topology()
+    def test_rebalance_replication_groups(
+            self,
+            create_cluster_topology,
+            default_assignment
+    ):
+        ct = create_cluster_topology()
         ct.rebalance_replication_groups()
         net_imbal, _ = get_replication_group_imbalance_stats(
             ct.rgs.values(),
@@ -232,11 +184,11 @@ class TestClusterTopology(object):
         # Verify that new-assignment is valid
         self.assert_valid(
             ct.assignment,
-            self._initial_assignment,
+            default_assignment,
             ct.brokers.keys(),
         )
 
-    def test_rebalance_replication_groups_balanced(self):
+    def test_rebalance_replication_groups_balanced(self, create_cluster_topology):
         # Replication-group is already balanced
         assignment = dict(
             [
@@ -246,7 +198,7 @@ class TestClusterTopology(object):
                 ((u'T3', 0), ['0', '1', '2']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(5))
+        ct = create_cluster_topology(assignment, self.srange(5))
         ct.rebalance_replication_groups()
         net_imbal, _ = get_replication_group_imbalance_stats(
             ct.rgs.values(),
@@ -258,7 +210,7 @@ class TestClusterTopology(object):
         # Verify that new-assignment same as previous
         assert ct.assignment == assignment
 
-    def test_rebalance_replication_groups_error(self):
+    def test_rebalance_replication_groups_error(self, create_cluster_topology):
         assignment = dict(
             [
                 ((u'T0', 0), ['0', '2']),
@@ -267,12 +219,12 @@ class TestClusterTopology(object):
                 ((u'T3', 0), ['0', '1', '9']),  # broker 9 is not active
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(5))
+        ct = create_cluster_topology(assignment, self.srange(5))
 
         with pytest.raises(RebalanceError):
             ct.rebalance_replication_groups()
 
-    def test_elect_source_replication_group(self):
+    def test_elect_source_replication_group(self, create_cluster_topology):
         # Sample assignment with 3 replication groups
         # with replica-count as as per map :-
         # broker_rg = {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3', 6: 'rg4'}
@@ -285,7 +237,7 @@ class TestClusterTopology(object):
         # source-replication-group should be rg1 having the highest replicas
         p1 = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
         assignment = dict([p1])
-        ct = self.build_cluster_topology(assignment, self.srange(7))
+        ct = create_cluster_topology(assignment, self.srange(7))
         # Case-1: rg's have only 1 unique max replica count
         # 'rg1' and 'rg2' are over-replicated groups
         over_replicated_rgs = [ct.rgs['rg1'], ct.rgs['rg2']]
@@ -296,7 +248,7 @@ class TestClusterTopology(object):
         # Since, 'rg1' has more replicas i.e. 3, it should be selected
         assert rg_source.id == 'rg1'
 
-    def test_elect_dest_replication_group(self):
+    def test_elect_dest_replication_group(self, create_cluster_topology):
         # Sample assignment with 3 replication groups
         # with replica-count as as per map
         # broker_rg: {0: 'rg1', 1: 'rg1', 2: 'rg2', 3: 'rg2', 4: 'rg1', 5: 'rg3'}
@@ -308,7 +260,7 @@ class TestClusterTopology(object):
         # source-replication-group should be rg1 having the highest replicas
         p1_info = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
         assignment = dict([p1_info])
-        ct = self.build_cluster_topology(assignment, self.srange(7))
+        ct = create_cluster_topology(assignment, self.srange(7))
         p1 = ct.partitions[p1_info[0]]
         # Case 1: rg_source = 'rg1', find destination-replica
         rg_source = ct.rgs['rg1']
@@ -337,10 +289,10 @@ class TestClusterTopology(object):
         # No eligible dest-group is there where partition can be sent to
         assert rg_dest is None
 
-    def test_rebalance_partition_imbalanced_case1(self):
+    def test_rebalance_partition_imbalanced_case1(self, create_cluster_topology):
         # Test imbalanced partitions for below cases
         # Note: In initial-assignment, all partitions with id-1 are 'imbalanced'
-        ct = self.build_cluster_topology()
+        ct = create_cluster_topology()
         # CASE 1: repl-factor % rg-count == 0
         # (1a): repl-factor == rg-count
         # p1: replicas: ('T0', 1): [2,3]
@@ -362,8 +314,8 @@ class TestClusterTopology(object):
         # Verify partition is rg-balanced
         self.assert_rg_balanced_partition(ct, p1, opt_cnt)
 
-    def test_rebalance_partition_imbalanced_case2(self):
-        ct = self.build_cluster_topology()
+    def test_rebalance_partition_imbalanced_case2(self, create_cluster_topology):
+        ct = create_cluster_topology()
         # CASE 2: repl-factor % rg-count > 0
         # p1: replicas ('T3', 1): [0,1,4]
         p1 = ct.partitions[('T3', 1)]
@@ -375,10 +327,10 @@ class TestClusterTopology(object):
         # Verify partition is now rg-balanced
         self.assert_rg_balanced_partition(ct, p1, opt_cnt, extra_cnt)
 
-    def test_rebalance_partition_balanced(self):
+    def test_rebalance_partition_balanced(self, create_cluster_topology):
         # Test already balanced partitions in given example for different cases
         # Analyze Cases 1a, 1b
-        ct = self.build_cluster_topology()
+        ct = create_cluster_topology()
         # CASE 1: repl-factor % rg-count == 0
         # (1a): repl-factor == rg-count
         # p1: replicas: ('T0', 0): [1,2]
@@ -399,10 +351,10 @@ class TestClusterTopology(object):
         # Verify no change in replicas after rebalancing
         self.rg_rebalance_assert_no_change(ct, p1)
 
-    def test_rebalance_partition_balanced_case2(self):
+    def test_rebalance_partition_balanced_case2(self, create_cluster_topology):
         # Test already balanced partitions in given example for different cases
         # Analyze Cases 2a, 2b
-        ct = self.build_cluster_topology()
+        ct = create_cluster_topology()
         # CASE 2: repl-factor % rg-count > 0
         # (2a): repl-factor < rg-count
         # p1: replicas ('T2', 0): [2]
@@ -463,7 +415,7 @@ class TestClusterTopology(object):
             assert len(new_replicas) == len(orig_replicas)
 
     # Tests for leader-balancing
-    def test_rebalance_leaders_balanced_case1(self):
+    def test_rebalance_leaders_balanced_case1(self, create_cluster_topology):
         # Already balanced-assignment with evenly-distributed
         # (broker-id: leader-count): {0: 1, 1:1, 2:1}
         # opt-count: 3/3 = 1, extra-count: 3%3 = 0
@@ -474,7 +426,7 @@ class TestClusterTopology(object):
                 ((u'T1', 0), ['0', '2']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         orig_assignment = ct.assignment
         ct.rebalance_leaders()
         _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
@@ -484,7 +436,7 @@ class TestClusterTopology(object):
         # Assert leader-balanced
         assert net_imbal == 0
 
-    def test_rebalance_leaders_balanced_case2(self):
+    def test_rebalance_leaders_balanced_case2(self, create_cluster_topology):
         # Already balanced-assignment NOT evenly-distributed
         # (broker-id: leader-count): {0: 1, 1:1, 2:1}
         # opt-count: 2/3 = 0, extra-count: 2%3 = 2
@@ -494,7 +446,7 @@ class TestClusterTopology(object):
                 ((u'T0', 1), ['2', '0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         orig_assignment = ct.assignment
         ct.rebalance_leaders()
         _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
@@ -504,7 +456,7 @@ class TestClusterTopology(object):
         # Assert leader-balanced
         assert net_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case1(self):
+    def test_rebalance_leaders_unbalanced_case1(self, create_cluster_topology):
         # Balance leader-imbalance successfully
         # (broker-id: leader-count): {0: 0, 1:2, 2:1}
         # Net-leader-imbalance: 1
@@ -516,7 +468,7 @@ class TestClusterTopology(object):
                 ((u'T1', 0), ['1', '0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         orig_assignment = ct.assignment
         ct.rebalance_leaders()
 
@@ -532,7 +484,7 @@ class TestClusterTopology(object):
         assert new_leaders_per_broker['1'] == 1
         assert new_leaders_per_broker['2'] == 1
 
-    def test_rebalance_leaders_unbalanced_case2(self):
+    def test_rebalance_leaders_unbalanced_case2(self, create_cluster_topology):
         # (Broker: leader-count): {0: 2, 1: 1, 2:0}
         # opt-count: 3/3 = 1, extra-count = 0
         # Leader-imbalance-value: 1
@@ -543,14 +495,14 @@ class TestClusterTopology(object):
                 ((u'T1', 0), ['0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case2a(self):
+    def test_rebalance_leaders_unbalanced_case2a(self, create_cluster_topology):
         # (Broker: leader-count): {0: 2, 1: 1, 2:0, 3:1}
         # opt-count: 3/4 = 1, extra-count = 3
         # Leader-imbalance-value: 1
@@ -563,7 +515,7 @@ class TestClusterTopology(object):
                 ((u'T1', 0), ['0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         ct.rebalance_leaders()
 
         # Verify balanced
@@ -574,7 +526,7 @@ class TestClusterTopology(object):
         replica_ids = [b.id for b in ct.partitions[('T0', 1)].replicas]
         assert replica_ids == ['3', '1']
 
-    def test_rebalance_leaders_unbalanced_case2b(self):
+    def test_rebalance_leaders_unbalanced_case2b(self, create_cluster_topology):
         assignment = dict(
             [
                 ((u'T0', 0), ['3', '2']),
@@ -583,14 +535,14 @@ class TestClusterTopology(object):
                 ((u'T2', 0), ['0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case2c(self):
+    def test_rebalance_leaders_unbalanced_case2c(self, create_cluster_topology):
         # Broker-2 imbalance value: 2 with different brokers
         # Broker-2 requests leadership from multiple brokers (0, 1) once
         assignment = dict(
@@ -605,14 +557,14 @@ class TestClusterTopology(object):
                 ((u'T4', 2), ['3']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case2d(self):
+    def test_rebalance_leaders_unbalanced_case2d(self, create_cluster_topology):
         # Broker-2 imbalanced with same brokers
         # Broker-2 requests leadership from same broker-1 twice
         assignment = dict(
@@ -625,14 +577,14 @@ class TestClusterTopology(object):
                 ((u'T1', 5), ['0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case2e(self):
+    def test_rebalance_leaders_unbalanced_case2e(self, create_cluster_topology):
         # Imbalance-val 2
         # Multiple imbalanced brokers (2, 5) gets non-follower balanced
         # from multiple brokers (1,4)
@@ -646,14 +598,14 @@ class TestClusterTopology(object):
                 ((u'T4', 0), ['3']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(6))
+        ct = create_cluster_topology(assignment, self.srange(6))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case3(self):
+    def test_rebalance_leaders_unbalanced_case3(self, create_cluster_topology):
         # Imbalanced 0 and 2. No re-balance possible.
         assignment = dict(
             [
@@ -662,7 +614,7 @@ class TestClusterTopology(object):
                 ((u'T2', 0), ['0']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         ct.rebalance_leaders()
 
         # Verify still leader-imbalanced
@@ -671,7 +623,7 @@ class TestClusterTopology(object):
         # No change in assignment
         assert sorted(ct.assignment) == sorted(assignment)
 
-    def test_rebalance_leaders_unbalanced_case4(self):
+    def test_rebalance_leaders_unbalanced_case4(self, create_cluster_topology):
         # Imbalanced assignment
         # Partial leader-imbalance possible
         # (Broker: leader-count): {0: 3, 1: 1, 2:0}
@@ -686,7 +638,7 @@ class TestClusterTopology(object):
             ]
         )
 
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         ct.rebalance_leaders()
         _, new_net_imbal, new_leaders_per_broker = get_leader_imbalance_stats(
@@ -699,7 +651,7 @@ class TestClusterTopology(object):
         assert new_leaders_per_broker['1'] == 1
         assert new_leaders_per_broker['0'] == 3
 
-    def test_rebalance_leaders_unbalanced_case2f(self):
+    def test_rebalance_leaders_unbalanced_case2f(self, create_cluster_topology):
         assignment = dict(
             [
                 ((u'T0', 0), ['2', '0']),
@@ -709,14 +661,14 @@ class TestClusterTopology(object):
                 ((u'T2', 1), ['2']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test_rebalance_leaders_unbalanced_case5(self):
+    def test_rebalance_leaders_unbalanced_case5(self, create_cluster_topology):
         # Special case, wherein none under-balanced
         # but 0 is overbalanced
         assignment = dict(
@@ -729,14 +681,14 @@ class TestClusterTopology(object):
                 ((u'T4', 0), ['1']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         ct.rebalance_leaders()
 
         # Verify leader-balanced
         _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
         assert leader_imbal == 0
 
-    def test__rebalance_groups_partition_cnt_case1(self):
+    def test__rebalance_groups_partition_cnt_case1(self, create_cluster_topology):
         # rg1 has 6 partitions
         # rg2 has 2 partitions
         # Both rg's are balanced(based on replica-count) initially
@@ -749,7 +701,7 @@ class TestClusterTopology(object):
                 ((u'T2', 0), ['0', '1', '3']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         # Re-balance replication-groups for partition-count
         ct._rebalance_groups_partition_cnt()
 
@@ -766,7 +718,7 @@ class TestClusterTopology(object):
         # Verify replica-count imbalance remains unaltered
         assert net_imbal == 0
 
-    def test__rebalance_groups_partition_cnt_case2(self):
+    def test__rebalance_groups_partition_cnt_case2(self, create_cluster_topology):
         # 1 over-balanced, 2 under-balanced replication-groups
         # rg1 has 4 partitions
         # rg2 has 1 partition
@@ -786,7 +738,7 @@ class TestClusterTopology(object):
             '2': mock.MagicMock(),
             '5': mock.MagicMock(),
         }
-        ct = self.build_cluster_topology(assignment, brokers)
+        ct = create_cluster_topology(assignment, brokers)
         # Re-balance brokers
         ct._rebalance_groups_partition_cnt()
 
@@ -804,7 +756,7 @@ class TestClusterTopology(object):
         # Verify replica-count imbalance remains 0
         assert net_imbal == 0
 
-    def test__rebalance_groups_partition_cnt_case3(self):
+    def test__rebalance_groups_partition_cnt_case3(self, create_cluster_topology):
         # 1 over-balanced, 1 under-balanced, 1 opt-balanced replication-group
         # rg1 has 3 partitions
         # rg2 has 2 partitions
@@ -824,7 +776,7 @@ class TestClusterTopology(object):
             '2': mock.MagicMock(),
             '5': mock.MagicMock(),
         }
-        ct = self.build_cluster_topology(assignment, brokers)
+        ct = create_cluster_topology(assignment, brokers)
         # Re-balance brokers across replication-groups
         ct._rebalance_groups_partition_cnt()
 
@@ -842,7 +794,7 @@ class TestClusterTopology(object):
         # Verify replica-count imbalance remains 0
         assert net_imbal == 0
 
-    def test__rebalance_groups_partition_cnt_case4(self):
+    def test__rebalance_groups_partition_cnt_case4(self, create_cluster_topology):
         # rg1 has 4 partitions
         # rg2 has 2 partitions
         # Both rg's are balanced(based on replica-count) initially
@@ -854,30 +806,30 @@ class TestClusterTopology(object):
                 ((u'T2', 0), ['0', '1', '2']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
         # Re-balance replication-groups for partition-count
         ct._rebalance_groups_partition_cnt()
 
         # Verify no change in assignment
         assert ct.assignment == assignment
 
-    def test_update_cluster_topology_invalid_broker(self):
+    def test_update_cluster_topology_invalid_broker(self, create_cluster_topology):
         assignment = dict([((u'T0', 0), ['1', '2'])])
         new_assignment = dict([((u'T0', 0), ['1', '3'])])
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
 
         with pytest.raises(InvalidBrokerIdError):
             ct.update_cluster_topology(new_assignment)
 
-    def test_update_cluster_topology_invalid_partition(self):
+    def test_update_cluster_topology_invalid_partition(self, create_cluster_topology):
         assignment = dict([((u'T0', 0), ['1', '2'])])
         new_assignment = dict([((u'invalid_topic', 0), ['1', '0'])])
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
 
         with pytest.raises(InvalidPartitionError):
             ct.update_cluster_topology(new_assignment)
 
-    def test_update_cluster_topology(self):
+    def test_update_cluster_topology(self, create_cluster_topology):
         assignment = dict(
             [
                 ((u'T0', 0), ['1', '2']),
@@ -891,7 +843,7 @@ class TestClusterTopology(object):
                 ((u'T0', 1), ['1', '2']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
 
         ct.update_cluster_topology(new_assignment)
 
@@ -932,7 +884,7 @@ class TestClusterTopology(object):
         for partition, orig_replicas in orig_assignment.iteritems():
             set(orig_replicas) == set(new_assignment[partition])
 
-    def test_replace_broker_leader(self):
+    def test_replace_broker_leader(self, create_cluster_topology):
         assignment = dict(
             [
                 ((u'T1', 0), ['1', '2']),
@@ -940,7 +892,7 @@ class TestClusterTopology(object):
                 ((u'T2', 0), ['1']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         ct.replace_broker('1', '3')
 
         assert ct.brokers['1'].partitions == set([])
@@ -953,14 +905,14 @@ class TestClusterTopology(object):
             ct.brokers['2'],
         ]
 
-    def test_replace_broker_non_leader(self):
+    def test_replace_broker_non_leader(self, create_cluster_topology):
         assignment = dict(
             [
                 ((u'T1', 0), ['1', '2']),
                 ((u'T2', 0), ['1']),
             ]
         )
-        ct = self.build_cluster_topology(assignment, self.srange(4))
+        ct = create_cluster_topology(assignment, self.srange(4))
         ct.replace_broker('2', '0')
 
         assert ct.brokers['2'].partitions == set([])
@@ -970,23 +922,23 @@ class TestClusterTopology(object):
             ct.brokers['0'],
         ]
 
-    def test_replace_broker_invalid_source_broker(self):
+    def test_replace_broker_invalid_source_broker(self, create_cluster_topology):
         assignment = dict([((u'T1', 0), ['0', '1'])])
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
 
         with pytest.raises(InvalidBrokerIdError):
             ct.replace_broker('444', '2')
 
-    def test_replace_broker_invalid_destination_broker(self):
+    def test_replace_broker_invalid_destination_broker(self, create_cluster_topology):
         assignment = dict([((u'T1', 0), ['0', '1'])])
-        ct = self.build_cluster_topology(assignment, self.srange(3))
+        ct = create_cluster_topology(assignment, self.srange(3))
 
         with pytest.raises(InvalidBrokerIdError):
             ct.replace_broker('0', '444')
 
-    def test_add_replica(self):
+    def test_add_replica(self, create_cluster_topology):
         assignment = dict([((u'T1', 0), ['1', '3'])])
-        ct = self.build_cluster_topology(assignment, self.srange(6))
+        ct = create_cluster_topology(assignment, self.srange(6))
         partition = ct.partitions[(u'T1', 0)]
 
         ct.add_replica(ct.partitions[(u'T1', 0)], count=3)
@@ -994,9 +946,9 @@ class TestClusterTopology(object):
         assert partition.replication_factor == 5
         assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 5
 
-    def test_remove_replica(self):
+    def test_remove_replica(self, create_cluster_topology):
         assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
-        ct = self.build_cluster_topology(assignment, self.srange(6))
+        ct = create_cluster_topology(assignment, self.srange(6))
         partition = ct.partitions[(u'T1', 0)]
         osr = [ct.brokers['1'], ct.brokers['2']]
 
@@ -1005,9 +957,9 @@ class TestClusterTopology(object):
         assert partition.replication_factor == 2
         assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 2
 
-    def test_remove_replica_prioritize_osr(self):
+    def test_remove_replica_prioritize_osr(self, create_cluster_topology):
         assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
-        ct = self.build_cluster_topology(assignment, self.srange(6))
+        ct = create_cluster_topology(assignment, self.srange(6))
         partition = ct.partitions[(u'T1', 0)]
         osr = [ct.brokers['1'], ct.brokers['2']]
 

@@ -14,6 +14,9 @@
 # limitations under the License.
 import pytest
 
+from .helper import broker_range
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
+    import ClusterTopology
 from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
 
@@ -32,3 +35,69 @@ def create_partition():
         return partition
 
     return _add_partition
+
+
+@pytest.fixture
+def default_assignment():
+    return {
+        (u'T0', 0): ['1', '2'],
+        (u'T0', 1): ['2', '3'],
+        (u'T1', 0): ['0', '1', '2', '3'],
+        (u'T1', 1): ['0', '1', '2', '3'],
+        (u'T2', 0): ['2'],
+        (u'T3', 0): ['0', '1', '2'],
+        (u'T3', 1): ['0', '1', '4'],
+    }
+
+
+@pytest.fixture
+def default_brokers():
+    return broker_range(5)
+
+
+@pytest.fixture
+def default_broker_rg():
+    return {
+        '0': 'rg1',
+        '1': 'rg1',
+        '2': 'rg2',
+        '3': 'rg2',
+        '4': 'rg1',
+        '5': 'rg3',
+        '6': 'rg4',
+    }
+
+
+@pytest.fixture
+def default_get_replication_group_id(default_broker_rg):
+    def get_replication_group_id(broker):
+        try:
+            return default_broker_rg[broker.id]
+        except KeyError:
+            return None
+    return get_replication_group_id
+
+
+@pytest.fixture
+def create_cluster_topology(
+        default_assignment,
+        default_brokers,
+        default_get_replication_group_id,
+):
+    def build_cluster_topology(
+            assignment=None,
+            brokers=None,
+            get_replication_group_id=None,
+    ):
+        assignment = assignment or default_assignment
+        brokers = brokers or default_brokers
+        get_replication_group_id = \
+            get_replication_group_id or default_get_replication_group_id
+
+        return ClusterTopology(
+            assignment,
+            brokers,
+            get_replication_group_id,
+        )
+
+    return build_cluster_topology

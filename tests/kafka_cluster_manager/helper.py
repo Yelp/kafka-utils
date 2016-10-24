@@ -27,3 +27,8 @@ def create_and_attach_partition(topic, partition_id):
     partition = Partition(topic, partition_id)
     topic.add_partition(partition)
     return partition
+
+
+def broker_range(n):
+    """Return list of brokers with broker ids ranging from 0 to n-1."""
+    return {str(x): {"host": "host%s" % x} for x in range(n)}
