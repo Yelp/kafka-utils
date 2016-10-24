@@ -79,25 +79,82 @@ def default_get_replication_group_id(default_broker_rg):
 
 
 @pytest.fixture
+def default_partition_weight():
+    return {
+        (u'T0', 0): 2,
+        (u'T0', 1): 3,
+        (u'T1', 0): 4,
+        (u'T1', 1): 5,
+        (u'T2', 0): 6,
+        (u'T3', 0): 7,
+        (u'T3', 1): 8,
+    }
+
+
+@pytest.fixture
+def default_get_partition_weight(default_partition_weight):
+    def get_partition_weight(partition_name):
+        try:
+            return default_partition_weight[partition_name]
+        except KeyError:
+            return 1
+
+    return get_partition_weight
+
+
+@pytest.fixture
+def default_partition_size():
+    return {
+        (u'T0', 0): 3,
+        (u'T0', 1): 4,
+        (u'T1', 0): 5,
+        (u'T1', 1): 6,
+        (u'T2', 0): 7,
+        (u'T3', 0): 8,
+        (u'T3', 1): 9,
+    }
+
+
+@pytest.fixture
+def default_get_partition_size(default_partition_size):
+    def get_partition_size(partition_name):
+        try:
+            return default_partition_size[partition_name]
+        except KeyError:
+            return 1
+
+    return get_partition_size
+
+
+@pytest.fixture
 def create_cluster_topology(
         default_assignment,
         default_brokers,
         default_get_replication_group_id,
+        default_get_partition_weight,
+        default_get_partition_size,
 ):
     def build_cluster_topology(
             assignment=None,
             brokers=None,
             get_replication_group_id=None,
+            get_partition_weight=None,
+            get_partition_size=None,
     ):
         assignment = assignment or default_assignment
         brokers = brokers or default_brokers
         get_replication_group_id = \
             get_replication_group_id or default_get_replication_group_id
+        get_partition_weight = \
+            get_partition_weight or default_get_partition_weight
+        get_partition_size = get_partition_size or default_get_partition_size
 
         return ClusterTopology(
             assignment,
             brokers,
             get_replication_group_id,
+            get_partition_weight,
+            get_partition_size
         )
 
     return build_cluster_topology

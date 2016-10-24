@@ -120,6 +120,24 @@ class TestClusterTopology(object):
         assert ct.brokers['9'].inactive
         assert None in ct.rgs
 
+    def test_cluster_topology_partition_weight(
+            self,
+            create_cluster_topology,
+            default_partition_weight,
+    ):
+        ct = create_cluster_topology()
+        for name, weight in default_partition_weight.iteritems():
+            assert ct.partitions[name].weight == weight
+
+    def test_cluster_topology_partition_size(
+            self,
+            create_cluster_topology,
+            default_partition_size,
+    ):
+        ct = create_cluster_topology()
+        for name, size in default_partition_size.iteritems():
+            assert ct.partitions[name].size == size
+
     def test_update_cluster_topology_invalid_broker(
             self,
             create_cluster_topology,

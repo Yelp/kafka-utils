@@ -29,6 +29,10 @@ from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
     import PartitionCountBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import PartitionMeasurer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import UniformPartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
     import DefaultReplicationGroupParser
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
@@ -124,6 +128,14 @@ def parse_args():
         'only one group for all brokers.',
     )
     parser.add_argument(
+        '--partition-measurer',
+        type=str,
+        help='Module containing an implementation of PartitionMeasurer.'
+        'The module should be specified as path_to_include_to_py_path:module.'
+        'If not specified the default partition measurer will assign a weight'
+        'and size of 1 to all partitions.',
+    )
+    parser.add_argument(
         '--cluster-balancer',
         type=str,
         help='Module containing an implementation of ClusterBalancer.'
@@ -171,6 +183,13 @@ def run():
         rg_parser = dynamic_import(args.group_parser, ReplicationGroupParser)()
     else:
         rg_parser = DefaultReplicationGroupParser()
+    if args.partition_measurer:
+        partition_measurer = dynamic_import(
+            args.partition_measurer,
+            PartitionMeasurer
+        )()
+    else:
+        partition_measurer = UniformPartitionMeasurer()
     if args.cluster_balancer:
         cluster_balancer = dynamic_import(
             args.cluster_balancer,
@@ -182,6 +201,7 @@ def run():
     args.command(
         cluster_config,
         rg_parser,
+        partition_measurer,
         cluster_balancer,
         args,
     )

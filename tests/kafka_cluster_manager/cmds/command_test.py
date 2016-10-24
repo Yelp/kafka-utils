@@ -311,12 +311,14 @@ class TestClusterManagerCmd(object):
             get_assignment=lambda: {},
         )
         rg_parser = mock.MagicMock()
+        partition_measurer = mock.MagicMock()
         cluster_balancer = mock.MagicMock()
         cmd.run_command = mock.MagicMock()
 
         cmd.run(
             cluster_config,
             rg_parser,
+            partition_measurer,
             cluster_balancer,
             args,
         )

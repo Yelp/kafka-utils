@@ -38,17 +38,35 @@ class ClusterTopology(object):
             from each broker. The extract_group function is called for each
             broker passing the Broker object as argument. It should return a
             string representing the ReplicationGroup id.
+        :param partition_weight: function used to extract the weight of each
+            partition. The partition_weight function is called for each
+            partition passing the partition name as its only argument. It
+            should return a number representing the relative weight of the
+            partition.
+        :param partition_size: function used to extract the size of each
+            partition. The partition_size function is called for each partition
+            passing the partition name as its only argument. It should return
+            a number representing the relative size of the partition.
     """
 
-    def __init__(self, assignment, brokers, extract_group=lambda x: None):
+    def __init__(
+            self,
+            assignment,
+            brokers,
+            extract_group=lambda x: None,
+            partition_weight=lambda x: 1,
+            partition_size=lambda x: 1,
+    ):
         self.extract_group = extract_group
+        self.partition_weight = partition_weight
+        self.partition_size = partition_size
         self.log = logging.getLogger(self.__class__.__name__)
         self.topics = {}
         self.rgs = {}
         self.brokers = {}
         self.partitions = {}
         self._build_brokers(brokers)
-        self._build_partitions(assignment)
+        self._build_partitions(assignment, partition_weight, partition_size)
         self.log.debug(
             'Total partitions in cluster {partitions}'.format(
                 partitions=len(self.partitions),
@@ -84,7 +102,7 @@ class ClusterTopology(object):
         broker.replication_group = group
         return broker
 
-    def _build_partitions(self, assignment):
+    def _build_partitions(self, assignment, partition_weight, partition_size):
         """Builds all partition objects and update corresponding broker and
         topic objects.
         """
@@ -99,7 +117,12 @@ class ClusterTopology(object):
             )
 
             # Creating partition object
-            partition = Partition(topic, partition_id)
+            partition = Partition(
+                topic,
+                partition_id,
+                weight=partition_weight(partition_name),
+                size=partition_size(partition_name),
+            )
             self.partitions[partition_name] = partition
             topic.add_partition(partition)
 
