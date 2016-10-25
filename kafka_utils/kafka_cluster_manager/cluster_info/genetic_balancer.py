@@ -17,6 +17,8 @@ import random
 from copy import copy
 from math import ceil
 
+from .error import InvalidPartitionError
+from .error import InvalidReplicationFactorError
 from .util import compute_optimum
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
@@ -93,10 +95,144 @@ class GeneticBalancer(ClusterBalancer):
         raise NotImplementedError("Not implemented.")
 
     def add_replica(self, partition_name, count=1):
-        raise NotImplementedError("Not implemented.")
+        """Adding a replica is done by trying to add the replica to every
+        broker in the cluster and choosing the resulting state with the
+        highest fitness score.
 
-    def remove_replica(self, partition_name, osr, count=1):
-        raise NotImplementedError("Not implemented.")
+        :param partition_name: (topic_id, partition_id) of the partition to add replicas of.
+        :param count: The number of replicas to add.
+        """
+        try:
+            partition = self.cluster_topology.partitions[partition_name]
+        except KeyError:
+            raise InvalidPartitionError(
+                "Partition name {name} not found.".format(name=partition_name),
+            )
+
+        active_brokers = self.cluster_topology.active_brokers.values()
+
+        if partition.replication_factor + count > len(active_brokers):
+            raise InvalidReplicationFactorError(
+                "Cannot increase replication factor from {0} to {1}."
+                "There are only {2} active brokers."
+                .format(
+                    partition.replication_factor,
+                    partition.replication_factor + count,
+                    len(active_brokers),
+                )
+            )
+
+        for _ in xrange(count):
+            non_full_rgs = [
+                rg for rg in self.cluster_topology.rgs.itervalues()
+                if rg.count_replica(partition) < len(rg.active_brokers)
+            ]
+            total_replicas = sum(
+                rg.count_replica(partition)
+                for rg in non_full_rgs
+            )
+            opt_replicas, _ = compute_optimum(
+                len(non_full_rgs),
+                total_replicas,
+            )
+            under_replicated_rgs = [
+                rg for rg in non_full_rgs
+                if rg.count_replica(partition) < opt_replicas
+            ] or non_full_rgs
+
+            state = _State(
+                self.cluster_topology,
+                brokers=active_brokers
+            )
+            partition_index = state.partitions.index(partition)
+            new_states = []
+
+            for rg in under_replicated_rgs:
+                for broker in rg.active_brokers:
+                    if broker not in partition.replicas:
+                        broker_index = state.brokers.index(broker)
+                        new_states.append(
+                            state.add_replica(partition_index, broker_index)
+                        )
+
+            state = sorted(new_states, key=self._score)[0]
+            self.cluster_topology.update_cluster_topology(state.assignment)
+
+    def remove_replica(self, partition_name, osr_broker_ids, count=1):
+        """Adding a replica is done by trying to remove each replica and
+        choosing the resulting state with the highest fitness score.
+        Out-of-sync replicas will always be removed before in-sync replicas.
+
+        :param partition_name: (topic_id, partition_id) of the partition to remove replicas of.
+        :param osr_broker_ids: A list of the partition's out-of-sync broker ids.
+        :param count: The number of replicas to remove.
+        """
+        try:
+            partition = self.cluster_topology.partitions[partition_name]
+        except KeyError:
+            raise InvalidPartitionError(
+                "Partition name {name} not found.".format(name=partition_name),
+            )
+
+        if partition.replication_factor - count < 1:
+            raise InvalidReplicationFactorError(
+                "Cannot decrease replication factor from {0} to {1}."
+                "Replication factor must be at least 1."
+                .format(
+                    partition.replication_factor,
+                    partition.replication_factor - count,
+                )
+            )
+
+        osr = [
+            self.cluster_topology.brokers[bid] for bid in osr_broker_ids
+            if any(broker.id == bid for broker in partition.replicas)
+        ]
+
+        for _ in xrange(count):
+            non_empty_rgs = [
+                rg for rg in self.cluster_topology.rgs.itervalues()
+                if rg.count_replica(partition) > 0
+            ]
+            rgs_with_osr = [
+                rg for rg in non_empty_rgs
+                if any(b in osr for b in rg.brokers)
+            ]
+            candidate_rgs = rgs_with_osr or non_empty_rgs
+            total_replicas = sum(
+                rg.count_replica(partition)
+                for rg in candidate_rgs
+            )
+            opt_replicas, _ = compute_optimum(
+                len(candidate_rgs),
+                total_replicas,
+            )
+            over_replicated_rgs = [
+                rg for rg in candidate_rgs
+                if rg.count_replica(partition) > opt_replicas
+            ] or candidate_rgs
+            candidate_rgs = over_replicated_rgs or candidate_rgs
+
+            state = _State(self.cluster_topology)
+            partition_index = state.partitions.index(partition)
+            new_states = []
+
+            for rg in candidate_rgs:
+                osr_brokers = [
+                    broker for broker in rg.brokers
+                    if broker in osr
+                ]
+                candidate_brokers = osr_brokers or rg.brokers
+                for broker in candidate_brokers:
+                    if broker in partition.replicas:
+                        broker_index = state.brokers.index(broker)
+                        new_states.append(
+                            state.remove_replica(partition_index, broker_index)
+                        )
+
+            state = sorted(new_states, key=self._score)[0]
+            self.cluster_topology.update_cluster_topology(state.assignment)
+            osr = [b for b in osr if b in partition.replicas]
 
     def _explore(self, pop):
         """Exploration phase: Find a set of candidate states based on
@@ -395,6 +531,76 @@ class _State(object):
 
         # Update the total leader movement size
         new_state.leader_movement_count += 1
+
+        return new_state
+
+    def add_replica(self, partition, broker):
+        new_state = copy(self)
+
+        # Add replica to partition replica list
+        new_state.replicas = self.replicas[:]
+        new_state.replicas[partition] = self.replicas[partition][:]
+        new_state.replicas[partition].append(broker)
+
+        # Update the broker weight
+        partition_weight = self.partition_weights[partition]
+        new_state.broker_weights = self.broker_weights[:]
+        new_state.broker_weights[broker] += partition_weight
+
+        # Update the topic broker counts
+        topic = self.partition_topic[partition]
+        new_state.topic_broker_count = self.topic_broker_count[:]
+        new_state.topic_broker_count[topic] = self.topic_broker_count[topic][:]
+        new_state.topic_broker_count[topic][broker] += 1
+
+        # Update topic replica count
+        self.topic_replica_count[topic] += 1
+
+        # Update the topic broker imbalance
+        new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
+        new_state.topic_broker_imbalance[topic] = \
+            new_state._calculate_topic_imbalance(topic)
+
+        # Update the replication group replica counts
+        rg = self.broker_rg[broker]
+        new_state.rg_replicas = self.rg_replicas[:]
+        new_state.rg_replicas[rg] = self.rg_replicas[rg][:]
+        new_state.rg_replicas[rg][partition] += 1
+
+        return new_state
+
+    def remove_replica(self, partition, broker):
+        new_state = copy(self)
+
+        # Add replica to partition replica list
+        new_state.replicas = self.replicas[:]
+        new_state.replicas[partition] = self.replicas[partition][:]
+        new_state.replicas[partition].remove(broker)
+
+        # Update the broker weight
+        partition_weight = self.partition_weights[partition]
+        new_state.broker_weights = self.broker_weights[:]
+        new_state.broker_weights[broker] -= partition_weight
+
+        # Update the topic broker counts
+        topic = self.partition_topic[partition]
+        new_state.topic_broker_count = self.topic_broker_count[:]
+        new_state.topic_broker_count[topic] = self.topic_broker_count[topic][:]
+        new_state.topic_broker_count[topic][broker] -= 1
+
+        # Update topic replica count
+        self.topic_replica_count[topic] -= 1
+
+        # Update the topic broker imbalance
+        new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
+        new_state.topic_broker_imbalance[topic] = \
+            new_state._calculate_topic_imbalance(topic)
+
+        # Update the replication group replica counts
+        rg = self.broker_rg[broker]
+        new_state.rg_replicas = self.rg_replicas[:]
+        new_state.rg_replicas[rg] = self.rg_replicas[rg][:]
+        new_state.rg_replicas[rg][partition] -= 1
 
         return new_state
 
