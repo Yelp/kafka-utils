@@ -27,13 +27,40 @@ from .util import get_leaders_per_broker
 from .util import get_partitions_per_broker
 
 
-# Get imbalance stats
-def standard_deviation(data):
-    """Return standard deviation for given data with list of values."""
-    avg_data = sum(data) / len(data)
-    variance = map(lambda x: (x - avg_data) ** 2, data)
-    avg_variance = sum(variance) / len(data)
-    return sqrt(avg_variance)
+def mean(data):
+    """Return the mean of a sequence of numbers."""
+    return sum(data) / len(data)
+
+
+def variance(data, data_mean=None):
+    """Return variance of a sequence of numbers.
+    :param data_mean: Precomputed mean of the sequence.
+    """
+    data_mean = data_mean or mean(data)
+    return sum((x - data_mean) ** 2 for x in data) / len(data)
+
+
+def standard_deviation(data, data_mean=None, data_variance=None):
+    """Return standard deviation of a sequence of numbers.
+    :param data_mean: Precomputed mean of the sequence.
+    :param data_variance: Precomputed variance of the sequence.
+    """
+    data_variance = data_variance or variance(data, data_mean)
+    return sqrt(data_variance)
+
+
+def coefficient_of_variation(data, data_mean=None, data_stdev=None):
+    """Return the coefficient of variation (CV) of a sequence of numbers.
+    :param data_mean: Precomputed mean of the sequence.
+    :param data_standard_deviation: Precomputed standard_deviation of the
+        sequence.
+    """
+    data_mean = data_mean or mean(data)
+    data_stdev = data_stdev or standard_deviation(data, data_mean)
+    if data_mean == 0:
+        return float("inf") if data_stdev != 0 else 0
+    else:
+        return data_stdev / data_mean
 
 
 def get_net_imbalance(count_per_broker):
