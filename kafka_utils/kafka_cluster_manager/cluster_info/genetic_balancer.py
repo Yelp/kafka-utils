@@ -58,7 +58,10 @@ class GeneticBalancer(ClusterBalancer):
         """
         self.rebalance_replicas()
 
-        state = _State(self.cluster_topology)
+        state = _State(
+            self.cluster_topology,
+            brokers=self.cluster_topology.active_brokers.values()
+        )
         pop = set([state])
         for i in xrange(self._num_gens):
             pop_candidates = self._explore(pop)
@@ -72,7 +75,19 @@ class GeneticBalancer(ClusterBalancer):
         state = sorted(pop, key=self._score, reverse=True)[0]
         self.log.debug("Total movement size: %f", state.movement_size)
 
-        self.cluster_topology.update_cluster_topology(state.assignment)
+        assignment = state.assignment
+        active_brokers = self.cluster_topology.active_brokers.values()
+        inactive_brokers = [
+            broker
+            for broker in self.cluster_topology.brokers.values()
+            if broker not in active_brokers
+        ]
+        for partition_name, replicas in assignment:
+            for broker in inactive_brokers:
+                if broker in self.cluster_topology.partitions[partition_name].replicas:
+                    replicas.append(broker.id)
+
+        self.cluster_topology.update_cluster_topology(assignment)
 
     def decommission_brokers(self, broker_ids):
         raise NotImplementedError("Not implemented.")
@@ -178,12 +193,15 @@ class _State(object):
     list rather than their object to make comparisons and lookups faster.
 
     :param cluster_topology: The ClusterTopology that this state should model.
+    :param brokers: A subset of the brokers in cluster_topology that should be
+        modeled. Default: all brokers in the cluster.
     """
 
-    def __init__(self, cluster_topology):
+    def __init__(self, cluster_topology, brokers=None):
         self.cluster_topology = cluster_topology
         self.partitions = cluster_topology.partitions.values()
-        self.brokers = cluster_topology.brokers.values()
+        self.topics = cluster_topology.topics.values()
+        self.brokers = brokers or cluster_topology.brokers.values()
         self.rgs = cluster_topology.rgs.values()
 
         # A list mapping a partition index to the list of replicas for that
@@ -192,6 +210,7 @@ class _State(object):
             [
                 self.brokers.index(broker)
                 for broker in partition.replicas
+                if broker in self.brokers
             ]
             for partition in self.partitions
         ]
@@ -246,7 +265,7 @@ class _State(object):
             [
                 sum(
                     1 for partition in topic.partitions
-                    if broker in partition.replicas
+                    if broker in partition.replicas and broker in self.brokers
                 )
                 for broker in self.brokers
             ]

@@ -47,6 +47,15 @@ class ReplicationGroup(object):
         """Return set of brokers."""
         return self._brokers
 
+    @property
+    def active_brokers(self):
+        """Return set of brokers that are not inactive or decommissioned."""
+        return set(
+            broker
+            for broker in self._brokers
+            if not broker.inactive and not broker.decommissioned
+        )
+
     def add_broker(self, broker):
         """Add broker to current broker-list."""
         if broker not in self._brokers:

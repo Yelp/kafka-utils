@@ -140,6 +140,17 @@ class ClusterTopology(object):
                 self.brokers[broker_id].add_partition(partition)
 
     @property
+    def active_brokers(self):
+        """Dictionary of {broker_id: broker} for brokers that are not inactive
+        or decommissioned.
+        """
+        return {
+            broker_id: broker
+            for broker_id, broker in self.brokers.iteritems()
+            if not broker.inactive and not broker.decommissioned
+        }
+
+    @property
     def assignment(self):
         assignment = {}
         for partition in self.partitions.itervalues():

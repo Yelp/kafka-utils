@@ -41,6 +41,17 @@ class TestClusterTopology(object):
             # Verify that replication-factor remains same
             assert len(new_replicas) == len(orig_replicas)
 
+    def test_active_brokers(
+            self,
+            create_cluster_topology
+    ):
+        ct = create_cluster_topology()
+
+        ct.brokers['1'].mark_decommissioned()
+        ct.brokers['3'].mark_inactive()
+
+        assert set(ct.active_brokers.keys()) == set(['0', '2', '4'])
+
     def test_replace_broker_leader(self, create_cluster_topology):
         assignment = dict(
             [
