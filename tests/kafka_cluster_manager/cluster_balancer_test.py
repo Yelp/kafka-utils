@@ -19,12 +19,14 @@ from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info \
     .error import BrokerDecommissionError
 from kafka_utils.kafka_cluster_manager.cluster_info \
+    .genetic_balancer import GeneticBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info \
     .partition_count_balancer import PartitionCountBalancer
 
 
 class TestClusterBalancer(object):
 
-    @pytest.fixture(params=[PartitionCountBalancer])
+    @pytest.fixture(params=[PartitionCountBalancer, GeneticBalancer])
     def create_balancer(self, request):
         def build_balancer(cluster_topology, **kwargs):
             args = mock.Mock(**kwargs)
