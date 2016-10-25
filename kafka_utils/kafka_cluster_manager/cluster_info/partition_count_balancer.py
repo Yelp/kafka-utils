@@ -18,6 +18,7 @@ from .cluster_balancer import ClusterBalancer
 from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
 from .error import InvalidBrokerIdError
+from .error import InvalidPartitionError
 from .error import InvalidReplicationFactorError
 from .error import NotEligibleGroupError
 from .error import RebalanceError
@@ -370,7 +371,7 @@ class PartitionCountBalancer(ClusterBalancer):
                     # Move to next over-loaded replication-group if balanced
                     break
 
-    def add_replica(self, partition, count=1):
+    def add_replica(self, partition_name, count=1):
         """Increase the replication-factor for a partition.
 
         The replication-group to add to is determined as follows:
@@ -380,12 +381,18 @@ class PartitionCountBalancer(ClusterBalancer):
                 average number of replicas for this partition.
             3. Choose the replication-group with the fewest overall partitions.
 
-        :param partition: Partition of which the replication-factor should be
-        increased.
+        :param partition_name: (topic_id, partition_id) of the partition to add
+            replicas of.
         :param count: The number of replicas to add.
         :raises InvalidReplicationFactorError when the resulting replication
         factor is greater than the number of brokers in the cluster.
         """
+        try:
+            partition = self.cluster_topology.partitions[partition_name]
+        except KeyError:
+            raise InvalidPartitionError(
+                "Partition name {name} not found".format(name=partition_name),
+            )
         if partition.replication_factor + count > len(self.cluster_topology.brokers):
             raise InvalidReplicationFactorError(
                 "Cannot increase replication factor to {0}. There are only "
@@ -423,7 +430,7 @@ class PartitionCountBalancer(ClusterBalancer):
             if rg.count_replica(partition) >= len(rg.brokers):
                 non_full_rgs.remove(rg)
 
-    def remove_replica(self, partition, osr, count=1):
+    def remove_replica(self, partition_name, osr_broker_ids, count=1):
         """Remove one replica of a partition from the cluster.
 
         The replication-group to remove from is determined as follows:
@@ -440,18 +447,33 @@ class PartitionCountBalancer(ClusterBalancer):
         This is done to keep the number of preferred replicas balanced across
         brokers in the cluster.
 
-        :param partition: Partition of which the replication-factor should be
-        decreased.
-        :param osr: A list of the partition's out-of-sync replicas.
+        :param partition_name: (topic_id, partition_id) of the partition to
+            remove replicas of.
+        :param osr_broker_ids: A list of the partition's out-of-sync broker ids.
         :param count: The number of replicas to remove.
         :raises: InvalidReplicationFactorError when count is greater than the
         replication factor of the partition.
         """
+        try:
+            partition = self.cluster_topology.partitions[partition_name]
+        except KeyError:
+            raise InvalidPartitionError(
+                "Partition name {name} not found".format(name=partition_name),
+            )
         if partition.replication_factor <= count:
             raise InvalidReplicationFactorError(
                 "Cannot remove {0} replicas. Replication factor is only {1}."
                 .format(count, partition.replication_factor)
             )
+
+        osr = []
+        for broker_id in osr_broker_ids:
+            try:
+                osr.append(self.cluster_topology.brokers[broker_id])
+            except KeyError:
+                raise InvalidPartitionError(
+                    "No broker found with id {bid}".format(bid=broker_id),
+                )
 
         non_empty_rgs = [
             rg

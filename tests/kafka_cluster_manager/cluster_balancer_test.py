@@ -169,7 +169,7 @@ class TestClusterBalancer(object):
         partition = ct.partitions[(u'T1', 0)]
 
         cb = create_balancer(ct)
-        cb.add_replica(ct.partitions[(u'T1', 0)], count=3)
+        cb.add_replica(partition.name, count=3)
 
         assert partition.replication_factor == 5
         assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 5
@@ -182,10 +182,10 @@ class TestClusterBalancer(object):
         assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
         ct = create_cluster_topology(assignment, broker_range(6))
         partition = ct.partitions[(u'T1', 0)]
-        osr = [ct.brokers['1'], ct.brokers['2']]
+        osr_broker_ids = ['1', '2']
 
         cb = create_balancer(ct)
-        cb.remove_replica(partition, osr, count=3)
+        cb.remove_replica(partition.name, osr_broker_ids, count=3)
 
         assert partition.replication_factor == 2
         assert sum(rg.count_replica(partition) for rg in ct.rgs.values()) == 2
@@ -198,9 +198,9 @@ class TestClusterBalancer(object):
         assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
         ct = create_cluster_topology(assignment, broker_range(6))
         partition = ct.partitions[(u'T1', 0)]
-        osr = [ct.brokers['1'], ct.brokers['2']]
+        osr_broker_ids = ['1', '2']
 
         cb = create_balancer(ct)
-        cb.remove_replica(partition, osr, count=2)
+        cb.remove_replica(partition.name, osr_broker_ids, count=2)
 
         assert set(b.id for b in partition.replicas) == set(['0', '3', '5'])

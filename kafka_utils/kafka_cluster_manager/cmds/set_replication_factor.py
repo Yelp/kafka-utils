@@ -90,7 +90,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             )
             for partition in topic.partitions:
                 cluster_balancer.add_replica(
-                    partition,
+                    partition.name,
                     self.args.replication_factor - partition.replication_factor,
                 )
         else:
@@ -106,17 +106,17 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             topic_data = self.zk.get_topics(topic.id)[topic.id]
             for partition in topic.partitions:
                 partition_data = topic_data['partitions'][str(partition.partition_id)]
-                isr = [ct.brokers[b_id] for b_id in partition_data['isr']]
-                osr = [b for b in partition.replicas if b not in isr]
-                if osr:
+                isr = partition_data['isr']
+                osr_broker_ids = [b.id for b in partition.replicas if b.id not in isr]
+                if osr_broker_ids:
                     self.log.info(
-                        "The out of sync replica(s) {osr} will be prioritized "
-                        "for removal."
-                        .format(osr=osr)
+                        "The out of sync replica(s) {osr_broker_ids} will be "
+                        "prioritized for removal."
+                        .format(osr=osr_broker_ids)
                     )
                 cluster_balancer.remove_replica(
-                    partition,
-                    osr,
+                    partition.name,
+                    osr_broker_ids,
                     partition.replication_factor - self.args.replication_factor,
                 )
 
