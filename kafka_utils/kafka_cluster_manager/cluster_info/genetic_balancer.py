@@ -27,6 +27,8 @@ from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
 from kafka_utils.kafka_cluster_manager.cluster_info.stats \
     import coefficient_of_variation
 
+RANDOM_SEED = 0xcafca
+
 
 class GeneticBalancer(ClusterBalancer):
     """An implementation of cluster rebalancing that tries to achieve balance
@@ -61,6 +63,8 @@ class GeneticBalancer(ClusterBalancer):
         the next generation.
         """
         self.rebalance_replicas()
+
+        random.seed(RANDOM_SEED)
 
         state = _State(
             self.cluster_topology,
