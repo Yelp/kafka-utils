@@ -84,6 +84,14 @@ class Broker(object):
         """Return the total size of all partitions on this broker."""
         return sum(partition.size for partition in self.partitions)
 
+    @property
+    def leader_weight(self):
+        return sum(
+            partition.weight
+            for partition in self.partitions
+            if partition.leader == self
+        )
+
     def empty(self):
         """Return true if the broker has no replicas assigned"""
         return len(self.partitions) == 0

@@ -15,6 +15,7 @@
 import logging
 import random
 from copy import copy
+from math import ceil
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
@@ -40,6 +41,9 @@ class GeneticBalancer(ClusterBalancer):
         self._max_movement_size = 0.1 * sum(
             partition.size * partition.replication_factor
             for partition in cluster_topology.partitions.itervalues()
+        )
+        self._max_leader_movement_count = ceil(
+            0.1 * len(cluster_topology.partitions)
         )
 
     def rebalance(self):
@@ -88,7 +92,10 @@ class GeneticBalancer(ClusterBalancer):
         exploration_per_state = self._exploration_attempts // len(pop)
         for state in pop:
             for _ in xrange(exploration_per_state):
-                new_state = self._move_partition(state)
+                new_state = random.choice([
+                    self._move_partition,
+                    self._move_leadership,
+                ])(state)
                 if new_state:
                     new_pop.add(new_state)
 
@@ -119,6 +126,23 @@ class GeneticBalancer(ClusterBalancer):
             return None
         return state.move(partition, source, dest)
 
+    def _move_leadership(self, state):
+        """Return a new state that is the result of randomly reassigning the
+        leader for a single partition.
+
+        :param state: The starting state.
+        """
+        partition = random.randint(0, len(self.cluster_topology.partitions) - 1)
+        if state.partition_weights[partition] == 0:
+            return None
+        if len(state.replicas[partition]) <= 1:
+            return None
+        dest_index = random.randint(1, len(state.replicas[partition]) - 1)
+        dest = state.replicas[partition][dest_index]
+        if state.leader_movement_count >= self._max_leader_movement_count:
+            return None
+        return state.move_leadership(partition, dest)
+
     def _prune(self, pop_candidates):
         """Choose a subset of the candidate states to continue on to the next
         generation.
@@ -138,7 +162,9 @@ class GeneticBalancer(ClusterBalancer):
         """
         return (
             -1 * state.broker_weight_cv +
-            -1 * state.movement_size / self._max_movement_size
+            -1 * state.movement_size / self._max_movement_size +
+            -1 * state.broker_leader_weight_cv +
+            -1 * state.leader_movement_count / self._max_leader_movement_count
         )
 
 
@@ -178,6 +204,11 @@ class _State(object):
             broker.weight for broker in self.brokers
         ]
 
+        # A list mapping a broker index to the leader weight of that broker.
+        self.broker_leader_weights = [
+            broker.leader_weight for broker in self.brokers
+        ]
+
         # A list mapping a partition index to the size of that partition.
         self.partition_sizes = [
             partition.size for partition in self.partitions
@@ -207,6 +238,10 @@ class _State(object):
         # state.
         self.movement_size = 0
 
+        # The number of the leadership changes that have been made to reach
+        # this state.
+        self.leader_movement_count = 0
+
     def move(self, partition, source, dest):
         """Return a new state that is the result of moving a single partition.
 
@@ -229,6 +264,12 @@ class _State(object):
         new_state.broker_weights[source] -= partition_weight
         new_state.broker_weights[dest] += partition_weight
 
+        # Update the broker leader weights
+        if source_index == 0:
+            new_state.broker_leader_weights = self.broker_leader_weights[:]
+            new_state.broker_leader_weights[source] -= partition_weight
+            new_state.broker_leader_weights[dest] += partition_weight
+
         # Update the replication group replica counts
         source_rg = self.broker_rg[source]
         dest_rg = self.broker_rg[dest]
@@ -241,6 +282,41 @@ class _State(object):
 
         # Update the movement sizes
         new_state.movement_size += self.partition_sizes[partition]
+        new_state.leader_movement_count += 1
+
+        return new_state
+
+    def move_leadership(self, partition, new_leader):
+        """Return a new state that is the result of changing the leadership of
+        a single partition.
+
+        :param partition: The partition index of the partition to change the
+            leadership of.
+        :param new_leader: The broker index of the new leader replica.
+        """
+        new_state = copy(self)
+
+        # Update the partition replica list
+        new_state.replicas = self.replicas[:]
+        new_state.replicas[partition] = self.replicas[partition][:]
+        source = new_state.replicas[partition][0]
+        new_leader_index = new_state.replicas[partition].index(new_leader)
+        (
+            new_state.replicas[partition][0],
+            new_state.replicas[partition][new_leader_index],
+        ) = (
+            new_state.replicas[partition][new_leader_index],
+            new_state.replicas[partition][0],
+        )
+
+        # Update the broker leader weight list
+        partition_weight = self.partition_weights[partition]
+        new_state.broker_leader_weights = self.broker_leader_weights[:]
+        new_state.broker_leader_weights[source] -= partition_weight
+        new_state.broker_leader_weights[new_leader] += partition_weight
+
+        # Update the total leader movement size
+        new_state.leader_movement_count += 1
 
         return new_state
 
@@ -258,3 +334,7 @@ class _State(object):
     def broker_weight_cv(self):
         """Return the coefficient of variation of the weight of the brokers."""
         return coefficient_of_variation(self.broker_weights)
+
+    @property
+    def broker_leader_weight_cv(self):
+        return coefficient_of_variation(self.broker_leader_weights)
