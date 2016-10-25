@@ -17,6 +17,8 @@ import random
 from copy import copy
 from math import ceil
 
+from .error import BrokerDecommissionError
+from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
 from .error import InvalidReplicationFactorError
 from .util import compute_optimum
@@ -92,7 +94,49 @@ class GeneticBalancer(ClusterBalancer):
         self.cluster_topology.update_cluster_topology(assignment)
 
     def decommission_brokers(self, broker_ids):
-        raise NotImplementedError("Not implemented.")
+        """Decommissioning brokers is done by removing all partitions from
+        the decommissioned brokers and adding them, one-by-one, back to the
+        cluster.
+
+        :param broker_ids: List of broker ids that should be decommissioned.
+        """
+        decommission_brokers = []
+        for broker_id in broker_ids:
+            try:
+                broker = self.cluster_topology.brokers[broker_id]
+                broker.mark_decommissioned()
+                decommission_brokers.append(broker)
+            except KeyError:
+                raise InvalidBrokerIdError(
+                    "No broker found with id {broker_id}".format(broker_id=broker_id)
+                )
+
+        partitions = {}
+
+        for broker in decommission_brokers:
+            broker_partitions = list(broker.partitions)
+            for partition in broker_partitions:
+                broker.remove_partition(partition)
+                partitions.setdefault(partition.name, 0)
+                partitions[partition.name] += 1
+
+        active_brokers = self.cluster_topology.active_brokers.values()
+
+        for partition_name, count in partitions.iteritems():
+            partition = self.cluster_topology.partitions[partition_name]
+            try:
+                self.add_replica(partition_name, count)
+            except InvalidReplicationFactorError:
+                raise BrokerDecommissionError(
+                    "Not enough active brokers in the cluster. "
+                    "Partition {partition} has replication-factor {rf}, "
+                    "but only {brokers} brokers remain."
+                    .format(
+                        partition=partition_name,
+                        rf=partition.replication_factor + count,
+                        brokers=len(active_brokers)
+                    )
+                )
 
     def add_replica(self, partition_name, count=1):
         """Adding a replica is done by trying to add the replica to every
