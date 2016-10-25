@@ -154,7 +154,7 @@ class TestPartitionCountBalancer(object):
         # No eligible dest-group is there where partition can be sent to
         assert rg_dest is None
 
-    def test_rebalance_partition_imbalanced_case1(
+    def test_rebalance_partition_replicas_imbalanced_case1(
             self,
             create_balancer,
             create_cluster_topology,
@@ -170,7 +170,7 @@ class TestPartitionCountBalancer(object):
         # rg-imbalanced p1
         opt_cnt = 1    # 2/2
 
-        cb._rebalance_partition(p1)
+        cb._rebalance_partition_replicas(p1)
 
         # Verify partition is rg-balanced
         self.assert_rg_balanced_partition(ct, p1, opt_cnt)
@@ -180,12 +180,12 @@ class TestPartitionCountBalancer(object):
         p1 = ct.partitions[('T1', 1)]
         # Assert originally-imbalanced p1
         opt_cnt = 2    # 4/2
-        cb._rebalance_partition(p1)
+        cb._rebalance_partition_replicas(p1)
 
         # Verify partition is rg-balanced
         self.assert_rg_balanced_partition(ct, p1, opt_cnt)
 
-    def test_rebalance_partition_imbalanced_case2(
+    def test_rebalance_partition_replicas_imbalanced_case2(
             self,
             create_balancer,
             create_cluster_topology,
@@ -198,12 +198,12 @@ class TestPartitionCountBalancer(object):
         # rg-imbalanced p1
         opt_cnt = 1    # 3/2
         extra_cnt = 1  # 3%2
-        cb._rebalance_partition(p1)
+        cb._rebalance_partition_replicas(p1)
 
         # Verify partition is now rg-balanced
         self.assert_rg_balanced_partition(ct, p1, opt_cnt, extra_cnt)
 
-    def test_rebalance_partition_balanced(
+    def test_rebalance_partition_replicas_balanced(
             self,
             create_balancer,
             create_cluster_topology,
@@ -218,7 +218,7 @@ class TestPartitionCountBalancer(object):
         p1 = ct.partitions[('T0', 0)]
         opt_cnt = 1    # 2/2
         self.assert_rg_balanced_partition(ct, p1, opt_cnt)
-        cb._rebalance_partition(p1)
+        cb._rebalance_partition_replicas(p1)
 
         # Verify no change in replicas after rebalancing
         p1_old_replicas = p1.replicas
