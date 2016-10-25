@@ -105,6 +105,9 @@ class GeneticBalancer(ClusterBalancer):
         dest = random.randint(0, len(self.cluster_topology.brokers) - 1)
         if dest in state.replicas[partition]:
             return None
+        partition_size = state.partition_sizes[partition]
+        if state.movement_size + partition_size > self._max_movement_size:
+            return None
         return state.move(partition, source, dest)
 
     def _prune(self, pop_candidates):
