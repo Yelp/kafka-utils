@@ -51,6 +51,8 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
+        self.rebalance_replicas()
+
         state = _State(self.cluster_topology)
         pop = set([state])
         for i in xrange(self._num_gens):
@@ -105,6 +107,13 @@ class GeneticBalancer(ClusterBalancer):
         dest = random.randint(0, len(self.cluster_topology.brokers) - 1)
         if dest in state.replicas[partition]:
             return None
+        source_rg = state.broker_rg[source]
+        dest_rg = state.broker_rg[dest]
+        if source_rg != dest_rg:
+            source_rg_replicas = state.rg_replicas[source_rg][partition]
+            dest_rg_replicas = state.rg_replicas[dest_rg][partition]
+            if source_rg_replicas <= dest_rg_replicas:
+                return None
         partition_size = state.partition_sizes[partition]
         if state.movement_size + partition_size > self._max_movement_size:
             return None
@@ -147,6 +156,7 @@ class _State(object):
         self.cluster_topology = cluster_topology
         self.partitions = cluster_topology.partitions.values()
         self.brokers = cluster_topology.brokers.values()
+        self.rgs = cluster_topology.rgs.values()
 
         # A list mapping a partition index to the list of replicas for that
         # partition.
@@ -171,6 +181,26 @@ class _State(object):
         # A list mapping a partition index to the size of that partition.
         self.partition_sizes = [
             partition.size for partition in self.partitions
+        ]
+
+        # A list mapping a broker index to the index of the replication group
+        # that the broker belongs to.
+        self.broker_rg = [
+            self.rgs.index(broker.replication_group) for broker in self.brokers
+        ]
+
+        # A list mapping a replication group index to a list. That list is a
+        # map from a partition index to the number of replicas of that
+        # partition in the replication group.
+        self.rg_replicas = [
+            [
+                sum(
+                    1 for broker in rg.brokers
+                    if broker in partition.replicas and broker in self.brokers
+                )
+                for partition in self.partitions
+            ]
+            for rg in self.rgs
         ]
 
         # The total size of the partitions that have been moved to reach this
@@ -198,6 +228,16 @@ class _State(object):
         new_state.broker_weights = self.broker_weights[:]
         new_state.broker_weights[source] -= partition_weight
         new_state.broker_weights[dest] += partition_weight
+
+        # Update the replication group replica counts
+        source_rg = self.broker_rg[source]
+        dest_rg = self.broker_rg[dest]
+        if source_rg != dest_rg:
+            new_state.rg_replicas = self.rg_replicas[:]
+            new_state.rg_replicas[source_rg] = self.rg_replicas[source_rg][:]
+            new_state.rg_replicas[dest_rg] = self.rg_replicas[dest_rg][:]
+            new_state.rg_replicas[source_rg][partition] -= 1
+            new_state.rg_replicas[dest_rg][partition] += 1
 
         # Update the movement sizes
         new_state.movement_size += self.partition_sizes[partition]
