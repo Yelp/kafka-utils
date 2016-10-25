@@ -32,6 +32,7 @@ from kazoo.exceptions import NodeExistsError
 
 from kafka_utils.util.offsets import get_topics_watermarks
 
+
 CONSUMER_OFFSET_TOPIC = '__consumer_offsets'
 
 
@@ -139,6 +140,7 @@ class KafkaGroupReader:
         self.kafka_config = kafka_config
         self.kafka_groups = defaultdict(set)
         self.finished_partitions = set()
+        self.retry_max = 3
 
     def read_groups(self):
         self.log.info("Kafka consumer running")
@@ -152,6 +154,7 @@ class KafkaGroupReader:
         )
         self.log.info("Consumer ready")
         self.watermarks = self.get_current_watermarks()
+        self.retry = 0
         while not self.finished():
             try:
                 message = self.consumer.next()
@@ -167,23 +170,24 @@ class KafkaGroupReader:
                     LeaderNotAvailableError,
                     NotLeaderForPartitionError,
             ) as e:
+                self.retry += 1
                 self.log.warning("Got %s, retrying", e.__class__.__name__)
         return self.kafka_groups
 
     def parse_consumer_offset_message(self, message):
         key = bytearray(message.key)
-        ((key_schema,), cur) = relative_unpack('>h', key, 0)
+        ((key_schema,), cur) = relative_unpack(b'>h', key, 0)
         if key_schema not in [0, 1]:
             raise InvalidMessageException()   # This is not an offset commit message
         (group, cur) = read_short_string(key, cur)
         (topic, cur) = read_short_string(key, cur)
-        ((partition,), cur) = relative_unpack('>l', key, cur)
+        ((partition,), cur) = relative_unpack(b'>l', key, cur)
         if message.value:
             value = bytearray(message.value)
-            ((value_schema,), cur) = relative_unpack('>h', value, 0)
+            ((value_schema,), cur) = relative_unpack(b'>h', value, 0)
             if value_schema not in [0, 1]:
                 raise InvalidMessageException()  # Unrecognized message value
-            ((offset,), cur) = relative_unpack('>q', value, cur)
+            ((offset,), cur) = relative_unpack(b'>q', value, cur)
         else:
             offset = None  # Offset was deleted
         return str(group), str(topic), partition, offset
@@ -213,4 +217,4 @@ class KafkaGroupReader:
         return self.watermarks[partition].highmark
 
     def finished(self):
-        return len(self.finished_partitions) >= len(self.watermarks)
+        return (self.retry > self.retry_max) or len(self.finished_partitions) >= len(self.watermarks)
