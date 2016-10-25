@@ -17,6 +17,7 @@ import random
 from copy import copy
 from math import ceil
 
+from .util import compute_optimum
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.stats \
@@ -164,7 +165,8 @@ class GeneticBalancer(ClusterBalancer):
             -1 * state.broker_weight_cv +
             -1 * state.movement_size / self._max_movement_size +
             -1 * state.broker_leader_weight_cv +
-            -1 * state.leader_movement_count / self._max_leader_movement_count
+            -1 * state.leader_movement_count / self._max_leader_movement_count +
+            -1 * state.weighted_topic_broker_imbalance
         )
 
 
@@ -194,9 +196,20 @@ class _State(object):
             for partition in self.partitions
         ]
 
+        # A list mapping a partition index to the partition's topic index.
+        self.partition_topic = [
+            self.topics.index(partition.topic)
+            for partition in self.partitions
+        ]
+
         # A list mapping a partition index to the weight of that partition.
         self.partition_weights = [
             partition.weight for partition in self.partitions
+        ]
+
+        # A list mapping a topic index to the weight of that topic.
+        self.topic_weights = [
+            topic.weight for topic in self.topics
         ]
 
         # A list mapping a broker index to the weight of that broker.
@@ -209,9 +222,43 @@ class _State(object):
             broker.leader_weight for broker in self.brokers
         ]
 
+        # The total weight of all partition replicas on the cluster.
+        self.total_weight = sum(
+            partition.weight * partition.replication_factor
+            for partition in self.partitions
+        )
+
         # A list mapping a partition index to the size of that partition.
         self.partition_sizes = [
             partition.size for partition in self.partitions
+        ]
+
+        # A list mapping a topic index to the number of replicas of the
+        # topic's partitions.
+        self.topic_replica_count = [
+            sum(partition.replication_factor for partition in topic.partitions)
+            for topic in self.topics
+        ]
+
+        # A list mapping a topic index to a list. That list is a map from a
+        # broker index to the number of partitions of the topic on the broker.
+        self.topic_broker_count = [
+            [
+                sum(
+                    1 for partition in topic.partitions
+                    if broker in partition.replicas
+                )
+                for broker in self.brokers
+            ]
+            for topic in self.topics
+        ]
+
+        # A list mapping a topic index to the number of partition movements
+        # required to have all partitions of that topic optimally balanced
+        # across all brokers in the cluster.
+        self.topic_broker_imbalance = [
+            self._calculate_topic_imbalance(topic)
+            for topic in xrange(len(self.topics))
         ]
 
         # A list mapping a broker index to the index of the replication group
@@ -269,6 +316,18 @@ class _State(object):
             new_state.broker_leader_weights = self.broker_leader_weights[:]
             new_state.broker_leader_weights[source] -= partition_weight
             new_state.broker_leader_weights[dest] += partition_weight
+
+        # Update the topic broker counts
+        topic = self.partition_topic[partition]
+        new_state.topic_broker_count = self.topic_broker_count[:]
+        new_state.topic_broker_count[topic] = self.topic_broker_count[topic][:]
+        new_state.topic_broker_count[topic][source] -= 1
+        new_state.topic_broker_count[topic][dest] += 1
+
+        # Update the topic broker imbalance
+        new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
+        new_state.topic_broker_imbalance[topic] = \
+            new_state._calculate_topic_imbalance(topic)
 
         # Update the replication group replica counts
         source_rg = self.broker_rg[source]
@@ -338,3 +397,28 @@ class _State(object):
     @property
     def broker_leader_weight_cv(self):
         return coefficient_of_variation(self.broker_leader_weights)
+
+    @property
+    def weighted_topic_broker_imbalance(self):
+        return sum(
+            self.topic_weights[topic] * imbalance
+            for topic, imbalance in enumerate(self.topic_broker_imbalance)
+        ) / self.total_weight
+
+    def _calculate_topic_imbalance(self, topic):
+        topic_optimum, _ = compute_optimum(
+            len(self.brokers),
+            self.topic_replica_count[topic],
+        )
+        return max(
+            sum(
+                topic_optimum - count
+                for count in self.topic_broker_count[topic]
+                if count < topic_optimum
+            ),
+            sum(
+                count - topic_optimum - 1
+                for count in self.topic_broker_count[topic]
+                if count > topic_optimum
+            ),
+        )
