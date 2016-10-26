@@ -207,8 +207,8 @@ class GeneticBalancer(ClusterBalancer):
             self.cluster_topology.update_cluster_topology(state.assignment)
 
     def remove_replica(self, partition_name, osr_broker_ids, count=1):
-        """Adding a replica is done by trying to remove each replica and
-        choosing the resulting state with the highest fitness score.
+        """Removing a replica is done by trying to remove a replica from every
+        broker and choosing the resulting state with the highest fitness score.
         Out-of-sync replicas will always be removed before in-sync replicas.
 
         :param partition_name: (topic_id, partition_id) of the partition to remove replicas of.
