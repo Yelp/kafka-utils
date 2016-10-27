@@ -23,6 +23,7 @@ from .broker import Broker
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
 from .partition import Partition
+from .partition_measurer import UniformPartitionMeasurer
 from .rg import ReplicationGroup
 from .topic import Topic
 
@@ -54,19 +55,17 @@ class ClusterTopology(object):
             assignment,
             brokers,
             extract_group=lambda x: None,
-            partition_weight=lambda x: 1,
-            partition_size=lambda x: 1,
+            partition_measurer=UniformPartitionMeasurer(),
     ):
         self.extract_group = extract_group
-        self.partition_weight = partition_weight
-        self.partition_size = partition_size
+        self.partition_measurer = partition_measurer
         self.log = logging.getLogger(self.__class__.__name__)
         self.topics = {}
         self.rgs = {}
         self.brokers = {}
         self.partitions = {}
         self._build_brokers(brokers)
-        self._build_partitions(assignment, partition_weight, partition_size)
+        self._build_partitions(assignment)
         self.log.debug(
             'Total partitions in cluster {partitions}'.format(
                 partitions=len(self.partitions),
@@ -102,7 +101,7 @@ class ClusterTopology(object):
         broker.replication_group = group
         return broker
 
-    def _build_partitions(self, assignment, partition_weight, partition_size):
+    def _build_partitions(self, assignment):
         """Builds all partition objects and update corresponding broker and
         topic objects.
         """
@@ -120,8 +119,8 @@ class ClusterTopology(object):
             partition = Partition(
                 topic,
                 partition_id,
-                weight=partition_weight(partition_name),
-                size=partition_size(partition_name),
+                weight=self.partition_measurer.get_weight(partition_name),
+                size=self.partition_measurer.get_size(partition_name),
             )
             self.partitions[partition_name] = partition
             topic.add_partition(partition)

@@ -75,8 +75,7 @@ class ClusterManagerCmd(object):
                 assignment,
                 brokers,
                 rg_parser.get_replication_group,
-                partition_measurer.get_weight,
-                partition_measurer.get_size,
+                partition_measurer,
             )
             if len(ct.partitions) == 0:
                 self.log.info("The cluster is empty. No actions to perform.")

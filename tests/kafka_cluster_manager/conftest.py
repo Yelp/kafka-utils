@@ -18,6 +18,8 @@ from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
 from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import PartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
 
 
@@ -92,17 +94,6 @@ def default_partition_weight():
 
 
 @pytest.fixture
-def default_get_partition_weight(default_partition_weight):
-    def get_partition_weight(partition_name):
-        try:
-            return default_partition_weight[partition_name]
-        except KeyError:
-            return 1
-
-    return get_partition_weight
-
-
-@pytest.fixture
 def default_partition_size():
     return {
         (u'T0', 0): 3,
@@ -116,14 +107,25 @@ def default_partition_size():
 
 
 @pytest.fixture
-def default_get_partition_size(default_partition_size):
-    def get_partition_size(partition_name):
-        try:
-            return default_partition_size[partition_name]
-        except KeyError:
-            return 1
+def default_partition_measurer(
+        default_partition_weight,
+        default_partition_size,
+):
+    class TestMeasurer(PartitionMeasurer):
 
-    return get_partition_size
+        def get_weight(self, partition_name):
+            try:
+                return default_partition_weight[partition_name]
+            except KeyError:
+                return 1
+
+        def get_size(self, partition_name):
+            try:
+                return default_partition_size[partition_name]
+            except KeyError:
+                return 1
+
+    return TestMeasurer()
 
 
 @pytest.fixture
@@ -131,30 +133,25 @@ def create_cluster_topology(
         default_assignment,
         default_brokers,
         default_get_replication_group_id,
-        default_get_partition_weight,
-        default_get_partition_size,
+        default_partition_measurer,
 ):
     def build_cluster_topology(
             assignment=None,
             brokers=None,
             get_replication_group_id=None,
-            get_partition_weight=None,
-            get_partition_size=None,
+            partition_measurer=None
     ):
         assignment = assignment or default_assignment
         brokers = brokers or default_brokers
         get_replication_group_id = \
             get_replication_group_id or default_get_replication_group_id
-        get_partition_weight = \
-            get_partition_weight or default_get_partition_weight
-        get_partition_size = get_partition_size or default_get_partition_size
+        partition_measurer = partition_measurer or default_partition_measurer
 
         return ClusterTopology(
             assignment,
             brokers,
             get_replication_group_id,
-            get_partition_weight,
-            get_partition_size
+            partition_measurer,
         )
 
     return build_cluster_topology
