@@ -80,8 +80,7 @@ class ClusterManagerCmd(object):
             if len(ct.partitions) == 0:
                 self.log.info("The cluster is empty. No actions to perform.")
                 return
-            cb = cluster_balancer(ct, args)
-            self.run_command(ct, cb)
+            self.run_command(ct, cluster_balancer(ct, args))
 
     def add_subparser(self, subparsers):
         self.build_subparser(subparsers).set_defaults(command=self.run)

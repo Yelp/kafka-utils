@@ -19,6 +19,10 @@ import mock
 from pytest import fixture
 from pytest import raises
 
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
+    import ClusterBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import PartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
 
 
@@ -311,8 +315,8 @@ class TestClusterManagerCmd(object):
             get_assignment=lambda: {},
         )
         rg_parser = mock.MagicMock()
-        partition_measurer = mock.MagicMock()
-        cluster_balancer = mock.MagicMock()
+        partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
+        cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         cmd.run_command = mock.MagicMock()
 
         cmd.run(

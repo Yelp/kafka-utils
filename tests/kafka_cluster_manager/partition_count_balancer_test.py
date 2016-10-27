@@ -67,19 +67,14 @@ class TestPartitionCountBalancer(object):
         for partition, orig_replicas in orig_assignment.iteritems():
             assert set(orig_replicas) == set(new_assignment[partition])
 
-    def rg_rebalance_assert_no_change(self, cb, p1):
-        """Verifies that there are no replica change after rebalancing."""
-        old_replicas = p1.replicas
-        cb._rebalance_partition(p1)
-
-        # Verify no replica change for partition
-        assert old_replicas == p1.replicas
-
-    def assert_rg_balanced_partition(self, ct, p1, opt_cnt, extra_cnt=0):
+    def assert_rg_balanced_partition(self, ct, partition, opt_cnt, extra_cnt=0):
+        """Verify that the partition replicas are balanced across
+        replication-groups.
+        """
         for rg in ct.rgs.itervalues():
-            replica_cnt_rg = rg.count_replica(p1)
+            replica_cnt_rg = rg.count_replica(partition)
 
-            # Verify for evenly-balanced partition p1
+            # Verify evenly-balanced partition
             assert replica_cnt_rg == opt_cnt or\
                 replica_cnt_rg == opt_cnt + extra_cnt
 
@@ -226,16 +221,20 @@ class TestPartitionCountBalancer(object):
         cb._rebalance_partition(p1)
 
         # Verify no change in replicas after rebalancing
-        self.rg_rebalance_assert_no_change(cb, p1)
+        p1_old_replicas = p1.replicas
+        cb._rebalance_partition(p1)
+        assert p1_old_replicas == p1.replicas
 
         # (1b):  repl-count % rg-count == 0 and repl-count > rg-count
-        # p1: replicas: ('T1',0): [0,1,2,3]
-        p1 = ct.partitions[('T1', 0)]
+        # p2: replicas: ('T1',0): [0,1,2,3]
+        p2 = ct.partitions[('T1', 0)]
         opt_cnt = 2    # 4/2
-        self.assert_rg_balanced_partition(ct, p1, opt_cnt)
+        self.assert_rg_balanced_partition(ct, p2, opt_cnt)
 
         # Verify no change in replicas after rebalancing
-        self.rg_rebalance_assert_no_change(cb, p1)
+        p2_old_replicas = p2.replicas
+        cb._rebalance_partition(p2)
+        assert p2_old_replicas == p2.replicas
 
     def test_rebalance_replication_groups(
             self,

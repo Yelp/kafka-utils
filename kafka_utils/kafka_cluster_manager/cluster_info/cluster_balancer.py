@@ -15,11 +15,9 @@
 
 
 class ClusterBalancer(object):
-    """Interface that is used to implement any cluster balancing approch.
-    across a kafka-cluster.
+    """Interface that is used to implement any cluster partition balancing approach.
 
-    :param cluster_topology: The ClusterTopology object that should be acted
-        on.
+    :param cluster_topology: The ClusterTopology object that should be acted on.
     :param args: The program arguments.
     """
 
