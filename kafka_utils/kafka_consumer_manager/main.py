@@ -43,11 +43,11 @@ def parse_args():
         "manipulate consumer offsets for a specific consumer group.",
     )
     parser.add_argument(
-        '--cluster-type', dest='cluster_type', required=True,
+        '--cluster-type', '-t', dest='cluster_type', required=True,
         help='Type of Kafka cluster. This is a mandatory option.',
     )
     parser.add_argument(
-        '--cluster-name', dest='cluster_name',
+        '--cluster-name', '-c', dest='cluster_name',
         help='Kafka Cluster Name. If not specified, this defaults to the '
         'local cluster.',
     )
