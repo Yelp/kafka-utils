@@ -73,6 +73,15 @@ class RebalanceCmd(ClusterManagerCmd):
             help='Maximum number of actions with leader-only changes.'
                  ' DEFAULT: %(default)s',
         )
+        subparser.add_argument(
+            '--max-movement-size',
+            type=self.positive_float,
+            default=None,
+            help='Maximum total size of the partitions moved in the final set of'
+                 ' actions.'
+                 ' DEFAULT: No limit. RECOMMENDATION: Should be at least max '
+                 'partition-size across the cluster.',
+        )
         return subparser
 
     def run_command(self, cluster_topology, cluster_balancer):

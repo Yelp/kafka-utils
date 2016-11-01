@@ -129,6 +129,17 @@ class ClusterManagerCmd(object):
             raise argparse.ArgumentTypeError(error_msg)
         return value
 
+    def positive_float(self, string):
+        """Convert string to positive float."""
+        error_msg = 'Positive float required, {string} given.'.format(string=string)
+        try:
+            value = float(string)
+        except ValueError:
+            raise argparse.ArgumentTypeError(error_msg)
+        if value < 0:
+            raise argparse.ArgumentTypeError(error_msg)
+        return value
+
     def is_reassignment_pending(self):
         """Return True if there are no reassignment tasks pending."""
         in_progress_plan = self.zk.get_pending_plan()

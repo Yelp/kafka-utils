@@ -15,7 +15,6 @@
 import logging
 import random
 from copy import copy
-from math import ceil
 
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
@@ -28,6 +27,9 @@ from kafka_utils.kafka_cluster_manager.cluster_info.stats \
     import coefficient_of_variation
 
 RANDOM_SEED = 0xcafca
+NUM_GENERATIONS = 100
+MAX_POPULATION = 25
+MAX_EXPLORATION_ATTEMPTS = 1000
 
 
 class GeneticBalancer(ClusterBalancer):
@@ -42,16 +44,15 @@ class GeneticBalancer(ClusterBalancer):
     def __init__(self, cluster_topology, args):
         super(GeneticBalancer, self).__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
-        self._num_gens = 100
-        self._max_pop = 25
-        self._exploration_attempts = 1000
-        self._max_movement_size = 0.1 * sum(
-            partition.size * partition.replication_factor
-            for partition in cluster_topology.partitions.itervalues()
-        )
-        self._max_leader_movement_count = ceil(
-            0.1 * len(cluster_topology.partitions)
-        )
+        self._num_gens = NUM_GENERATIONS
+        self._max_pop = MAX_POPULATION
+        self._exploration_attempts = MAX_EXPLORATION_ATTEMPTS
+        self._max_movement_count = args.max_partition_movements
+        self._max_movement_size = args.max_movement_size
+        self._max_leader_movement_count = args.max_leader_changes
+        self._rebalance_replication_groups = args.replication_groups
+        self._rebalance_brokers = args.brokers
+        self._rebalance_leaders = args.leaders
 
     def rebalance(self):
         """The genetic rebalancing algorithm runs for a fixed number of
@@ -62,7 +63,19 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
-        self.rebalance_replicas()
+        # Rebalance replicas across replication groups.
+        if self._rebalance_replication_groups:
+            self.log.info("Rebalancing replicas across replication groups...")
+            rg_movement_count, rg_movement_size = self.rebalance_replicas(
+                max_movement_count=self._max_movement_count,
+                max_movement_size=self._max_movement_size,
+            )
+            self.log.info(
+                "Done rebalancing replicas. %d partitions moved.",
+                rg_movement_count,
+            )
+        else:
+            rg_movement_size = 0
 
         random.seed(RANDOM_SEED)
 
@@ -70,26 +83,41 @@ class GeneticBalancer(ClusterBalancer):
             self.cluster_topology,
             brokers=self.cluster_topology.active_brokers.values()
         )
+        state.movement_size = rg_movement_size
         pop = set([state])
-        for i in xrange(self._num_gens):
-            pop_candidates = self._explore(pop)
-            pop = self._prune(pop_candidates)
-            self.log.debug(
-                "Generation %d: keeping %d of %d assignment(s)",
-                i,
-                len(pop),
-                len(pop_candidates),
-            )
-        state = sorted(pop, key=self._score, reverse=True)[0]
-        self.log.debug("Total movement size: %f", state.movement_size)
 
+        if self._rebalance_brokers or self._rebalance_leaders:
+            self.log.info(
+                "Running genetic algorithm to balance %s.",
+                "brokers and leaders"
+                if self._rebalance_leaders and self._rebalance_brokers
+                else "brokers" if self._rebalance_brokers
+                else "leaders",
+            )
+            # Run the genetic algorithm for a fixed number of generations.
+            for i in xrange(self._num_gens):
+                pop_candidates = self._explore(pop)
+                pop = self._prune(pop_candidates)
+                self.log.info(
+                    "Generation %d: keeping %d of %d assignment(s)",
+                    i,
+                    len(pop),
+                    len(pop_candidates),
+                )
+
+        # Choose the state with the greatest score.
+        state = sorted(pop, key=self._score, reverse=True)[0]
+        self.log.info(
+            "Done rebalancing. %d partitions moved.",
+            state.movement_count + rg_movement_count,
+        )
+        self.log.info("Total movement size: %f", state.movement_size)
         assignment = state.assignment
-        active_brokers = self.cluster_topology.active_brokers.values()
-        inactive_brokers = [
-            broker
-            for broker in self.cluster_topology.brokers.values()
-            if broker not in active_brokers
-        ]
+
+        # Since only active brokers are considered when rebalancing, inactive
+        # brokers need to be added back to the new assignment.
+        all_brokers = self.cluster_topology.brokers.values()
+        inactive_brokers = set(all_brokers) - set(state.brokers)
         for partition_name, replicas in assignment:
             for broker in inactive_brokers:
                 if broker in self.cluster_topology.partitions[partition_name].replicas:
@@ -290,12 +318,16 @@ class GeneticBalancer(ClusterBalancer):
         """
         new_pop = set(pop)
         exploration_per_state = self._exploration_attempts // len(pop)
+
+        mutations = []
+        if self._rebalance_brokers:
+            mutations.append(self._move_partition)
+        if self._rebalance_leaders:
+            mutations.append(self._move_leadership)
+
         for state in pop:
             for _ in xrange(exploration_per_state):
-                new_state = random.choice([
-                    self._move_partition,
-                    self._move_leadership,
-                ])(state)
+                new_state = random.choice(mutations)(state)
                 if new_state:
                     new_pop.add(new_state)
 
@@ -322,8 +354,13 @@ class GeneticBalancer(ClusterBalancer):
             if source_rg_replicas <= dest_rg_replicas:
                 return None
         partition_size = state.partition_sizes[partition]
-        if state.movement_size + partition_size > self._max_movement_size:
+        if (self._max_movement_size is not None and
+                state.movement_size + partition_size > self._max_movement_size):
             return None
+        if (self._max_movement_count is not None and
+                state.movement_count >= self._max_movement_count):
+            return None
+
         return state.move(partition, source, dest)
 
     def _move_leadership(self, state):
@@ -360,13 +397,16 @@ class GeneticBalancer(ClusterBalancer):
 
         :param state: The state to score.
         """
-        return (
-            -1 * state.broker_weight_cv +
-            -1 * state.movement_size / self._max_movement_size +
-            -1 * state.broker_leader_weight_cv +
-            -1 * state.leader_movement_count / self._max_leader_movement_count +
-            -1 * state.weighted_topic_broker_imbalance
-        )
+        score = -1 * state.broker_weight_cv
+        score += -1 * state.broker_leader_weight_cv
+        score += -1 * state.weighted_topic_broker_imbalance
+
+        if self._max_movement_size is not None:
+            score += -1 * state.movement_size / self._max_movement_size
+        if self._max_leader_movement_count is not None:
+            score += -1 * state.leader_movement_count / self._max_leader_movement_count
+
+        return score
 
 
 class _State(object):
@@ -484,9 +524,10 @@ class _State(object):
             for rg in self.rgs
         ]
 
-        # The total size of the partitions that have been moved to reach this
-        # state.
+        # The total size and count of the partitions that have been moved to
+        # reach this state.
         self.movement_size = 0
+        self.movement_count = 0
 
         # The number of the leadership changes that have been made to reach
         # this state.
@@ -544,7 +585,7 @@ class _State(object):
 
         # Update the movement sizes
         new_state.movement_size += self.partition_sizes[partition]
-        new_state.leader_movement_count += 1
+        new_state.movement_count += 1
 
         return new_state
 

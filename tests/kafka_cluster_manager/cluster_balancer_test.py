@@ -30,6 +30,12 @@ class TestClusterBalancer(object):
     def create_balancer(self, request):
         def build_balancer(cluster_topology, **kwargs):
             args = mock.Mock(**kwargs)
+            args.max_partition_movements = None
+            args.max_movement_size = None
+            args.max_leader_changes = None
+            args.replication_groups = True
+            args.brokers = True
+            args.leaders = True
             return request.param(cluster_topology, args)
         return build_balancer
 
@@ -300,7 +306,7 @@ class TestClusterBalancer(object):
 
         # Verify no change in replicas after rebalancing
         p1_old_replicas = p1.replicas
-        cb._rebalance_partition(p1)
+        cb._rebalance_partition_replicas(p1)
         assert p1_old_replicas == p1.replicas
 
         # (1b):  repl-count % rg-count == 0 and repl-count > rg-count
@@ -311,9 +317,8 @@ class TestClusterBalancer(object):
 
         # Verify no change in replicas after rebalancing
         p2_old_replicas = p2.replicas
-        cb._rebalance_partition(p2)
+        cb._rebalance_partition_replicas(p2)
         assert p2_old_replicas == p2.replicas
-
 
     def test_broker_decommission_error(
             self,

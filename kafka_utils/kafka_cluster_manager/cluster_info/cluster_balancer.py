@@ -62,13 +62,39 @@ class ClusterBalancer(object):
         """
         raise NotImplementedError("Implement in subclass")
 
-    def rebalance_replicas(self):
-        """Balance replicas across replication-groups."""
-        for partition in self.cluster_topology.partitions.itervalues():
-            self._rebalance_partition_replicas(partition)
+    def rebalance_replicas(
+            self,
+            max_movement_count=None,
+            max_movement_size=None,
+    ):
+        """Balance replicas across replication-groups.
 
-    def _rebalance_partition_replicas(self, partition):
-        """Rebalance replication group for given partition."""
+        :param max_movement_count: The maximum number of partitions to move.
+        :param max_movement_size: The maximum total size of the partitions to move.
+
+        :returns A 2-tuple whose first element is the number of partitions moved
+            and whose second element is the total size of the partitions moved.
+        """
+        movement_count = 0
+        movement_size = 0
+        for partition in self.cluster_topology.partitions.itervalues():
+            count, size = self._rebalance_partition_replicas(
+                partition,
+                max_movement_count,
+                max_movement_size
+            )
+            movement_count += count
+            movement_size += size
+
+        return movement_count, movement_size
+
+    def _rebalance_partition_replicas(
+            self,
+            partition,
+            max_movement_count=None,
+            max_movement_size=None,
+    ):
+        """Rebalance replication groups for given partition."""
         # Separate replication-groups into under and over replicated
         total = partition.replication_factor
         over_replicated_rgs, under_replicated_rgs = separate_groups(
@@ -76,8 +102,19 @@ class ClusterBalancer(object):
             lambda g: g.count_replica(partition),
             total,
         )
+
         # Move replicas from over-replicated to under-replicated groups
-        while under_replicated_rgs and over_replicated_rgs:
+        movement_count = 0
+        movement_size = 0
+        while (
+            under_replicated_rgs and over_replicated_rgs
+        ) and (
+            max_movement_size is None or
+            movement_size + partition.size <= max_movement_size
+        ) and (
+            max_movement_count is None or
+            movement_count < max_movement_count
+        ):
             # Decide source and destination group
             rg_source = self._elect_source_replication_group(
                 over_replicated_rgs,
@@ -99,6 +136,8 @@ class ClusterBalancer(object):
                     ),
                 )
                 rg_source.move_partition(rg_destination, partition)
+                movement_count += 1
+                movement_size += partition.size
             else:
                 # Groups balanced or cannot be balanced further
                 break
@@ -108,6 +147,7 @@ class ClusterBalancer(object):
                 lambda g: g.count_replica(partition),
                 total,
             )
+        return movement_count, movement_size
 
     def _elect_source_replication_group(
             self,

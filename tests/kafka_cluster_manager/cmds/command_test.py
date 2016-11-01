@@ -79,6 +79,17 @@ class TestClusterManagerCmd(object):
         with raises(ArgumentTypeError):
             cmd.positive_nonzero_int('0')
 
+    def test_positive_float_valid(self, cmd):
+        assert cmd.positive_float('123.0') == 123.0
+
+    def test_positive_float_not_float(self, cmd):
+        with raises(ArgumentTypeError):
+            cmd.positive_float('not_a_float')
+
+    def test_positive_float_negative_float(self, cmd):
+        with raises(ArgumentTypeError):
+            cmd.positive_float('-1.45')
+
     def test_reduced_proposed_plan_no_change(self, cmd, orig_assignment):
         # Provide same assignment
         proposed_assignment = cmd.get_reduced_assignment(
