@@ -18,19 +18,19 @@ class PartitionMeasurer(object):
     """An interface used to gather metrics about a partition."""
 
     def get_weight(self, partition_name):
-        """Return a number representing the relative weight of this partition
-        compared to the other partitions in the cluster. The weight is a
-        measure of how much load this partition will place on any broker that
-        it is assigned to.
+        """Return a positive number representing the relative weight of this
+        partition compared to the other partitions in the cluster. The weight
+        is a measure of how much load this partition will place on any broker
+        that it is assigned to.
 
         :param partition_name: A tuple with the topic id and partition id as the first and second elements respectively.
         """
         raise NotImplementedError("Implement in subclass.")
 
     def get_size(self, partition_name):
-        """Return a number representing the size of this partition. The size is
-        a measure of how expensive it is to move this partition from one broker
-        to another.
+        """Return a positive number representing the size of this partition.
+        The size is a measure of how expensive it is to move this partition
+        from one broker to another.
 
         :param partition_name: A tuple with the topic id and partition id as the first and second elements respectively.
         """

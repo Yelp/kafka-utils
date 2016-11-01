@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from .error import InvalidPartitionMeasurementError
 
 
 class Partition(object):
@@ -25,6 +26,22 @@ class Partition(object):
         self._name = (topic.id, id)
         self._replicas = replicas or []
         self._topic = topic
+        if weight < 0:
+            raise InvalidPartitionMeasurementError(
+                "Partition {pname} assigned negative weight: {weight}: "
+                .format(
+                    pname=self._name,
+                    weight=weight,
+                )
+            )
+        if size < 0:
+            raise InvalidPartitionMeasurementError(
+                "Partition {pname} assigned negative size: {size}: "
+                .format(
+                    pname=self._name,
+                    size=size,
+                )
+            )
         self._weight = weight
         self._size = size
 

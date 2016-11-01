@@ -15,6 +15,8 @@
 import pytest
 from mock import sentinel
 
+from kafka_utils.kafka_cluster_manager.cluster_info.error \
+    import InvalidPartitionMeasurementError
 from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 
 
@@ -47,8 +49,20 @@ class TestPartition(object):
     def test_weight(self, partition):
         assert partition.weight == 2
 
+    def test_weight_negative(self):
+        mock_topic = sentinel.t1
+        mock_topic.id = 't1'
+        with pytest.raises(InvalidPartitionMeasurementError):
+            Partition(mock_topic, 0, [sentinel.r1, sentinel.r2], -1, 1)
+
     def test_size(self, partition):
         assert partition.size == 3
+
+    def test_weight_size(self):
+        mock_topic = sentinel.t1
+        mock_topic.id = 't1'
+        with pytest.raises(InvalidPartitionMeasurementError):
+            Partition(mock_topic, 0, [sentinel.r1, sentinel.r2], 1, -1)
 
     def test_replication_factor(self, partition):
         assert partition.replication_factor == 2

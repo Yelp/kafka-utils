@@ -87,7 +87,21 @@ class GeneticBalancer(ClusterBalancer):
         state.movement_size = rg_movement_size
         pop = set([state])
 
-        if self._rebalance_brokers or self._rebalance_leaders:
+        do_rebalance = self._rebalance_brokers or self._rebalance_leaders
+
+        # Cannot rebalance when all partitions have zero weight because the
+        # score function is undefined.
+        if do_rebalance and not state.total_weight:
+            self.log.warning(
+                "All partitions have zero weight. Skipping %s rebalancing."
+                "broker and leader"
+                if self._rebalance_leaders and self._rebalance_brokers
+                else "broker" if self._rebalance_brokers
+                else "leader",
+            )
+            do_rebalance = False
+
+        if do_rebalance:
             self.log.info(
                 "Running genetic algorithm to balance %s.",
                 "brokers and leaders"
@@ -433,9 +447,10 @@ class GeneticBalancer(ClusterBalancer):
         """
         # Since all of these values should be minimized and the genetic algorithm
         # optimizes for maximum score, these values are negated.
-        score = -1 * state.broker_weight_cv
-        score += -1 * state.broker_leader_weight_cv
-        score += -1 * state.weighted_topic_broker_imbalance
+        if state.total_weight:
+            score = -1 * state.broker_weight_cv
+            score += -1 * state.broker_leader_weight_cv
+            score += -1 * state.weighted_topic_broker_imbalance
 
         if self._max_movement_size is not None:
             score += -1 * state.movement_size / self._max_movement_size
@@ -503,8 +518,9 @@ class _State(object):
 
         # The total weight of all partition replicas on the cluster.
         self.total_weight = sum(
-            partition.weight * partition.replication_factor
-            for partition in self.partitions
+            partition.weight
+            for broker in self.brokers
+            for partition in broker.partitions
         )
 
         # A list mapping a partition index to the size of that partition.
