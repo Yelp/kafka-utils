@@ -56,11 +56,13 @@ def parse_opts():
                      'kafka cluster.'))
     parser.add_argument(
         '--cluster-type',
+        '-t',
         required=True,
         help='cluster type, e.g. "standard"',
     )
     parser.add_argument(
         '--cluster-name',
+        '-c',
         help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
     )
     parser.add_argument(
