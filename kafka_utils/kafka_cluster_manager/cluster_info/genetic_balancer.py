@@ -79,6 +79,7 @@ class GeneticBalancer(ClusterBalancer):
 
         random.seed(RANDOM_SEED)
 
+        # Note that only active brokers are considered when rebalancing
         state = _State(
             self.cluster_topology,
             brokers=self.cluster_topology.active_brokers.values()
@@ -145,6 +146,7 @@ class GeneticBalancer(ClusterBalancer):
 
         partitions = {}
 
+        # Remove all partitions from decommissioned brokers.
         for broker in decommission_brokers:
             broker_partitions = list(broker.partitions)
             for partition in broker_partitions:
@@ -154,6 +156,7 @@ class GeneticBalancer(ClusterBalancer):
 
         active_brokers = self.cluster_topology.active_brokers.values()
 
+        # Add partition replicas to active brokers one-by-one.
         for partition_name, count in partitions.iteritems():
             partition = self.cluster_topology.partitions[partition_name]
             try:
@@ -162,7 +165,7 @@ class GeneticBalancer(ClusterBalancer):
                 raise BrokerDecommissionError(
                     "Not enough active brokers in the cluster. "
                     "Partition {partition} has replication-factor {rf}, "
-                    "but only {brokers} brokers remain."
+                    "but only {brokers} active brokers remain."
                     .format(
                         partition=partition_name,
                         rf=partition.replication_factor + count,
@@ -190,7 +193,7 @@ class GeneticBalancer(ClusterBalancer):
         if partition.replication_factor + count > len(active_brokers):
             raise InvalidReplicationFactorError(
                 "Cannot increase replication factor from {0} to {1}."
-                "There are only {2} active brokers."
+                " There are only {2} active brokers."
                 .format(
                     partition.replication_factor,
                     partition.replication_factor + count,
@@ -199,6 +202,7 @@ class GeneticBalancer(ClusterBalancer):
             )
 
         for _ in xrange(count):
+            # Find eligible replication-groups.
             non_full_rgs = [
                 rg for rg in self.cluster_topology.rgs.itervalues()
                 if rg.count_replica(partition) < len(rg.active_brokers)
@@ -216,6 +220,7 @@ class GeneticBalancer(ClusterBalancer):
                 if rg.count_replica(partition) < opt_replicas
             ] or non_full_rgs
 
+            # Create state from current cluster topology.
             state = _State(
                 self.cluster_topology,
                 brokers=active_brokers
@@ -223,6 +228,7 @@ class GeneticBalancer(ClusterBalancer):
             partition_index = state.partitions.index(partition)
             new_states = []
 
+            # Add the replica to every eligible broker.
             for rg in under_replicated_rgs:
                 for broker in rg.active_brokers:
                     if broker not in partition.replicas:
@@ -231,6 +237,7 @@ class GeneticBalancer(ClusterBalancer):
                             state.add_replica(partition_index, broker_index)
                         )
 
+            # Update cluster topology with highest scoring state.
             state = sorted(new_states, key=self._score)[0]
             self.cluster_topology.update_cluster_topology(state.assignment)
 
@@ -266,6 +273,7 @@ class GeneticBalancer(ClusterBalancer):
         ]
 
         for _ in xrange(count):
+            # Find eligible replication groups.
             non_empty_rgs = [
                 rg for rg in self.cluster_topology.rgs.itervalues()
                 if rg.count_replica(partition) > 0
@@ -289,10 +297,12 @@ class GeneticBalancer(ClusterBalancer):
             ] or candidate_rgs
             candidate_rgs = over_replicated_rgs or candidate_rgs
 
+            # Create state from current cluster topology.
             state = _State(self.cluster_topology)
             partition_index = state.partitions.index(partition)
             new_states = []
 
+            # Remove the replica from every eligible broker.
             for rg in candidate_rgs:
                 osr_brokers = [
                     broker for broker in rg.brokers
@@ -306,6 +316,7 @@ class GeneticBalancer(ClusterBalancer):
                             state.remove_replica(partition_index, broker_index)
                         )
 
+            # Update cluster topology with highest scoring state.
             state = sorted(new_states, key=self._score)[0]
             self.cluster_topology.update_cluster_topology(state.assignment)
             osr = [b for b in osr if b in partition.replicas]
@@ -331,32 +342,47 @@ class GeneticBalancer(ClusterBalancer):
                 if new_state:
                     new_pop.add(new_state)
 
-        return new_pop or pop
+        return new_pop
 
     def _move_partition(self, state):
-        """Return a new state that is the result of randomly moving a single
-        partition from one broker to another.
+        """Tries to move a random partition to a random broker. The function
+        will give up if the chosen movement is not possible.
 
         :param state: The starting state.
+
+        :return: The resulting State object if a movement is found. None if
+            no movement is found.
         """
         partition = random.randint(0, len(self.cluster_topology.partitions) - 1)
+
+        # Moving zero weight partitions will not improve balance for any of the
+        # balance criteria. Disallow these movements here to avoid wasted
+        # effort.
         if state.partition_weights[partition] == 0:
             return None
+
+        # Choose distinct source and destination brokers.
         source = random.choice(state.replicas[partition])
         dest = random.randint(0, len(self.cluster_topology.brokers) - 1)
         if dest in state.replicas[partition]:
             return None
         source_rg = state.broker_rg[source]
         dest_rg = state.broker_rg[dest]
+
+        # Ensure replicas remain balanced across replication groups.
         if source_rg != dest_rg:
             source_rg_replicas = state.rg_replicas[source_rg][partition]
             dest_rg_replicas = state.rg_replicas[dest_rg][partition]
             if source_rg_replicas <= dest_rg_replicas:
                 return None
+
+        # Ensure movement size capacity is not surpassed
         partition_size = state.partition_sizes[partition]
         if (self._max_movement_size is not None and
                 state.movement_size + partition_size > self._max_movement_size):
             return None
+
+        # Ensure movement count capacity is not surpassed
         if (self._max_movement_count is not None and
                 state.movement_count >= self._max_movement_count):
             return None
@@ -364,12 +390,19 @@ class GeneticBalancer(ClusterBalancer):
         return state.move(partition, source, dest)
 
     def _move_leadership(self, state):
-        """Return a new state that is the result of randomly reassigning the
-        leader for a single partition.
+        """Tries to change the leadership of a random partition. The function
+        will give up if the chosen leader change is not possible.
 
         :param state: The starting state.
+
+        :return: The resulting State object if a leader change is found. None
+            if no change is found.
         """
         partition = random.randint(0, len(self.cluster_topology.partitions) - 1)
+
+        # Moving zero weight partitions will not improve balance for any of the
+        # balance criteria. Disallow these movements here to avoid wasted
+        # effort.
         if state.partition_weights[partition] == 0:
             return None
         if len(state.replicas[partition]) <= 1:
@@ -378,6 +411,7 @@ class GeneticBalancer(ClusterBalancer):
         dest = state.replicas[partition][dest_index]
         if state.leader_movement_count >= self._max_leader_movement_count:
             return None
+
         return state.move_leadership(partition, dest)
 
     def _prune(self, pop_candidates):
@@ -397,6 +431,8 @@ class GeneticBalancer(ClusterBalancer):
 
         :param state: The state to score.
         """
+        # Since all of these values should be minimized and the genetic algorithm
+        # optimizes for maximum score, these values are negated.
         score = -1 * state.broker_weight_cv
         score += -1 * state.broker_leader_weight_cv
         score += -1 * state.weighted_topic_broker_imbalance
@@ -560,6 +596,7 @@ class _State(object):
             new_state.broker_leader_weights = self.broker_leader_weights[:]
             new_state.broker_leader_weights[source] -= partition_weight
             new_state.broker_leader_weights[dest] += partition_weight
+            new_state.leader_movement_count += 1
 
         # Update the topic broker counts
         topic = self.partition_topic[partition]

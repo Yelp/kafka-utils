@@ -396,7 +396,7 @@ class PartitionCountBalancer(ClusterBalancer):
             try:
                 osr.append(self.cluster_topology.brokers[broker_id])
             except KeyError:
-                raise InvalidPartitionError(
+                raise InvalidBrokerIdError(
                     "No broker found with id {bid}".format(bid=broker_id),
                 )
 
