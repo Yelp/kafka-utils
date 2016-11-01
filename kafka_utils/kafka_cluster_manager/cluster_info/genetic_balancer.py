@@ -556,6 +556,12 @@ class _State(object):
             for topic in xrange(len(self.topics))
         ]
 
+        # A weighted sum of the imbalance values in topic_broker_imbalance.
+        self._weighted_topic_broker_imbalance = sum(
+            self.topic_weights[topic] * imbalance
+            for topic, imbalance in enumerate(self.topic_broker_imbalance)
+        )
+
         # A list mapping a broker index to the index of the replication group
         # that the broker belongs to.
         self.broker_rg = [
@@ -625,6 +631,14 @@ class _State(object):
         new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
         new_state.topic_broker_imbalance[topic] = \
             new_state._calculate_topic_imbalance(topic)
+
+        new_state._weighted_topic_broker_imbalance = (
+            self._weighted_topic_broker_imbalance +
+            self.topic_weights[topic] * (
+                new_state.topic_broker_imbalance[topic] -
+                self.topic_broker_imbalance[topic]
+            )
+        )
 
         # Update the replication group replica counts
         source_rg = self.broker_rg[source]
@@ -703,6 +717,14 @@ class _State(object):
         new_state.topic_broker_imbalance[topic] = \
             new_state._calculate_topic_imbalance(topic)
 
+        new_state._weighted_topic_broker_imbalance = (
+            self._weighted_topic_broker_imbalance +
+            self.topic_weights[topic] * (
+                new_state.topic_broker_imbalance[topic] -
+                self.topic_broker_imbalance[topic]
+            )
+        )
+
         # Update the replication group replica counts
         rg = self.broker_rg[broker]
         new_state.rg_replicas = self.rg_replicas[:]
@@ -738,6 +760,14 @@ class _State(object):
         new_state.topic_broker_imbalance[topic] = \
             new_state._calculate_topic_imbalance(topic)
 
+        new_state._weighted_topic_broker_imbalance = (
+            self._weighted_topic_broker_imbalance +
+            self.topic_weights[topic] * (
+                new_state.topic_broker_imbalance[topic] -
+                self.topic_broker_imbalance[topic]
+            )
+        )
+
         # Update the replication group replica counts
         rg = self.broker_rg[broker]
         new_state.rg_replicas = self.rg_replicas[:]
@@ -767,10 +797,7 @@ class _State(object):
 
     @property
     def weighted_topic_broker_imbalance(self):
-        return sum(
-            self.topic_weights[topic] * imbalance
-            for topic, imbalance in enumerate(self.topic_broker_imbalance)
-        ) / self.total_weight
+        return self._weighted_topic_broker_imbalance / self.total_weight
 
     def _calculate_topic_imbalance(self, topic):
         topic_optimum, _ = compute_optimum(
