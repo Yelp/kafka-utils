@@ -112,7 +112,7 @@ The save offsets file can then be used to restore the consumer group.
 
 .. code-block:: bash
 
-   $ kafka-consumer-manager --cluster-type test --cluster-name my_cluster offset_restore my_group my_offsets.json
+   $ kafka-consumer-manager --cluster-type test --cluster-name my_cluster offset_restore my_offsets.json
      Restored to new offsets {u'topic1': {0: 425447}}
 
 The offsets can also be set directly using the :code:`offset_set` command. This
