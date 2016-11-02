@@ -1,5 +1,9 @@
-0.5.1 (September 23, 2016)
---------------------------
+0.5.2 (November 1, 2016)
+------------------------
+* Add short options from cluster-type and cluster-name
+
+0.5.1 (October 14, 2016)
+------------------------
 * Add option to see offset-distance for a consumer-group
 
 0.5.0 (September 23, 2016)
