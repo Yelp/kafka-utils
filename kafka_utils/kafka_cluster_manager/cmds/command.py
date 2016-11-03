@@ -79,10 +79,6 @@ class ClusterManagerCmd(object):
     def execute_plan(self, plan, allow_rf_change=False):
         """Save proposed-plan and execute the same if requested."""
         if self.should_execute():
-            # Exit if there is an on-going reassignment
-            if self.is_reassignment_pending():
-                self.log.error('Previous reassignment pending.')
-                sys.exit(1)
             result = self.zk.execute_plan(plan, allow_rf_change=allow_rf_change)
             if not result:
                 self.log.error('Plan execution unsuccessful.')
@@ -121,7 +117,7 @@ class ClusterManagerCmd(object):
         return value
 
     def is_reassignment_pending(self):
-        """Return True if there are no reassignment tasks pending."""
+        """Return True if there are reassignment tasks pending."""
         in_progress_plan = self.zk.get_pending_plan()
         if in_progress_plan:
             in_progress_partitions = in_progress_plan['partitions']

@@ -20,6 +20,7 @@ from pytest import fixture
 from pytest import raises
 
 from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
+from kafka_utils.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 
 
 @fixture
@@ -302,13 +303,14 @@ class TestClusterManagerCmd(object):
     def test_empty_cluster(self, mock_zk, cmd):
         cluster_config = mock.MagicMock()
         args = mock.MagicMock()
-        mock_zk.return_value = mock.MagicMock(
+        mock_zk.return_value.__enter__.return_value = mock.MagicMock(
             get_brokers=lambda: {
                 1: {'host': 'host1'},
                 2: {'host': 'host2'},
                 3: {'host': 'host3'},
             },
             get_assignment=lambda: {},
+            get_pending_plan=lambda: None,
         )
         rg_parser = mock.MagicMock()
         cmd.run_command = mock.MagicMock()
@@ -316,3 +318,23 @@ class TestClusterManagerCmd(object):
         cmd.run(cluster_config, rg_parser, args)
 
         assert cmd.run_command.call_count == 0
+
+    @mock.patch('kafka_utils.kafka_cluster_manager.cmds.command.ZK')
+    def test_exit_on_pending_assignment(self, mock_zk):
+        cluster_config = mock.MagicMock()
+        args = mock.MagicMock()
+        mock_zk.return_value.__enter__.return_value = mock.MagicMock(
+            get_brokers=lambda: {
+                1: {'host': 'host1'},
+                2: {'host': 'host2'},
+                3: {'host': 'host3'},
+            },
+            get_assignment=lambda: {},
+            get_cluster_assignment=lambda: new_assignment(),
+            get_pending_plan=lambda: {'partitions': []},
+        )
+        rg_parser = mock.MagicMock()
+        decommission_cmd = DecommissionCmd()
+
+        with raises(SystemExit):
+            decommission_cmd.run(cluster_config, rg_parser, args)
