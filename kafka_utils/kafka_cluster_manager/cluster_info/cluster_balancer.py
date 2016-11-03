@@ -51,11 +51,11 @@ class ClusterBalancer(object):
         """
         raise NotImplementedError("Implement in subclass")
 
-    def remove_replica(self, osr, partition_name, count=1):
+    def remove_replica(self, partition_name, osr_broker_ids, count=1):
         """Remove replicas of a partition from the cluster, while maintaining the cluster's balance.
 
         :param partition_name: (topic_id, partition_id) of the partition to remove replicas of.
-        :param osr_broker_ids: A list of the partition's out-of-sync broker ids.
+        :param osr_broker_ids: A set of the partition's out-of-sync broker ids.
         :param count: The number of replicas to remove.
 
         :raises InvalidReplicationFactorError: The resulting replication factor is invalid.

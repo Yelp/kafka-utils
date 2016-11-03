@@ -141,14 +141,11 @@ class ClusterTopology(object):
 
     @property
     def active_brokers(self):
-        """Dictionary of {broker_id: broker} for brokers that are not inactive
-        or decommissioned.
-        """
-        return {
-            broker_id: broker
-            for broker_id, broker in self.brokers.iteritems()
+        """Set of brokers that are not inactive or decommissioned."""
+        return set(
+            broker for broker in self.brokers.itervalues()
             if not broker.inactive and not broker.decommissioned
-        }
+        )
 
     @property
     def assignment(self):

@@ -58,7 +58,7 @@ class TestPartition(object):
     def test_size(self, partition):
         assert partition.size == 3
 
-    def test_weight_size(self):
+    def test_size_negative(self):
         mock_topic = sentinel.t1
         mock_topic.id = 't1'
         with pytest.raises(InvalidPartitionMeasurementError):

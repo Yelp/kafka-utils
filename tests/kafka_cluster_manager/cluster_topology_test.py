@@ -50,7 +50,7 @@ class TestClusterTopology(object):
         ct.brokers['1'].mark_decommissioned()
         ct.brokers['3'].mark_inactive()
 
-        assert set(ct.active_brokers.keys()) == set(['0', '2', '4'])
+        assert set(b.id for b in ct.active_brokers) == set(['0', '2', '4'])
 
     def test_replace_broker_leader(self, create_cluster_topology):
         assignment = dict(

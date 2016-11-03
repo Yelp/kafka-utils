@@ -14,6 +14,8 @@
 # limitations under the License.
 import logging
 import random
+import time
+from collections import defaultdict
 from copy import copy
 
 from .error import BrokerDecommissionError
@@ -76,13 +78,14 @@ class GeneticBalancer(ClusterBalancer):
             )
         else:
             rg_movement_size = 0
+            rg_movement_count = 0
 
         random.seed(RANDOM_SEED)
 
         # Note that only active brokers are considered when rebalancing
         state = _State(
             self.cluster_topology,
-            brokers=self.cluster_topology.active_brokers.values()
+            brokers=self.cluster_topology.active_brokers
         )
         state.movement_size = rg_movement_size
         pop = set([state])
@@ -111,13 +114,16 @@ class GeneticBalancer(ClusterBalancer):
             )
             # Run the genetic algorithm for a fixed number of generations.
             for i in xrange(self._num_gens):
+                start = time.time()
                 pop_candidates = self._explore(pop)
                 pop = self._prune(pop_candidates)
-                self.log.info(
-                    "Generation %d: keeping %d of %d assignment(s)",
+                end = time.time()
+                self.log.debug(
+                    "Generation %d: keeping %d of %d assignment(s) in %f seconds",
                     i,
                     len(pop),
                     len(pop_candidates),
+                    end - start,
                 )
 
         # Choose the state with the greatest score.
@@ -131,8 +137,8 @@ class GeneticBalancer(ClusterBalancer):
 
         # Since only active brokers are considered when rebalancing, inactive
         # brokers need to be added back to the new assignment.
-        all_brokers = self.cluster_topology.brokers.values()
-        inactive_brokers = set(all_brokers) - set(state.brokers)
+        all_brokers = set(self.cluster_topology.brokers.values())
+        inactive_brokers = all_brokers - set(state.brokers)
         for partition_name, replicas in assignment:
             for broker in inactive_brokers:
                 if broker in self.cluster_topology.partitions[partition_name].replicas:
@@ -158,17 +164,16 @@ class GeneticBalancer(ClusterBalancer):
                     "No broker found with id {broker_id}".format(broker_id=broker_id)
                 )
 
-        partitions = {}
+        partitions = defaultdict(int)
 
         # Remove all partitions from decommissioned brokers.
         for broker in decommission_brokers:
             broker_partitions = list(broker.partitions)
             for partition in broker_partitions:
                 broker.remove_partition(partition)
-                partitions.setdefault(partition.name, 0)
                 partitions[partition.name] += 1
 
-        active_brokers = self.cluster_topology.active_brokers.values()
+        active_brokers = self.cluster_topology.active_brokers
 
         # Add partition replicas to active brokers one-by-one.
         for partition_name, count in partitions.iteritems():
@@ -202,16 +207,16 @@ class GeneticBalancer(ClusterBalancer):
                 "Partition name {name} not found.".format(name=partition_name),
             )
 
-        active_brokers = self.cluster_topology.active_brokers.values()
+        active_brokers = self.cluster_topology.active_brokers
 
         if partition.replication_factor + count > len(active_brokers):
             raise InvalidReplicationFactorError(
-                "Cannot increase replication factor from {0} to {1}."
-                " There are only {2} active brokers."
+                "Cannot increase replication factor from {rf} to {new_rf}."
+                " There are only {brokers} active brokers."
                 .format(
-                    partition.replication_factor,
-                    partition.replication_factor + count,
-                    len(active_brokers),
+                    rf=partition.replication_factor,
+                    new_rf=partition.replication_factor + count,
+                    brokers=len(active_brokers),
                 )
             )
 
@@ -221,13 +226,16 @@ class GeneticBalancer(ClusterBalancer):
                 rg for rg in self.cluster_topology.rgs.itervalues()
                 if rg.count_replica(partition) < len(rg.active_brokers)
             ]
-            total_replicas = sum(
+            # Since replicas can only be added to non-full rgs, only consider
+            # replicas on those rgs when determining which rgs are
+            # under-replicated.
+            replica_count = sum(
                 rg.count_replica(partition)
                 for rg in non_full_rgs
             )
             opt_replicas, _ = compute_optimum(
                 len(non_full_rgs),
-                total_replicas,
+                replica_count,
             )
             under_replicated_rgs = [
                 rg for rg in non_full_rgs
@@ -273,18 +281,22 @@ class GeneticBalancer(ClusterBalancer):
 
         if partition.replication_factor - count < 1:
             raise InvalidReplicationFactorError(
-                "Cannot decrease replication factor from {0} to {1}."
+                "Cannot decrease replication factor from {rf} to {new_rf}."
                 "Replication factor must be at least 1."
                 .format(
-                    partition.replication_factor,
-                    partition.replication_factor - count,
+                    rf=partition.replication_factor,
+                    new_rf=partition.replication_factor - count,
                 )
             )
 
-        osr = [
-            self.cluster_topology.brokers[bid] for bid in osr_broker_ids
-            if any(broker.id == bid for broker in partition.replicas)
-        ]
+        osr = set(
+            broker for broker in partition.replicas
+            if broker.id in osr_broker_ids
+        )
+
+        # Create state from current cluster topology.
+        state = _State(self.cluster_topology)
+        partition_index = state.partitions.index(partition)
 
         for _ in xrange(count):
             # Find eligible replication groups.
@@ -297,13 +309,16 @@ class GeneticBalancer(ClusterBalancer):
                 if any(b in osr for b in rg.brokers)
             ]
             candidate_rgs = rgs_with_osr or non_empty_rgs
-            total_replicas = sum(
+            # Since replicas will only be removed from the candidate rgs, only
+            # count replicas on those rgs when determining which rgs are
+            # over-replicated.
+            replica_count = sum(
                 rg.count_replica(partition)
                 for rg in candidate_rgs
             )
             opt_replicas, _ = compute_optimum(
                 len(candidate_rgs),
-                total_replicas,
+                replica_count,
             )
             over_replicated_rgs = [
                 rg for rg in candidate_rgs
@@ -311,17 +326,13 @@ class GeneticBalancer(ClusterBalancer):
             ] or candidate_rgs
             candidate_rgs = over_replicated_rgs or candidate_rgs
 
-            # Create state from current cluster topology.
-            state = _State(self.cluster_topology)
-            partition_index = state.partitions.index(partition)
-            new_states = []
-
             # Remove the replica from every eligible broker.
+            new_states = []
             for rg in candidate_rgs:
-                osr_brokers = [
+                osr_brokers = set(
                     broker for broker in rg.brokers
                     if broker in osr
-                ]
+                )
                 candidate_brokers = osr_brokers or rg.brokers
                 for broker in candidate_brokers:
                     if broker in partition.replicas:
@@ -333,7 +344,7 @@ class GeneticBalancer(ClusterBalancer):
             # Update cluster topology with highest scoring state.
             state = sorted(new_states, key=self._score)[0]
             self.cluster_topology.update_cluster_topology(state.assignment)
-            osr = [b for b in osr if b in partition.replicas]
+            osr = set(b for b in osr if b in partition.replicas)
 
     def _explore(self, pop):
         """Exploration phase: Find a set of candidate states based on
@@ -710,7 +721,7 @@ class _State(object):
         new_state.topic_broker_count[topic][broker] += 1
 
         # Update topic replica count
-        self.topic_replica_count[topic] += 1
+        new_state.topic_replica_count[topic] += 1
 
         # Update the topic broker imbalance
         new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
@@ -753,7 +764,7 @@ class _State(object):
         new_state.topic_broker_count[topic][broker] -= 1
 
         # Update topic replica count
-        self.topic_replica_count[topic] -= 1
+        new_state.topic_replica_count[topic] -= 1
 
         # Update the topic broker imbalance
         new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
