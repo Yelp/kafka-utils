@@ -936,12 +936,6 @@ class TestClusterTopology(object):
             calculate_partition_movement(assignment, ct.assignment)
         # Verify minimum partition movements 2
         assert total_movements == 2
-        net_imbal, _ = get_replication_group_imbalance_stats(
-            ct.rgs.values(),
-            ct.partitions.values(),
-        )
-        # Verify replica-count imbalance remains unaltered
-        assert net_imbal == 1
 
     def test_update_cluster_topology_invalid_broker(self):
         assignment = dict([((u'T0', 0), ['1', '2'])])
