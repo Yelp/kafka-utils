@@ -253,7 +253,7 @@ class GeneticBalancer(ClusterBalancer):
                         )
 
             # Update cluster topology with highest scoring state.
-            state = sorted(new_states, key=self._score)[0]
+            state = sorted(new_states, key=self._score, reverse=True)[0]
             self.cluster_topology.update_cluster_topology(state.assignment)
 
     def remove_replica(self, partition_name, osr_broker_ids, count=1):
@@ -335,7 +335,7 @@ class GeneticBalancer(ClusterBalancer):
                         )
 
             # Update cluster topology with highest scoring state.
-            state = sorted(new_states, key=self._score)[0]
+            state = sorted(new_states, key=self._score, reverse=True)[0]
             self.cluster_topology.update_cluster_topology(state.assignment)
             osr = set(b for b in osr if b in partition.replicas)
 
