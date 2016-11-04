@@ -68,7 +68,6 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
-        # Rebalance replicas across replication groups.
         if self._rebalance_replication_groups:
             self.log.info("Rebalancing replicas across replication groups...")
             rg_movement_count, rg_movement_size = self.rebalance_replicas(
@@ -83,9 +82,10 @@ class GeneticBalancer(ClusterBalancer):
             rg_movement_size = 0
             rg_movement_count = 0
 
+        # Use a fixed random seed to make results reproducible.
         random.seed(RANDOM_SEED)
 
-        # Note that only active brokers are considered when rebalancing
+        # NOTE: only active brokers are considered when rebalancing
         state = _State(
             self.cluster_topology,
             brokers=self.cluster_topology.active_brokers
@@ -98,23 +98,13 @@ class GeneticBalancer(ClusterBalancer):
         # Cannot rebalance when all partitions have zero weight because the
         # score function is undefined.
         if do_rebalance and not state.total_weight:
-            self.log.warning(
-                "All partitions have zero weight. Skipping %s rebalancing."
-                "broker and leader"
-                if self._rebalance_leaders and self._rebalance_brokers
-                else "broker" if self._rebalance_brokers
-                else "leader",
+            self.log.error(
+                "Rebalance impossible. All partitions have zero weight.",
             )
             do_rebalance = False
 
         if do_rebalance:
-            self.log.info(
-                "Running genetic algorithm to balance %s.",
-                "brokers and leaders"
-                if self._rebalance_leaders and self._rebalance_brokers
-                else "brokers" if self._rebalance_brokers
-                else "leaders",
-            )
+            self.log.info("Rebalancing with genetic algorithm.")
             # Run the genetic algorithm for a fixed number of generations.
             for i in xrange(self._num_gens):
                 start = time.time()
@@ -373,8 +363,8 @@ class GeneticBalancer(ClusterBalancer):
         return new_pop
 
     def _move_partition(self, state):
-        """Tries to move a random partition to a random broker. The function
-        will give up if the chosen movement is not possible.
+        """Attempt to move a random partition to a random broker. If the
+        chosen movement is not possible, None is returned.
 
         :param state: The starting state.
 
@@ -418,8 +408,8 @@ class GeneticBalancer(ClusterBalancer):
         return state.move(partition, source, dest)
 
     def _move_leadership(self, state):
-        """Tries to change the leadership of a random partition. The function
-        will give up if the chosen leader change is not possible.
+        """Attempt to move a random partition to a random broker. If the
+        chosen movement is not possible, None is returned.
 
         :param state: The starting state.
 

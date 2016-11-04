@@ -72,7 +72,7 @@ class ClusterBalancer(object):
         :param max_movement_count: The maximum number of partitions to move.
         :param max_movement_size: The maximum total size of the partitions to move.
 
-        :returns A 2-tuple whose first element is the number of partitions moved
+        :returns: A 2-tuple whose first element is the number of partitions moved
             and whose second element is the total size of the partitions moved.
         """
         movement_count = 0
