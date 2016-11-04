@@ -67,11 +67,6 @@ class DecommissionCmd(ClusterManagerCmd):
         base_assignment = cluster_topology.assignment
         cluster_topology.decommission_brokers(self.args.broker_ids)
 
-        # Exit if there is an on-going reassignment
-        if self.is_reassignment_pending():
-            self.log.error('Previous reassignment pending.')
-            sys.exit(1)
-
         if not validate_plan(
             assignment_to_plan(cluster_topology.assignment),
             assignment_to_plan(base_assignment),

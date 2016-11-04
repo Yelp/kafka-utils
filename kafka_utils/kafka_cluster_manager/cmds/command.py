@@ -71,6 +71,12 @@ class ClusterManagerCmd(object):
             if len(ct.partitions) == 0:
                 self.log.info("The cluster is empty. No actions to perform.")
                 return
+
+            # Exit if there is an on-going reassignment
+            if self.is_reassignment_pending():
+                self.log.error('Previous reassignment pending.')
+                sys.exit(1)
+
             self.run_command(ct)
 
     def add_subparser(self, subparsers):
