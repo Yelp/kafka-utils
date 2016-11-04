@@ -861,6 +861,88 @@ class TestClusterTopology(object):
         # Verify no change in assignment
         assert ct.assignment == assignment
 
+    def test__rebalance_groups_partition_cnt_case5(self):
+        # rg1 has 4 partitions
+        # rg2 has 2 partitions
+        # rg3 has 2 partitions
+        # Result: rg's will be balanced for partition-count
+        # All rg's will be balanced with just 1 partition-movement
+        brokers = {
+            "0": {"host": "host1"},
+            "1": {"host": "host2"},
+            "2": {"host": "host3"},
+            "3": {"host": "host4"},
+            "5": {"host": "host5"},
+        }
+        assignment = dict(
+            [
+                ((u'T0', 0), ['0', '2']),
+                ((u'T1', 0), ['1', '3']),
+                ((u'T2', 0), ['0', '5']),
+                ((u'T3', 0), ['1', '5']),
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, brokers)
+        # Re-balance replication-groups for partition-count
+        ct._rebalance_groups_partition_cnt()
+
+        # Assert partition is moved from rg1 only
+        assert len(ct.rgs['rg1'].partitions) == 3
+        _, total_movements = \
+            calculate_partition_movement(assignment, ct.assignment)
+        # Verify minimum partition movements 1
+        assert total_movements == 1
+        net_imbal, _ = get_replication_group_imbalance_stats(
+            ct.rgs.values(),
+            ct.partitions.values(),
+        )
+        # Verify replica-count imbalance remains unaltered
+        assert net_imbal == 0
+
+    def test__rebalance_groups_partition_cnt_case6(self):
+        # rg1 has 5 partitions
+        # rg2 has 1 partitions
+        # rg3 has 1 partitions
+        # Result: rg's will be balanced for partition-count
+        # All rg's will be balanced with 2 partition-movements
+        # This test case covers the aspect that even if the partition
+        # count difference b/w the replication-groups is > 1,
+        # we still move onto next replication-group if either of the
+        # replication-groups reaches the optimal partition-count.
+        brokers = {
+            "0": {"host": "host1"},
+            "1": {"host": "host2"},
+            "2": {"host": "host3"},
+            "3": {"host": "host4"},
+            "5": {"host": "host5"},
+        }
+        assignment = dict(
+            [
+                ((u'T0', 0), ['0', '2']),
+                ((u'T1', 0), ['1', '0']),
+                ((u'T2', 0), ['0', '5']),
+                ((u'T3', 0), ['1']),
+            ]
+        )
+        ct = self.build_cluster_topology(assignment, brokers)
+        # Re-balance replication-groups for partition-count
+        ct._rebalance_groups_partition_cnt()
+
+        # Assert final partition counts in replication-groups
+        assert len(ct.rgs['rg1'].partitions) == 3
+        assert len(ct.rgs['rg2'].partitions) == 2
+        assert len(ct.rgs['rg3'].partitions) == 2
+        _, total_movements = \
+            calculate_partition_movement(assignment, ct.assignment)
+        # Verify minimum partition movements 2
+        assert total_movements == 2
+        net_imbal, _ = get_replication_group_imbalance_stats(
+            ct.rgs.values(),
+            ct.partitions.values(),
+        )
+        # Verify replica-count imbalance remains unaltered
+        assert net_imbal == 1
+
     def test_update_cluster_topology_invalid_broker(self):
         assignment = dict([((u'T0', 0), ['1', '2'])])
         new_assignment = dict([((u'T0', 0), ['1', '3'])])
