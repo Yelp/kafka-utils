@@ -1,3 +1,9 @@
+0.5.3 (November 4, 2016)
+------------------------
+* Fix a rebalance bug that would not generate a convergent assignment
+* Check for pending asssignment before fetching the cluster topology
+* Docs fixes
+
 0.5.2 (November 1, 2016)
 ------------------------
 * Add short options from cluster-type and cluster-name
