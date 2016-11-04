@@ -16,6 +16,7 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
+from kafka_utils.util import positive_nonzero_int
 
 
 class SetReplicationFactorCmd(ClusterManagerCmd):
@@ -42,7 +43,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
         subparser.add_argument(
             'replication_factor',
             help='The new replication factor for the topic.',
-            type=self.positive_nonzero_int,
+            type=positive_nonzero_int,
         )
         return subparser
 

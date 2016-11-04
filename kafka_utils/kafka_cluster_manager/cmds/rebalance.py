@@ -16,6 +16,8 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
+from kafka_utils.util import positive_float
+from kafka_utils.util import positive_int
 from kafka_utils.util.validation import assignment_to_plan
 from kafka_utils.util.validation import validate_plan
 
@@ -60,7 +62,7 @@ class RebalanceCmd(ClusterManagerCmd):
         )
         subparser.add_argument(
             '--max-partition-movements',
-            type=self.positive_int,
+            type=positive_int,
             default=DEFAULT_MAX_PARTITION_MOVEMENTS,
             help='Maximum number of partition-movements in final set of actions.'
                  ' DEFAULT: %(default)s. RECOMMENDATION: Should be at least max '
@@ -68,14 +70,14 @@ class RebalanceCmd(ClusterManagerCmd):
         )
         subparser.add_argument(
             '--max-leader-changes',
-            type=self.positive_int,
+            type=positive_int,
             default=DEFAULT_MAX_LEADER_CHANGES,
             help='Maximum number of actions with leader-only changes.'
                  ' DEFAULT: %(default)s',
         )
         subparser.add_argument(
             '--max-movement-size',
-            type=self.positive_float,
+            type=positive_float,
             default=None,
             help='Maximum total size of the partitions moved in the final set of'
                  ' actions.'

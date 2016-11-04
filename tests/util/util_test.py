@@ -12,6 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from argparse import ArgumentTypeError
+
+import pytest
+
+from kafka_utils.util import positive_float
+from kafka_utils.util import positive_int
+from kafka_utils.util import positive_nonzero_int
 from kafka_utils.util import tuple_alter
 from kafka_utils.util import tuple_remove
 from kafka_utils.util import tuple_replace
@@ -41,3 +48,45 @@ def test_tuple_replace():
     )
 
     assert result == (1, 2, 1, 2, 3)
+
+
+def test_positive_int_valid():
+    assert positive_int('123') == 123
+
+
+def test_positive_int_not_int():
+    with pytest.raises(ArgumentTypeError):
+        positive_int('not_an_int')
+
+
+def test_positive_int_negative_int():
+    with pytest.raises(ArgumentTypeError):
+        positive_int('-5')
+
+
+def test_positive_nonzero_int_valid():
+    assert positive_nonzero_int('123') == 123
+
+
+def test_positive_nonzero_int_not_int():
+    with pytest.raises(ArgumentTypeError):
+        positive_nonzero_int('not_an_int')
+
+
+def test_positive_nonzero_int_zero():
+    with pytest.raises(ArgumentTypeError):
+        positive_nonzero_int('0')
+
+
+def test_positive_float_valid():
+    assert positive_float('123.0') == 123.0
+
+
+def test_positive_float_not_float():
+    with pytest.raises(ArgumentTypeError):
+        positive_float('not_a_float')
+
+
+def test_positive_float_negative_float():
+    with pytest.raises(ArgumentTypeError):
+        positive_float('-1.45')

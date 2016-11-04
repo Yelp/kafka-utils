@@ -12,12 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from argparse import ArgumentTypeError
 from collections import OrderedDict
 
 import mock
 from pytest import fixture
-from pytest import raises
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
@@ -56,39 +54,6 @@ def cmd():
 
 
 class TestClusterManagerCmd(object):
-
-    def test_positive_int_valid(self, cmd):
-        assert cmd.positive_int('123') == 123
-
-    def test_positive_int_not_int(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_int('not_an_int')
-
-    def test_positive_int_negative_int(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_int('-5')
-
-    def test_positive_nonzero_int_valid(self, cmd):
-        assert cmd.positive_nonzero_int('123') == 123
-
-    def test_positive_nonzero_int_not_int(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_nonzero_int('not_an_int')
-
-    def test_positive_nonzero_int_zero(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_nonzero_int('0')
-
-    def test_positive_float_valid(self, cmd):
-        assert cmd.positive_float('123.0') == 123.0
-
-    def test_positive_float_not_float(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_float('not_a_float')
-
-    def test_positive_float_negative_float(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_float('-1.45')
 
     def test_reduced_proposed_plan_no_change(self, cmd, orig_assignment):
         # Provide same assignment

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import json
 import sys
+from argparse import ArgumentTypeError
 from itertools import groupby
 
 
@@ -57,6 +58,42 @@ def tuple_remove(tup, *items):
     for item in items:
         l.remove(item)
     return tuple(l)
+
+
+def positive_int(string):
+    """Convert string to positive integer."""
+    error_msg = 'Positive integer required, {string} given.'.format(string=string)
+    try:
+        value = int(string)
+    except ValueError:
+        raise ArgumentTypeError(error_msg)
+    if value < 0:
+        raise ArgumentTypeError(error_msg)
+    return value
+
+
+def positive_nonzero_int(string):
+    """Convert string to positive integer greater than zero."""
+    error_msg = 'Positive non-zero integer required, {string} given.'.format(string=string)
+    try:
+        value = int(string)
+    except ValueError:
+        raise ArgumentTypeError(error_msg)
+    if value <= 0:
+        raise ArgumentTypeError(error_msg)
+    return value
+
+
+def positive_float(string):
+    """Convert string to positive float."""
+    error_msg = 'Positive float required, {string} given.'.format(string=string)
+    try:
+        value = float(string)
+    except ValueError:
+        raise ArgumentTypeError(error_msg)
+    if value < 0:
+        raise ArgumentTypeError(error_msg)
+    return value
 
 
 def groupsortby(data, key):
