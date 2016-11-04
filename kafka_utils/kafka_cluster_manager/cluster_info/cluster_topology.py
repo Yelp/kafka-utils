@@ -398,6 +398,8 @@ class ClusterTopology(object):
                 ))
                 # Move all possible partitions
                 for eligible_partition in eligible_partitions:
+                    # The difference of partition-count b/w the over-loaded and under-loaded
+                    # replication-groups should be greater than 1 for convergence
                     if len(over_loaded_rg.partitions) - len(under_loaded_rg.partitions) > 1:
                         over_loaded_rg.move_partition_replica(
                             under_loaded_rg,
