@@ -19,6 +19,46 @@ import sys
 from itertools import groupby
 
 
+def tuple_replace(tup, *pairs):
+    """Return a copy of a tuple with some elements replaced.
+
+    :param tup: The tuple to be copied.
+    :param pairs: Any number of (index, value) tuples where index is the index
+        of the item to replace and value is the new value of the item.
+    """
+    l = list(tup)
+    for index, value in pairs:
+        l[index] = value
+    return tuple(l)
+
+
+def tuple_alter(tup, *pairs):
+    """Return a copy of a tuple with some elements altered.
+
+    :param tup: The tuple to be copied.
+    :param pairs: Any number of (index, func) tuples where index is the index
+        of the item to alter and the new value is func(tup[index]).
+    """
+    # timeit says that this is faster than a similar
+    l = list(tup)
+    for i, f in pairs:
+        l[i] = f(l[i])
+    return tuple(l)
+
+
+def tuple_remove(tup, *items):
+    """Return a copy of a tuple with some items removed.
+
+    :param tup: The tuple to be copied.
+    :param items: Any number of items. The first instance of each item will
+        be removed from the tuple.
+    """
+    l = list(tup)
+    for item in items:
+        l.remove(item)
+    return tuple(l)
+
+
 def groupsortby(data, key):
     """Sort and group by the same key."""
     return groupby(sorted(data, key=key), key)

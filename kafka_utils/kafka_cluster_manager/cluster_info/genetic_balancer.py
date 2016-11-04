@@ -27,6 +27,9 @@ from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.stats \
     import coefficient_of_variation
+from kafka_utils.util import tuple_alter
+from kafka_utils.util import tuple_remove
+from kafka_utils.util import tuple_replace
 
 RANDOM_SEED = 0xcafca
 NUM_GENERATIONS = 100
@@ -476,7 +479,7 @@ class _State(object):
     This representation stores precomputed sums and values that make
     calculating the score of the state much faster. The state refers to
     partitions, topics, brokers, and replication-groups by their index in a
-    list rather than their object to make comparisons and lookups faster.
+    tuple rather than their object to make comparisons and lookups faster.
 
     :param cluster_topology: The ClusterTopology that this state should model.
     :param brokers: A subset of the brokers in cluster_topology that should be
@@ -484,48 +487,50 @@ class _State(object):
     """
 
     def __init__(self, cluster_topology, brokers=None):
-        self.cluster_topology = cluster_topology
-        self.partitions = cluster_topology.partitions.values()
-        self.topics = cluster_topology.topics.values()
-        self.brokers = brokers or cluster_topology.brokers.values()
-        self.rgs = cluster_topology.rgs.values()
+        # Use tuples instead of lists to store all state so that shallow copies
+        # can be performed without the danger of accidentally mutating the
+        # original object.
+        self.partitions = tuple(cluster_topology.partitions.values())
+        self.topics = tuple(cluster_topology.topics.values())
+        self.brokers = tuple(brokers or cluster_topology.brokers.values())
+        self.rgs = tuple(cluster_topology.rgs.values())
 
-        # A list mapping a partition index to the list of replicas for that
+        # A tuple mapping a partition index to the tuple of replicas for that
         # partition.
-        self.replicas = [
-            [
+        self.replicas = tuple(
+            tuple(
                 self.brokers.index(broker)
                 for broker in partition.replicas
                 if broker in self.brokers
-            ]
+            )
             for partition in self.partitions
-        ]
+        )
 
-        # A list mapping a partition index to the partition's topic index.
-        self.partition_topic = [
+        # A tuple mapping a partition index to the partition's topic index.
+        self.partition_topic = tuple(
             self.topics.index(partition.topic)
             for partition in self.partitions
-        ]
+        )
 
-        # A list mapping a partition index to the weight of that partition.
-        self.partition_weights = [
+        # A tuple mapping a partition index to the weight of that partition.
+        self.partition_weights = tuple(
             partition.weight for partition in self.partitions
-        ]
+        )
 
-        # A list mapping a topic index to the weight of that topic.
-        self.topic_weights = [
+        # A tuple mapping a topic index to the weight of that topic.
+        self.topic_weights = tuple(
             topic.weight for topic in self.topics
-        ]
+        )
 
-        # A list mapping a broker index to the weight of that broker.
-        self.broker_weights = [
+        # A tuple mapping a broker index to the weight of that broker.
+        self.broker_weights = tuple(
             broker.weight for broker in self.brokers
-        ]
+        )
 
-        # A list mapping a broker index to the leader weight of that broker.
-        self.broker_leader_weights = [
+        # A tuple mapping a broker index to the leader weight of that broker.
+        self.broker_leader_weights = tuple(
             broker.leader_weight for broker in self.brokers
-        ]
+        )
 
         # The total weight of all partition replicas on the cluster.
         self.total_weight = sum(
@@ -534,38 +539,38 @@ class _State(object):
             for partition in broker.partitions
         )
 
-        # A list mapping a partition index to the size of that partition.
-        self.partition_sizes = [
+        # A tuple mapping a partition index to the size of that partition.
+        self.partition_sizes = tuple(
             partition.size for partition in self.partitions
-        ]
+        )
 
-        # A list mapping a topic index to the number of replicas of the
+        # A tuple mapping a topic index to the number of replicas of the
         # topic's partitions.
-        self.topic_replica_count = [
+        self.topic_replica_count = tuple(
             sum(partition.replication_factor for partition in topic.partitions)
             for topic in self.topics
-        ]
+        )
 
-        # A list mapping a topic index to a list. That list is a map from a
+        # A tuple mapping a topic index to a tuple. That tuple is a map from a
         # broker index to the number of partitions of the topic on the broker.
-        self.topic_broker_count = [
-            [
+        self.topic_broker_count = tuple(
+            tuple(
                 sum(
                     1 for partition in topic.partitions
                     if broker in partition.replicas and broker in self.brokers
                 )
                 for broker in self.brokers
-            ]
+            )
             for topic in self.topics
-        ]
+        )
 
-        # A list mapping a topic index to the number of partition movements
+        # A tuple mapping a topic index to the number of partition movements
         # required to have all partitions of that topic optimally balanced
         # across all brokers in the cluster.
-        self.topic_broker_imbalance = [
+        self.topic_broker_imbalance = tuple(
             self._calculate_topic_imbalance(topic)
             for topic in xrange(len(self.topics))
-        ]
+        )
 
         # A weighted sum of the imbalance values in topic_broker_imbalance.
         self._weighted_topic_broker_imbalance = sum(
@@ -573,25 +578,25 @@ class _State(object):
             for topic, imbalance in enumerate(self.topic_broker_imbalance)
         )
 
-        # A list mapping a broker index to the index of the replication group
+        # A tuple mapping a broker index to the index of the replication group
         # that the broker belongs to.
-        self.broker_rg = [
+        self.broker_rg = tuple(
             self.rgs.index(broker.replication_group) for broker in self.brokers
-        ]
+        )
 
-        # A list mapping a replication group index to a list. That list is a
+        # A tuple mapping a replication group index to a tuple. That tuple is a
         # map from a partition index to the number of replicas of that
         # partition in the replication group.
-        self.rg_replicas = [
-            [
+        self.rg_replicas = tuple(
+            tuple(
                 sum(
                     1 for broker in rg.brokers
                     if broker in partition.replicas and broker in self.brokers
                 )
                 for partition in self.partitions
-            ]
+            )
             for rg in self.rgs
-        ]
+        )
 
         # The total size and count of the partitions that have been moved to
         # reach this state.
@@ -612,36 +617,51 @@ class _State(object):
         """
         new_state = copy(self)
 
-        # Update the partition replica list
-        new_state.replicas = self.replicas[:]
-        new_state.replicas[partition] = self.replicas[partition][:]
-        source_index = new_state.replicas[partition].index(source)
-        new_state.replicas[partition][source_index] = dest
+        # Update the partition replica tuple
+        source_index = self.replicas[partition].index(source)
+        new_state.replicas = tuple_alter(
+            self.replicas,
+            (partition, lambda replicas: tuple_replace(
+                replicas,
+                (source_index, dest),
+            )),
+        )
 
         # Update the broker weights
         partition_weight = self.partition_weights[partition]
-        new_state.broker_weights = self.broker_weights[:]
-        new_state.broker_weights[source] -= partition_weight
-        new_state.broker_weights[dest] += partition_weight
+
+        new_state.broker_weights = tuple_alter(
+            self.broker_weights,
+            (source, lambda broker_weight: broker_weight - partition_weight),
+            (dest, lambda broker_weight: broker_weight + partition_weight),
+        )
 
         # Update the broker leader weights
         if source_index == 0:
-            new_state.broker_leader_weights = self.broker_leader_weights[:]
-            new_state.broker_leader_weights[source] -= partition_weight
-            new_state.broker_leader_weights[dest] += partition_weight
+            new_state.broker_leader_weights = tuple_alter(
+                self.broker_leader_weights,
+                (source, lambda lw: lw - partition_weight),
+                (dest, lambda lw: lw + partition_weight),
+            )
             new_state.leader_movement_count += 1
 
         # Update the topic broker counts
         topic = self.partition_topic[partition]
-        new_state.topic_broker_count = self.topic_broker_count[:]
-        new_state.topic_broker_count[topic] = self.topic_broker_count[topic][:]
-        new_state.topic_broker_count[topic][source] -= 1
-        new_state.topic_broker_count[topic][dest] += 1
+
+        new_state.topic_broker_count = tuple_alter(
+            self.topic_broker_count,
+            (topic, lambda broker_count: tuple_alter(
+                broker_count,
+                (source, lambda count: count - 1),
+                (dest, lambda count: count + 1),
+            )),
+        )
 
         # Update the topic broker imbalance
-        new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
-        new_state.topic_broker_imbalance[topic] = \
-            new_state._calculate_topic_imbalance(topic)
+        new_state.topic_broker_imbalance = tuple_replace(
+            self.topic_broker_imbalance,
+            (topic, new_state._calculate_topic_imbalance(topic)),
+        )
 
         new_state._weighted_topic_broker_imbalance = (
             self._weighted_topic_broker_imbalance +
@@ -655,11 +675,17 @@ class _State(object):
         source_rg = self.broker_rg[source]
         dest_rg = self.broker_rg[dest]
         if source_rg != dest_rg:
-            new_state.rg_replicas = self.rg_replicas[:]
-            new_state.rg_replicas[source_rg] = self.rg_replicas[source_rg][:]
-            new_state.rg_replicas[dest_rg] = self.rg_replicas[dest_rg][:]
-            new_state.rg_replicas[source_rg][partition] -= 1
-            new_state.rg_replicas[dest_rg][partition] += 1
+            new_state.rg_replicas = tuple_alter(
+                self.rg_replicas,
+                (source_rg, lambda replica_counts: tuple_alter(
+                    replica_counts,
+                    (partition, lambda replica_count: replica_count - 1),
+                )),
+                (dest_rg, lambda replica_counts: tuple_alter(
+                    replica_counts,
+                    (partition, lambda replica_count: replica_count + 1),
+                )),
+            )
 
         # Update the movement sizes
         new_state.movement_size += self.partition_sizes[partition]
@@ -677,24 +703,25 @@ class _State(object):
         """
         new_state = copy(self)
 
-        # Update the partition replica list
-        new_state.replicas = self.replicas[:]
-        new_state.replicas[partition] = self.replicas[partition][:]
+        # Update the partition replica tuple
         source = new_state.replicas[partition][0]
-        new_leader_index = new_state.replicas[partition].index(new_leader)
-        (
-            new_state.replicas[partition][0],
-            new_state.replicas[partition][new_leader_index],
-        ) = (
-            new_state.replicas[partition][new_leader_index],
-            new_state.replicas[partition][0],
+        new_leader_index = self.replicas[partition].index(new_leader)
+        new_state.replicas = tuple_alter(
+            self.replicas,
+            (partition, lambda replicas: tuple_replace(
+                replicas,
+                (0, replicas[new_leader_index]),
+                (new_leader_index, replicas[0]),
+            )),
         )
 
-        # Update the broker leader weight list
+        # Update the broker leader weights
         partition_weight = self.partition_weights[partition]
-        new_state.broker_leader_weights = self.broker_leader_weights[:]
-        new_state.broker_leader_weights[source] -= partition_weight
-        new_state.broker_leader_weights[new_leader] += partition_weight
+        new_state.broker_leader_weights = tuple_alter(
+            self.broker_leader_weights,
+            (source, lambda leader_weight: leader_weight - partition_weight),
+            (new_leader, lambda leader_weight: leader_weight + partition_weight),
+        )
 
         # Update the total leader movement size
         new_state.leader_movement_count += 1
@@ -704,29 +731,40 @@ class _State(object):
     def add_replica(self, partition, broker):
         new_state = copy(self)
 
-        # Add replica to partition replica list
-        new_state.replicas = self.replicas[:]
-        new_state.replicas[partition] = self.replicas[partition][:]
-        new_state.replicas[partition].append(broker)
+        # Add replica to partition replica tuple
+        new_state.replicas = tuple_alter(
+            self.replicas,
+            (partition, lambda replicas: replicas + (broker, )),
+        )
 
         # Update the broker weight
         partition_weight = self.partition_weights[partition]
-        new_state.broker_weights = self.broker_weights[:]
-        new_state.broker_weights[broker] += partition_weight
+        new_state.broker_weights = tuple_alter(
+            self.broker_weights,
+            (broker, lambda broker_weight: broker_weight + partition_weight),
+        )
 
         # Update the topic broker counts
         topic = self.partition_topic[partition]
-        new_state.topic_broker_count = self.topic_broker_count[:]
-        new_state.topic_broker_count[topic] = self.topic_broker_count[topic][:]
-        new_state.topic_broker_count[topic][broker] += 1
+        new_state.topic_broker_count = tuple_alter(
+            self.topic_broker_count,
+            (topic, lambda broker_counts: tuple_alter(
+                broker_counts,
+                (broker, lambda count: count + 1),
+            )),
+        )
 
         # Update topic replica count
-        new_state.topic_replica_count[topic] += 1
+        new_state.topic_replica_count = tuple_alter(
+            self.topic_replica_count,
+            (topic, lambda replica_count: replica_count + 1),
+        )
 
         # Update the topic broker imbalance
-        new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
-        new_state.topic_broker_imbalance[topic] = \
-            new_state._calculate_topic_imbalance(topic)
+        new_state.topic_broker_imbalance = tuple_replace(
+            self.topic_broker_imbalance,
+            (topic, new_state._calculate_topic_imbalance(topic)),
+        )
 
         new_state._weighted_topic_broker_imbalance = (
             self._weighted_topic_broker_imbalance +
@@ -738,38 +776,53 @@ class _State(object):
 
         # Update the replication group replica counts
         rg = self.broker_rg[broker]
-        new_state.rg_replicas = self.rg_replicas[:]
-        new_state.rg_replicas[rg] = self.rg_replicas[rg][:]
-        new_state.rg_replicas[rg][partition] += 1
+        new_state.rg_replicas = tuple_alter(
+            self.rg_replicas,
+            (rg, lambda replica_counts: tuple_alter(
+                replica_counts,
+                (partition, lambda count: count + 1),
+            )),
+        )
 
         return new_state
 
     def remove_replica(self, partition, broker):
         new_state = copy(self)
 
-        # Add replica to partition replica list
-        new_state.replicas = self.replicas[:]
-        new_state.replicas[partition] = self.replicas[partition][:]
-        new_state.replicas[partition].remove(broker)
+        # Add replica to partition replica tuple
+        new_state.replicas = tuple_alter(
+            self.replicas,
+            (partition, lambda replicas: tuple_remove(replicas, broker)),
+        )
 
         # Update the broker weight
         partition_weight = self.partition_weights[partition]
-        new_state.broker_weights = self.broker_weights[:]
-        new_state.broker_weights[broker] -= partition_weight
+        new_state.broker_weights = tuple_alter(
+            self.broker_weights,
+            (broker, lambda broker_weight: broker_weight - partition_weight),
+        )
 
         # Update the topic broker counts
         topic = self.partition_topic[partition]
-        new_state.topic_broker_count = self.topic_broker_count[:]
-        new_state.topic_broker_count[topic] = self.topic_broker_count[topic][:]
-        new_state.topic_broker_count[topic][broker] -= 1
+        new_state.topic_broker_count = tuple_alter(
+            self.topic_broker_count,
+            (topic, lambda broker_count: tuple_alter(
+                broker_count,
+                (broker, lambda count: count - 1),
+            )),
+        )
 
         # Update topic replica count
-        new_state.topic_replica_count[topic] -= 1
+        new_state.topic_replica_count = tuple_alter(
+            self.topic_replica_count,
+            (topic, lambda replica_count: replica_count - 1),
+        )
 
         # Update the topic broker imbalance
-        new_state.topic_broker_imbalance = self.topic_broker_imbalance[:]
-        new_state.topic_broker_imbalance[topic] = \
-            new_state._calculate_topic_imbalance(topic)
+        new_state.topic_broker_imbalance = tuple_replace(
+            self.topic_broker_imbalance,
+            (topic, new_state._calculate_topic_imbalance(topic)),
+        )
 
         new_state._weighted_topic_broker_imbalance = (
             self._weighted_topic_broker_imbalance +
@@ -781,9 +834,13 @@ class _State(object):
 
         # Update the replication group replica counts
         rg = self.broker_rg[broker]
-        new_state.rg_replicas = self.rg_replicas[:]
-        new_state.rg_replicas[rg] = self.rg_replicas[rg][:]
-        new_state.rg_replicas[rg][partition] -= 1
+        new_state.rg_replicas = tuple_alter(
+            self.rg_replicas,
+            (rg, lambda replicas: tuple_alter(
+                replicas,
+                (partition, lambda replica_count: replica_count - 1),
+            )),
+        )
 
         return new_state
 
