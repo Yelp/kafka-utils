@@ -142,10 +142,10 @@ class ClusterTopology(object):
     @property
     def active_brokers(self):
         """Set of brokers that are not inactive or decommissioned."""
-        return set(
+        return {
             broker for broker in self.brokers.itervalues()
             if not broker.inactive and not broker.decommissioned
-        )
+        }
 
     @property
     def assignment(self):

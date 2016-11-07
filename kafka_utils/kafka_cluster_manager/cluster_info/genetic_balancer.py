@@ -91,7 +91,7 @@ class GeneticBalancer(ClusterBalancer):
             brokers=self.cluster_topology.active_brokers
         )
         state.movement_size = rg_movement_size
-        pop = set([state])
+        pop = {state}
 
         do_rebalance = self._rebalance_brokers or self._rebalance_leaders
 
@@ -279,10 +279,10 @@ class GeneticBalancer(ClusterBalancer):
                 )
             )
 
-        osr = set(
+        osr = {
             broker for broker in partition.replicas
             if broker.id in osr_broker_ids
-        )
+        }
 
         # Create state from current cluster topology.
         state = _State(self.cluster_topology)
@@ -319,10 +319,10 @@ class GeneticBalancer(ClusterBalancer):
             # Remove the replica from every eligible broker.
             new_states = []
             for rg in candidate_rgs:
-                osr_brokers = set(
+                osr_brokers = {
                     broker for broker in rg.brokers
                     if broker in osr
-                )
+                }
                 candidate_brokers = osr_brokers or rg.brokers
                 for broker in candidate_brokers:
                     if broker in partition.replicas:
@@ -334,7 +334,7 @@ class GeneticBalancer(ClusterBalancer):
             # Update cluster topology with highest scoring state.
             state = sorted(new_states, key=self._score, reverse=True)[0]
             self.cluster_topology.update_cluster_topology(state.assignment)
-            osr = set(b for b in osr if b in partition.replicas)
+            osr = {b for b in osr if b in partition.replicas}
 
     def _explore(self, pop):
         """Exploration phase: Find a set of candidate states based on

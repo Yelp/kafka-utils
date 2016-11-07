@@ -50,11 +50,11 @@ class ReplicationGroup(object):
     @property
     def active_brokers(self):
         """Return set of brokers that are not inactive or decommissioned."""
-        return set(
+        return {
             broker
             for broker in self._brokers
             if not broker.inactive and not broker.decommissioned
-        )
+        }
 
     def add_broker(self, broker):
         """Add broker to current broker-list."""
@@ -322,7 +322,7 @@ class ReplicationGroup(object):
         returns: dict {dest: {source: {topic: distance}}}
         """
         sibling_distance = defaultdict(lambda: defaultdict(dict))
-        topics = set([p.topic for p in self.partitions])
+        topics = {p.topic for p in self.partitions}
         for source in self.brokers:
             for dest in self.brokers:
                 if source != dest:
