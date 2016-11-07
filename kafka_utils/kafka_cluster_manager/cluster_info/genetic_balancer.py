@@ -213,6 +213,10 @@ class GeneticBalancer(ClusterBalancer):
                 )
             )
 
+        # Create state from current cluster topology.
+        state = _State(self.cluster_topology, brokers=active_brokers)
+        partition_index = state.partitions.index(partition)
+
         for _ in xrange(count):
             # Find eligible replication-groups.
             non_full_rgs = [
@@ -235,15 +239,8 @@ class GeneticBalancer(ClusterBalancer):
                 if rg.count_replica(partition) < opt_replicas
             ] or non_full_rgs
 
-            # Create state from current cluster topology.
-            state = _State(
-                self.cluster_topology,
-                brokers=active_brokers
-            )
-            partition_index = state.partitions.index(partition)
-            new_states = []
-
             # Add the replica to every eligible broker.
+            new_states = []
             for rg in under_replicated_rgs:
                 for broker in rg.active_brokers:
                     if broker not in partition.replicas:
