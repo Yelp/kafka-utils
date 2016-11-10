@@ -486,10 +486,22 @@ class _State(object):
         # Use tuples instead of lists to store all state so that shallow copies
         # can be performed without the danger of accidentally mutating the
         # original object.
-        self.partitions = tuple(cluster_topology.partitions.values())
-        self.topics = tuple(cluster_topology.topics.values())
-        self.brokers = tuple(brokers or cluster_topology.brokers.values())
-        self.rgs = tuple(cluster_topology.rgs.values())
+        self.partitions = tuple(sorted(
+            cluster_topology.partitions.values(),
+            key=lambda p: p.name,
+        ))
+        self.topics = tuple(sorted(
+            cluster_topology.topics.values(),
+            key=lambda t: t.id,
+        ))
+        self.brokers = tuple(sorted(
+            brokers or cluster_topology.brokers.values(),
+            key=lambda b: b.id
+        ))
+        self.rgs = tuple(sorted(
+            cluster_topology.rgs.values(),
+            key=lambda r: r.id
+        ))
 
         # A tuple mapping a partition index to the tuple of replicas for that
         # partition.
