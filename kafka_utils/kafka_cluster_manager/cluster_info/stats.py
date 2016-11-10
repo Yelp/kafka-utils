@@ -15,6 +15,8 @@
 """This files contains supporting api's required to evaluate stats of the
 cluster at any given time.
 """
+from __future__ import division
+
 from collections import defaultdict
 from math import sqrt
 
