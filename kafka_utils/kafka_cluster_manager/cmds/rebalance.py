@@ -79,10 +79,13 @@ class RebalanceCmd(ClusterManagerCmd):
             '--max-movement-size',
             type=positive_float,
             default=None,
-            help='Maximum total size of the partitions moved in the final set of'
-                 ' actions.'
-                 ' DEFAULT: No limit. RECOMMENDATION: Should be at least max '
-                 'partition-size across the cluster.',
+            help='Maximum total size of the partitions moved in the final set'
+                 ' of actions. Since each PartitionMeasurer implementation'
+                 ' defines its own notion of size, the size unit to use will'
+                 ' depend on  the selected PartitionMeasurer implementation.'
+                 ' DEFAULT: No limit.'
+                 ' RECOMMENDATION: Should be at least the maximum partition-size'
+                 ' on the cluster.',
         )
         return subparser
 
