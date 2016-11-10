@@ -49,7 +49,10 @@ class Topic(object):
 
     @property
     def weight(self):
-        return sum(partition.weight for partition in self._partitions)
+        return sum(
+            partition.weight * partition.replication_factor
+            for partition in self._partitions
+        )
 
     def add_partition(self, partition):
         self._partitions.add(partition)

@@ -752,6 +752,16 @@ class _State(object):
             (broker, lambda broker_weight: broker_weight + partition_weight),
         )
 
+        # Update the topic weights
+        topic = new_state.partition_topic[partition]
+        new_state.topic_weights = tuple_alter(
+            self.topic_weights,
+            (topic, lambda topic_weight: topic_weight + partition_weight)
+        )
+
+        # Update the total weight
+        new_state.total_weight = self.total_weight + partition_weight
+
         # Update the topic broker counts
         topic = self.partition_topic[partition]
         new_state.topic_broker_count = tuple_alter(
@@ -775,11 +785,9 @@ class _State(object):
         )
 
         new_state._weighted_topic_broker_imbalance = (
-            self._weighted_topic_broker_imbalance +
-            self.topic_weights[topic] * (
-                new_state.topic_broker_imbalance[topic] -
-                self.topic_broker_imbalance[topic]
-            )
+            self._weighted_topic_broker_imbalance -
+            self.topic_weights[topic] * self.topic_broker_imbalance[topic] +
+            new_state.topic_weights[topic] * new_state.topic_broker_imbalance[topic]
         )
 
         # Update the replication group replica counts
@@ -810,6 +818,16 @@ class _State(object):
             (broker, lambda broker_weight: broker_weight - partition_weight),
         )
 
+        # Update the topic weights
+        topic = self.partition_topic[partition]
+        new_state.topic_weights = tuple_alter(
+            self.topic_weights,
+            (topic, lambda topic_weight: topic_weight - partition_weight)
+        )
+
+        # Update the total weight
+        new_state.total_weight = self.total_weight - partition_weight
+
         # Update the topic broker counts
         topic = self.partition_topic[partition]
         new_state.topic_broker_count = tuple_alter(
@@ -833,11 +851,9 @@ class _State(object):
         )
 
         new_state._weighted_topic_broker_imbalance = (
-            self._weighted_topic_broker_imbalance +
-            self.topic_weights[topic] * (
-                new_state.topic_broker_imbalance[topic] -
-                self.topic_broker_imbalance[topic]
-            )
+            self._weighted_topic_broker_imbalance -
+            self.topic_weights[topic] * self.topic_broker_imbalance[topic] +
+            new_state.topic_weights[topic] * new_state.topic_broker_imbalance[topic]
         )
 
         # Update the replication group replica counts
