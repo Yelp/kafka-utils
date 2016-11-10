@@ -67,6 +67,7 @@ def default_broker_rg():
         '4': 'rg1',
         '5': 'rg3',
         '6': 'rg4',
+        '7': 'rg1',
     }
 
 
