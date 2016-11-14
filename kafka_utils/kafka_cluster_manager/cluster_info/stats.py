@@ -136,6 +136,26 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     return net_imbalance, extra_replica_cnt_per_rg
 
 
+def get_broker_counts(brokers):
+    """Get a list containing the number of partitions on each broker"""
+    return [len(broker.partitions) for broker in brokers]
+
+
+def get_broker_weights(brokers):
+    """Get a list containing the weight of each broker"""
+    return [broker.weight for broker in brokers]
+
+
+def get_broker_leader_counts(brokers):
+    """Get a list containing the number of leaders of each broker"""
+    return [broker.count_preferred_replica() for broker in brokers]
+
+
+def get_broker_leader_weights(brokers):
+    """Get a list containing the weight from leaders on each broker"""
+    return [broker.leader_weight for broker in brokers]
+
+
 def get_topic_imbalance_stats(brokers, topics):
     """Return count of topics and partitions on each broker having multiple
     partitions of same topic.
@@ -155,6 +175,8 @@ def get_topic_imbalance_stats(brokers, topics):
     """
     extra_partition_cnt_per_broker = defaultdict(int)
     tot_brokers = len(brokers)
+    # Sort the brokers so that the iteration order is deterministic.
+    sorted_brokers = sorted(brokers, key=lambda b: b.id)
     for topic in topics:
         # Optimal partition-count per topic per broker
         total_partition_replicas = \
@@ -162,7 +184,7 @@ def get_topic_imbalance_stats(brokers, topics):
         opt_partition_cnt, extra_partitions_allowed = \
             compute_optimum(tot_brokers, total_partition_replicas)
         # Get extra-partition count per broker for each topic
-        for broker in brokers:
+        for broker in sorted_brokers:
             partition_cnt_broker = broker.count_partitions(topic)
             extra_partitions, extra_partitions_allowed = \
                 get_extra_element_count(
@@ -175,6 +197,54 @@ def get_topic_imbalance_stats(brokers, topics):
     # Net extra partitions over all brokers
     net_imbalance = sum(extra_partition_cnt_per_broker.itervalues())
     return net_imbalance, extra_partition_cnt_per_broker
+
+
+def get_weighted_topic_imbalance_stats(brokers, topics):
+    weighted_imbalance_per_broker = defaultdict(float)
+    tot_brokers = len(brokers)
+    # Sort the brokers so that the iteration order is deterministic.
+    sorted_brokers = sorted(brokers, key=lambda b: b.id)
+    total_weight = sum(topic.weight for topic in topics)
+    for topic in topics:
+        total_partition_replicas = sum(
+            partition.replication_factor for partition in topic.partitions
+        )
+
+        opt_partition_cnt, extra_partitions_allowed = \
+            compute_optimum(tot_brokers, total_partition_replicas)
+
+        for broker in sorted_brokers:
+            partition_cnt_broker = broker.count_partitions(topic)
+            extra_partitions, extra_partitions_allowed = \
+                get_extra_element_count(
+                    partition_cnt_broker,
+                    opt_partition_cnt,
+                    extra_partitions_allowed,
+                )
+            weighted_imbalance_per_broker[broker.id] += \
+                extra_partitions * topic.weight / total_weight
+
+    total_imbalance = sum(weighted_imbalance_per_broker.itervalues())
+    return total_imbalance, weighted_imbalance_per_broker
+
+
+def get_partition_movement_stats(ct, prev_assignment):
+    curr_assignment = ct.assignment
+    movement_count = 0
+    movement_size = 0.0
+    leader_changes = 0
+    for prev_partition, prev_replicas in prev_assignment.iteritems():
+        curr_replicas = curr_assignment[prev_partition]
+        diff = len(set(curr_replicas) - set(prev_replicas))
+        movement_count += diff
+        movement_size += diff * ct.partitions[prev_partition].size
+
+        curr_leader = curr_replicas and curr_replicas[0] or None
+        prev_leader = prev_replicas and prev_replicas[0] or None
+        if curr_leader != prev_leader:
+            leader_changes += 1
+
+    return movement_count, movement_size, leader_changes
 
 
 def calculate_partition_movement(prev_assignment, curr_assignment):

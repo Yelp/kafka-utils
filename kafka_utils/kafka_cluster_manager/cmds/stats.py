@@ -12,10 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import print_function
+
 import json
 import logging
 
 from .command import ClusterManagerCmd
+from kafka_utils.kafka_cluster_manager.cluster_info.display import \
+    display_cluster_topology_stats
 from kafka_utils.util.validation import plan_to_assignment
 
 
@@ -46,8 +50,15 @@ class StatsCmd(ClusterManagerCmd):
 
     def run_command(self, cluster_topology, _):
         if self.args.plan_file_path:
-            print('Integrating given assignment-plan in current cluster-topology.')
+            base_assignment = cluster_topology.assignment
+
+            self.log.info(
+                'Integrating given assignment-plan in current cluster-topology.'
+            )
             cluster_topology.update_cluster_topology(self.get_assignment())
+            display_cluster_topology_stats(cluster_topology, base_assignment)
+        else:
+            display_cluster_topology_stats(cluster_topology)
 
     def get_assignment(self):
         """Parse the given json plan in dict format."""

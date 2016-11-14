@@ -18,8 +18,191 @@ from __future__ import print_function
 
 import logging
 
+import kafka_utils.kafka_cluster_manager.cluster_info.stats as stats
 from kafka_utils.util.validation import assignment_to_plan
 _log = logging.getLogger('kafka-cluster-manager')
+
+
+def display_table(headers, table):
+    """Print a formatted table.
+
+    :param headers: A list of header objects that are displayed in the first
+        row of the table.
+    :param table: A list of lists where each sublist is a row of the table.
+        The number of elements in each row should be equal to the number of
+        headers.
+    """
+    assert all(len(row) == len(headers) for row in table)
+
+    str_headers = [str(header) for header in headers]
+    str_table = [[str(cell) for cell in row] for row in table]
+    column_lengths = [
+        max(len(header), *(len(row[i]) for row in str_table))
+        for i, header in enumerate(str_headers)
+    ]
+
+    print(
+        " | ".join(
+            str(header).ljust(length)
+            for header, length in zip(str_headers, column_lengths)
+        )
+    )
+    print("-+-".join("-" * length for length in column_lengths))
+    for row in str_table:
+        print(
+            " | ".join(
+                str(cell).ljust(length)
+                for cell, length in zip(row, column_lengths)
+            )
+        )
+
+
+def display_replica_imbalance(rgs, partitions):
+    """Display replica replication-group distribution imbalance statistics.
+
+    :param rgs: List of the cluster's ReplicationGroups.
+    :param partitions: List of the cluster's Partitions.
+    """
+    rg_ids = [rg.id for rg in rgs]
+    rg_imbalance, rg_extra_replica_count = \
+        stats.get_replication_group_imbalance_stats(rgs, partitions)
+    display_table(
+        ['Replication Group', 'Extra replica count'],
+        zip(rg_ids, [rg_extra_replica_count[rg_id] for rg_id in rg_ids]),
+    )
+    print(
+        '\n'
+        'Total extra replica count: {imbalance}'
+        .format(
+            imbalance=rg_imbalance,
+        )
+    )
+
+
+def display_partition_imbalance(brokers):
+    """Display partition count and weight imbalance statistics.
+
+    :param brokers: List of the cluster's Brokers.
+    """
+    broker_ids = [broker.id for broker in brokers]
+    broker_counts = stats.get_broker_counts(brokers)
+    broker_weights = stats.get_broker_weights(brokers)
+    display_table(
+        ['Broker', 'Partition Count', 'Weight'],
+        zip(broker_ids, broker_counts, broker_weights),
+    )
+    print(
+        '\n'
+        'Partition count imbalance: {net_imbalance}\n'
+        'Broker weight mean: {weight_mean}\n'
+        'Broker weight stdev: {weight_stdev}\n'
+        'Broker weight cv: {weight_cv}'
+        .format(
+            net_imbalance=stats.get_net_imbalance(broker_counts),
+            weight_mean=stats.mean(broker_weights),
+            weight_stdev=stats.standard_deviation(broker_weights),
+            weight_cv=stats.coefficient_of_variation(broker_weights),
+        )
+    )
+
+
+def display_leader_imbalance(brokers):
+    """Display leader count and weight imbalance statistics.
+
+    :param brokers: List of the cluster's Brokers.
+    """
+    broker_ids = [broker.id for broker in brokers]
+    broker_leader_counts = stats.get_broker_leader_counts(brokers)
+    broker_leader_weights = stats.get_broker_leader_weights(brokers)
+    display_table(
+        ['Broker', 'Leader Count', 'Leader Weight'],
+        zip(broker_ids, broker_leader_counts, broker_leader_weights),
+    )
+    print(
+        '\n'
+        'Leader count imbalance: {net_imbalance}\n'
+        'Broker leader weight mean: {weight_mean}\n'
+        'Broker leader weight stdev: {weight_stdev}\n'
+        'Broker leader weight cv: {weight_cv}'
+        .format(
+            net_imbalance=stats.get_net_imbalance(broker_leader_counts),
+            weight_mean=stats.mean(broker_leader_counts),
+            weight_stdev=stats.standard_deviation(broker_leader_counts),
+            weight_cv=stats.coefficient_of_variation(broker_leader_counts),
+        )
+    )
+
+
+def display_topic_broker_imbalance(brokers, topics):
+    """Display topic broker imbalance statistics.
+
+    :param brokers: List of the cluster's Brokers.
+    :param topics: List of the cluster's Topics.
+    """
+    broker_ids = [broker.id for broker in brokers]
+    topic_imbalance, broker_topic_imbalance = \
+        stats.get_topic_imbalance_stats(brokers, topics)
+    weighted_topic_imbalance, weighted_broker_topic_imbalance = \
+        stats.get_weighted_topic_imbalance_stats(brokers, topics)
+    display_table(
+        [
+            'Broker',
+            'Extra-Topic-Partition Count',
+            'Weighted Topic Imbalance',
+        ],
+        zip(
+            broker_ids,
+            broker_topic_imbalance.values(),
+            weighted_broker_topic_imbalance.values(),
+        ),
+    )
+    print(
+        '\n'
+        'Topic partition imbalance count: {topic_imbalance}\n'
+        'Weighted topic partition imbalance: {weighted_topic_imbalance}'
+        .format(
+            topic_imbalance=topic_imbalance,
+            weighted_topic_imbalance=weighted_topic_imbalance,
+        )
+    )
+
+
+def display_movements_stats(ct, base_assignment):
+    """Display how the amount of movement between two assignments.
+
+    :param ct: The cluster's ClusterTopology.
+    :param base_assignment: The cluster assignment to compare against.
+    """
+    movement_count, movement_size, leader_changes = \
+        stats.get_partition_movement_stats(ct, base_assignment)
+    print(
+        'Total partition movements: {movement_count}\n'
+        'Total partition movement size: {movement_size}\n'
+        'Total leader changes: {leader_changes}'
+        .format(
+            movement_count=movement_count,
+            movement_size=movement_size,
+            leader_changes=leader_changes,
+        )
+    )
+
+
+def display_cluster_topology_stats(cluster_topology, base_assignment=None):
+    brokers = cluster_topology.brokers.values()
+    rgs = cluster_topology.rgs.values()
+    topics = cluster_topology.topics.values()
+    partitions = cluster_topology.partitions.values()
+
+    display_replica_imbalance(rgs, partitions)
+    print("")
+    display_partition_imbalance(brokers)
+    print("")
+    display_leader_imbalance(brokers)
+    print("")
+    display_topic_broker_imbalance(brokers, topics)
+    if base_assignment:
+        print("")
+        display_movements_stats(cluster_topology, base_assignment)
 
 
 def display_cluster_topology(cluster_topology):
