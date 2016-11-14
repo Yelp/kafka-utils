@@ -20,13 +20,7 @@ from __future__ import division
 from collections import defaultdict
 from math import sqrt
 
-from .display import display_leader_count_per_broker
-from .display import display_partition_count_per_broker
-from .display import display_same_replica_count_rg
-from .display import display_same_topic_partition_count_broker
 from .util import compute_optimum
-from .util import get_leaders_per_broker
-from .util import get_partitions_per_broker
 
 
 def mean(data):
@@ -142,24 +136,6 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     return net_imbalance, extra_replica_cnt_per_rg
 
 
-def get_leader_imbalance_stats(brokers):
-    """Return for each broker the number of times it is assigned as preferred
-    leader. Also return net leader-imbalance and imbalance stdev.
-    """
-    leaders_per_broker = get_leaders_per_broker(brokers)
-
-    # Calculate standard deviation of leader imbalance
-    stdev_imbalance = standard_deviation(leaders_per_broker.values())
-
-    # Calculation net imbalance
-    net_imbalance = get_net_imbalance(leaders_per_broker.values())
-    leaders_per_broker_id = dict(
-        (broker.id, count)
-        for broker, count in leaders_per_broker.iteritems()
-    )
-    return stdev_imbalance, net_imbalance, leaders_per_broker_id
-
-
 def get_topic_imbalance_stats(brokers, topics):
     """Return count of topics and partitions on each broker having multiple
     partitions of same topic.
@@ -201,24 +177,6 @@ def get_topic_imbalance_stats(brokers, topics):
     return net_imbalance, extra_partition_cnt_per_broker
 
 
-def get_partition_imbalance_stats(brokers):
-    """Return partition count for each broker and net imbalance due to extra
-    partition count on each broker.
-    """
-    partitions_per_broker = get_partitions_per_broker(brokers)
-
-    # Calculate standard deviation of partition imbalance
-    stdev_imbalance = standard_deviation(partitions_per_broker.values())
-
-    # Net total imbalance of partition count over all brokers
-    net_imbalance = get_net_imbalance(partitions_per_broker.values())
-    partitions_per_broker_id = dict(
-        (partition.id, count)
-        for partition, count in partitions_per_broker.iteritems()
-    )
-    return stdev_imbalance, net_imbalance, partitions_per_broker_id
-
-
 def calculate_partition_movement(prev_assignment, curr_assignment):
     """Calculate the partition movements from initial to current assignment.
     Algorithm:
@@ -240,96 +198,3 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
                 (set(curr_replicas) - set(prev_replicas)),
             )
     return movements, total_movements
-
-
-def partition_imbalance(rgs, brokers, cluster_wide=False):
-    """Report partition count imbalance over brokers in current cluster
-    state for each replication-group.
-    """
-    # Get broker-imbalance stats cluster-wide or for each replication-group
-    if cluster_wide:
-        return [(get_partition_imbalance_stats(brokers))]
-    else:
-        return [(get_partition_imbalance_stats(rg.brokers)) for rg in rgs]
-
-
-def leader_imbalance(brokers):
-    """Report leader imbalance count over each broker."""
-    return get_leader_imbalance_stats(brokers)
-
-
-def topic_imbalance(brokers, topics):
-    """Return count of topics and partitions on each broker having multiple
-    partitions of same topic.
-    """
-    return get_topic_imbalance_stats(brokers, topics)
-
-
-def replication_group_imbalance(rgs, partitions):
-    """Calculate same replica count over each replication-group."""
-    return get_replication_group_imbalance_stats(rgs, partitions)
-
-
-def imbalance_value_all(ct, base_assignment=None):
-    """Evaluate imbalance statistics based on given params.
-
-    Params represent the layer for which imbalance needs to be calculated
-    """
-    # Partition-count imbalance
-    (stdev_imbalance, imbal_part, partitions_per_broker) = \
-        partition_imbalance(
-            ct.rgs.values(),
-            ct.brokers.values(),
-            cluster_wide=True,
-    )[0]
-    imbal_part_per_rg = partition_imbalance(
-        ct.rgs.values(),
-        ct.brokers.values(),
-    )
-    net_imbal_part_per_rg = sum(imbal_part_rg[1] for imbal_part_rg in imbal_part_per_rg)
-
-    # Duplicate-replica-count imbalance
-    imbal_replica, duplicate_replica_count_per_rg = \
-        replication_group_imbalance(ct.rgs.values(), ct.partitions.values())
-
-    # Same topic-partition count
-    imbal_topic, same_topic_partition_count_per_broker = \
-        topic_imbalance(ct.brokers.values(), ct.topics.values())
-
-    imbal_leader = 0
-    # Leader-count imbalance
-    stdev_imbalance, imbal_leader, leaders_per_broker = \
-        leader_imbalance(ct.brokers.values())
-
-    # Display stats to stdout
-    display_partition_count_per_broker(
-        partitions_per_broker,
-        stdev_imbalance,
-        imbal_part,
-    )
-    display_same_replica_count_rg(duplicate_replica_count_per_rg, imbal_replica)
-    display_same_topic_partition_count_broker(
-        same_topic_partition_count_per_broker,
-        imbal_topic,
-    )
-    display_leader_count_per_broker(
-        leaders_per_broker,
-        stdev_imbalance,
-        imbal_leader,
-    )
-
-    if base_assignment:
-        total_movements = calculate_partition_movement(
-            base_assignment,
-            ct.assignment,
-        )[1]
-    else:
-        total_movements = 0
-    return {
-        'net_part_cnt_per_rg': net_imbal_part_per_rg,
-        'partition_cnt': imbal_part,
-        'replica_cnt': imbal_replica,
-        'topic_partition_cnt': imbal_topic,
-        'leader_cnt': imbal_leader,
-        'total_movements': total_movements,
-    }

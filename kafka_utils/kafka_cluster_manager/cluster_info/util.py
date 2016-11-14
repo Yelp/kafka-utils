@@ -14,24 +14,6 @@
 # limitations under the License.
 
 
-def get_partitions_per_broker(brokers):
-    """Return partition count for each broker."""
-    return dict(
-        (broker, len(broker.partitions))
-        for broker in brokers
-    )
-
-
-def get_leaders_per_broker(brokers):
-    """Return count for each broker the number of times
-    it is assigned as preferred leader.
-    """
-    return dict(
-        (broker, broker.count_preferred_replica())
-        for broker in brokers
-    )
-
-
 def compute_optimum(groups, elements):
     """Compute the number of elements per group and the reminder.
 
