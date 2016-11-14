@@ -22,7 +22,9 @@ from kafka_utils.kafka_cluster_manager.cluster_info \
 from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import calculate_partition_movement
 from kafka_utils.kafka_cluster_manager.cluster_info \
-    .stats import get_leader_imbalance_stats
+    .stats import get_broker_leader_counts
+from kafka_utils.kafka_cluster_manager.cluster_info \
+    .stats import get_net_imbalance
 from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import get_replication_group_imbalance_stats
 
@@ -311,7 +313,9 @@ class TestPartitionCountBalancer(object):
 
         cb = create_balancer(ct)
         cb.rebalance_leaders()
-        _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        net_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
 
         # No changed in already-balanced assignment
         assert orig_assignment == ct.assignment
@@ -337,7 +341,9 @@ class TestPartitionCountBalancer(object):
 
         cb = create_balancer(ct)
         cb.rebalance_leaders()
-        _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        net_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
 
         # No changed in already-balanced assignment
         assert orig_assignment == ct.assignment
@@ -369,8 +375,11 @@ class TestPartitionCountBalancer(object):
         # Verify if valid-leader assignment
         self.assert_leader_valid(orig_assignment, ct.assignment)
         # New-leader imbalance-count be less than previous imbal count
-        _, new_leader_imbal, new_leaders_per_broker = \
-            get_leader_imbalance_stats(ct.brokers.values())
+        new_leaders_per_broker = {
+            broker.id: broker.count_preferred_replica()
+            for broker in ct.brokers.itervalues()
+        }
+        new_leader_imbal = get_net_imbalance(new_leaders_per_broker.values())
         # Verify leader-balanced
         assert new_leader_imbal == 0
         # Verify partitions-changed assignment
@@ -399,7 +408,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify leader-balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case2a(
@@ -425,7 +436,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
         # Verify that (T0, 1) also swapped even if 1 and 3 were balanced
         # Rebalancing through non-followers
@@ -451,7 +464,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case2c(
@@ -479,7 +494,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify leader-balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case2d(
@@ -505,7 +522,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify leader-balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case2e(
@@ -532,7 +551,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify leader-balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case3(
@@ -554,7 +575,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify still leader-imbalanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 1
         # No change in assignment
         assert sorted(ct.assignment) == sorted(assignment)
@@ -579,14 +602,18 @@ class TestPartitionCountBalancer(object):
         )
 
         ct = create_cluster_topology(assignment, broker_range(3))
-        _, net_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        net_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
 
         cb = create_balancer(ct)
         cb.rebalance_leaders()
 
-        _, new_net_imbal, new_leaders_per_broker = get_leader_imbalance_stats(
-            ct.brokers.values(),
-        )
+        new_leaders_per_broker = {
+            broker.id: broker.count_preferred_replica()
+            for broker in ct.brokers.itervalues()
+        }
+        new_net_imbal = get_net_imbalance(new_leaders_per_broker.values())
         # Verify that net-imbalance has reduced but not zero
         assert new_net_imbal > 0 and new_net_imbal < net_imbal
         # Verify the changes in leaders-per-broker count
@@ -614,7 +641,9 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify leader-balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
 
     def test_rebalance_leaders_unbalanced_case5(
@@ -640,5 +669,7 @@ class TestPartitionCountBalancer(object):
         cb.rebalance_leaders()
 
         # Verify leader-balanced
-        _, leader_imbal, _ = get_leader_imbalance_stats(ct.brokers.values())
+        leader_imbal = get_net_imbalance(
+            get_broker_leader_counts(ct.brokers.values()),
+        )
         assert leader_imbal == 0
