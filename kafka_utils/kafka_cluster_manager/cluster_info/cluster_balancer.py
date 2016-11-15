@@ -12,7 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import logging
+import shlex
 
 from .util import separate_groups
 
@@ -24,10 +26,23 @@ class ClusterBalancer(object):
     :param args: The program arguments.
     """
 
-    def __init__(self, cluster_topology, args):
+    def __init__(self, cluster_topology, args=None):
         self.cluster_topology = cluster_topology
         self.args = args
+        if hasattr(args, 'balancer_args'):
+            self.parse_args(list(itertools.chain.from_iterable(
+                shlex.split(arg) for arg in args.balancer_args
+            )))
+        else:
+            self.parse_args([])
         self.log = logging.getLogger(self.__class__.__name__)
+
+    def parse_args(self, _blancer_args):
+        """Parse partition measurer command line arguments.
+
+        :param _balancer_args: The list of arguments as strings.
+        """
+        pass
 
     def rebalance(self):
         """Rebalance partitions across the brokers in the cluster."""

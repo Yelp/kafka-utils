@@ -150,6 +150,13 @@ def parse_args():
         'If not specified the default cluster balancer used will be'
         'PartitionCountBalancer.',
     )
+    parser.add_argument(
+        '--balancer-args',
+        type=str,
+        action='append',
+        default=[],
+        help='Argument list that is passed to the chosen ClusterBalancer.'
+    )
 
     subparsers = parser.add_subparsers()
     RebalanceCmd().add_subparser(subparsers)

@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from argparse import Namespace
+
 import mock
 import pytest
 
@@ -29,13 +31,15 @@ class TestClusterBalancer(object):
     @pytest.fixture(params=[PartitionCountBalancer, GeneticBalancer])
     def create_balancer(self, request):
         def build_balancer(cluster_topology, **kwargs):
-            args = mock.Mock(**kwargs)
+            args = mock.Mock(spec=Namespace)
             args.max_partition_movements = None
             args.max_movement_size = None
             args.max_leader_changes = None
             args.replication_groups = True
             args.brokers = True
             args.leaders = True
+            args.balancer_args = []
+            args.configure_mock(**kwargs)
             return request.param(cluster_topology, args)
         return build_balancer
 

@@ -14,6 +14,8 @@
 # limitations under the License.
 from __future__ import division
 
+from argparse import Namespace
+
 import mock
 import pytest
 
@@ -36,13 +38,14 @@ class TestGeneticBalancer(object):
         """Create a GeneticBalancer object."""
         if cluster_topology is None:
             cluster_topology = self.create_cluster_topology()
-        args = mock.Mock()
+        args = mock.Mock(spec=Namespace)
         args.max_partition_movements = None
         args.max_movement_size = None
         args.max_leader_changes = None
         args.replication_groups = True
         args.brokers = True
         args.leaders = True
+        args.balancer_args = []
         args.configure_mock(**kwargs)
         return GeneticBalancer(cluster_topology, args)
 
