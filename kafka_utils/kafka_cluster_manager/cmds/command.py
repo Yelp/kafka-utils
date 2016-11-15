@@ -56,7 +56,7 @@ class ClusterManagerCmd(object):
             rg_parser,
             partition_measurer,
             cluster_balancer,
-            args
+            args,
     ):
         """Initialize cluster_config, args, and zk then call run_command."""
         self.cluster_config = cluster_config

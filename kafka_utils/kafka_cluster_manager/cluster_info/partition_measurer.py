@@ -12,10 +12,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
+import shlex
 
 
 class PartitionMeasurer(object):
-    """An interface used to gather metrics about a partition."""
+    """An interface used to gather metrics about a partition.
+
+    :param args: Namespace containing the command line arguments.
+    """
+
+    def __init__(self, args=None):
+        self.args = args
+        if hasattr(args, 'measurer_args'):
+            self.parse_args(list(itertools.chain.from_iterable(
+                shlex.split(arg) for arg in args.measurer_args
+            )))
+        else:
+            self.parse_args([])
+
+    def parse_args(self, _measurer_args):
+        """Parse partition measurer command line arguments.
+
+        :param _measurer_args: The list of arguments as strings.
+        """
+        pass
 
     def get_weight(self, partition_name):
         """Return a positive number representing the relative weight of this

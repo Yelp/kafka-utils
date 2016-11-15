@@ -136,6 +136,13 @@ def parse_args():
         'and size of 1 to all partitions.',
     )
     parser.add_argument(
+        '--measurer-args',
+        type=str,
+        action='append',
+        default=[],
+        help='Argument list that is passed to the chosen PartitionMeasurer.'
+    )
+    parser.add_argument(
         '--cluster-balancer',
         type=str,
         help='Module containing an implementation of ClusterBalancer.'
@@ -179,17 +186,21 @@ def run():
         args.cluster_name,
         args.discovery_base_path,
     )
+
     if args.group_parser:
         rg_parser = dynamic_import(args.group_parser, ReplicationGroupParser)()
     else:
         rg_parser = DefaultReplicationGroupParser()
+
     if args.partition_measurer:
-        partition_measurer = dynamic_import(
+        partition_measurer_class = dynamic_import(
             args.partition_measurer,
             PartitionMeasurer
-        )()
+        )
     else:
-        partition_measurer = UniformPartitionMeasurer()
+        partition_measurer_class = UniformPartitionMeasurer
+    partition_measurer = partition_measurer_class(args)
+
     if args.cluster_balancer:
         cluster_balancer = dynamic_import(
             args.cluster_balancer,
