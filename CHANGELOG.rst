@@ -1,3 +1,8 @@
+0.5.4 (November 15, 2016)
+------------------------
+* Fix offset_get when the group name is stored only in kafka
+* Add offset_set retry when writing offsets to kafka
+
 0.5.3 (November 4, 2016)
 ------------------------
 * Fix a rebalance bug that would not generate a convergent assignment
