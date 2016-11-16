@@ -83,8 +83,13 @@ class OffsetGet(OffsetManagerBase):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, args.topic, args.partitions, cluster_config, client,
-            quiet=args.json
+            groupid=args.groupid,
+            topic=args.topic,
+            partitions=args.partitions,
+            cluster_config=cluster_config,
+            client=client,
+            quiet=args.json,
+            storage=args.storage,
         )
 
         consumer_offsets_metadata = cls.get_offsets(
