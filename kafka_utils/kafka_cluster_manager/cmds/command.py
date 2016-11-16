@@ -70,11 +70,17 @@ class ClusterManagerCmd(object):
             )
             brokers = self.zk.get_brokers()
             assignment = self.zk.get_cluster_assignment()
+            pm = partition_measurer(
+                self.cluster_config,
+                brokers,
+                assignment,
+                args,
+            )
             ct = ClusterTopology(
                 assignment,
                 brokers,
                 rg_parser.get_replication_group,
-                partition_measurer,
+                pm,
             )
             if len(ct.partitions) == 0:
                 self.log.info("The cluster is empty. No actions to perform.")

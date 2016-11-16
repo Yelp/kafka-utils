@@ -200,13 +200,12 @@ def run():
         rg_parser = DefaultReplicationGroupParser()
 
     if args.partition_measurer:
-        partition_measurer_class = dynamic_import(
+        partition_measurer = dynamic_import(
             args.partition_measurer,
             PartitionMeasurer
         )
     else:
-        partition_measurer_class = UniformPartitionMeasurer
-    partition_measurer = partition_measurer_class(args)
+        partition_measurer = UniformPartitionMeasurer
 
     if args.cluster_balancer:
         cluster_balancer = dynamic_import(

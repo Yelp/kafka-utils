@@ -114,6 +114,9 @@ def default_partition_measurer(
 ):
     class TestMeasurer(PartitionMeasurer):
 
+        def __init__(self):
+            super(TestMeasurer, self).__init__(None, None, None, None)
+
         def get_weight(self, partition_name):
             try:
                 return default_partition_weight[partition_name]

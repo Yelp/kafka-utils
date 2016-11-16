@@ -19,10 +19,22 @@ import shlex
 class PartitionMeasurer(object):
     """An interface used to gather metrics about a partition.
 
+    :param cluster_config: ClusterConfig for the cluster.
+    :param brokers: List of the cluster's brokers.
+    :param assignment: The cluster's assignment.
     :param args: Namespace containing the command line arguments.
     """
 
-    def __init__(self, args=None):
+    def __init__(
+            self,
+            cluster_config,
+            brokers,
+            assignment,
+            args,
+    ):
+        self.cluster_config = cluster_config
+        self.brokers = brokers
+        self.assignment = assignment
         self.args = args
         if hasattr(args, 'measurer_args'):
             self.parse_args(list(itertools.chain.from_iterable(
@@ -62,6 +74,9 @@ class UniformPartitionMeasurer(PartitionMeasurer):
     """An implementation of PartitionMeasurer that provides identital metrics
     for all partitions.
     """
+
+    def __init__(self):
+        super(UniformPartitionMeasurer, self).__init__(None, None, None, None)
 
     def get_weight(self, _):
         return 1.0
