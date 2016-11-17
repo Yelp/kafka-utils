@@ -126,9 +126,9 @@ def display_leader_imbalance(brokers):
         'Broker leader weight cv: {weight_cv}'
         .format(
             net_imbalance=stats.get_net_imbalance(broker_leader_counts),
-            weight_mean=stats.mean(broker_leader_counts),
-            weight_stdev=stats.standard_deviation(broker_leader_counts),
-            weight_cv=stats.coefficient_of_variation(broker_leader_counts),
+            weight_mean=stats.mean(broker_leader_weights),
+            weight_stdev=stats.standard_deviation(broker_leader_weights),
+            weight_cv=stats.coefficient_of_variation(broker_leader_weights),
         )
     )
 
