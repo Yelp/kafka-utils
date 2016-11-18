@@ -130,7 +130,7 @@ class OffsetManagerBase(object):
             groupid
     ):
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        return kafka_group_reader.read_groups().get(groupid, [])
+        return kafka_group_reader.read_group(groupid)
 
     @classmethod
     def get_topics_for_group_from_zookeeper(
