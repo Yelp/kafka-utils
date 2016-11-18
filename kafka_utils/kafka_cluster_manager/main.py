@@ -49,6 +49,9 @@ from kafka_utils.util import config
 
 _log = logging.getLogger()
 
+GENETIC_BALANCER_MODULE = \
+    "kafka_utils.kafka_cluster_manager.cluster_info.genetic_balancer"
+
 
 def get_module(module_full_name):
     if ':' in module_full_name:
@@ -156,6 +159,12 @@ def parse_args():
         action='append',
         default=[],
         help='Argument list that is passed to the chosen ClusterBalancer.'
+    )
+    parser.add_argument(
+        '--genetic-balancer',
+        action='store_const',
+        const=GENETIC_BALANCER_MODULE,
+        dest='cluster_balancer',
     )
 
     subparsers = parser.add_subparsers()
