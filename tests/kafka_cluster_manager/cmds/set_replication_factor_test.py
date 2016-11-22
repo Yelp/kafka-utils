@@ -52,8 +52,7 @@ class TestSetReplicationFactorCmd(object):
             assert set(assignment[(u'T0', 0)]) == set(['0', '1', '2', '3', '4'])
             assert set(assignment[(u'T0', 1)]) == set(['0', '1', '2', '3', '4'])
 
-            allow_rf_change = kwargs['allow_rf_change']
-            assert allow_rf_change
+            assert kwargs['allow_rf_change']
 
     def test_run_command_remove_replica(self):
         assignment = {
@@ -89,10 +88,8 @@ class TestSetReplicationFactorCmd(object):
             args, kwargs = cmd.process_assignment.call_args_list[0]
 
             assignment = args[0]
-            print assignment
             assert len(assignment) == 2
             assert set(assignment[(u'T0', 0)]) == set(['0', '1'])
             assert set(assignment[(u'T0', 1)]) == set(['1', '2'])
 
-            allow_rf_change = kwargs['allow_rf_change']
-            assert allow_rf_change
+            assert kwargs['allow_rf_change']
