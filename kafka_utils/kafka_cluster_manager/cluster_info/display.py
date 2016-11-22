@@ -85,7 +85,7 @@ def display_partition_imbalance(brokers):
     :param brokers: List of the cluster's Brokers.
     """
     broker_ids = [broker.id for broker in brokers]
-    broker_counts = stats.get_broker_counts(brokers)
+    broker_counts = stats.get_broker_partition_counts(brokers)
     broker_weights = stats.get_broker_weights(brokers)
     display_table(
         ['Broker', 'Partition Count', 'Weight'],

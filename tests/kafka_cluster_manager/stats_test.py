@@ -84,11 +84,11 @@ def test_get_replication_group_imbalance_stats(create_cluster_topology):
     assert net_imbalance == 2
 
 
-def test_get_broker_counts(create_cluster_topology):
+def test_get_broker_partition_counts(create_cluster_topology):
     ct = create_cluster_topology()
     brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
 
-    counts = stats.get_broker_counts(brokers)
+    counts = stats.get_broker_partition_counts(brokers)
 
     assert counts == [4, 5, 6, 3, 1]
 

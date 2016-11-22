@@ -136,7 +136,7 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     return net_imbalance, extra_replica_cnt_per_rg
 
 
-def get_broker_counts(brokers):
+def get_broker_partition_counts(brokers):
     """Get a list containing the number of partitions on each broker"""
     return [len(broker.partitions) for broker in brokers]
 
