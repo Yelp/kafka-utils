@@ -78,6 +78,10 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
 
         base_assignment = ct.assignment
 
+        changes_per_partition = abs(
+            self.args.replication_factor - topic.replication_factor
+        )
+
         if topic.replication_factor < self.args.replication_factor:
             self.log.info(
                 "Increasing topic {topic} replication factor from {old_rf} to "
@@ -91,7 +95,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             for partition in topic.partitions:
                 ct.add_replica(
                     partition,
-                    self.args.replication_factor - partition.replication_factor,
+                    changes_per_partition,
                 )
         else:
             self.log.info(
@@ -117,16 +121,19 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                 ct.remove_replica(
                     partition,
                     osr,
-                    partition.replication_factor - self.args.replication_factor,
+                    changes_per_partition,
                 )
 
         assignment = ct.assignment
 
+        # Each replica addition/removal for each partition counts for one
+        # partition movement
+        partition_movement_count = len(topic.partitions) * changes_per_partition
+
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
             assignment,
-            # Only the partitions of the chosen topic should change.
-            max_partition_movements=len(topic.partitions),
-            max_leader_only_changes=len(topic.partitions),
+            max_partition_movements=partition_movement_count,
+            max_leader_only_changes=0,
         )
         self.process_assignment(reduced_assignment, allow_rf_change=True)
