@@ -59,6 +59,7 @@ class TestGeneticBalancer(object):
             cluster_topology = self.create_cluster_topology()
         balancer = self.create_balancer(cluster_topology, **kwargs)
         state = _State(cluster_topology)
+
         with mock.patch(
             'kafka_utils.kafka_cluster_manager.cluster_info'
             '.genetic_balancer.random'
@@ -80,6 +81,7 @@ class TestGeneticBalancer(object):
             cluster_topology = self.create_cluster_topology()
         balancer = self.create_balancer(cluster_topology, **kwargs)
         state = _State(cluster_topology)
+
         with mock.patch(
             'kafka_utils.kafka_cluster_manager.cluster_info'
             '.genetic_balancer.random'
@@ -87,7 +89,7 @@ class TestGeneticBalancer(object):
             random.randint.side_effect = [partition, dest]
             return balancer._move_leadership(state) is not None
 
-    def get_scores(self, assignments):
+    def get_scores(self, *assignments):
         """Get a list of scores for a given list of assignments"""
         balancer = self.create_balancer()
         return [
@@ -97,12 +99,12 @@ class TestGeneticBalancer(object):
 
     def score_lt(self, assignment1, assignment2):
         """Check whether or not assignment1 has a score less than assignment2"""
-        scores = self.get_scores([assignment1, assignment2])
+        scores = self.get_scores(assignment1, assignment2)
         return scores[0] < scores[1]
 
     def score_eq(self, assignment1, assignment2):
         """Check whether or not assignment1 has a score equal to assignment2"""
-        scores = self.get_scores([assignment1, assignment2])
+        scores = self.get_scores(assignment1, assignment2)
         return scores[0] == scores[1]
 
     def test_move_partition_valid(self):
@@ -268,9 +270,7 @@ class Test_State(object):
         self.state = _State(self.ct)
 
     def test_partitions(self):
-        """Test that partitions are sorted by partition name. This is
-        needed to ensure determinism.
-        """
+        """Test that partitions are sorted by partition name."""
         assert self.state.partitions == (
             self.ct.partitions[(u'T0', 0)],
             self.ct.partitions[(u'T0', 1)],
@@ -282,9 +282,7 @@ class Test_State(object):
         )
 
     def test_topics(self):
-        """Test that topics are sorted by topic id. This is needed to ensure
-        determinism.
-        """
+        """Test that topics are sorted by topic id."""
         assert self.state.topics == (
             self.ct.topics[u'T0'],
             self.ct.topics[u'T1'],
@@ -293,9 +291,7 @@ class Test_State(object):
         )
 
     def test_brokers(self):
-        """Test that brokers are sorted by broker id. This is needed to ensure
-        determinism.
-        """
+        """Test that brokers are sorted by broker id."""
         assert self.state.brokers == (
             self.ct.brokers['0'],
             self.ct.brokers['1'],
@@ -305,9 +301,7 @@ class Test_State(object):
         )
 
     def test_rgs(self):
-        """Test that RGs are sorted by RG id. This is needed to ensure
-        determinism.
-        """
+        """Test that RGs are sorted by RG id."""
         assert self.state.rgs == (
             self.ct.rgs['rg1'],
             self.ct.rgs['rg2'],
@@ -454,7 +448,7 @@ class Test_State(object):
         assert new_state.leader_movement_count == 0
 
     def test_move_leader(self):
-        """Test that move returns the correct state for a non-leader movement.
+        """Test that move returns the correct state for a leader movement.
 
         Move (T2, 0) from 2 (the leader) to 3.
         """

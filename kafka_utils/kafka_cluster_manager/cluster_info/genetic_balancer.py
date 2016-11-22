@@ -485,7 +485,8 @@ class _State(object):
     def __init__(self, cluster_topology, brokers=None):
         # Use tuples instead of lists to store all state so that shallow copies
         # can be performed without the danger of accidentally mutating the
-        # original object.
+        # original object. Since dict.values() has an arbitrary order, the
+        # lists are sorted so that results are reproducible.
         self.partitions = tuple(sorted(
             cluster_topology.partitions.values(),
             key=lambda p: p.name,
