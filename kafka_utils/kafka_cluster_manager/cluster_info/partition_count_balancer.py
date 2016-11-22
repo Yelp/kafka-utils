@@ -283,10 +283,15 @@ class PartitionCountBalancer(ClusterBalancer):
                 ))
                 # Move all possible partitions
                 for eligible_partition in eligible_partitions:
-                    over_loaded_rg.move_partition_replica(
-                        under_loaded_rg,
-                        eligible_partition,
-                    )
+                    # The difference of partition-count b/w the over-loaded and under-loaded
+                    # replication-groups should be greater than 1 for convergence
+                    if len(over_loaded_rg.partitions) - len(under_loaded_rg.partitions) > 1:
+                        over_loaded_rg.move_partition_replica(
+                            under_loaded_rg,
+                            eligible_partition,
+                        )
+                    else:
+                        break
                     # Move to next replication-group if either of the groups got
                     # balanced, otherwise try with next eligible partition
                     if (len(under_loaded_rg.partitions) == opt_partition_cnt or

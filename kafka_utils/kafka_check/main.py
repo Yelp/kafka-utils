@@ -49,6 +49,7 @@ def parse_args():
     )
     parser.add_argument(
         "--cluster-type",
+        "-t",
         dest='cluster_type',
         required=True,
         help='Type of cluster',
@@ -56,6 +57,7 @@ def parse_args():
     )
     parser.add_argument(
         "--cluster-name",
+        "-c",
         dest='cluster_name',
         help='Name of the cluster',
     )

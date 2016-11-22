@@ -16,6 +16,7 @@ from collections import OrderedDict
 
 import mock
 from pytest import fixture
+from pytest import raises
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
@@ -279,16 +280,46 @@ class TestClusterManagerCmd(object):
         assert (u'T0', 0) in result and (u'T0', 1) in result
 
     @mock.patch('kafka_utils.kafka_cluster_manager.cmds.command.ZK')
-    def test_empty_cluster(self, mock_zk, cmd):
+    def test_runs_command_with_preconditions(self, mock_zk, cmd):
         cluster_config = mock.MagicMock()
         args = mock.MagicMock()
-        mock_zk.return_value = mock.MagicMock(
+        mock_zk.return_value.__enter__.return_value = mock.MagicMock(
             get_brokers=lambda: {
                 1: {'host': 'host1'},
                 2: {'host': 'host2'},
                 3: {'host': 'host3'},
             },
             get_assignment=lambda: {},
+            get_cluster_assignment=lambda: new_assignment(),
+            get_pending_plan=lambda: None,
+        )
+        rg_parser = mock.MagicMock()
+        partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
+        cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
+        cmd.run_command = mock.MagicMock()
+
+        cmd.run(
+            cluster_config,
+            rg_parser,
+            partition_measurer,
+            cluster_balancer,
+            args,
+        )
+
+        assert cmd.run_command.call_count == 1
+
+    @mock.patch('kafka_utils.kafka_cluster_manager.cmds.command.ZK')
+    def test_empty_cluster(self, mock_zk, cmd):
+        cluster_config = mock.MagicMock()
+        args = mock.MagicMock()
+        mock_zk.return_value.__enter__.return_value = mock.MagicMock(
+            get_brokers=lambda: {
+                1: {'host': 'host1'},
+                2: {'host': 'host2'},
+                3: {'host': 'host3'},
+            },
+            get_assignment=lambda: {},
+            get_pending_plan=lambda: None,
         )
         rg_parser = mock.MagicMock()
         partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
@@ -304,3 +335,29 @@ class TestClusterManagerCmd(object):
         )
 
         assert cmd.run_command.call_count == 0
+
+    @mock.patch('kafka_utils.kafka_cluster_manager.cmds.command.ZK')
+    def test_exit_on_pending_assignment(self, mock_zk, cmd):
+        cluster_config = mock.MagicMock()
+        args = mock.MagicMock()
+        mock_zk.return_value.__enter__.return_value = mock.MagicMock(
+            get_brokers=lambda: {
+                1: {'host': 'host1'},
+                2: {'host': 'host2'},
+                3: {'host': 'host3'},
+            },
+            get_assignment=lambda: {},
+            get_cluster_assignment=lambda: new_assignment(),
+            get_pending_plan=lambda: {'partitions': []},
+        )
+        rg_parser = mock.MagicMock()
+        partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
+        cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
+        with raises(SystemExit):
+            cmd.run(
+                cluster_config,
+                rg_parser,
+                partition_measurer,
+                cluster_balancer,
+                args,
+            )

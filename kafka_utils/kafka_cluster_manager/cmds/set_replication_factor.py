@@ -79,6 +79,10 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
 
         base_assignment = ct.assignment
 
+        changes_per_partition = abs(
+            self.args.replication_factor - topic.replication_factor
+        )
+
         if topic.replication_factor < self.args.replication_factor:
             self.log.info(
                 "Increasing topic {topic} replication factor from {old_rf} to "
@@ -92,7 +96,7 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             for partition in topic.partitions:
                 cluster_balancer.add_replica(
                     partition.name,
-                    self.args.replication_factor - partition.replication_factor,
+                    changes_per_partition,
                 )
         else:
             self.log.info(
@@ -113,21 +117,24 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                     self.log.info(
                         "The out of sync replica(s) {osr_broker_ids} will be "
                         "prioritized for removal."
-                        .format(osr=osr_broker_ids)
+                        .format(osr_broker_ids=osr_broker_ids)
                     )
                 cluster_balancer.remove_replica(
                     partition.name,
                     osr_broker_ids,
-                    partition.replication_factor - self.args.replication_factor,
+                    changes_per_partition,
                 )
 
         assignment = ct.assignment
 
+        # Each replica addition/removal for each partition counts for one
+        # partition movement
+        partition_movement_count = len(topic.partitions) * changes_per_partition
+
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
             assignment,
-            # Only the partitions of the chosen topic should change.
-            max_partition_movements=len(topic.partitions),
-            max_leader_only_changes=len(topic.partitions),
+            max_partition_movements=partition_movement_count,
+            max_leader_only_changes=0,
         )
         self.process_assignment(reduced_assignment, allow_rf_change=True)
