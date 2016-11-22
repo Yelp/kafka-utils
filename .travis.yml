@@ -1,28 +1,35 @@
 language: python
 python: 2.7
-
 sudo: required
-
 services:
-  - docker
-
+- docker
 before_install:
-  - sudo sh -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-precise main" > /etc/apt/sources.list.d/docker.list'
-  - sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-  - sudo apt-get update
-  - sudo apt-key update
-  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/1.7.0/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
-  - docker-compose -v
-  - docker -v
-
+- sudo sh -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-precise main" >
+  /etc/apt/sources.list.d/docker.list'
+- sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+- sudo apt-get update
+- sudo apt-key update
+- sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+  install docker-engine
+- sudo rm /usr/local/bin/docker-compose
+- curl -L https://github.com/docker/compose/releases/download/1.7.0/docker-compose-`uname
+  -s`-`uname -m` > docker-compose
+- chmod +x docker-compose
+- sudo mv docker-compose /usr/local/bin
+- docker-compose -v
+- docker -v
 install:
- - pip install tox
-
+- pip install tox
 script:
- - tox
- - tox -e docker_itest_8
- - tox -e docker_itest_9
+- tox
+- tox -e docker_itest_8
+- tox -e docker_itest_9
+deploy:
+  provider: pypi
+  user: yelplabs
+  password:
+    secure: qf6Ji2lDbudhvoliHUo9alq1JYJDidmej6TuR9KWb3QUaIePaoLzZijv7yZ1DFg5k2WzD8b052fZcDhUVYBNzlXmbnANi0gY8MsRnMP0bTFZ1ovci07jr6sliPsHW1Fgi7D997O7MTNBXWRO0RceEVsU2ZnGDtiFC2gifi0ljgvp1MMF3+Tw9gHEb2ZikEpTijglmNaJUiR/ldwi/NgZH5Pu676XDxtCfWs15rw2VJmtL3K0olF5dzF75n7keKwlLwlEKFmx7RXTBj/E5vqZMvRj4L6OOYKQmCxymAk478W+N+Zv19xNmyXSiLNCguARfjyDG5KAU1mLWL+OSELDz31t8agGM+MHjGNYnC3GX4MCuirRwAGzpIsGWM1h6yuYmxlhzbzs+XAm15UIWtqMge6x3BBUaLnnQcIRdtBnF5wo09TVFt6sRM/YdN4gwnc55KZfw2Kb8JFRKgTd6n9HXqlKeVKM2S1pwBW0wKUfdewlpTpLN25Oq2lcf8DXGshsSBcCrHczmGnxvikDoz3zddM38MDYy2kkcIic5EySCR4gSfJHZWzfDVviJJbA2GxnIEUlC/DhZFBI99/kSs61IjV6o3Uc+7Yr693/wnNm9mjyhuZjzbSFt3rRUQycKzN6xL1j8LEQ1QsYDbeaT0bm8d8VgGfhOEIoW2+5q6GHTbE=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: Yelp/kafka-utils

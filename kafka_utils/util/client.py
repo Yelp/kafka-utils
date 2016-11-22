@@ -19,8 +19,23 @@ from __future__ import unicode_literals
 import functools
 
 from kafka import KafkaClient
+from kafka.common import ConsumerCoordinatorNotAvailableCode
+from retrying import retry
 
 from kafka_utils.util.protocol import KafkaToolProtocol
+
+RETRY_ATTEMPTS = 5
+WAIT_BEFORE_RETRYING = 2 * 1000
+
+
+def _retry_if_kafka_consumer_coordination_error(exception):
+    """
+
+    :param exception: Exception to be checked if its of type
+        ConsumerCoordinatorNotAvailableCode
+    :return: boolean
+    """
+    return isinstance(exception, ConsumerCoordinatorNotAvailableCode)
 
 
 class KafkaToolClient(KafkaClient):
@@ -29,6 +44,9 @@ class KafkaToolClient(KafkaClient):
     commit requests to Kafka.
     '''
 
+    @retry(retry_on_exception=_retry_if_kafka_consumer_coordination_error,
+           stop_max_attempt_number=RETRY_ATTEMPTS,
+           wait_fixed=WAIT_BEFORE_RETRYING)
     def send_offset_commit_request_kafka(
             self, group, payloads=[],
             fail_on_error=True, callback=None):

@@ -87,11 +87,13 @@ def parse_args():
     )
     parser.add_argument(
         '--cluster-type',
+        '-t',
         required=True,
         help='cluster type, e.g. "generic"',
     )
     parser.add_argument(
         '--cluster-name',
+        '-c',
         help='cluster name, e.g. "dev" (defaults to local cluster)',
     )
     parser.add_argument(

@@ -1,5 +1,20 @@
-0.5.1 (September 23, 2016)
---------------------------
+0.5.4 (November 15, 2016)
+------------------------
+* Fix offset_get when the group name is stored only in kafka
+* Add offset_set retry when writing offsets to kafka
+
+0.5.3 (November 4, 2016)
+------------------------
+* Fix a rebalance bug that would not generate a convergent assignment
+* Check for pending asssignment before fetching the cluster topology
+* Docs fixes
+
+0.5.2 (November 1, 2016)
+------------------------
+* Add short options from cluster-type and cluster-name
+
+0.5.1 (October 14, 2016)
+------------------------
 * Add option to see offset-distance for a consumer-group
 
 0.5.0 (September 23, 2016)

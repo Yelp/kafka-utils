@@ -46,9 +46,12 @@ class ListTopics(OffsetManagerBase):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, None, None,
-            cluster_config, client,
-            False
+            groupid=args.groupid,
+            topic=None,
+            partitions=None,
+            cluster_config=cluster_config,
+            client=client,
+            fail_on_error=False,
         )
         if not topics_dict:
             print(

@@ -20,6 +20,7 @@ import sys
 
 from kazoo.exceptions import NoNodeError
 
+from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
 from kafka_utils.kafka_consumer_manager.util import prompt_user_input
 from kafka_utils.util.zookeeper import ZK
 
@@ -31,25 +32,12 @@ class OffsetManagerBase(object):
         cls,
         cluster_config,
         groupid,
+        storage='zookeeper',
         fail_on_error=True,
     ):
-        topics = []
-        with ZK(cluster_config) as zk:
-            # Query zookeeper to get the list of topics that this consumer is
-            # subscribed to.
-            try:
-                topics = zk.get_my_subscribed_topics(groupid)
-            except NoNodeError:
-                if fail_on_error:
-                    print(
-                        "Error: Consumer Group ID {groupid} does not exist.".format(
-                            groupid=groupid
-                        ),
-                        file=sys.stderr
-                    )
-                    sys.exit(1)
-
-        return topics
+        if storage == 'kafka':
+            return cls.get_topics_for_group_from_kafka(cluster_config, groupid)
+        return cls.get_topics_for_group_from_zookeeper(cluster_config, groupid, fail_on_error)
 
     @classmethod
     def preprocess_args(
@@ -59,6 +47,7 @@ class OffsetManagerBase(object):
         partitions,
         cluster_config,
         client,
+        storage='zookeeper',
         fail_on_error=True,
         quiet=False
     ):
@@ -80,6 +69,7 @@ class OffsetManagerBase(object):
         topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
+            storage,
             fail_on_error,
         )
         topics_dict = {}
@@ -133,6 +123,39 @@ class OffsetManagerBase(object):
     def add_parser(cls, subparsers):
         cls.setup_subparser(subparsers)
 
+    @classmethod
+    def get_topics_for_group_from_kafka(
+            cls,
+            cluster_config,
+            groupid
+    ):
+        kafka_group_reader = KafkaGroupReader(cluster_config)
+        return kafka_group_reader.read_groups().get(groupid, [])
+
+    @classmethod
+    def get_topics_for_group_from_zookeeper(
+            cls,
+            cluster_config,
+            groupid,
+            fail_on_error
+    ):
+        topics = []
+        with ZK(cluster_config) as zk:
+            # Query zookeeper to get the list of topics that this consumer is
+            # subscribed to.
+            try:
+                topics = zk.get_my_subscribed_topics(groupid)
+            except NoNodeError:
+                if fail_on_error:
+                    print(
+                        "Error: Consumer Group ID {groupid} does not exist.".format(
+                            groupid=groupid
+                        ),
+                        file=sys.stderr
+                    )
+                    sys.exit(1)
+        return topics
+
 
 class OffsetWriter(OffsetManagerBase):
 
@@ -144,6 +167,7 @@ class OffsetWriter(OffsetManagerBase):
         partitions,
         cluster_config,
         client,
+        storage='zookeeper',
         fail_on_error=True,
         force=False,
     ):

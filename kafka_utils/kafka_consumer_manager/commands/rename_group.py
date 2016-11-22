@@ -65,7 +65,11 @@ class RenameGroup(OffsetManagerBase):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.old_groupid, None, None, cluster_config, client
+            groupid=args.old_groupid,
+            topic=None,
+            partitions=None,
+            cluster_config=cluster_config,
+            client=client,
         )
         with ZK(cluster_config) as zk:
             try:
