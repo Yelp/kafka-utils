@@ -1,3 +1,7 @@
+0.5.5 (November 15, 2016)
+------------------------
+* Fix set_replication_factor command plan generation
+
 0.5.4 (November 15, 2016)
 ------------------------
 * Fix offset_get when the group name is stored only in kafka
