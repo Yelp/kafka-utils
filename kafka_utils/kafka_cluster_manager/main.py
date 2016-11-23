@@ -51,6 +51,8 @@ _log = logging.getLogger()
 
 GENETIC_BALANCER_MODULE = \
     "kafka_utils.kafka_cluster_manager.cluster_info.genetic_balancer"
+PARTITION_COUNT_BALANCER_MODULE = \
+    "kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer"
 
 
 def get_module(module_full_name):
@@ -124,47 +126,59 @@ def parse_args():
     parser.add_argument(
         '--group-parser',
         type=str,
-        help='Module containing an implementation of ReplicationGroupParser.'
-        'The module should be specified as path_to_include_to_py_path:module.'
-        'Ex: "/module/path:module.parser".'
+        help='Module containing an implementation of ReplicationGroupParser. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+        'Ex: "/module/path:module.parser". '
         'If not specified the default replication group parser will create '
         'only one group for all brokers.',
     )
     parser.add_argument(
         '--partition-measurer',
         type=str,
-        help='Module containing an implementation of PartitionMeasurer.'
-        'The module should be specified as path_to_include_to_py_path:module.'
-        'If not specified the default partition measurer will assign a weight'
-        'and size of 1 to all partitions.',
+        help='Module containing an implementation of PartitionMeasurer. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+        'Default: Assign each partition a weight and size of 1.'
     )
     parser.add_argument(
         '--measurer-args',
         type=str,
         action='append',
         default=[],
-        help='Argument list that is passed to the chosen PartitionMeasurer.'
+        help='Argument list that is passed to the chosen PartitionMeasurer. '
+        'Ex: --measurer-args "--n 10" will pass ["--n", "10"] to the '
+        'PartitionMeasurer\'s parse_args method.'
     )
     parser.add_argument(
         '--cluster-balancer',
         type=str,
-        help='Module containing an implementation of ClusterBalancer.'
-        'The module should be specified as path_to_include_to_py_path:module.'
-        'If not specified the default cluster balancer used will be'
-        'PartitionCountBalancer.',
+        help='Module containing an implementation of ClusterBalancer. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+        'Default: PartitionCountBalancer.',
     )
     parser.add_argument(
         '--balancer-args',
         type=str,
         action='append',
         default=[],
-        help='Argument list that is passed to the chosen ClusterBalancer.'
+        help='Argument list that is passed to the chosen ClusterBalancer. '
+        'Ex: --balancer-args "--n 10" will pass ["--n", "10"] to the '
+        'ClusterBalancer\'s parse_args method.'
+    )
+    parser.add_argument(
+        '--partition-count-balancer',
+        action='store_const',
+        const=PARTITION_COUNT_BALANCER_MODULE,
+        dest='cluster_balancer',
+        help='Use the number of partitions on each broker to balance the '
+        'cluster.',
     )
     parser.add_argument(
         '--genetic-balancer',
         action='store_const',
         const=GENETIC_BALANCER_MODULE,
         dest='cluster_balancer',
+        help='Use partition metrics and a genetic algorithm to balance the '
+        'cluster.',
     )
 
     subparsers = parser.add_subparsers()
