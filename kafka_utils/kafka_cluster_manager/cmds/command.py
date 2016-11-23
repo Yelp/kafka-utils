@@ -79,8 +79,8 @@ class ClusterManagerCmd(object):
             ct = ClusterTopology(
                 assignment,
                 brokers,
-                rg_parser.get_replication_group,
                 pm,
+                rg_parser.get_replication_group,
             )
             if len(ct.partitions) == 0:
                 self.log.info("The cluster is empty. No actions to perform.")

@@ -75,9 +75,6 @@ class UniformPartitionMeasurer(PartitionMeasurer):
     for all partitions.
     """
 
-    def __init__(self):
-        super(UniformPartitionMeasurer, self).__init__(None, None, None, None)
-
     def get_weight(self, _):
         return 1.0
 

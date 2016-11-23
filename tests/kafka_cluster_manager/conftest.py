@@ -154,8 +154,8 @@ def create_cluster_topology(
         return ClusterTopology(
             assignment,
             brokers,
-            get_replication_group_id,
             partition_measurer,
+            get_replication_group_id,
         )
 
     return build_cluster_topology

@@ -37,7 +37,7 @@ class ClusterBalancer(object):
             self.parse_args([])
         self.log = logging.getLogger(self.__class__.__name__)
 
-    def parse_args(self, _blancer_args):
+    def parse_args(self, _balancer_args):
         """Parse partition measurer command line arguments.
 
         :param _balancer_args: The list of arguments as strings.
