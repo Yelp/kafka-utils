@@ -195,7 +195,6 @@ class KafkaGroupReader:
                 self.log.warning("Got %s, retrying", e.__class__.__name__)
         return self.kafka_groups
 
-
     def parse_consumer_offset_message(self, message):
         key = bytearray(message.key)
         ((key_schema,), cur) = relative_unpack(b'>h', key, 0)
@@ -234,7 +233,7 @@ class KafkaGroupReader:
         return {partition: offset for partition, offset
                 in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
                 if offset.highmark > offset.lowmark and
-                    (partition is None or partition == consumer_offset_topic_partition) }
+                (partition is None or partition == consumer_offset_topic_partition)}
 
     def get_max_offset(self, partition):
         return self.watermarks[partition].highmark
