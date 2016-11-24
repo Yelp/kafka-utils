@@ -44,18 +44,24 @@ class KafkaCheckCmd(object):
 
     def run(self, cluster_config, args):
         self.cluster_config = cluster_config
+        if args.broker_id == -1:
+            args.broker_id = get_broker_id(args.data_path)
         self.args = args
         with ZK(self.cluster_config) as self.zk:
-            if args.controller_only:
-                check_run_on_controller(self.zk, self.args)
+            if args.controller_only and not is_controller(self.zk, args.broker_id):
+                terminate(
+                    status_code.OK,
+                    'Broker %s is not the controller, nothing to check' % (args.broker_id),
+                )
+            if args.first_broker_only and not is_first_broker(self.zk, args.broker_id):
+                terminate(
+                    status_code.OK,
+                    'Broker %s is not the lowest id, nothing to check' % (args.broker_id),
+                )
             return self.run_command()
 
     def add_subparser(self, subparsers):
         self.build_subparser(subparsers).set_defaults(command=self.run)
-
-
-def get_controller_id(zk):
-    return zk.get_json('/controller').get('brokerid')
 
 
 def parse_meta_properties_file(content):
@@ -109,20 +115,13 @@ def get_broker_id(data_path):
     return read_generated_broker_id(meta_properties_path)
 
 
-def check_run_on_controller(zk, args):
-    """Kafka 0.9 supports automatic broker ids. If args.broker_id is set to -1,
-    it will call get_broker_id() for parse broker_id from meta.properties file.
+def is_controller(zk, broker_id):
+    """Returns true if the specified broker_id is the controller of the cluster,
+    false otherwise.
     """
-    if args.broker_id is None:
-        terminate(status_code.WARNING, "Broker id is not specified")
+    return broker_id == zk.get_json('/controller').get('brokerid')
 
-    if args.broker_id != -1:
-        broker_id = args.broker_id
-    else:
-        broker_id = get_broker_id(args.data_path)
 
-    controller_id = get_controller_id(zk)
-
-    # This check is only executed by the controller
-    if broker_id != controller_id:
-        terminate(status_code.OK, 'Broker %s is not the controller, nothing to check' % (broker_id))
+def is_first_broker(zk, broker_id):
+    """Returns true if broker_id is the lowest broker id in the cluster, false otherwise."""
+    return broker_id == min(zk.get_brokers().keys())

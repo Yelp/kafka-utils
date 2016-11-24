@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 from kafka_utils.kafka_check import status_code
-from kafka_utils.kafka_check.commands.command import get_broker_id
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.util.metadata import get_topic_partition_metadata
 
@@ -32,16 +31,8 @@ class UnderReplicatedCmd(KafkaCheckCmd):
             'under_replicated',
             description='Check under replicated partitions for all '
                         'brokers in cluster.',
-            help='This command will sum all under replicated partitions '
-                 'for each broker if any. It will query jolokia port for '
-                 'receive this data.',
-        )
-        subparser.add_argument(
-            '--first-broker-only',
-            action='store_true',
-            help='If this parameter is specified, it will do nothing and succeed '
-                 'on not first brokers from Kafka cluster. Set --broker-id to -1 '
-                 'to read broker-id from --data-path. Default: %(default)s',
+            help='This command will fail if there are any under replicated '
+                 'partitions in the cluster.',
         )
 
         return subparser
@@ -49,18 +40,7 @@ class UnderReplicatedCmd(KafkaCheckCmd):
     def run_command(self):
         """Under_replicated command, checks number of under replicated partitions for
         all brokers in the Kafka cluster."""
-        broker_list = self.zk.get_brokers()
-
-        if self.args.first_broker_only:
-            if self.args.broker_id is None:
-                return status_code.WARNING, 'Broker id is not specified'
-
-            if not _check_run_on_first_broker(broker_list, self.args.broker_id, self.args.data_path):
-                return status_code.OK, 'Provided broker is not the first in broker-list.'
-
-        under_replicated = _get_under_replicated(
-            self.cluster_config.broker_list
-        )
+        under_replicated = _get_under_replicated(self.cluster_config.broker_list)
 
         if not under_replicated:
             return status_code.OK, 'No under replicated partitions.'
@@ -76,15 +56,6 @@ class UnderReplicatedCmd(KafkaCheckCmd):
                 under_replicated=len(under_replicated),
             )
             return status_code.CRITICAL, msg
-
-
-def _check_run_on_first_broker(broker_list, broker_id, data_path):
-    """Returns true if the first broker in broker_list the same as in args."""
-    broker_id = broker_id if broker_id != -1 else get_broker_id(data_path)
-
-    first_broker_id, _ = min(broker_list.items())
-
-    return broker_id == first_broker_id
 
 
 def _process_topic_partition_metadata(topic_partitions_metadata):
