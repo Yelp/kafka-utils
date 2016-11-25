@@ -154,7 +154,7 @@ class KafkaGroupReader:
         self.finished_partitions = set()
         self.retry_max = 3
 
-    def read_group(self, group_id=None):
+    def read_group(self, group_id):
         partition = get_group_partition(group_id)
         return self.read_groups(partition).get(group_id, [])
 
@@ -224,16 +224,16 @@ class KafkaGroupReader:
         else:  # No offset means group deletion
             self.kafka_groups.pop(group, None)
 
-    def get_current_watermarks(self, consumer_offset_topic_partition=None):
+    def get_current_watermarks(self, partition=None):
         self.consumer._client.load_metadata_for_topics()
         offsets = get_topics_watermarks(
             self.consumer._client,
             [CONSUMER_OFFSET_TOPIC],
         )
-        return {partition: offset for partition, offset
+        return {part: offset for part, offset
                 in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
                 if offset.highmark > offset.lowmark and
-                (partition is None or partition == consumer_offset_topic_partition)}
+                (partition is None or part == partition)}
 
     def get_max_offset(self, partition):
         return self.watermarks[partition].highmark
