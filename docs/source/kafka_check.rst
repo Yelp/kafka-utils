@@ -1,12 +1,36 @@
 Kafka Check
 ***********
 
+The kafka-check command performs multiple checks on the health of the cluster.
+Each subcommand will run a different check. The tool can run on the broker
+itself or on any other machine, and it will check the health of the entire
+cluster.
+
+One possible way to deploy the tool is to install the kafka-utils package on
+every broker, and schedule kafka-check to run periodically on each machine
+with cron. Kafka-check provides two simple coordination mechanisms to make
+sure that the check only runs on a single broker per cluster.
+
+Coordination strategies:
+* First broker only: the script will only run on the broker with lowest
+  broker id.
+* Controller only: the script will only run on the controller of the cluster.
+
+Coordination parameters:
+* :code:`--broker-id`: the id of the broker where the script is running.
+  Set it to -1 if automatic broker ids are used.
+* :code:`--data-path DATA_PATH`: Path to the Kafka data folder, used in case of
+  automatic broker ids to find the assigned id.
+* :code:`--controller-only`: if is specified, the script will only run on the
+  controller. The execution on other brokers won't perform any check and it
+  will always succeed.
+* :code:`--first-broker-only`: if specified, the command will only perform the
+  check if broker_id is the lowest broker id in the cluster. If it is not the '
+  lowest, it will not perform any check and succeed immediately.
+
 Checking in-sync replicas
 =========================
-This kafka tool provides the ability to check in-sync replicas for each topic-partition
-in the cluster.
-
-The :code:`min_isr` command checks if the number of in-sync replicas for a
+The :code:`min_isr` subcommand checks if the number of in-sync replicas for a
 partition is equal or greater than the minimum number of in-sync replicas
 configured for the topic the partition belongs to. A topic specific
 :code:`min.insync.replicas` overrides the given default.
@@ -15,10 +39,6 @@ The parameters for min_isr check are:
 
 * :code:`--default_min_isr DEFAULT_MIN_ISR`: Default min.isr value for cases without
   settings in Zookeeper for some topics.
-* :code:`--data-path DATA_PATH`: Path to the Kafka data folder.
-* :code:`--controller-only`: If this parameter is specified, it will do nothing and
-  succeed on non-controller brokers. If :code:`--broker-id` is also set as -1
-  then broker-id will be computed from given data-path.
 
 .. code-block:: bash
 
@@ -37,20 +57,12 @@ In case of min isr violations:
 
 Checking under replicated partitions
 ====================================
-This kafka tool provides the ability to check and report number of under replicated
-partitions for all brokers in the cluster.
-
-The :code:`under_replicated` command checks if the number of under replicated partitions
+The :code:`under_replicated` subcommand checks if the number of under replicated partitions
 is equal to zero. It will report the aggregated result of under replicated partitions
 of each broker if any.
 
 The parameters specific to under_replicated check are:
 
-* :code:`--first-broker-only`: If this parameter is specified, the command will
-  check for under-replicated partitions for given broker only if it's the first
-  broker in broker-list fetched from zookeeper. Otherwise, it does nothing and succeeds.
-  If :code:`--broker-id` is also set as -1 then broker-id will be computed from given
-  data-path.
 * :code:`--minimum-replication MINIMUM_REPLICATION`: Minimum number of in-sync replicas
   for under replicated partition. If the current number of in-sync replicas for partition which has
   under replicated replicas below that param, the check will tell about this topic-partition.
@@ -73,3 +85,14 @@ In case where some partitions are under-replicated.
 
    $ kafka-check --cluster-type=sample_type under_replicated
    CRITICAL: 2 under replicated partitions.
+
+Checking offline partitions
+===========================
+The :code:`offline` subcommand checks if there are any offline partitions in the cluster.
+If any offline partition is found, it will terminate with an error, indicating the number
+of offline partitions.
+
+.. code-block:: bash
+
+   $ kafka-check --cluster-type=sample_type offline
+   CRITICAL: 64 offline partitions.

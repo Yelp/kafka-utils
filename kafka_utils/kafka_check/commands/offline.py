@@ -54,7 +54,7 @@ class OfflineCmd(KafkaCheckCmd):
 
 
 def _get_offline_partitions(cluster_config):
-    """Return set with under replicated partitions."""
+    """Return a set containing the offline partitions"""
 
     metadata = get_topic_partition_metadata(cluster_config.broker_list)
     offline = set()

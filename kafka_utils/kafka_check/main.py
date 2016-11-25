@@ -89,7 +89,7 @@ def parse_args():
         '--first-broker-only',
         action='store_true',
         help='If specified, the command will only perform the check if '
-        'broker_id the lowest broker id in the cluster. If it is not the lowest, '
+        'broker_id is the lowest broker id in the cluster. If it is not the lowest, '
         'it will not perform any check and succeed immediately. '
         'Default: %(default)s',
     )
@@ -116,6 +116,12 @@ def run():
 
     # to prevent flooding for sensu-check.
     logging.getLogger('kafka').setLevel(logging.CRITICAL)
+
+    if args.controller_only and args.first_broker_only:
+        terminate(
+            status_code.WARNING,
+            "Only one of controller_only and first_broker_only should be used",
+        )
 
     if (args.controller_only or args.first_broker_only) and args.broker_id is None:
         terminate(status_code.WARNING, "broker_id is not specified")
