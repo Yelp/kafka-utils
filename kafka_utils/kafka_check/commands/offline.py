@@ -16,7 +16,8 @@ from __future__ import absolute_import
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
-from kafka_utils.util.metadata import get_topic_partition_metadata
+from kafka_utils.util.metadata import get_topic_partition_with_error
+from kafka_utils.util.metadata import LEADER_NOT_AVAILABLE_ERROR
 
 
 class OfflineCmd(KafkaCheckCmd):
@@ -25,16 +26,18 @@ class OfflineCmd(KafkaCheckCmd):
         subparser = subparsers.add_parser(
             'offline',
             description='Check offline partitions on the specified broker',
-            help='This command will sum all under replicated partitions '
-                 'for each broker if any. It will query jolokia port for '
-                 'receive this data.',
+            help='This subcommand will fail if there are any offline partitions '
+            'in the cluster.'
         )
 
         return subparser
 
     def run_command(self):
         """Checks the number of offline partitions"""
-        offline = _get_offline_partitions(self.cluster_config)
+        offline = get_topic_partition_with_error(
+            self.cluster_config,
+            LEADER_NOT_AVAILABLE_ERROR,
+        )
 
         if not offline:
             return status_code.OK, 'No offline partitions.'
@@ -51,16 +54,3 @@ class OfflineCmd(KafkaCheckCmd):
                 offline_n=len(offline),
             )
             return status_code.CRITICAL, msg
-
-
-def _get_offline_partitions(cluster_config):
-    """Return a set containing the offline partitions"""
-
-    metadata = get_topic_partition_metadata(cluster_config.broker_list)
-    offline = set()
-    for partitions in metadata.values():
-        for partition_metadata in partitions.values():
-            if int(partition_metadata.error) == 5:
-                offline.add((partition_metadata.topic, partition_metadata.partition))
-
-    return offline

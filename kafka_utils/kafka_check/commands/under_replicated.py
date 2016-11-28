@@ -16,12 +16,8 @@ from __future__ import absolute_import
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
-from kafka_utils.util.metadata import get_topic_partition_metadata
-
-
-# This check will look on lines with that error-code in error field
-# from kafka metadata response.
-REPLICA_NOT_AVAILABLE_ERROR = 9
+from kafka_utils.util.metadata import get_topic_partition_with_error
+from kafka_utils.util.metadata import REPLICA_NOT_AVAILABLE_ERROR
 
 
 class UnderReplicatedCmd(KafkaCheckCmd):
@@ -40,7 +36,10 @@ class UnderReplicatedCmd(KafkaCheckCmd):
     def run_command(self):
         """Under_replicated command, checks number of under replicated partitions for
         all brokers in the Kafka cluster."""
-        under_replicated = _get_under_replicated(self.cluster_config.broker_list)
+        under_replicated = get_topic_partition_with_error(
+            self.cluster_config,
+            REPLICA_NOT_AVAILABLE_ERROR,
+        )
 
         if not under_replicated:
             return status_code.OK, 'No under replicated partitions.'
@@ -56,29 +55,3 @@ class UnderReplicatedCmd(KafkaCheckCmd):
                 under_replicated=len(under_replicated),
             )
             return status_code.CRITICAL, msg
-
-
-def _process_topic_partition_metadata(topic_partitions_metadata):
-    """Return set with under replicated partitions."""
-    under_replicated = set()
-    for partitions in topic_partitions_metadata.values():
-        for metadata in partitions.values():
-            if int(metadata.error) == REPLICA_NOT_AVAILABLE_ERROR:
-                under_replicated.add((metadata.topic, metadata.partition))
-
-    return under_replicated
-
-
-def _get_under_replicated(broker_list):
-    """Requests kafka-broker for metadata info for topics.
-    Then checks if topic-partition is under replicated and there are not enough
-    replicas in sync. Returns set of under replicated partitions.
-
-    :param dictionary broker_list: dictionary with brokers information, broker_id is key
-    :returns set: with under replicated partitions
-
-        * set: { (topic, partition), ... }
-    """
-    metadata = get_topic_partition_metadata(broker_list)
-
-    return _process_topic_partition_metadata(metadata)

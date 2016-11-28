@@ -26,6 +26,7 @@ from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
 from kafka_utils.kafka_check.commands.offline import OfflineCmd
 from kafka_utils.kafka_check.commands.under_replicated import UnderReplicatedCmd
+from kafka_utils.kafka_check.metadata_file import get_broker_id
 from kafka_utils.kafka_check.status_code import terminate
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -123,8 +124,11 @@ def run():
             "Only one of controller_only and first_broker_only should be used",
         )
 
-    if (args.controller_only or args.first_broker_only) and args.broker_id is None:
-        terminate(status_code.WARNING, "broker_id is not specified")
+    if args.controller_only or args.first_broker_only:
+        if args.broker_id is None:
+            terminate(status_code.WARNING, "broker_id is not specified")
+        elif args.broker_id == -1:
+            args.broker_id = get_broker_id(args.data_path)
 
     try:
         cluster_config = config.get_cluster_config(
