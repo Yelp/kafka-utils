@@ -113,7 +113,57 @@ class RebalanceCmd(ClusterManagerCmd):
 
     def run_command(self, cluster_topology, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
-        if self.args.auto_max_movement_size:
+
+        # The ideal weight of each broker is total_weight / broker_count.
+        # It should be possible to remove partitions from each broker until
+        # the weight of the broker is less than this ideal value, otherwise it
+        # is impossible to balance the cluster. If --max-movement-size is too
+        # small, exit with an error.
+        if self.args.max_movement_size:
+            total_weight = sum(
+                partition.weight
+                for partition in cluster_topology.partitions.itervalues()
+            )
+            broker_count = len(cluster_topology.brokers)
+            optimal_weight = total_weight / broker_count
+
+            broker, max_unmovable_on_one_broker = max((
+                (broker, sum(
+                    partition.weight
+                    for partition in broker.partitions
+                    if partition.size > self.args.max_movement_size
+                ))
+                for broker in cluster_topology.brokers.values()),
+                key=lambda t: t[1],
+            )
+
+            if max_unmovable_on_one_broker >= optimal_weight:
+                sorted_partitions = sorted(
+                    [
+                        partition
+                        for partition in broker.partitions
+                        if partition.size > self.args.max_movement_size
+                    ],
+                    reverse=True,
+                    key=lambda partition: partition.size,
+                )
+
+                for partition in sorted_partitions:
+                    max_unmovable_on_one_broker -= partition.weight
+                    if max_unmovable_on_one_broker <= optimal_weight:
+                        required_max_movement_size = partition.size
+                        break
+
+                self.log.error(
+                    'Max movement size {max_movement_size} is too small, it is'
+                    ' not be possible to balance the cluster. A max movement'
+                    ' size of {required} or higher is required.'.format(
+                        max_movement_size=self.args.max_movement_size,
+                        required=required_max_movement_size,
+                    )
+                )
+                sys.exit(1)
+        elif self.args.auto_max_movement_size:
             self.args.max_movement_size = max(
                 partition.size
                 for partition in cluster_topology.partitions.itervalues()
