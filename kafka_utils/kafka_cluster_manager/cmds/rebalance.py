@@ -16,6 +16,8 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
+from kafka_utils.kafka_cluster_manager.cluster_info.display \
+    import display_cluster_topology_stats
 from kafka_utils.util import positive_float
 from kafka_utils.util import positive_int
 from kafka_utils.util.validation import assignment_to_plan
@@ -87,13 +89,27 @@ class RebalanceCmd(ClusterManagerCmd):
                  ' RECOMMENDATION: Should be at least the maximum partition-size'
                  ' on the cluster.',
         )
+        subparser.add_argument(
+            '--show-stats',
+            action='store_true',
+            help='Output post-rebalance cluster topology stats.',
+        )
         return subparser
 
     def run_command(self, cluster_topology, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
         base_assignment = cluster_topology.assignment
+        base_score = cluster_balancer.score()
         cluster_balancer.rebalance()
         assignment = cluster_topology.assignment
+        score = cluster_balancer.score()
+
+        if self.args.show_stats:
+            display_cluster_topology_stats(cluster_topology, base_assignment)
+            if base_score is not None and score is not None:
+                print('\nScore before: %f' % base_score)
+                print('Score after:  %f' % score)
+                print('Score improvement: %f' % (score - base_score))
 
         if not validate_plan(
             assignment_to_plan(assignment),
