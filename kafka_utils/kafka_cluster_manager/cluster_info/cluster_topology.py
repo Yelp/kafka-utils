@@ -34,19 +34,12 @@ class ClusterTopology(object):
         :param brokers: dict representing the active brokers of the
             cluster broker_id: metadata (metadata is the content of the zookeeper
             node of the broker)
+        :param partition_measurer: Instance of PartitionMeasurer to use when
+            assigning partitions a weight and size.
         :param extract_group: function used to extract the replication group
             from each broker. The extract_group function is called for each
             broker passing the Broker object as argument. It should return a
             string representing the ReplicationGroup id.
-        :param partition_weight: function used to extract the weight of each
-            partition. The partition_weight function is called for each
-            partition passing the partition name as its only argument. It
-            should return a number representing the relative weight of the
-            partition.
-        :param partition_size: function used to extract the size of each
-            partition. The partition_size function is called for each partition
-            passing the partition name as its only argument. It should return
-            a number representing the relative size of the partition.
     """
 
     def __init__(

@@ -72,26 +72,30 @@ class GeneticBalancer(ClusterBalancer):
 
     def parse_args(self, balancer_args):
         parser = argparse.ArgumentParser(
-            prog='GeneticBalancer',
+            prog=self.__class__.__name__,
             description='Perform cluster rebalancing using a genetic algorithm.',
         )
         parser.add_argument(
             '--num-gens',
             type=positive_int,
             default=DEFAULT_NUM_GENS,
-            help='Number of generations of the genetic algorithm to perform.',
+            help='Number of generations of the genetic algorithm to perform. '
+            'Should be at leasn max-partition-movements + max-leader-changes.'
+            ' Default: %(default)',
         )
         parser.add_argument(
             '--max-pop',
             type=positive_int,
             default=DEFAULT_MAX_POP,
-            help='Maximum population carried over between generations.',
+            help='Maximum population carried over between generations. '
+            'Default: %(default)',
         )
         parser.add_argument(
             '--max-exploration',
             type=positive_int,
             default=DEFAULT_MAX_EXPLORATION,
-            help='Maximum exploration attempts to make each generation.',
+            help='Maximum exploration attempts to make each generation. '
+            'Default: %(default)',
         )
         parser.add_argument(
             '--partition-weight-cv-score-weight',
