@@ -12,7 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import logging
+import sys
 
 from .cluster_balancer import ClusterBalancer
 from .error import BrokerDecommissionError
@@ -38,6 +40,24 @@ class PartitionCountBalancer(ClusterBalancer):
     def __init__(self, cluster_topology, args):
         super(PartitionCountBalancer, self).__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
+
+    def _set_arg_default(self, arg, value):
+        if not hasattr(self.args, arg):
+            setattr(self.args, arg, value)
+
+    def parse_args(self, balancer_args):
+        self._set_arg_default('replication_groups', False)
+        self._set_arg_default('brokers', False)
+        self._set_arg_default('leaders', False)
+        self._set_arg_default('max_partition_movements', None)
+        self._set_arg_default('max_movement_size', None)
+        self._set_arg_default('max_leader_changes', None)
+        parser = argparse.ArgumentParser(
+            prog=self.__class__.__name__,
+            description='Balance the cluster based on the number of partitions'
+            ' per broker and replication-group.',
+        )
+        parser.parse_args(balancer_args, self.args)
 
     def decommission_brokers(self, broker_ids):
         """Decommission a list of brokers trying to keep the replication group
@@ -119,6 +139,15 @@ class PartitionCountBalancer(ClusterBalancer):
                     pass
 
     def rebalance(self):
+        if self.args.max_movement_size:
+            self.log.error(
+                '--max-movement-size can not be specified for {balancer}.'
+                ' Exiting.'.format(
+                    balancer=self.__class__.__name__,
+                ),
+            )
+            sys.exit(1)
+
         if self.args.replication_groups:
             self.log.info(
                 'Re-balancing replica-count over replication groups: %s',

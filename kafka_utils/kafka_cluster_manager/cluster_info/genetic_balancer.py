@@ -70,7 +70,20 @@ class GeneticBalancer(ClusterBalancer):
         super(GeneticBalancer, self).__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
 
+    def _set_arg_default(self, arg, value):
+        if not hasattr(self.args, arg):
+            setattr(self.args, arg, value)
+
     def parse_args(self, balancer_args):
+        # If the command being run is not rebalance, then these arguments
+        # won't exist
+        self._set_arg_default('replication_groups', False)
+        self._set_arg_default('brokers', False)
+        self._set_arg_default('leaders', False)
+        self._set_arg_default('max_partition_movements', None)
+        self._set_arg_default('max_movement_size', None)
+        self._set_arg_default('max_leader_changes', None)
+
         parser = argparse.ArgumentParser(
             prog=self.__class__.__name__,
             description='Perform cluster rebalancing using a genetic algorithm.',
@@ -143,6 +156,17 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
+        if self.args.max_movement_size and \
+                self.args.num_gens < self.args.max_partition_movements:
+            self.log.warning(
+                "num-gens ({num_gens}) is less than max-partition-movements"
+                " ({max_partition_movements}). max-partition-movements will"
+                " never be reached.".format(
+                    num_gens=self.args.num_gens,
+                    max_partition_movements=self.args.max_partition_movements,
+                )
+            )
+
         if self.args.replication_groups:
             self.log.info("Rebalancing replicas across replication groups...")
             rg_movement_count, rg_movement_size = self.rebalance_replicas(
