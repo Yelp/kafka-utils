@@ -18,6 +18,8 @@ import sys
 from .command import ClusterManagerCmd
 from kafka_utils.kafka_cluster_manager.cluster_info.display \
     import display_cluster_topology_stats
+from kafka_utils.kafka_cluster_manager.cluster_info.stats \
+    import get_replication_group_imbalance_stats
 from kafka_utils.util import positive_float
 from kafka_utils.util import positive_int
 from kafka_utils.util.validation import assignment_to_plan
@@ -94,15 +96,32 @@ class RebalanceCmd(ClusterManagerCmd):
             action='store_true',
             help='Output post-rebalance cluster topology stats.',
         )
+        subparser.add_argument(
+            '--score-improvement-threshold',
+            type=positive_float,
+            default=None,
+            help='The minimum required improvement in cluster topology score'
+            ' for an assignment to be applied. Default: None',
+        )
         return subparser
 
     def run_command(self, cluster_topology, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
         base_assignment = cluster_topology.assignment
         base_score = cluster_balancer.score()
+        rg_imbalance, _ = get_replication_group_imbalance_stats(
+            cluster_topology.rgs.values(),
+            cluster_topology.partitions.values()
+        )
+
         cluster_balancer.rebalance()
+
         assignment = cluster_topology.assignment
         score = cluster_balancer.score()
+        new_rg_imbalance, _ = get_replication_group_imbalance_stats(
+            cluster_topology.rgs.values(),
+            cluster_topology.partitions.values()
+        )
 
         if self.args.show_stats:
             display_cluster_topology_stats(cluster_topology, base_assignment)
@@ -117,6 +136,40 @@ class RebalanceCmd(ClusterManagerCmd):
         ):
             self.log.error('Invalid latest-cluster assignment. Exiting.')
             sys.exit(1)
+
+        if self.args.score_improvement_threshold:
+            if base_score is None or score is None:
+                self.log.error(
+                    '%s cannot assign scores so --score-improvement-threshold'
+                    ' cannot be used.',
+                    cluster_balancer.__class__.__name__,
+                )
+                return
+            else:
+                score_improvement = score - base_score
+                if score_improvement >= self.args.score_improvement_threshold:
+                    self.log.info(
+                        'Score improvement %f is greater than the threshold %f.'
+                        ' Continuing to apply the assignment.',
+                        score_improvement,
+                        self.args.score_improvement_threshold,
+                    )
+                elif new_rg_imbalance < rg_imbalance:
+                    self.log.info(
+                        'Score improvement %f is less than the threshold %f,'
+                        ' but replica balance has improved. Continuing to'
+                        ' apply the assignment.',
+                        score_improvement,
+                        self.args.score_improvement_threshold,
+                    )
+                else:
+                    self.log.info(
+                        'Score improvement %f is less than the threshold %f.'
+                        ' Assignment will not be applied.',
+                        score_improvement,
+                        self.args.score_improvement_threshold,
+                    )
+                    return
 
         # Reduce the proposed assignment based on max_partition_movements
         # and max_leader_changes
