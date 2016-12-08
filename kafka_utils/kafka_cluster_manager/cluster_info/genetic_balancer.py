@@ -356,6 +356,9 @@ class GeneticBalancer(ClusterBalancer):
             self.cluster_topology.update_cluster_topology(state.assignment)
             osr = {b for b in osr if b in partition.replicas}
 
+    def score(self):
+        return self._score(_State(self.cluster_topology), score_movement=False)
+
     def _explore(self, pop):
         """Exploration phase: Find a set of candidate states based on
         the current population.
@@ -469,7 +472,7 @@ class GeneticBalancer(ClusterBalancer):
             [:self.args.max_pop]
         )
 
-    def _score(self, state):
+    def _score(self, state, score_movement=True):
         """Score a state based on how balanced it is. A higher score represents
         a more balanced state.
 
@@ -482,9 +485,9 @@ class GeneticBalancer(ClusterBalancer):
             score += -1 * state.broker_leader_weight_cv
             score += -1 * state.weighted_topic_broker_imbalance
 
-        if self.args.max_movement_size is not None:
+        if self.args.max_movement_size is not None and score_movement:
             score += -1 * state.movement_size / self.args.max_movement_size
-        if self.args.max_leader_changes is not None:
+        if self.args.max_leader_changes is not None and score_movement:
             score += -1 * state.leader_movement_count / self.args.max_leader_changes
 
         return score

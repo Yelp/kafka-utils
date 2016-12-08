@@ -77,6 +77,13 @@ class ClusterBalancer(object):
         """
         raise NotImplementedError("Implement in subclass")
 
+    def score(self):
+        """Give the current cluster topology a numerical score.
+        The score should be relative to other possible cluster assignments.
+        A result of None signifies that this ClusterBalancer cannot assign a score.
+        """
+        return None
+
     def rebalance_replicas(
             self,
             max_movement_count=None,

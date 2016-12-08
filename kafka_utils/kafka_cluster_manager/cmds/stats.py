@@ -48,17 +48,26 @@ class StatsCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, cluster_topology, _):
+    def run_command(self, cluster_topology, cluster_balancer):
         if self.args.plan_file_path:
             base_assignment = cluster_topology.assignment
+            base_score = cluster_balancer.score()
 
             self.log.info(
                 'Integrating given assignment-plan in current cluster-topology.'
             )
             cluster_topology.update_cluster_topology(self.get_assignment())
+            score = cluster_balancer.score()
             display_cluster_topology_stats(cluster_topology, base_assignment)
+            if score is not None and base_score is not None:
+                print('\nScore before: %f' % base_score)
+                print('Score after: %f' % score)
+                print('Score improvement %f' % (score - base_score))
         else:
+            score = cluster_balancer.score()
             display_cluster_topology_stats(cluster_topology)
+            if score:
+                print('\nScore: %f' % score)
 
     def get_assignment(self):
         """Parse the given json plan in dict format."""
