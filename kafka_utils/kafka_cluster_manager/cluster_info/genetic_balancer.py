@@ -14,6 +14,7 @@
 # limitations under the License.
 from __future__ import division
 
+import argparse
 import logging
 import random
 import time
@@ -29,14 +30,15 @@ from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.stats \
     import coefficient_of_variation
+from kafka_utils.util import positive_int
 from kafka_utils.util import tuple_alter
 from kafka_utils.util import tuple_remove
 from kafka_utils.util import tuple_replace
 
 RANDOM_SEED = 0xcafca
-NUM_GENERATIONS = 100
-MAX_POPULATION = 25
-MAX_EXPLORATION_ATTEMPTS = 1000
+DEFAULT_NUM_GENS = 100
+DEFAULT_MAX_POP = 25
+DEFAULT_MAX_EXPLORATION = 1000
 
 
 class GeneticBalancer(ClusterBalancer):
@@ -51,15 +53,31 @@ class GeneticBalancer(ClusterBalancer):
     def __init__(self, cluster_topology, args):
         super(GeneticBalancer, self).__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
-        self._num_gens = NUM_GENERATIONS
-        self._max_pop = MAX_POPULATION
-        self._exploration_attempts = MAX_EXPLORATION_ATTEMPTS
-        self._max_movement_count = args.max_partition_movements
-        self._max_movement_size = args.max_movement_size
-        self._max_leader_movement_count = args.max_leader_changes
-        self._rebalance_replication_groups = args.replication_groups
-        self._rebalance_brokers = args.brokers
-        self._rebalance_leaders = args.leaders
+
+    def parse_args(self, balancer_args):
+        parser = argparse.ArgumentParser(
+            prog='GeneticBalancer',
+            description='Perform cluster rebalancing using a genetic algorithm.',
+        )
+        parser.add_argument(
+            '--num-gens',
+            type=positive_int,
+            default=DEFAULT_NUM_GENS,
+            help='Number of generations of the genetic algorithm to perform.',
+        )
+        parser.add_argument(
+            '--max-pop',
+            type=positive_int,
+            default=DEFAULT_MAX_POP,
+            help='Maximum population carried over between generations.',
+        )
+        parser.add_argument(
+            '--max-exploration',
+            type=positive_int,
+            default=DEFAULT_MAX_EXPLORATION,
+            help='Maximum exploration attempts to make each generation.',
+        )
+        parser.parse_args(balancer_args, self.args)
 
     def rebalance(self):
         """The genetic rebalancing algorithm runs for a fixed number of
@@ -70,11 +88,11 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
-        if self._rebalance_replication_groups:
+        if self.args.replication_groups:
             self.log.info("Rebalancing replicas across replication groups...")
             rg_movement_count, rg_movement_size = self.rebalance_replicas(
-                max_movement_count=self._max_movement_count,
-                max_movement_size=self._max_movement_size,
+                max_movement_count=self.args.max_partition_movements,
+                max_movement_size=self.args.max_movement_size,
             )
             self.log.info(
                 "Done rebalancing replicas. %d partitions moved.",
@@ -95,7 +113,7 @@ class GeneticBalancer(ClusterBalancer):
         state.movement_size = rg_movement_size
         pop = {state}
 
-        do_rebalance = self._rebalance_brokers or self._rebalance_leaders
+        do_rebalance = self.args.brokers or self.args.leaders
 
         # Cannot rebalance when all partitions have zero weight because the
         # score function is undefined.
@@ -108,7 +126,7 @@ class GeneticBalancer(ClusterBalancer):
         if do_rebalance:
             self.log.info("Rebalancing with genetic algorithm.")
             # Run the genetic algorithm for a fixed number of generations.
-            for i in xrange(self._num_gens):
+            for i in xrange(self.args.num_gens):
                 start = time.time()
                 pop_candidates = self._explore(pop)
                 pop = self._prune(pop_candidates)
@@ -345,12 +363,12 @@ class GeneticBalancer(ClusterBalancer):
         :param pop: The starting population for this generation.
         """
         new_pop = set(pop)
-        exploration_per_state = self._exploration_attempts // len(pop)
+        exploration_per_state = self.args.max_exploration // len(pop)
 
         mutations = []
-        if self._rebalance_brokers:
+        if self.args.brokers:
             mutations.append(self._move_partition)
-        if self._rebalance_leaders:
+        if self.args.leaders:
             mutations.append(self._move_leadership)
 
         for state in pop:
@@ -395,19 +413,21 @@ class GeneticBalancer(ClusterBalancer):
 
         # Ensure movement size capacity is not surpassed
         partition_size = state.partition_sizes[partition]
-        if (self._max_movement_size is not None and
-                state.movement_size + partition_size > self._max_movement_size):
+        if (self.args.max_movement_size is not None and
+                state.movement_size + partition_size >
+                self.args.max_movement_size):
             return None
 
         # Ensure leader change limit is not surpassed
         if (state.replicas[partition][0] == source and
-                self._max_leader_movement_count is not None and
-                state.leader_movement_count >= self._max_leader_movement_count):
+                self.args.max_leader_changes is not None and
+                state.leader_movement_count >=
+                self.args.max_leader_changes):
             return None
 
         # Ensure movement count capacity is not surpassed
-        if (self._max_movement_count is not None and
-                state.movement_count >= self._max_movement_count):
+        if (self.args.max_partition_movements is not None and
+                state.movement_count >= self.args.max_partition_movements):
             return None
 
         return state.move(partition, source, dest)
@@ -432,8 +452,8 @@ class GeneticBalancer(ClusterBalancer):
             return None
         dest_index = random.randint(1, len(state.replicas[partition]) - 1)
         dest = state.replicas[partition][dest_index]
-        if (self._max_leader_movement_count is not None and
-                state.leader_movement_count >= self._max_leader_movement_count):
+        if (self.args.max_leader_changes is not None and
+                state.leader_movement_count >= self.args.max_leader_changes):
             return None
 
         return state.move_leadership(partition, dest)
@@ -446,7 +466,7 @@ class GeneticBalancer(ClusterBalancer):
         """
         return set(
             sorted(pop_candidates, key=self._score, reverse=True)
-            [:self._max_pop]
+            [:self.args.max_pop]
         )
 
     def _score(self, state):
@@ -462,10 +482,10 @@ class GeneticBalancer(ClusterBalancer):
             score += -1 * state.broker_leader_weight_cv
             score += -1 * state.weighted_topic_broker_imbalance
 
-        if self._max_movement_size is not None:
-            score += -1 * state.movement_size / self._max_movement_size
-        if self._max_leader_movement_count is not None:
-            score += -1 * state.leader_movement_count / self._max_leader_movement_count
+        if self.args.max_movement_size is not None:
+            score += -1 * state.movement_size / self.args.max_movement_size
+        if self.args.max_leader_changes is not None:
+            score += -1 * state.leader_movement_count / self.args.max_leader_changes
 
         return score
 

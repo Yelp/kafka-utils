@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from argparse import Namespace
+
 import mock
 import pytest
 
@@ -34,7 +36,9 @@ class TestPartitionCountBalancer(object):
     @pytest.fixture
     def create_balancer(self):
         def build_balancer(cluster_topology, **kwargs):
-            args = mock.Mock(**kwargs)
+            args = mock.Mock(spec=Namespace)
+            args.balancer_args = []
+            args.configure_mock(**kwargs)
             return PartitionCountBalancer(cluster_topology, args)
         return build_balancer
 

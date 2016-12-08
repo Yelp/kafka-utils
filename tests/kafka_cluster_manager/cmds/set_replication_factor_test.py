@@ -16,8 +16,6 @@ from argparse import Namespace
 
 import mock
 
-from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
-    import ClusterTopology
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
     import PartitionCountBalancer
 from kafka_utils.kafka_cluster_manager.cmds.set_replication_factor \
@@ -84,7 +82,6 @@ class TestSetReplicationFactorCmd(object):
                 },
             })
 
-            ct = ClusterTopology(assignment, brokers)
             ct = create_cluster_topology(assignment, brokers)
             cb = PartitionCountBalancer(ct, cmd.args)
             cmd.run_command(ct, cb)

@@ -23,7 +23,6 @@ from .broker import Broker
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
 from .partition import Partition
-from .partition_measurer import UniformPartitionMeasurer
 from .rg import ReplicationGroup
 from .topic import Topic
 
@@ -54,8 +53,8 @@ class ClusterTopology(object):
             self,
             assignment,
             brokers,
+            partition_measurer,
             extract_group=lambda x: None,
-            partition_measurer=UniformPartitionMeasurer(),
     ):
         self.extract_group = extract_group
         self.partition_measurer = partition_measurer
