@@ -194,7 +194,7 @@ class GeneticBalancer(ClusterBalancer):
         state = sorted(pop, key=self._score, reverse=True)[0]
         self.log.info(
             "Done rebalancing. %d partitions moved.",
-            state.movement_count + rg_movement_count,
+            state.movement_count,
         )
         self.log.info("Total movement size: %f", state.movement_size)
         assignment = state.assignment

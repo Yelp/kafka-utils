@@ -102,8 +102,10 @@ class ClusterBalancer(object):
         for partition in self.cluster_topology.partitions.itervalues():
             count, size = self._rebalance_partition_replicas(
                 partition,
-                max_movement_count,
-                max_movement_size
+                None if not max_movement_count
+                else max_movement_count - movement_count,
+                None if not max_movement_size
+                else max_movement_size - movement_size,
             )
             movement_count += count
             movement_size += size
