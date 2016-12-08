@@ -195,6 +195,10 @@ class ClusterManagerCmd(object):
             if set(replica) != set(new_assignment[t_p])
         ]
 
+        if (leaders_changes <= max_leader_only_changes and
+                partition_change_count <= max_partition_movements):
+            return new_assignment
+
         self.log.info(
             "Total number of actions before reduction: %s.",
             len(partition_change_count) + len(leaders_changes),
