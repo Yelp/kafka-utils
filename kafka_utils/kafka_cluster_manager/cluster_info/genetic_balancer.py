@@ -20,6 +20,7 @@ import random
 import time
 from collections import defaultdict
 from copy import copy
+from math import sqrt
 
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
@@ -30,6 +31,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.stats \
     import coefficient_of_variation
+from kafka_utils.util import positive_float
 from kafka_utils.util import positive_int
 from kafka_utils.util import tuple_alter
 from kafka_utils.util import tuple_remove
@@ -37,8 +39,22 @@ from kafka_utils.util import tuple_replace
 
 RANDOM_SEED = 0xcafca
 DEFAULT_NUM_GENS = 100
-DEFAULT_MAX_POP = 25
-DEFAULT_MAX_EXPLORATION = 1000
+DEFAULT_MAX_POP = 50
+DEFAULT_MAX_EXPLORATION = 10000
+
+# In practice, overall weight is more important than leader weight which is
+# more important than topic-broker imbalance so different weights are used
+# to adjust for this.
+DEFAULT_PARTITION_WEIGHT_CV_SCORE_WEIGHT = 0.6
+DEFAULT_LEADER_WEIGHT_CV_SCORE_WEIGHT = 0.3
+DEFAULT_TOPIC_BROKER_IMBALANCE_SCORE_WEIGHT = 0.1
+# Movement size is included in the scoring function to prevent fewer large
+# movements from being favored over more smaller movements (since only one
+# partition is moved each generation). This weight is smaller than the others
+# because a larger weight can prevent movement altogether (since only a small
+# improvement in score is expected most of the time).
+DEFAULT_MOVEMENT_SIZE_SCORE_WEIGHT = 0.01
+DEFAULT_LEADER_CHANGE_SCORE_WEIGHT = 0.001
 
 
 class GeneticBalancer(ClusterBalancer):
@@ -76,6 +92,41 @@ class GeneticBalancer(ClusterBalancer):
             type=positive_int,
             default=DEFAULT_MAX_EXPLORATION,
             help='Maximum exploration attempts to make each generation.',
+        )
+        parser.add_argument(
+            '--partition-weight-cv-score-weight',
+            type=positive_float,
+            default=DEFAULT_PARTITION_WEIGHT_CV_SCORE_WEIGHT,
+            help='How much to value partition weight imbalance when scoring'
+            'assignments during the genetic algorithm. Default: %(default)',
+        )
+        parser.add_argument(
+            '--leader-weight-cv-score-weight',
+            type=positive_float,
+            default=DEFAULT_LEADER_WEIGHT_CV_SCORE_WEIGHT,
+            help='How much to value preferred leader imbalance when scoring'
+            'assignments during the genetic algorithm. Default: %(default)',
+        )
+        parser.add_argument(
+            '--topic-broker-imbalance-score-weight',
+            type=positive_float,
+            default=DEFAULT_TOPIC_BROKER_IMBALANCE_SCORE_WEIGHT,
+            help='How much to value topic broker imbalance when scoring'
+            'assignments during the genetic algorithm. Default: %(default)',
+        )
+        parser.add_argument(
+            '--movement-size-score-weight',
+            type=positive_float,
+            default=DEFAULT_MOVEMENT_SIZE_SCORE_WEIGHT,
+            help='How much to value movement size when scoring assignments'
+            ' during the genetic algorithm. Default: %(default)',
+        )
+        parser.add_argument(
+            '--leader_change-score-weight',
+            type=positive_float,
+            default=DEFAULT_LEADER_CHANGE_SCORE_WEIGHT,
+            help='How much to value leader changes when scoring assignments'
+            ' during the genetic algorithm. Default: %(default)',
         )
         parser.parse_args(balancer_args, self.args)
 
@@ -478,19 +529,37 @@ class GeneticBalancer(ClusterBalancer):
 
         :param state: The state to score.
         """
-        # Since all of these values should be minimized and the genetic algorithm
-        # optimizes for maximum score, these values are negated.
+        score = 0
+        max_score = 0
         if state.total_weight:
-            score = -1 * state.broker_weight_cv
-            score += -1 * state.broker_leader_weight_cv
-            score += -1 * state.weighted_topic_broker_imbalance
+            # Coefficient of variance is a value between 0 and the sqrt(n)
+            # where n is the length of the series (the number of brokers)
+            # so those parameters are scaled by (1 / sqrt(# or brokers)) to
+            # get a value between 0 and 1.
+            #
+            # Since smaller imbalance values are preferred use 1 - x so that
+            # higher scores correspond to more balanced states.
+            score += self.args.partition_weight_cv_score_weight * \
+                (1 - state.broker_weight_cv / sqrt(len(state.brokers)))
+            score += self.args.leader_weight_cv_score_weight * \
+                (1 - state.broker_leader_weight_cv / sqrt(len(state.brokers)))
+            score += self.args.topic_broker_imbalance_score_weight * \
+                (1 - state.weighted_topic_broker_imbalance)
+            max_score += self.args.partition_weight_cv_score_weight
+            max_score += self.args.leader_weight_cv_score_weight
+            max_score += self.args.topic_broker_imbalance_score_weight
 
         if self.args.max_movement_size is not None and score_movement:
-            score += -1 * state.movement_size / self.args.max_movement_size
-        if self.args.max_leader_changes is not None and score_movement:
-            score += -1 * state.leader_movement_count / self.args.max_leader_changes
+            score += self.args.movement_size_score_weight * \
+                (1 - state.movement_size / self.args.max_movement_size)
+            max_score += self.args.movement_size_score_weight
 
-        return score
+        if self.args.max_leader_changes is not None and score_movement:
+            score += self.args.leader_change_score_weight * \
+                (1 - state.leader_movement_count / self.args.max_leader_changes)
+            max_score += self.args.leader_change_score_weight
+
+        return score / max_score
 
 
 class _State(object):
