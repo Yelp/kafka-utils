@@ -24,7 +24,9 @@ import logging
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
+from kafka_utils.kafka_check.commands.offline import OfflineCmd
 from kafka_utils.kafka_check.commands.under_replicated import UnderReplicatedCmd
+from kafka_utils.kafka_check.metadata_file import get_broker_id
 from kafka_utils.kafka_check.status_code import terminate
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -69,7 +71,9 @@ def parse_args():
     )
     parser.add_argument(
         "--broker-id",
-        help='Kafka current broker id.',
+        help='The broker id where the check is running. Set to -1 if you use automatic '
+        'broker ids, and it will read the id from data-path instead. This parameter is '
+        'required only in case controller-only or first-broker-only are used.',
         type=convert_to_broker_id,
     )
     parser.add_argument(
@@ -80,8 +84,15 @@ def parse_args():
         '--controller-only',
         action="store_true",
         help='If this parameter is specified, it will do nothing and succeed on '
-        'non-controller brokers. Set --broker-id to -1 to read broker-id from '
-        '--data-path. Default: %(default)s',
+        'non-controller brokers. Default: %(default)s',
+    )
+    parser.add_argument(
+        '--first-broker-only',
+        action='store_true',
+        help='If specified, the command will only perform the check if '
+        'broker_id is the lowest broker id in the cluster. If it is not the lowest, '
+        'it will not perform any check and succeed immediately. '
+        'Default: %(default)s',
     )
     parser.add_argument(
         '-v',
@@ -94,6 +105,7 @@ def parse_args():
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)
     UnderReplicatedCmd().add_subparser(subparsers)
+    OfflineCmd().add_subparser(subparsers)
 
     return parser.parse_args()
 
@@ -105,6 +117,18 @@ def run():
 
     # to prevent flooding for sensu-check.
     logging.getLogger('kafka').setLevel(logging.CRITICAL)
+
+    if args.controller_only and args.first_broker_only:
+        terminate(
+            status_code.WARNING,
+            "Only one of controller_only and first_broker_only should be used",
+        )
+
+    if args.controller_only or args.first_broker_only:
+        if args.broker_id is None:
+            terminate(status_code.WARNING, "broker_id is not specified")
+        elif args.broker_id == -1:
+            args.broker_id = get_broker_id(args.data_path)
 
     try:
         cluster_config = config.get_cluster_config(

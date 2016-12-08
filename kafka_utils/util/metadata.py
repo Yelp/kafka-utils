@@ -15,7 +15,26 @@
 from kafka import KafkaClient
 
 
+LEADER_NOT_AVAILABLE_ERROR = 5
+REPLICA_NOT_AVAILABLE_ERROR = 9
+
+
 def get_topic_partition_metadata(hosts):
     """Returns topic-partition metadata from Kafka broker."""
     kafka_client = KafkaClient(hosts, timeout=10)
     return kafka_client.topic_partitions
+
+
+def get_topic_partition_with_error(cluster_config, error):
+    """Fetches the metadata from the cluster and returns the set of
+    (topic, partition) tuples containing all the topic-partitions
+    currently affected by the specified error"""
+
+    metadata = get_topic_partition_metadata(cluster_config.broker_list)
+    affected_partitions = set()
+    for partitions in metadata.values():
+        for partition_metadata in partitions.values():
+            if int(partition_metadata.error) == error:
+                affected_partitions.add((partition_metadata.topic, partition_metadata.partition))
+
+    return affected_partitions
