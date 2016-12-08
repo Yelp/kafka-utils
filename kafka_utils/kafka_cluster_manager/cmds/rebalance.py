@@ -92,6 +92,12 @@ class RebalanceCmd(ClusterManagerCmd):
                  ' on the cluster.',
         )
         subparser.add_argument(
+            '--auto-max-movement-size',
+            action='store_true',
+            help='Set max-movement-size to the size of the largest partition'
+                 ' in the cluster.',
+        )
+        subparser.add_argument(
             '--show-stats',
             action='store_true',
             help='Output post-rebalance cluster topology stats.',
@@ -107,6 +113,18 @@ class RebalanceCmd(ClusterManagerCmd):
 
     def run_command(self, cluster_topology, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
+        if self.args.auto_max_movement_size:
+            self.args.max_movement_size = max(
+                partition.size
+                for partition in cluster_topology.partitions.itervalues()
+            )
+            self.log.info(
+                'Auto-max-movement-size: using {max_movement_size} as'
+                ' max-movement-size.'.format(
+                    max_movement_size=self.args.max_movement_size,
+                )
+            )
+
         base_assignment = cluster_topology.assignment
         base_score = cluster_balancer.score()
         rg_imbalance, _ = get_replication_group_imbalance_stats(
