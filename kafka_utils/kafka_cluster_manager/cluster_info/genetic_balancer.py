@@ -156,8 +156,7 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
-        if self.args.max_movement_size and \
-                self.args.num_gens < self.args.max_partition_movements:
+        if self.args.num_gens < self.args.max_partition_movements:
             self.log.warning(
                 "num-gens ({num_gens}) is less than max-partition-movements"
                 " ({max_partition_movements}). max-partition-movements will"
