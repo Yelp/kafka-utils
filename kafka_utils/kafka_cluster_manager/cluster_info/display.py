@@ -121,7 +121,8 @@ def display_replica_imbalance(cluster_topologies):
 def display_partition_imbalance(cluster_topologies):
     """Display partition count and weight imbalance statistics.
 
-    :param brokers: List of the cluster's Brokers.
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
     """
     broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
     assert all(
@@ -186,7 +187,8 @@ def display_partition_imbalance(cluster_topologies):
 def display_leader_imbalance(cluster_topologies):
     """Display leader count and weight imbalance statistics.
 
-    :param brokers: List of the cluster's Brokers.
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
     """
     broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
     assert all(
@@ -252,8 +254,8 @@ def display_leader_imbalance(cluster_topologies):
 def display_topic_broker_imbalance(cluster_topologies):
     """Display topic broker imbalance statistics.
 
-    :param brokers: List of the cluster's Brokers.
-    :param topics: List of the cluster's Topics.
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
     """
     broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
     assert all(
