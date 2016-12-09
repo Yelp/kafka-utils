@@ -138,7 +138,7 @@ def get_group_partition(group):
         for c in s:
             h = (31 * h + ord(c)) & 0xFFFFFFFF
         return ((h + 0x80000000) & 0xFFFFFFFF) - 0x80000000
-    return java_string_hashcode(group) % CONSUMER_OFFSET_TOPIC_PARTITIONS
+    return abs(java_string_hashcode(group)) % CONSUMER_OFFSET_TOPIC_PARTITIONS
 
 
 class InvalidMessageException(Exception):
