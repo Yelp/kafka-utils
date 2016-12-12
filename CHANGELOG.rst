@@ -1,3 +1,7 @@
+0.5.7 (December 12, 2016)
+------------------------
+* Fetch group topics only from a single __consumer_offsets partition
+
 0.5.6 (December 8, 2016)
 ------------------------
 * Add offline partitions check for kafka-check
