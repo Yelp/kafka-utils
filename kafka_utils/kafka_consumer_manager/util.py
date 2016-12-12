@@ -130,6 +130,15 @@ def prompt_user_input(in_str):
             return
 
 
+# The mapping of group information to partition for the __consumer_offsets
+# topic is determinated by a hash of the group id, modulo the number of
+# partitions in the topic.
+# Kafka code (from main/scala/kafka/coordinator/GroupMetadataManager.scala):
+#   def partitionFor(groupId: String): Int =
+#       Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount
+# hashCode returns the hash of the string according to the Java default string
+# hashing algorithm. The algorithm is implemented in the inner function
+# java_string_hashcode.
 def get_group_partition(group):
     """Given a group name, return the partition number of the consumer offset
     topic containing the data associated to that group."""
