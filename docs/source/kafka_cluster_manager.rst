@@ -56,73 +56,190 @@ To use the custom parser:
 
     $ kafka-cluster-manager --cluster-type sample_type --group-parser $HOME/parser:sample_parser rebalance --replication-groups
 
+Cluster Balancers
+=================
+Every command attempts to find a partition assignment that improves or
+maintains the balance of the cluster. This tool provides two different cluster
+balancers that implement different cluster balancing strategies. The
+`Partition Count Balancer`_ is the default cluster balancer and is recommended
+for most users. The `Genetic Balancer`_ is recommended for users that are able
+to provide partition measurements. See `partition measurement`_ for more
+information.
+
+Partition Count Balancer
+------------------------
+This balancing strategy attempts to balance the number of partitions and
+leaders across replication groups and brokers. Balancing is done in four
+stages.
+
+1. **Replica distribution**: Uniform distribution of partition replicas across
+   replication groups.
+2. **Partition distribution**: Uniform distribution of partitions across groups
+   and brokers.
+3. **Leader distribution**: Uniform distribution of preferred partition leaders
+   across brokers.
+4. **Topic-partition distribution**: Uniform distribution of partitions of the
+   same topic across brokers.
+
+Genetic Balancer
+----------------
+This balancing strategy considers not only the number of partitions on each
+broker, but the weight of each partition (see `partition measurement`_). It
+uses a genetic algorithm to approximate the optimal assignment while also
+limiting the total size of the partitions moved.
+
+The uniform distribution of replicas across replication groups is guaranteed
+by an initial stage that greedily reassigns replicas across replication groups.
+
+The fitness function used by the genetic algorithm to score partition
+assignments considers the following:
+
+1. **Broker weight balance**: The sum of the weights of the partitions on each
+   broker should be as balanced as possible.
+2. **Leader weight balance**: The sum of the weights of the preferred leader
+   partitions on each broker should be as balanced as possible.
+3. **Weighted topic-partition balance**: The distribution of partitions of the
+   same topic across brokers weighted by the total weight of each topic.
+
+The Genetic Balancer can be enabled by using the :code:`--genetic-balancer`
+toggle.
+
+Partition Measurement
+=====================
+Throughput can vary significantly across the topics of a cluster. To
+prevent placing too many high-throughput partitions on the same brokers, the
+cluster manager needs additional information about each partition. For the
+purposes of this tool, there are two values that need to be defined for each
+partition: weight and size.
+
+The weight of a partition is a measure of how much load that partition places
+on the broker that it is assigned to. The weight can have any unit and should
+represent the relative weight of one partition compared to another.  For
+example a partition with weight 2 is assumed to cause twice as much load on a
+broker as a partition with weight 1. In practice, a possible metric could be
+the average byte in/out rate over a certain time period.
+
+The size of a partition is a measure of how expensive it is to move the
+partition. This value is also relative and can have any unit. The length of the
+partition's log in bytes is one possible metric.
+
+Since Kafka doesn't keep detailed partition usage information, the task of
+collecting this information is left to the user. By default every partition is
+given an equal weight and size of 1. Custom partition measurement approaches
+can be implemented by extending the :code:`PartitionMeasurer` class. Here is a
+sample measurer that pulls partition metrics from an external service.
+
+.. code-block:: python
+
+    import argparse
+    from requests import get
+
+    from kafka.kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+            import PartitionMeasurer
+
+    class SampleMeasurer(PartitionMeasurer):
+
+        def __init__(self, cluster_config, brokers, assignment, args):
+            super(SampleMeasurer, self).__init__(
+                cluster_config,
+                brokers,
+                assignment,
+                args
+            )
+            self.metrics = {}
+            for partition_name in assignment.keys():
+                self.metrics[partition_name] = get(self.args.metric_url +
+                    "/{cluster_type}/{cluster_name}/{topic}/{partition}"
+                    .format(
+                        cluster_type=cluster_config.type,
+                        cluster_name=cluster_config.name,
+                        topic=partition_name[0],
+                        partition=partition_name[1],
+                    )
+                ).json()
+
+        def parse_args(self, measurer_args):
+            parser = argparse.ArgumentParser(prog='SampleMeasurer')
+            parser.add_argument(
+                '--metric-url',
+                type=string,
+                required=True,
+                help='URL of the metric service.',
+            )
+            return parser.parse_args(measurer_args, self.args)
+
+        def get_weight(self, partition_name):
+            return self.metrics[partition_name]['bytes_in_per_sec'] + \
+                self.metrics[partition_name]['bytes_out_per_sec']
+
+        def get_size(self, partition_name):
+            return self.metrics[partition_name]['size']
+
+Place this file in a file called :code:`sample_measurer.py` and place it in a
+python module.
+
+Example:
+
+.. code-block:: none
+
+   $HOME/measurer
+     |-- __init__.py
+     |-- sample_measurer.py
+
+To use the partition measurer:
+
+.. code-block:: bash
+
+    $ kafka-cluster-manager \
+    --cluster-type sample_type \
+    --partition-measurer $HOME/measurer:sample_measurer \
+    --measurer-args "--metric-url $METRIC_URL" \
+    stats
+
 Cluster rebalance
 =================
 This command provides the functionality to re-distribute partitions across the
-cluster to bring it into a more balanced state. The goal is to load balance the
-cluster based on the distribution of the replicas across replication-groups
-(availability-zones or racks), distribution of partitions and leaderships across
-brokers. The imbalance state of a cluster has been characterized into 4 different layers.
+cluster to bring it into a more balanced state. The behavior of this command
+is determined by the choice of `cluster balancer <#cluster-balancers>`_.
 
-.. note:: The tool is very conservative while rebalancing the cluster, ensuring
-    that large assignments are executed in smaller chunks, controlling the number of
-    partition movements and preferred-leader changes.
+The command provides three toggles to control how the cluster is rebalanced:
 
-Replica-distribution
---------------------
-Uniform distribution of replicas across replication groups.
+- :code:`--replication-groups`: Rebalance partition replicas across replication
+  groups.
+- :code:`--brokers`: Rebalance partitions across brokers.
+- :code:`--leaders`: Rebalance partition preferred leaders across brokers.
 
-.. code-block:: bash
+The command also provides toggles to control how many partitions are moved at
+once:
 
-   $ kafka-cluster-manager --cluster-type sample_type rebalance --replication-groups
-
-Partition distribution
------------------------
-Uniform distribution of partitions across groups and brokers.
-
-.. code-block:: bash
-
-   $ kafka-cluster-manager --cluster-type sample_type rebalance --brokers
-
-Broker as leaders distribution
-------------------------------
-Some brokers might be elected as leaders for more partitions than others.
-This creates load-imbalance for these brokers. Balancing this layer ensures
-the uniform election of brokers as leaders.
-
-.. note:: The rebalancing of this layer doesn't move any partitions across brokers.
-
-It re-elects a new leader for the partitions to ensure that every broker is chosen
-as a leader uniformly. The tool does not take into account partition size.
-
-.. code-block:: bash
-
-   $ kafka-cluster-manager --cluster-type sample_type rebalance --leaders
-
-Topic-partition distribution
-----------------------------
-Uniform distribution of partitions of the same topic across brokers.
-
-The command provides the ability to balance one or more of these layers except for
-the topic-partition imbalance layer which will be balanced implicitly with replica or
-partition rebalancing.
-
-:py:mod:`kafka_utils.kafka_cluster_manager.cluster_topology` provides APIs to create
-a cluster-topology object based on the distribution of topics, partitions, brokers and
-replication-groups across the cluster.
-
-Rebalancing all layers
-----------------------
-
-Rebalance all layers for given cluster. This command will generate a plan with a
-maximum of 10 partition movements and 25 leader-only changes after rebalancing
-the cluster for all layers discussed before prior to sending it to zookeeper.
+- :code:`--max-partition-movements`: The maximum number of partition replicas
+  that will be moved. Default: 1.
+- :code:`--max-leader-changes`: The maximum number of partition preferred
+  leader changes. Default: 5.
+- :code:`--max-movement-size`: The maximum total size of the partition replicas
+  that will be moved. Default: No limit.
+- :code:`--auto-max-movement-size`: Set :code:`--max-movement-size` to the
+  size of the largest partition in the cluster.
+- :code:`--score-improvement-threshold`: When the `Genetic Balancer`_ is being
+  used, this option checks the `Genetic Balancer`_'s scoring function and only
+  applies the new assignment if the improvement in score is greater than this
+  threshold.
 
 .. code-block:: bash
 
     $ kafka-cluster-manager --group-parser $HOME/parser:sample_parser --apply
     --cluster-type sample_type rebalance --replication-groups --brokers --leaders
     --max-partition-movements 10 --max-leader-changes 25
+
+Or using the `Genetic Balancer`_:
+
+.. code-block:: bash
+
+    $ kafka-cluster-manager --group-parser $HOME/parser:sample_parser --apply
+    --cluster-type sample_type --genetic-balancer --partition-measurer
+    $HOME/measurer:sample_measurer rebalance --replication-groups --brokers
+    --leaders --max-partition-movements 10 --max-leader-changes 25
+    --auto-max-partition-size --score-improvement-threshold 0.01
 
 Brokers decommissioning
 =======================
@@ -138,6 +255,14 @@ while keeping the cluster balanced as above.
 
   $ kafka-cluster-manager --cluster-type sample_type decommission 123456 123457 123458
 
+Or using the `Genetic Balancer`_:
+
+.. code-block:: bash
+
+  $ kafka-cluster-manager --cluster-type sample_type --genetic-balancer
+  --partition-measurer $HOME/measurer:sample_measurer decommission
+  123456 123457 123458
+
 Set Replication Factor
 ======================
 This command provides the ability to increase or decrease the replication-factor
@@ -148,6 +273,15 @@ any out-of-sync replicas will be removed first.
 .. code-block:: bash
 
   $ kafka-cluster-manager --cluster-type sample_type set_replication_factor --topic sample_topic 3
+
+
+Or using the `Genetic Balancer`_:
+
+.. code-block:: bash
+
+  $ kafka-cluster-manager --cluster-type sample_type --genetic-balancer
+  --partition-measurer $HOME/measurer:sample_measurer set_replication_factor
+  --topic sample_topic 3
 
 Stats
 =====
