@@ -21,7 +21,7 @@ from pytest import raises
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
-    import PartitionMeasurer
+    import UniformPartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
 
 
@@ -294,7 +294,7 @@ class TestClusterManagerCmd(object):
             get_pending_plan=lambda: None,
         )
         rg_parser = mock.MagicMock()
-        partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
+        partition_measurer = UniformPartitionMeasurer
         cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         cmd.run_command = mock.MagicMock()
 
@@ -322,7 +322,7 @@ class TestClusterManagerCmd(object):
             get_pending_plan=lambda: None,
         )
         rg_parser = mock.MagicMock()
-        partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
+        partition_measurer = UniformPartitionMeasurer
         cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         cmd.run_command = mock.MagicMock()
 
@@ -351,7 +351,7 @@ class TestClusterManagerCmd(object):
             get_pending_plan=lambda: {'partitions': []},
         )
         rg_parser = mock.MagicMock()
-        partition_measurer = mock.MagicMock(spec=PartitionMeasurer)
+        partition_measurer = UniformPartitionMeasurer
         cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         with raises(SystemExit):
             cmd.run(
