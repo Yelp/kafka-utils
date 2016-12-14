@@ -177,6 +177,7 @@ class OffsetWriter(OffsetManagerBase):
             partitions,
             cluster_config,
             client,
+            storage=storage,
             fail_on_error=(fail_on_error and not force),
         )
 

@@ -77,6 +77,7 @@ class OffsetAdvance(OffsetWriter):
             args.partitions,
             cluster_config,
             client,
+            storage=args.storage,
             force=args.force,
         )
         try:
