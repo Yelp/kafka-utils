@@ -6,6 +6,7 @@ from kafka.common import ConsumerTimeout
 from kafka.common import KafkaMessage
 from kafka.common import LeaderNotAvailableError
 
+from kafka_utils.kafka_consumer_manager.util import get_group_partition
 from kafka_utils.kafka_consumer_manager.util import InvalidMessageException
 from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
 from kafka_utils.util.offsets import PartitionOffsets
@@ -166,6 +167,15 @@ class TestKafkaGroupReader(object):
                     kafka_group_reader.read_groups()
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     assert len(kafka_group_reader.finished_partitions) == 1
+
+    def test_get_group_partition(self):
+        result1 = get_group_partition('815e79b2-be20-11e6-96b6-0697c842cbe5')
+        result2 = get_group_partition('83e3f292-be26-11e6-b509-0697c842cbe5')
+        result3 = get_group_partition('adaceffc-be26-11e6-8eab-0697c842cbe5')
+
+        assert result1 == 10
+        assert result2 == 44
+        assert result3 == 15
 
     def test_read_groups_with_consumer_timeout(self):
 

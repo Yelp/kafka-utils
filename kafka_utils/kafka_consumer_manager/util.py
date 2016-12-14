@@ -34,6 +34,7 @@ from kafka_utils.util.offsets import get_topics_watermarks
 
 
 CONSUMER_OFFSET_TOPIC = '__consumer_offsets'
+CONSUMER_OFFSET_TOPIC_PARTITIONS = 50  # Kafka default
 
 
 def preprocess_topics(source_groupid, source_topics, dest_groupid, topics_dest_group):
@@ -129,6 +130,26 @@ def prompt_user_input(in_str):
             return
 
 
+# The mapping of group information to partition for the __consumer_offsets
+# topic is determinated by a hash of the group id, modulo the number of
+# partitions in the topic.
+# Kafka code (from main/scala/kafka/coordinator/GroupMetadataManager.scala):
+#   def partitionFor(groupId: String): Int =
+#       Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount
+# hashCode returns the hash of the string according to the Java default string
+# hashing algorithm. The algorithm is implemented in the inner function
+# java_string_hashcode.
+def get_group_partition(group):
+    """Given a group name, return the partition number of the consumer offset
+    topic containing the data associated to that group."""
+    def java_string_hashcode(s):
+        h = 0
+        for c in s:
+            h = (31 * h + ord(c)) & 0xFFFFFFFF
+        return ((h + 0x80000000) & 0xFFFFFFFF) - 0x80000000
+    return abs(java_string_hashcode(group)) % CONSUMER_OFFSET_TOPIC_PARTITIONS
+
+
 class InvalidMessageException(Exception):
     pass
 
@@ -142,18 +163,27 @@ class KafkaGroupReader:
         self.finished_partitions = set()
         self.retry_max = 3
 
-    def read_groups(self):
+    def read_group(self, group_id):
+        partition = get_group_partition(group_id)
+        return self.read_groups(partition).get(group_id, [])
+
+    def read_groups(self, partition=None):
         self.log.info("Kafka consumer running")
+        if partition:
+            topic_partition = {CONSUMER_OFFSET_TOPIC: [partition]}
+        else:
+            topic_partition = CONSUMER_OFFSET_TOPIC
+
         self.consumer = KafkaConsumer(
-            CONSUMER_OFFSET_TOPIC,
+            topic_partition,
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
             auto_offset_reset='smallest',
             auto_commit_enable=False,
-            consumer_timeout_ms=10000,
+            consumer_timeout_ms=3000,
         )
         self.log.info("Consumer ready")
-        self.watermarks = self.get_current_watermarks()
+        self.watermarks = self.get_current_watermarks(partition)
         self.retry = 0
         while not self.finished():
             try:
@@ -203,15 +233,16 @@ class KafkaGroupReader:
         else:  # No offset means group deletion
             self.kafka_groups.pop(group, None)
 
-    def get_current_watermarks(self):
+    def get_current_watermarks(self, partition=None):
         self.consumer._client.load_metadata_for_topics()
         offsets = get_topics_watermarks(
             self.consumer._client,
             [CONSUMER_OFFSET_TOPIC],
         )
-        return {partition: offset for partition, offset
+        return {part: offset for part, offset
                 in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
-                if offset.highmark > offset.lowmark}
+                if offset.highmark > offset.lowmark and
+                (partition is None or part == partition)}
 
     def get_max_offset(self, partition):
         return self.watermarks[partition].highmark

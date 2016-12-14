@@ -1,9 +1,17 @@
-0.5.5 (November 15, 2016)
+0.5.7 (December 12, 2016)
 ------------------------
+* Fetch group topics only from a single __consumer_offsets partition
+
+0.5.6 (December 8, 2016)
+------------------------
+* Add offline partitions check for kafka-check
+
+0.5.5 (November 15, 2016)
+-------------------------
 * Fix set_replication_factor command plan generation
 
 0.5.4 (November 15, 2016)
-------------------------
+-------------------------
 * Fix offset_get when the group name is stored only in kafka
 * Add offset_set retry when writing offsets to kafka
 
