@@ -47,7 +47,6 @@ def step_impl3_2(context):
         context.group,
         topic=context.topic,
         storage='kafka',
-        force=True,
     )
 
 
