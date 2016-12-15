@@ -1,3 +1,7 @@
+0.6.1 (December 15, 2016)
+-------------------------
+* Fix integration tests
+
 0.6.0 (December 15, 2016)
 -------------------------
 * Refactor kafka-cluster-manager to support multiple balancer classes and metrics
