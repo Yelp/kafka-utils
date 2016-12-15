@@ -69,8 +69,8 @@ class OffsetManagerBase(object):
         topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
-            storage,
-            fail_on_error,
+            storage=storage,
+            fail_on_error=fail_on_error,
         )
         topics_dict = {}
         if topic:
@@ -177,6 +177,7 @@ class OffsetWriter(OffsetManagerBase):
             partitions,
             cluster_config,
             client,
+            storage=storage,
             fail_on_error=(fail_on_error and not force),
         )
 
