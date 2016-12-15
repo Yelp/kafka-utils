@@ -1,3 +1,11 @@
+0.6.0 (December 15, 2016)
+-------------------------
+* Refactor kafka-cluster-manager to support multiple balancer classes and metrics
+* Add PartitionMeasurer class and --partition-measurer option for providing user partition metrics
+* Add --genetic-balancer option to kafka-cluster-manager to make use of the genetic balancer
+* Change kafka-cluster-manager stats command output to include user partition metrics
+* Add --show-stats option to kafka-cluster-manager rebalance
+
 0.5.7 (December 12, 2016)
 ------------------------
 * Fetch group topics only from a single __consumer_offsets partition
