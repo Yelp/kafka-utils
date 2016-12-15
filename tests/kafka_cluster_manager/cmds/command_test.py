@@ -12,13 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from argparse import ArgumentTypeError
 from collections import OrderedDict
 
 import mock
 from pytest import fixture
 from pytest import raises
 
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
+    import ClusterBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import UniformPartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
 
 
@@ -52,28 +55,6 @@ def cmd():
 
 
 class TestClusterManagerCmd(object):
-
-    def test_positive_int_valid(self, cmd):
-        assert cmd.positive_int('123') == 123
-
-    def test_positive_int_not_int(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_int('not_an_int')
-
-    def test_positive_int_negative_int(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_int('-5')
-
-    def test_positive_nonzero_int_valid(self, cmd):
-        assert cmd.positive_nonzero_int('123') == 123
-
-    def test_positive_nonzero_int_not_int(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_nonzero_int('not_an_int')
-
-    def test_positive_nonzero_int_zero(self, cmd):
-        with raises(ArgumentTypeError):
-            cmd.positive_nonzero_int('0')
 
     def test_reduced_proposed_plan_no_change(self, cmd, orig_assignment):
         # Provide same assignment
@@ -313,9 +294,17 @@ class TestClusterManagerCmd(object):
             get_pending_plan=lambda: None,
         )
         rg_parser = mock.MagicMock()
+        partition_measurer = UniformPartitionMeasurer
+        cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         cmd.run_command = mock.MagicMock()
 
-        cmd.run(cluster_config, rg_parser, args)
+        cmd.run(
+            cluster_config,
+            rg_parser,
+            partition_measurer,
+            cluster_balancer,
+            args,
+        )
 
         assert cmd.run_command.call_count == 1
 
@@ -333,9 +322,17 @@ class TestClusterManagerCmd(object):
             get_pending_plan=lambda: None,
         )
         rg_parser = mock.MagicMock()
+        partition_measurer = UniformPartitionMeasurer
+        cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         cmd.run_command = mock.MagicMock()
 
-        cmd.run(cluster_config, rg_parser, args)
+        cmd.run(
+            cluster_config,
+            rg_parser,
+            partition_measurer,
+            cluster_balancer,
+            args,
+        )
 
         assert cmd.run_command.call_count == 0
 
@@ -354,5 +351,13 @@ class TestClusterManagerCmd(object):
             get_pending_plan=lambda: {'partitions': []},
         )
         rg_parser = mock.MagicMock()
+        partition_measurer = UniformPartitionMeasurer
+        cluster_balancer = mock.MagicMock(spec=ClusterBalancer)
         with raises(SystemExit):
-            cmd.run(cluster_config, rg_parser, args)
+            cmd.run(
+                cluster_config,
+                rg_parser,
+                partition_measurer,
+                cluster_balancer,
+                args,
+            )

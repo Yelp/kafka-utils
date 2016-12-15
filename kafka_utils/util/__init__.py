@@ -16,7 +16,84 @@ from __future__ import print_function
 
 import json
 import sys
+from argparse import ArgumentTypeError
 from itertools import groupby
+
+
+def tuple_replace(tup, *pairs):
+    """Return a copy of a tuple with some elements replaced.
+
+    :param tup: The tuple to be copied.
+    :param pairs: Any number of (index, value) tuples where index is the index
+        of the item to replace and value is the new value of the item.
+    """
+    l = list(tup)
+    for index, value in pairs:
+        l[index] = value
+    return tuple(l)
+
+
+def tuple_alter(tup, *pairs):
+    """Return a copy of a tuple with some elements altered.
+
+    :param tup: The tuple to be copied.
+    :param pairs: Any number of (index, func) tuples where index is the index
+        of the item to alter and the new value is func(tup[index]).
+    """
+    # timeit says that this is faster than a similar
+    l = list(tup)
+    for i, f in pairs:
+        l[i] = f(l[i])
+    return tuple(l)
+
+
+def tuple_remove(tup, *items):
+    """Return a copy of a tuple with some items removed.
+
+    :param tup: The tuple to be copied.
+    :param items: Any number of items. The first instance of each item will
+        be removed from the tuple.
+    """
+    l = list(tup)
+    for item in items:
+        l.remove(item)
+    return tuple(l)
+
+
+def positive_int(string):
+    """Convert string to positive integer."""
+    error_msg = 'Positive integer required, {string} given.'.format(string=string)
+    try:
+        value = int(string)
+    except ValueError:
+        raise ArgumentTypeError(error_msg)
+    if value < 0:
+        raise ArgumentTypeError(error_msg)
+    return value
+
+
+def positive_nonzero_int(string):
+    """Convert string to positive integer greater than zero."""
+    error_msg = 'Positive non-zero integer required, {string} given.'.format(string=string)
+    try:
+        value = int(string)
+    except ValueError:
+        raise ArgumentTypeError(error_msg)
+    if value <= 0:
+        raise ArgumentTypeError(error_msg)
+    return value
+
+
+def positive_float(string):
+    """Convert string to positive float."""
+    error_msg = 'Positive float required, {string} given.'.format(string=string)
+    try:
+        value = float(string)
+    except ValueError:
+        raise ArgumentTypeError(error_msg)
+    if value < 0:
+        raise ArgumentTypeError(error_msg)
+    return value
 
 
 def groupsortby(data, key):

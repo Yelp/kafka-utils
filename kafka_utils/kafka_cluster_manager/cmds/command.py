@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import argparse
 import json
 import logging
 import sys
@@ -44,14 +43,22 @@ class ClusterManagerCmd(object):
         """
         raise NotImplementedError("Implement in subclass")
 
-    def run_command(self, cluster_topology):
+    def run_command(self, cluster_topology, cluster_balancer):
         """Implement the command logic.
         When run_command is called cluster_config, args, and zk are already
         initialized.
         """
         raise NotImplementedError("Implement in subclass")
 
-    def run(self, cluster_config, rg_parser, args):
+    def run(
+            self,
+            cluster_config,
+            rg_parser,
+            partition_measurer,
+            cluster_balancer,
+            args,
+    ):
+        """Initialize cluster_config, args, and zk then call run_command."""
         self.cluster_config = cluster_config
         self.args = args
         with ZK(self.cluster_config) as self.zk:
@@ -63,9 +70,16 @@ class ClusterManagerCmd(object):
             )
             brokers = self.zk.get_brokers()
             assignment = self.zk.get_cluster_assignment()
+            pm = partition_measurer(
+                self.cluster_config,
+                brokers,
+                assignment,
+                args,
+            )
             ct = ClusterTopology(
                 assignment,
                 brokers,
+                pm,
                 rg_parser.get_replication_group,
             )
             if len(ct.partitions) == 0:
@@ -77,7 +91,7 @@ class ClusterManagerCmd(object):
                 self.log.error('Previous reassignment pending.')
                 sys.exit(1)
 
-            self.run_command(ct)
+            self.run_command(ct, cluster_balancer(ct, args))
 
     def add_subparser(self, subparsers):
         self.build_subparser(subparsers).set_defaults(command=self.run)
@@ -99,28 +113,6 @@ class ClusterManagerCmd(object):
     def should_execute(self):
         """Confirm if proposed-plan should be executed."""
         return self.args.apply and (self.args.no_confirm or self.confirm_execution())
-
-    def positive_int(self, string):
-        """Convert string to positive integer."""
-        error_msg = 'Positive integer required, {string} given.'.format(string=string)
-        try:
-            value = int(string)
-        except ValueError:
-            raise argparse.ArgumentTypeError(error_msg)
-        if value < 0:
-            raise argparse.ArgumentTypeError(error_msg)
-        return value
-
-    def positive_nonzero_int(self, string):
-        """Convert string to positive integer greater than zero."""
-        error_msg = 'Positive non-zero integer required, {string} given.'.format(string=string)
-        try:
-            value = int(string)
-        except ValueError:
-            raise argparse.ArgumentTypeError(error_msg)
-        if value <= 0:
-            raise argparse.ArgumentTypeError(error_msg)
-        return value
 
     def is_reassignment_pending(self):
         """Return True if there are reassignment tasks pending."""
@@ -202,6 +194,10 @@ class ClusterManagerCmd(object):
             for t_p, replica in original_assignment.iteritems()
             if set(replica) != set(new_assignment[t_p])
         ]
+
+        if (leaders_changes <= max_leader_only_changes and
+                partition_change_count <= max_partition_movements):
+            return new_assignment
 
         self.log.info(
             "Total number of actions before reduction: %s.",

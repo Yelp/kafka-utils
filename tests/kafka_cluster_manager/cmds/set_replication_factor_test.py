@@ -16,15 +16,15 @@ from argparse import Namespace
 
 import mock
 
-from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
-    import ClusterTopology
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
+    import PartitionCountBalancer
 from kafka_utils.kafka_cluster_manager.cmds.set_replication_factor \
     import SetReplicationFactorCmd
 
 
 class TestSetReplicationFactorCmd(object):
 
-    def test_run_command_add_replica(self):
+    def test_run_command_add_replica(self, create_cluster_topology):
         assignment = {
             (u'T0', 0): ['0', '1'],
             (u'T0', 1): ['1', '2'],
@@ -41,8 +41,9 @@ class TestSetReplicationFactorCmd(object):
             cmd.args = mock.Mock(spec=Namespace)
             cmd.args.topic = u'T0'
             cmd.args.replication_factor = 5
-            ct = ClusterTopology(assignment, brokers)
-            cmd.run_command(ct)
+            ct = create_cluster_topology(assignment, brokers)
+            cb = PartitionCountBalancer(ct, cmd.args)
+            cmd.run_command(ct, cb)
 
             assert cmd.process_assignment.call_count == 1
             args, kwargs = cmd.process_assignment.call_args_list[0]
@@ -54,7 +55,7 @@ class TestSetReplicationFactorCmd(object):
 
             assert kwargs['allow_rf_change']
 
-    def test_run_command_remove_replica(self):
+    def test_run_command_remove_replica(self, create_cluster_topology):
         assignment = {
             (u'T0', 0): ['0', '1', '2', '3', '4'],
             (u'T0', 1): ['0', '1', '2', '3', '4'],
@@ -81,8 +82,9 @@ class TestSetReplicationFactorCmd(object):
                 },
             })
 
-            ct = ClusterTopology(assignment, brokers)
-            cmd.run_command(ct)
+            ct = create_cluster_topology(assignment, brokers)
+            cb = PartitionCountBalancer(ct, cmd.args)
+            cmd.run_command(ct, cb)
 
             assert cmd.process_assignment.call_count == 1
             args, kwargs = cmd.process_assignment.call_args_list[0]

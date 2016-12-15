@@ -72,17 +72,37 @@ class TestBroker(object):
 
         assert broker.topics == set([sentinel.t1, sentinel.t2])
 
-    def test_count_partition(self):
-        t1 = sentinel.t1
+    def test_weight(self):
         partitions = set([
-            Mock(spec=Partition, topic=t1, replicas=sentinel.r1),
-            Mock(spec=Partition, topic=t1, replicas=sentinel.r1),
-            Mock(spec=Partition, topic=sentinel.t2, replicas=sentinel.r1),
+            Mock(spec=Partition, topic=sentinel.t1, weight=1),
+            Mock(spec=Partition, topic=sentinel.t1, weight=2),
+            Mock(spec=Partition, topic=sentinel.t2, weight=3),
         ])
         broker = Broker('test-broker', partitions=partitions)
 
+        assert broker.weight == 6
+
+    def test_size(self):
+        partitions = set([
+            Mock(spec=Partition, topic=sentinel.t1, size=1),
+            Mock(spec=Partition, topic=sentinel.t1, size=2),
+            Mock(spec=Partition, topic=sentinel.t2, size=3),
+        ])
+        broker = Broker('test-broker', partitions=partitions)
+
+        assert broker.size == 6
+
+    def test_count_partition(self, create_partition):
+        p10 = create_partition('t1', 0)
+        p11 = create_partition('t1', 1)
+        p20 = create_partition('t2', 0)
+        p30 = create_partition('t3', 0)
+        t1 = p10.topic
+        t3 = p30.topic
+        broker = Broker('test-broker', partitions=set([p10, p11, p20]))
+
         assert broker.count_partitions(t1) == 2
-        assert broker.count_partitions(sentinel.t3) == 0
+        assert broker.count_partitions(t3) == 0
 
     def test_move_partition(self, partition):
         victim_partition = partition

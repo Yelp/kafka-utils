@@ -16,6 +16,7 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
+from kafka_utils.util import positive_nonzero_int
 
 
 class SetReplicationFactorCmd(ClusterManagerCmd):
@@ -42,11 +43,11 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
         subparser.add_argument(
             'replication_factor',
             help='The new replication factor for the topic.',
-            type=self.positive_nonzero_int,
+            type=positive_nonzero_int,
         )
         return subparser
 
-    def run_command(self, ct):
+    def run_command(self, ct, cluster_balancer):
         """Get executable proposed plan(if any) for display or execution."""
         if self.args.topic in ct.topics:
             topic = ct.topics[self.args.topic]
@@ -93,8 +94,8 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                 ),
             )
             for partition in topic.partitions:
-                ct.add_replica(
-                    partition,
+                cluster_balancer.add_replica(
+                    partition.name,
                     changes_per_partition,
                 )
         else:
@@ -110,17 +111,17 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             topic_data = self.zk.get_topics(topic.id)[topic.id]
             for partition in topic.partitions:
                 partition_data = topic_data['partitions'][str(partition.partition_id)]
-                isr = [ct.brokers[b_id] for b_id in partition_data['isr']]
-                osr = [b for b in partition.replicas if b not in isr]
-                if osr:
+                isr = partition_data['isr']
+                osr_broker_ids = [b.id for b in partition.replicas if b.id not in isr]
+                if osr_broker_ids:
                     self.log.info(
-                        "The out of sync replica(s) {osr} will be prioritized "
-                        "for removal."
-                        .format(osr=osr)
+                        "The out of sync replica(s) {osr_broker_ids} will be "
+                        "prioritized for removal."
+                        .format(osr_broker_ids=osr_broker_ids)
                     )
-                ct.remove_replica(
-                    partition,
-                    osr,
+                cluster_balancer.remove_replica(
+                    partition.name,
+                    osr_broker_ids,
                     changes_per_partition,
                 )
 

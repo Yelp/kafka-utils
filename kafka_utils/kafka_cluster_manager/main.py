@@ -25,6 +25,14 @@ import os
 import sys
 from logging.config import fileConfig
 
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
+    import ClusterBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
+    import PartitionCountBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import PartitionMeasurer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import UniformPartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
     import DefaultReplicationGroupParser
 from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
@@ -41,6 +49,11 @@ from kafka_utils.util import config
 
 _log = logging.getLogger()
 
+GENETIC_BALANCER_MODULE = \
+    "kafka_utils.kafka_cluster_manager.cluster_info.genetic_balancer"
+PARTITION_COUNT_BALANCER_MODULE = \
+    "kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer"
+
 
 def get_module(module_full_name):
     if ':' in module_full_name:
@@ -54,12 +67,12 @@ def get_module(module_full_name):
         return importlib.import_module(module_full_name)
 
 
-def dynamic_import_group_parser(module_full_name):
+def dynamic_import(module_full_name, base_class):
     module = get_module(module_full_name)
-    for class_name, class_type in inspect.getmembers(module, inspect.isclass):
-        if (issubclass(class_type, ReplicationGroupParser) and
-                class_type is not ReplicationGroupParser):
-            return class_type()
+    for _, class_type in inspect.getmembers(module, inspect.isclass):
+        if (issubclass(class_type, base_class) and
+                class_type is not base_class):
+            return class_type
 
 
 def parse_args():
@@ -115,11 +128,59 @@ def parse_args():
     parser.add_argument(
         '--group-parser',
         type=str,
-        help='Module containing an implementation of ReplicationGroupParser.'
-        'The module should be specified as path_to_include_to_py_path:module.'
-        'Ex: "/module/path:module.parser".'
+        help='Module containing an implementation of ReplicationGroupParser. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+        'Ex: "/module/path:module.parser". '
         'If not specified the default replication group parser will create '
         'only one group for all brokers.',
+    )
+    parser.add_argument(
+        '--partition-measurer',
+        type=str,
+        help='Module containing an implementation of PartitionMeasurer. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+        'Default: Assign each partition a weight and size of 1.'
+    )
+    parser.add_argument(
+        '--measurer-args',
+        type=str,
+        action='append',
+        default=[],
+        help='Argument list that is passed to the chosen PartitionMeasurer. '
+        'Ex: --measurer-args "--n 10" will pass ["--n", "10"] to the '
+        'PartitionMeasurer\'s parse_args method.'
+    )
+    parser.add_argument(
+        '--cluster-balancer',
+        type=str,
+        help='Module containing an implementation of ClusterBalancer. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+        'Default: PartitionCountBalancer.',
+    )
+    parser.add_argument(
+        '--balancer-args',
+        type=str,
+        action='append',
+        default=[],
+        help='Argument list that is passed to the chosen ClusterBalancer. '
+        'Ex: --balancer-args "--n 10" will pass ["--n", "10"] to the '
+        'ClusterBalancer\'s parse_args method.'
+    )
+    parser.add_argument(
+        '--partition-count-balancer',
+        action='store_const',
+        const=PARTITION_COUNT_BALANCER_MODULE,
+        dest='cluster_balancer',
+        help='Use the number of partitions on each broker to balance the '
+        'cluster.',
+    )
+    parser.add_argument(
+        '--genetic-balancer',
+        action='store_const',
+        const=GENETIC_BALANCER_MODULE,
+        dest='cluster_balancer',
+        help='Use partition metrics and a genetic algorithm to balance the '
+        'cluster.',
     )
 
     subparsers = parser.add_subparsers()
@@ -157,9 +218,32 @@ def run():
         args.cluster_name,
         args.discovery_base_path,
     )
+
     if args.group_parser:
-        rg_parser = dynamic_import_group_parser(args.group_parser)
+        rg_parser = dynamic_import(args.group_parser, ReplicationGroupParser)()
     else:
         rg_parser = DefaultReplicationGroupParser()
 
-    args.command(cluster_config, rg_parser, args)
+    if args.partition_measurer:
+        partition_measurer = dynamic_import(
+            args.partition_measurer,
+            PartitionMeasurer
+        )
+    else:
+        partition_measurer = UniformPartitionMeasurer
+
+    if args.cluster_balancer:
+        cluster_balancer = dynamic_import(
+            args.cluster_balancer,
+            ClusterBalancer
+        )
+    else:
+        cluster_balancer = PartitionCountBalancer
+
+    args.command(
+        cluster_config,
+        rg_parser,
+        partition_measurer,
+        cluster_balancer,
+        args,
+    )
