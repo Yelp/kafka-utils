@@ -149,5 +149,11 @@ def initialize_kafka_offsets_topic():
     topic = create_random_topic(1, 1)
     produce_example_msg(topic, num_messages=1)
     kafka = KafkaToolClient(KAFKA_URL)
-    set_consumer_offsets(kafka, "group", {topic: {0: 0}}, offset_storage='kafka')
+    set_consumer_offsets(
+        kafka,
+        create_random_group_id(),
+        {topic: {0: 0}},
+        offset_storage='kafka',
+        raise_on_error=False,
+    )
     time.sleep(20)
