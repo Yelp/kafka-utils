@@ -30,11 +30,12 @@ from kafka.util import read_short_string
 from kafka.util import relative_unpack
 from kazoo.exceptions import NodeExistsError
 
+from kafka_utils.util.error import UnknownTopic
+from kafka_utils.util.metadata import get_topic_partition_metadata
 from kafka_utils.util.offsets import get_topics_watermarks
 
 
 CONSUMER_OFFSET_TOPIC = '__consumer_offsets'
-CONSUMER_OFFSET_TOPIC_PARTITIONS = 50  # Kafka default
 
 
 def preprocess_topics(source_groupid, source_topics, dest_groupid, topics_dest_group):
@@ -130,6 +131,16 @@ def prompt_user_input(in_str):
             return
 
 
+def get_offset_topic_partition_count(kafka_config):
+    """Given a kafka cluster configuration, return the number of partitions
+    in the offset topic. It will raise an exception if the topic cannot be
+    found"""
+    metadata = get_topic_partition_metadata(kafka_config.broker_list)
+    if CONSUMER_OFFSET_TOPIC not in metadata:
+        raise UnknownTopic("Consumer offset topic is missing.")
+    return len(metadata[CONSUMER_OFFSET_TOPIC])
+
+
 # The mapping of group information to partition for the __consumer_offsets
 # topic is determinated by a hash of the group id, modulo the number of
 # partitions in the topic.
@@ -139,7 +150,7 @@ def prompt_user_input(in_str):
 # hashCode returns the hash of the string according to the Java default string
 # hashing algorithm. The algorithm is implemented in the inner function
 # java_string_hashcode.
-def get_group_partition(group):
+def get_group_partition(group, partition_count):
     """Given a group name, return the partition number of the consumer offset
     topic containing the data associated to that group."""
     def java_string_hashcode(s):
@@ -147,7 +158,7 @@ def get_group_partition(group):
         for c in s:
             h = (31 * h + ord(c)) & 0xFFFFFFFF
         return ((h + 0x80000000) & 0xFFFFFFFF) - 0x80000000
-    return abs(java_string_hashcode(group)) % CONSUMER_OFFSET_TOPIC_PARTITIONS
+    return abs(java_string_hashcode(group)) % partition_count
 
 
 class InvalidMessageException(Exception):
@@ -164,7 +175,8 @@ class KafkaGroupReader:
         self.retry_max = 3
 
     def read_group(self, group_id):
-        partition = get_group_partition(group_id)
+        partition_count = get_offset_topic_partition_count(self.kafka_config)
+        partition = get_group_partition(group_id, partition_count)
         return self.read_groups(partition).get(group_id, [])
 
     def read_groups(self, partition=None):
