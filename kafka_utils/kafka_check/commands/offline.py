@@ -17,41 +17,40 @@ from __future__ import absolute_import
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.util.metadata import get_topic_partition_with_error
-from kafka_utils.util.metadata import REPLICA_NOT_AVAILABLE_ERROR
+from kafka_utils.util.metadata import LEADER_NOT_AVAILABLE_ERROR
 
 
-class UnderReplicatedCmd(KafkaCheckCmd):
+class OfflineCmd(KafkaCheckCmd):
 
     def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
-            'under_replicated',
-            description='Check under replicated partitions for all '
-                        'brokers in cluster.',
-            help='This command will fail if there are any under replicated '
-                 'partitions in the cluster.',
+            'offline',
+            description='Check offline partitions on the specified broker',
+            help='This subcommand will fail if there are any offline partitions '
+            'in the cluster.'
         )
 
         return subparser
 
     def run_command(self):
-        """Under_replicated command, checks number of under replicated partitions for
-        all brokers in the Kafka cluster."""
-        under_replicated = get_topic_partition_with_error(
+        """Checks the number of offline partitions"""
+        offline = get_topic_partition_with_error(
             self.cluster_config,
-            REPLICA_NOT_AVAILABLE_ERROR,
+            LEADER_NOT_AVAILABLE_ERROR,
         )
 
-        if not under_replicated:
-            return status_code.OK, 'No under replicated partitions.'
+        if not offline:
+            return status_code.OK, 'No offline partitions.'
         else:
             if self.args.verbose:
-                for (topic, partition) in under_replicated:
+                for (topic, partition) in offline:
                     print('{topic}:{partition}'.format(
                         topic=topic,
                         partition=partition,
-                    ))
+                    )
+                    )
 
-            msg = "{under_replicated} under replicated partitions.".format(
-                under_replicated=len(under_replicated),
+            msg = "{offline_n} offline partitions.".format(
+                offline_n=len(offline),
             )
             return status_code.CRITICAL, msg

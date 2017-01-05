@@ -17,99 +17,365 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
+from collections import OrderedDict
 
+import kafka_utils.kafka_cluster_manager.cluster_info.stats as stats
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
+    import ClusterTopology
 from kafka_utils.util.validation import assignment_to_plan
 _log = logging.getLogger('kafka-cluster-manager')
 
 
+def display_table(headers, table):
+    """Print a formatted table.
+
+    :param headers: A list of header objects that are displayed in the first
+        row of the table.
+    :param table: A list of lists where each sublist is a row of the table.
+        The number of elements in each row should be equal to the number of
+        headers.
+    """
+    assert all(len(row) == len(headers) for row in table)
+
+    str_headers = [str(header) for header in headers]
+    str_table = [[str(cell) for cell in row] for row in table]
+    column_lengths = [
+        max(len(header), *(len(row[i]) for row in str_table))
+        for i, header in enumerate(str_headers)
+    ]
+
+    print(
+        " | ".join(
+            str(header).ljust(length)
+            for header, length in zip(str_headers, column_lengths)
+        )
+    )
+    print("-+-".join("-" * length for length in column_lengths))
+    for row in str_table:
+        print(
+            " | ".join(
+                str(cell).ljust(length)
+                for cell, length in zip(row, column_lengths)
+            )
+        )
+
+
+def _display_table_title_multicolumn(title, key_name, keys, names, values):
+    assert len(names) == len(values)
+    if len(names) == 1:
+        headers = [key_name, title]
+    else:
+        print(title)
+        headers = [key_name] + names
+    display_table(headers, zip(keys, *values))
+
+
+def display_replica_imbalance(cluster_topologies):
+    """Display replica replication-group distribution imbalance statistics.
+
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
+    """
+    assert cluster_topologies
+
+    rg_ids = next(cluster_topologies.itervalues()).rgs.keys()
+    assert all(
+        set(rg_ids) == set(cluster_topology.rgs.keys())
+        for cluster_topology in cluster_topologies.itervalues()
+    )
+
+    rg_imbalances = [
+        stats.get_replication_group_imbalance_stats(
+            cluster_topology.rgs.values(),
+            cluster_topology.partitions.values(),
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+
+    _display_table_title_multicolumn(
+        'Extra Replica Count',
+        'Replication Group',
+        rg_ids,
+        cluster_topologies.keys(),
+        [
+            [erc[rg_id] for rg_id in rg_ids]
+            for _, erc in rg_imbalances
+        ],
+    )
+
+    for name, imbalance in zip(
+            cluster_topologies.iterkeys(),
+            (imbalance for imbalance, _ in rg_imbalances)
+    ):
+        print(
+            '\n'
+            '{name}'
+            'Total extra replica count: {imbalance}'
+            .format(
+                name='' if len(cluster_topologies) == 1 else name + '\n',
+                imbalance=imbalance,
+            )
+        )
+
+
+def display_partition_imbalance(cluster_topologies):
+    """Display partition count and weight imbalance statistics.
+
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
+    """
+    broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
+    assert all(
+        set(broker_ids) == set(cluster_topology.brokers.keys())
+        for cluster_topology in cluster_topologies.itervalues()
+    )
+    broker_partition_counts = [
+        stats.get_broker_partition_counts(
+            cluster_topology.brokers[broker_id]
+            for broker_id in broker_ids
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+    broker_weights = [
+        stats.get_broker_weights(
+            cluster_topology.brokers[broker_id]
+            for broker_id in broker_ids
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+
+    _display_table_title_multicolumn(
+        'Partition Count',
+        'Broker',
+        broker_ids,
+        cluster_topologies.keys(),
+        broker_partition_counts,
+    )
+
+    print('')
+
+    _display_table_title_multicolumn(
+        'Partition Weight',
+        'Broker',
+        broker_ids,
+        cluster_topologies.keys(),
+        broker_weights,
+    )
+
+    for name, bpc, bw in zip(
+            cluster_topologies.keys(),
+            broker_partition_counts,
+            broker_weights
+    ):
+        print(
+            '\n'
+            '{name}'
+            'Partition count imbalance: {net_imbalance}\n'
+            'Broker weight mean: {weight_mean}\n'
+            'Broker weight stdev: {weight_stdev}\n'
+            'Broker weight cv: {weight_cv}'
+            .format(
+                name='' if len(cluster_topologies) == 1 else name + '\n',
+                net_imbalance=stats.get_net_imbalance(bpc),
+                weight_mean=stats.mean(bw),
+                weight_stdev=stats.standard_deviation(bw),
+                weight_cv=stats.coefficient_of_variation(bw),
+            )
+        )
+
+
+def display_leader_imbalance(cluster_topologies):
+    """Display leader count and weight imbalance statistics.
+
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
+    """
+    broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
+    assert all(
+        set(broker_ids) == set(cluster_topology.brokers.keys())
+        for cluster_topology in cluster_topologies.itervalues()
+    )
+
+    broker_leader_counts = [
+        stats.get_broker_leader_counts(
+            cluster_topology.brokers[broker_id]
+            for broker_id in broker_ids
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+    broker_leader_weights = [
+        stats.get_broker_leader_weights(
+            cluster_topology.brokers[broker_id]
+            for broker_id in broker_ids
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+
+    _display_table_title_multicolumn(
+        'Leader Count',
+        'Brokers',
+        broker_ids,
+        cluster_topologies.keys(),
+        broker_leader_counts,
+    )
+
+    print('')
+
+    _display_table_title_multicolumn(
+        'Leader weight',
+        'Brokers',
+        broker_ids,
+        cluster_topologies.keys(),
+        broker_leader_weights,
+    )
+
+    for name, blc, blw in zip(
+            cluster_topologies.keys(),
+            broker_leader_counts,
+            broker_leader_weights
+    ):
+        print(
+            '\n'
+            '{name}'
+            'Leader count imbalance: {net_imbalance}\n'
+            'Broker leader weight mean: {weight_mean}\n'
+            'Broker leader weight stdev: {weight_stdev}\n'
+            'Broker leader weight cv: {weight_cv}'
+            .format(
+                name='' if len(cluster_topologies) == 1 else name + '\n',
+                net_imbalance=stats.get_net_imbalance(blc),
+                weight_mean=stats.mean(blw),
+                weight_stdev=stats.standard_deviation(blw),
+                weight_cv=stats.coefficient_of_variation(blw),
+            )
+        )
+
+
+def display_topic_broker_imbalance(cluster_topologies):
+    """Display topic broker imbalance statistics.
+
+    :param cluster_topologies: A dictionary mapping a string name to a
+        ClusterTopology object.
+    """
+    broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
+    assert all(
+        set(broker_ids) == set(cluster_topology.brokers.keys())
+        for cluster_topology in cluster_topologies.itervalues()
+    )
+    topic_names = next(cluster_topologies.itervalues()).topics.keys()
+    assert all(
+        set(topic_names) == set(cluster_topology.topics.keys())
+        for cluster_topology in cluster_topologies.itervalues()
+    )
+
+    imbalances = [
+        stats.get_topic_imbalance_stats(
+            [cluster_topology.brokers[broker_id] for broker_id in broker_ids],
+            [cluster_topology.topics[tname] for tname in topic_names],
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+    weighted_imbalances = [
+        stats.get_weighted_topic_imbalance_stats(
+            [cluster_topology.brokers[broker_id] for broker_id in broker_ids],
+            [cluster_topology.topics[tname] for tname in topic_names],
+        )
+        for cluster_topology in cluster_topologies.itervalues()
+    ]
+
+    _display_table_title_multicolumn(
+        'Extra-Topic-Partition Count',
+        'Brokers',
+        broker_ids,
+        cluster_topologies.keys(),
+        [
+            [i[1][broker_id] for broker_id in broker_ids]
+            for i in imbalances
+        ]
+    )
+
+    print('')
+
+    _display_table_title_multicolumn(
+        'Weighted Topic Imbalance',
+        'Brokers',
+        broker_ids,
+        cluster_topologies.keys(),
+        [
+            [wi[1][broker_id] for broker_id in broker_ids]
+            for wi in weighted_imbalances
+        ]
+    )
+
+    for name, topic_imbalance, weighted_topic_imbalance in zip(
+            cluster_topologies.iterkeys(),
+            (i[0] for i in imbalances),
+            (wi[0] for wi in weighted_imbalances),
+    ):
+        print(
+            '\n'
+            '{name}'
+            'Topic partition imbalance count: {topic_imbalance}\n'
+            'Weighted topic partition imbalance: {weighted_topic_imbalance}'
+            .format(
+                name='' if len(cluster_topologies) == 1 else name + '\n',
+                topic_imbalance=topic_imbalance,
+                weighted_topic_imbalance=weighted_topic_imbalance,
+            )
+        )
+
+
+def display_movements_stats(ct, base_assignment):
+    """Display how the amount of movement between two assignments.
+
+    :param ct: The cluster's ClusterTopology.
+    :param base_assignment: The cluster assignment to compare against.
+    """
+    movement_count, movement_size, leader_changes = \
+        stats.get_partition_movement_stats(ct, base_assignment)
+    print(
+        'Total partition movements: {movement_count}\n'
+        'Total partition movement size: {movement_size}\n'
+        'Total leader changes: {leader_changes}'
+        .format(
+            movement_count=movement_count,
+            movement_size=movement_size,
+            leader_changes=leader_changes,
+        )
+    )
+
+
+def display_cluster_topology_stats(cluster_topology, base_assignment=None):
+    if base_assignment:
+        base_cluster_topology = ClusterTopology(
+            base_assignment,
+            {broker.id: broker.metadata for broker in cluster_topology.brokers.values()},
+            cluster_topology.partition_measurer,
+            lambda broker: cluster_topology.brokers[broker.id].replication_group.id,
+        )
+        cluster_topologies = OrderedDict([
+            ('Before', base_cluster_topology),
+            ('After', cluster_topology),
+        ])
+    else:
+        cluster_topologies = OrderedDict([
+            ('', cluster_topology),
+        ])
+
+    display_replica_imbalance(cluster_topologies)
+    print("")
+    display_partition_imbalance(cluster_topologies)
+    print("")
+    display_leader_imbalance(cluster_topologies)
+    print("")
+    display_topic_broker_imbalance(cluster_topologies)
+    if base_assignment:
+        print("")
+        display_movements_stats(cluster_topology, base_assignment)
+
+
 def display_cluster_topology(cluster_topology):
     print(assignment_to_plan(cluster_topology.assignment))
-
-
-def display_same_replica_count_rg(
-    duplicate_replica_count_per_rg,
-    imbalance,
-):
-    """Display same topic/partition count over brokers."""
-    print("=" * 40)
-    print("Replication-group Extra-Same-replica-count")
-    print("=" * 40)
-    for rg_id, replica_count in duplicate_replica_count_per_rg.iteritems():
-        count = int(replica_count)
-        print("{b:^7s} {cnt:^10d}".format(b=rg_id, cnt=int(count)))
-    print("=" * 40)
-    print(
-        '\nTotal replication-group imbalance: {imbalance}\n\n'
-        .format(imbalance=imbalance),
-    )
-
-
-def display_same_topic_partition_count_broker(
-    same_topic_partition_count,
-    imbalance,
-):
-    """Display same topic/partition count over brokers."""
-    print("=" * 40)
-    print("Broker   Extra-Topic-Partition Count")
-    print("=" * 40)
-    for broker_id, partition_count in \
-            same_topic_partition_count.iteritems():
-        print(
-            "{b:^7d} {partition_count:^18d}"
-            .format(b=broker_id, partition_count=partition_count),
-        )
-    print("=" * 40)
-    print(
-        '\nTotal same topic-partition imbalance count: {imbalance}\n'
-        .format(imbalance=imbalance),
-    )
-
-
-def display_partition_count_per_broker(
-    partition_count,
-    stdev_imbalance,
-    imbalance,
-):
-    """Display partition count over brokers."""
-    print("=" * 25)
-    print("Broker   Partition Count")
-    print("=" * 25)
-    for broker_id, count in partition_count.iteritems():
-        print(
-            "{b:^7d} {cnt:^18d}".format(
-                b=broker_id,
-                cnt=count,
-            ),
-        )
-    print("=" * 25)
-
-    print('\n\nPartition-count imbalance:')
-    print('Standard-deviation: {stdev}'.format(stdev=stdev_imbalance))
-    print(
-        'Net-imbalance: Total extra partitions over brokers: {imbalance}'
-        .format(imbalance=imbalance),
-    )
-
-
-def display_leader_count_per_broker(leader_count, stdev_imbalance, imbalance):
-    """Display partition and leader count for each broker."""
-    print("=" * 33)
-    print("Broker   Preferred Leader Count")
-    print("=" * 33)
-    for broker_id, count in leader_count.iteritems():
-        print(
-            "{b:^7d} {cnt:^20d}".format(
-                b=broker_id,
-                cnt=count,
-            ),
-        )
-    print("=" * 33)
-    print('\n\nLeader-count imbalance:')
-    print('Standard-deviation: {stdev}'.format(stdev=stdev_imbalance))
-    print(
-        'Net-imbalance: Total extra brokers as leaders: {imbalance}'
-        .format(imbalance=imbalance),
-    )
 
 
 def display_assignment_changes(plan_details, to_log=True):

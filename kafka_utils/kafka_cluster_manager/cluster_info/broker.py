@@ -74,6 +74,24 @@ class Broker(object):
         """Return the set of topics current in broker."""
         return set([partition.topic for partition in self._partitions])
 
+    @property
+    def weight(self):
+        """Return the total weight of all partitions on this broker."""
+        return sum(partition.weight for partition in self.partitions)
+
+    @property
+    def size(self):
+        """Return the total size of all partitions on this broker."""
+        return sum(partition.size for partition in self.partitions)
+
+    @property
+    def leader_weight(self):
+        return sum(
+            partition.weight
+            for partition in self.partitions
+            if partition.leader == self
+        )
+
     def empty(self):
         """Return true if the broker has no replicas assigned"""
         return len(self.partitions) == 0
@@ -110,16 +128,12 @@ class Broker(object):
 
     def count_partitions(self, topic):
         """Return count of partitions for given topic."""
-        return sum([
-            1
-            for p in self._partitions
-            if p.topic == topic
-        ])
+        return sum(1 for p in topic.partitions if p in self.partitions)
 
     def count_preferred_replica(self):
         """Return number of times broker is set as preferred leader."""
         return sum(
-            [1 for partition in self.partitions if partition.leader == self],
+            1 for partition in self.partitions if partition.leader == self
         )
 
     def get_preferred_partition(self, broker, sibling_distance):

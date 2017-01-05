@@ -22,6 +22,7 @@ from kafka.common import LeaderNotAvailableError
 
 from kafka_utils.util import config
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import set_consumer_offsets
 
 
 ZOOKEEPER_URL = 'zookeeper:2181'
@@ -143,8 +144,16 @@ def call_offset_get(group, storage=None, json=False):
 
 
 def initialize_kafka_offsets_topic():
+    if '__consumer_offsets' in list_topics():
+        return
     topic = create_random_topic(1, 1)
     produce_example_msg(topic, num_messages=1)
-    create_consumer_group(topic, 'foo')
-    call_offset_get('foo', storage='kafka')
-    time.sleep(10)
+    kafka = KafkaToolClient(KAFKA_URL)
+    set_consumer_offsets(
+        kafka,
+        create_random_group_id(),
+        {topic: {0: 0}},
+        offset_storage='kafka',
+        raise_on_error=False,
+    )
+    time.sleep(20)

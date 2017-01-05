@@ -1,5 +1,29 @@
-0.5.4 (November 15, 2016)
+0.6.1 (December 15, 2016)
+-------------------------
+* Fix integration tests
+
+0.6.0 (December 15, 2016)
+-------------------------
+* Refactor kafka-cluster-manager to support multiple balancer classes and metrics
+* Add PartitionMeasurer class and --partition-measurer option for providing user partition metrics
+* Add --genetic-balancer option to kafka-cluster-manager to make use of the genetic balancer
+* Change kafka-cluster-manager stats command output to include user partition metrics
+* Add --show-stats option to kafka-cluster-manager rebalance
+
+0.5.7 (December 12, 2016)
 ------------------------
+* Fetch group topics only from a single __consumer_offsets partition
+
+0.5.6 (December 8, 2016)
+------------------------
+* Add offline partitions check for kafka-check
+
+0.5.5 (November 15, 2016)
+-------------------------
+* Fix set_replication_factor command plan generation
+
+0.5.4 (November 15, 2016)
+-------------------------
 * Fix offset_get when the group name is stored only in kafka
 * Add offset_set retry when writing offsets to kafka
 

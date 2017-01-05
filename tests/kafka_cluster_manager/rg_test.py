@@ -81,6 +81,17 @@ def assert_rg_balanced(rg):
 
 class TestReplicationGroup(object):
 
+    def test_active_brokers(self, rg_unbalanced):
+        b1 = next(b for b in rg_unbalanced.brokers if b.id == 'b1')
+        b2 = next(b for b in rg_unbalanced.brokers if b.id == 'b2')
+        b3 = next(b for b in rg_unbalanced.brokers if b.id == 'b3')
+        b4 = next(b for b in rg_unbalanced.brokers if b.id == 'b4')
+
+        b2.mark_decommissioned()
+        b3.mark_inactive()
+
+        assert rg_unbalanced.active_brokers == set([b1, b4])
+
     def test_rebalance_brokers(self, rg_unbalanced):
         orig_partitions = rg_unbalanced.partitions
 

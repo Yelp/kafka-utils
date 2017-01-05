@@ -47,6 +47,15 @@ class ReplicationGroup(object):
         """Return set of brokers."""
         return self._brokers
 
+    @property
+    def active_brokers(self):
+        """Return set of brokers that are not inactive or decommissioned."""
+        return {
+            broker
+            for broker in self._brokers
+            if not broker.inactive and not broker.decommissioned
+        }
+
     def add_broker(self, broker):
         """Add broker to current broker-list."""
         if broker not in self._brokers:
@@ -73,7 +82,7 @@ class ReplicationGroup(object):
 
     def count_replica(self, partition):
         """Return count of replicas of given partition."""
-        return self.partitions.count(partition)
+        return sum(1 for b in partition.replicas if b in self.brokers)
 
     def acquire_partition(self, partition, source_broker):
         """Move a partition from a broker to any of the eligible brokers
@@ -313,7 +322,7 @@ class ReplicationGroup(object):
         returns: dict {dest: {source: {topic: distance}}}
         """
         sibling_distance = defaultdict(lambda: defaultdict(dict))
-        topics = set([p.topic for p in self.partitions])
+        topics = {p.topic for p in self.partitions}
         for source in self.brokers:
             for dest in self.brokers:
                 if source != dest:

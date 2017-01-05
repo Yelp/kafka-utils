@@ -20,18 +20,11 @@ import logging
 from collections import OrderedDict
 
 from .broker import Broker
-from .error import BrokerDecommissionError
-from .error import EmptyReplicationGroupError
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
-from .error import InvalidReplicationFactorError
-from .error import NotEligibleGroupError
-from .error import RebalanceError
 from .partition import Partition
 from .rg import ReplicationGroup
 from .topic import Topic
-from .util import compute_optimum
-from .util import separate_groups
 
 
 class ClusterTopology(object):
@@ -41,14 +34,23 @@ class ClusterTopology(object):
         :param brokers: dict representing the active brokers of the
             cluster broker_id: metadata (metadata is the content of the zookeeper
             node of the broker)
+        :param partition_measurer: Instance of PartitionMeasurer to use when
+            assigning partitions a weight and size.
         :param extract_group: function used to extract the replication group
             from each broker. The extract_group function is called for each
             broker passing the Broker object as argument. It should return a
             string representing the ReplicationGroup id.
     """
 
-    def __init__(self, assignment, brokers, extract_group=lambda x: None):
+    def __init__(
+            self,
+            assignment,
+            brokers,
+            partition_measurer,
+            extract_group=lambda x: None,
+    ):
         self.extract_group = extract_group
+        self.partition_measurer = partition_measurer
         self.log = logging.getLogger(self.__class__.__name__)
         self.topics = {}
         self.rgs = {}
@@ -106,7 +108,12 @@ class ClusterTopology(object):
             )
 
             # Creating partition object
-            partition = Partition(topic, partition_id)
+            partition = Partition(
+                topic,
+                partition_id,
+                weight=self.partition_measurer.get_weight(partition_name),
+                size=self.partition_measurer.get_size(partition_name),
+            )
             self.partitions[partition_name] = partition
             topic.add_partition(partition)
 
@@ -125,6 +132,14 @@ class ClusterTopology(object):
                 self.brokers[broker_id].add_partition(partition)
 
     @property
+    def active_brokers(self):
+        """Set of brokers that are not inactive or decommissioned."""
+        return {
+            broker for broker in self.brokers.itervalues()
+            if not broker.inactive and not broker.decommissioned
+        }
+
+    @property
     def assignment(self):
         assignment = {}
         for partition in self.partitions.itervalues():
@@ -133,110 +148,6 @@ class ClusterTopology(object):
             ] = [broker.id for broker in partition.replicas]
         # assignment map created in sorted order for deterministic solution
         return OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
-
-    def rebalance_replication_groups(self):
-        """Rebalance partitions over replication groups.
-
-        First step involves rebalancing replica-count for each partition across
-        replication-groups.
-        Second step involves rebalancing partition-count across replication-groups
-        of the cluster.
-        """
-        # Balance replicas over replication-groups for each partition
-        if any(b.inactive for b in self.brokers.itervalues()):
-            self.log.error(
-                "Impossible to rebalance replication groups because of inactive "
-                "brokers."
-            )
-            raise RebalanceError(
-                "Impossible to rebalance replication groups because of inactive "
-                "brokers"
-            )
-
-        for partition in self.partitions.itervalues():
-            self._rebalance_partition(partition)
-
-        # Balance partition-count over replication-groups
-        self._rebalance_groups_partition_cnt()
-
-    def decommission_brokers(self, broker_ids):
-        """Decommission a list of brokers trying to keep the replication group
-        the brokers belong to balanced.
-
-        :param broker_ids: list of string representing valid broker ids in the cluster
-        :raises: InvalidBrokerIdError when the id is invalid.
-        """
-        groups = set()
-        for b_id in broker_ids:
-            try:
-                broker = self.brokers[b_id]
-            except KeyError:
-                self.log.error("Invalid broker id %s.", b_id)
-                # Raise an error for now. As alternative we may ignore the
-                # invalid id and continue with the others.
-                raise InvalidBrokerIdError(
-                    "Broker id {} does not exist in cluster".format(b_id),
-                )
-            broker.mark_decommissioned()
-            groups.add(broker.replication_group)
-
-        for group in groups:
-            self._decommission_brokers_in_group(group)
-
-    def _decommission_brokers_in_group(self, group):
-        """Decommission the marked brokers of a group."""
-        try:
-            group.rebalance_brokers()
-        except EmptyReplicationGroupError:
-            self.log.warning("No active brokers left in replication group %s", group)
-        for broker in group.brokers:
-            if broker.decommissioned and not broker.empty():
-                # In this case we need to reassign the remaining partitions
-                # to other replication groups
-                self.log.info(
-                    "Broker %s can't be decommissioned within the same "
-                    "replication group %s. Moving partitions to other "
-                    "replication groups.",
-                    broker,
-                    broker.replication_group,
-                )
-                self._force_broker_decommission(broker)
-                # Broker should be empty now
-                if not broker.empty():
-                    # Decommission may be impossible if there are not enough
-                    # brokers to redistributed the replicas.
-                    self.log.error(
-                        "Could not decommission broker %s. "
-                        "Partitions %s cannot be reassigned.",
-                        broker,
-                        broker.partitions,
-                    )
-                    raise BrokerDecommissionError("Broker decommission failed.")
-
-    def _force_broker_decommission(self, broker):
-        available_groups = [
-            rg for rg in self.rgs.itervalues()
-            if rg is not broker.replication_group
-        ]
-
-        for partition in broker.partitions.copy():  # partitions set changes during loop
-            groups = sorted(
-                available_groups,
-                key=lambda x: x.count_replica(partition),
-            )
-            for group in groups:
-                self.log.debug(
-                    "Try to move partition: %s from broker %s to "
-                    "replication group %s",
-                    partition,
-                    broker,
-                    broker.replication_group,
-                )
-                try:
-                    group.acquire_partition(partition, broker)
-                    break
-                except NotEligibleGroupError:
-                    pass
 
     def replace_broker(self, source_id, dest_id):
         """Move all partitions in source broker to destination broker.
@@ -261,344 +172,6 @@ class ClusterTopology(object):
             raise InvalidBrokerIdError(
                 "Broker id {} does not exist in cluster".format(e[0])
             )
-
-    def _rebalance_partition(self, partition):
-        """Rebalance replication group for given partition."""
-        # Separate replication-groups into under and over replicated
-        total = sum(
-            group.count_replica(partition)
-            for group in self.rgs.itervalues()
-        )
-        over_replicated_rgs, under_replicated_rgs = separate_groups(
-            self.rgs.values(),
-            lambda g: g.count_replica(partition),
-            total,
-        )
-        # Move replicas from over-replicated to under-replicated groups
-        while under_replicated_rgs and over_replicated_rgs:
-            # Decide source and destination group
-            rg_source = self._elect_source_replication_group(
-                over_replicated_rgs,
-                partition,
-            )
-            rg_destination = self._elect_dest_replication_group(
-                rg_source.count_replica(partition),
-                under_replicated_rgs,
-                partition,
-            )
-            if rg_source and rg_destination:
-                # Actual movement of partition
-                self.log.debug(
-                    'Moving partition {p_name} from replication-group '
-                    '{rg_source} to replication-group {rg_dest}'.format(
-                        p_name=partition.name,
-                        rg_source=rg_source.id,
-                        rg_dest=rg_destination.id,
-                    ),
-                )
-                rg_source.move_partition(rg_destination, partition)
-            else:
-                # Groups balanced or cannot be balanced further
-                break
-            # Re-compute under and over-replicated replication-groups
-            over_replicated_rgs, under_replicated_rgs = separate_groups(
-                self.rgs.values(),
-                lambda g: g.count_replica(partition),
-                total,
-            )
-
-    def _elect_source_replication_group(
-        self,
-        over_replicated_rgs,
-        partition,
-    ):
-        """Decide source replication-group based as group with highest replica
-        count.
-        """
-        return max(
-            over_replicated_rgs,
-            key=lambda rg: rg.count_replica(partition),
-        )
-
-    def _elect_dest_replication_group(
-        self,
-        replica_count_source,
-        under_replicated_rgs,
-        partition,
-    ):
-        """Decide destination replication-group based on replica-count."""
-        min_replicated_rg = min(
-            under_replicated_rgs,
-            key=lambda rg: rg.count_replica(partition),
-        )
-        # Locate under-replicated replication-group with lesser
-        # replica count than source replication-group
-        if min_replicated_rg.count_replica(partition) < replica_count_source - 1:
-            return min_replicated_rg
-        return None
-
-    # Re-balancing partition count across brokers
-    def _rebalance_groups_partition_cnt(self):
-        """Re-balance partition-count across replication-groups.
-
-        Algorithm:
-        The key constraint is not to create any replica-count imbalance while
-        moving partitions across replication-groups.
-        1) Divide replication-groups into over and under loaded groups in terms
-           of partition-count.
-        2) For each over-loaded replication-group, select eligible partitions
-           which can be moved to under-replicated groups. Partitions with greater
-           than optimum replica-count for the group have the ability to donate one
-           of their replicas without creating replica-count imbalance.
-        3) Destination replication-group is selected based on minimum partition-count
-           and ability to accept one of the eligible partition-replicas.
-        4) Source and destination brokers are selected based on :-
-            * their ability to donate and accept extra partition-replica respectively.
-            * maximum and minimum partition-counts respectively.
-        5) Move partition-replica from source to destination-broker.
-        6) Repeat steps 1) to 5) until groups are balanced or cannot be balanced further.
-        """
-        # Segregate replication-groups based on partition-count
-        total_elements = sum(len(rg.partitions) for rg in self.rgs.itervalues())
-        over_loaded_rgs, under_loaded_rgs = separate_groups(
-            self.rgs.values(),
-            lambda rg: len(rg.partitions),
-            total_elements,
-        )
-        if over_loaded_rgs and under_loaded_rgs:
-            self.log.info(
-                'Over-loaded replication-groups {over_loaded}, under-loaded '
-                'replication-groups {under_loaded} based on partition-count'
-                .format(
-                    over_loaded=[rg.id for rg in over_loaded_rgs],
-                    under_loaded=[rg.id for rg in under_loaded_rgs],
-                )
-            )
-        else:
-            self.log.info('Replication-groups are balanced based on partition-count.')
-            return
-
-        # Get optimal partition-count per replication-group
-        opt_partition_cnt, _ = compute_optimum(
-            len(self.rgs),
-            total_elements,
-        )
-        # Balance replication-groups
-        for over_loaded_rg in over_loaded_rgs:
-            for under_loaded_rg in under_loaded_rgs:
-                # Filter unique partition with replica-count > opt-replica-count
-                # in over-loaded-rgs and <= opt-replica-count in under-loaded-rgs
-                eligible_partitions = set(filter(
-                    lambda partition:
-                    over_loaded_rg.count_replica(partition) >
-                    len(partition.replicas) // len(self.rgs) and
-                    under_loaded_rg.count_replica(partition) <=
-                    len(partition.replicas) // len(self.rgs),
-                    over_loaded_rg.partitions,
-                ))
-                # Move all possible partitions
-                for eligible_partition in eligible_partitions:
-                    # The difference of partition-count b/w the over-loaded and under-loaded
-                    # replication-groups should be greater than 1 for convergence
-                    if len(over_loaded_rg.partitions) - len(under_loaded_rg.partitions) > 1:
-                        over_loaded_rg.move_partition_replica(
-                            under_loaded_rg,
-                            eligible_partition,
-                        )
-                    else:
-                        break
-                    # Move to next replication-group if either of the groups got
-                    # balanced, otherwise try with next eligible partition
-                    if (len(under_loaded_rg.partitions) == opt_partition_cnt or
-                            len(over_loaded_rg.partitions) == opt_partition_cnt):
-                        break
-                if len(over_loaded_rg.partitions) == opt_partition_cnt:
-                    # Move to next over-loaded replication-group if balanced
-                    break
-
-    # Re-balancing partition count across brokers
-    def rebalance_brokers(self):
-        """Rebalance partition-count across brokers within each replication-group."""
-        for rg in self.rgs.itervalues():
-            rg.rebalance_brokers()
-
-    # Re-balancing leaders
-    def rebalance_leaders(self):
-        """Re-order brokers in replicas such that, every broker is assigned as
-        preferred leader evenly.
-        """
-        opt_leader_cnt = len(self.partitions) // len(self.brokers)
-        # Balanced brokers transfer leadership to their under-balanced followers
-        self.rebalancing_non_followers(opt_leader_cnt)
-
-    def rebalancing_non_followers(self, opt_cnt):
-        """Transfer leadership to any under-balanced followers on the pretext
-        that they remain leader-balanced or can be recursively balanced through
-        non-followers (followers of other leaders).
-
-        Context:
-        Consider a graph G:
-        Nodes: Brokers (e.g. b1, b2, b3)
-        Edges: From b1 to b2 s.t. b1 is a leader and b2 is its follower
-        State of nodes:
-            1. Over-balanced/Optimally-balanced: (OB)
-                if leadership-count(broker) >= opt-count
-            2. Under-balanced (UB) if leadership-count(broker) < opt-count
-            leader-balanced: leadership-count(broker) is in [opt-count, opt-count+1]
-
-        Algorithm:
-            1. Use Depth-first-search algorithm to find path between
-            between some UB-broker to some OB-broker.
-            2. If path found, update UB-broker and delete path-edges (skip-partitions).
-            3. Continue with step-1 until all possible paths explored.
-        """
-        under_brokers = filter(
-            lambda b: b.count_preferred_replica() < opt_cnt,
-            self.brokers.itervalues(),
-        )
-        if under_brokers:
-            skip_brokers, skip_partitions = [], []
-            for broker in under_brokers:
-                skip_brokers.append(broker)
-                broker.request_leadership(opt_cnt, skip_brokers, skip_partitions)
-
-        over_brokers = filter(
-            lambda b: b.count_preferred_replica() > opt_cnt + 1,
-            self.brokers.itervalues(),
-        )
-        # Any over-balanced brokers tries to donate their leadership to followers
-        if over_brokers:
-            skip_brokers, used_edges = [], []
-            for broker in over_brokers:
-                skip_brokers.append(broker)
-                broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
-
-    def add_replica(self, partition, count=1):
-        """Increase the replication-factor for a partition.
-
-        The replication-group to add to is determined as follows:
-            1. Find all replication-groups that have brokers not already
-                replicating the partition.
-            2. Of these, find replication-groups that have fewer than the
-                average number of replicas for this partition.
-            3. Choose the replication-group with the fewest overall partitions.
-
-        :param partition: Partition of which the replication-factor should be
-        increased.
-        :param count: The number of replicas to add.
-        :raises InvalidReplicationFactorError when the resulting replication
-        factor is greater than the number of brokers in the cluster.
-        """
-        if partition.replication_factor + count > len(self.brokers):
-            raise InvalidReplicationFactorError(
-                "Cannot increase replication factor to {0}. There are only "
-                "{1} brokers."
-                .format(
-                    partition.replication_factor + count,
-                    len(self.brokers),
-                )
-            )
-
-        non_full_rgs = [
-            rg
-            for rg in self.rgs.values()
-            if rg.count_replica(partition) < len(rg.brokers)
-        ]
-        for _ in xrange(count):
-            total_replicas = sum(
-                rg.count_replica(partition)
-                for rg in non_full_rgs
-            )
-            opt_replicas, _ = compute_optimum(
-                len(non_full_rgs),
-                total_replicas,
-            )
-            under_replicated_rgs = [
-                rg
-                for rg in non_full_rgs
-                if rg.count_replica(partition) < opt_replicas
-            ]
-            candidate_rgs = under_replicated_rgs or non_full_rgs
-            rg = min(candidate_rgs, key=lambda rg: len(rg.partitions))
-
-            rg.add_replica(partition)
-
-            if rg.count_replica(partition) >= len(rg.brokers):
-                non_full_rgs.remove(rg)
-
-    def remove_replica(self, partition, osr, count=1):
-        """Remove one replica of a partition from the cluster.
-
-        The replication-group to remove from is determined as follows:
-            1. Find all replication-groups that contain at least one
-                out-of-sync replica for this partition.
-            2. Of these, find replication-groups with more than the average
-                number of replicas of this partition.
-            3. Choose the replication-group with the most overall partitions.
-            4. Repeat steps 1-3 with in-sync replicas
-
-        After this operation, the preferred leader for this partition will
-        be set to the broker that leads the fewest other partitions, even if
-        the current preferred leader is not removed.
-        This is done to keep the number of preferred replicas balanced across
-        brokers in the cluster.
-
-        :param partition: Partition of which the replication-factor should be
-        decreased.
-        :param osr: A list of the partition's out-of-sync replicas.
-        :param count: The number of replicas to remove.
-        :raises: InvalidReplicationFactorError when count is greater than the
-        replication factor of the partition.
-        """
-        if partition.replication_factor <= count:
-            raise InvalidReplicationFactorError(
-                "Cannot remove {0} replicas. Replication factor is only {1}."
-                .format(count, partition.replication_factor)
-            )
-
-        non_empty_rgs = [
-            rg
-            for rg in self.rgs.values()
-            if rg.count_replica(partition) > 0
-        ]
-        rgs_with_osr = [
-            rg
-            for rg in non_empty_rgs
-            if any(b in osr for b in rg.brokers)
-        ]
-
-        for _ in xrange(count):
-            candidate_rgs = rgs_with_osr or non_empty_rgs
-            total_replicas = sum(
-                rg.count_replica(partition)
-                for rg in candidate_rgs
-            )
-            opt_replica_cnt, _ = compute_optimum(
-                len(candidate_rgs),
-                total_replicas,
-            )
-            over_replicated_rgs = [
-                rg
-                for rg in candidate_rgs
-                if rg.count_replica(partition) > opt_replica_cnt
-            ]
-            candidate_rgs = over_replicated_rgs or candidate_rgs
-            rg = max(candidate_rgs, key=lambda rg: len(rg.partitions))
-
-            osr_in_rg = [b for b in rg.brokers if b in osr]
-            rg.remove_replica(partition, osr_in_rg)
-
-            osr = [b for b in osr if b in partition.replicas]
-            if rg in rgs_with_osr and len(osr_in_rg) == 1:
-                rgs_with_osr.remove(rg)
-            if rg.count_replica(partition) == 0:
-                non_empty_rgs.remove(rg)
-
-        new_leader = min(
-            partition.replicas,
-            key=lambda broker: broker.count_preferred_replica(),
-        )
-        partition.swap_leader(new_leader)
 
     def update_cluster_topology(self, assignment):
         """Modify the cluster-topology with given assignment.

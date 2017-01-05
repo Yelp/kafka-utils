@@ -32,6 +32,11 @@ class InvalidReplicationFactorError(KafkaToolError):
     pass
 
 
+class InvalidPartitionMeasurementError(KafkaToolError):
+    """Raised when a partition is assigned a negative weight or size."""
+    pass
+
+
 class EmptyReplicationGroupError(KafkaToolError):
     """Raised when there are no brokers in a replication group."""
     pass

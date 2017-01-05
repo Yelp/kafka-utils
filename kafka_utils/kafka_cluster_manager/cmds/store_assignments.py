@@ -49,8 +49,8 @@ class StoreAssignmentsCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def run_command(self, ct):
-        plan_json = json.dumps(assignment_to_plan(ct.assignment))
+    def run_command(self, cluster_topology, _):
+        plan_json = json.dumps(assignment_to_plan(cluster_topology.assignment))
         if self.args.json_out:
             with open(self.args.json_out, 'w') as f:
                 self.log.info(

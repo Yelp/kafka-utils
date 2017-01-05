@@ -69,8 +69,8 @@ class OffsetManagerBase(object):
         topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
-            storage,
-            fail_on_error,
+            storage=storage,
+            fail_on_error=fail_on_error,
         )
         topics_dict = {}
         if topic:
@@ -130,7 +130,7 @@ class OffsetManagerBase(object):
             groupid
     ):
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        return kafka_group_reader.read_groups().get(groupid, [])
+        return kafka_group_reader.read_group(groupid)
 
     @classmethod
     def get_topics_for_group_from_zookeeper(
@@ -177,6 +177,7 @@ class OffsetWriter(OffsetManagerBase):
             partitions,
             cluster_config,
             client,
+            storage=storage,
             fail_on_error=(fail_on_error and not force),
         )
 
