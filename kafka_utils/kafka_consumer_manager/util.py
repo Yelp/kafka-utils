@@ -133,8 +133,8 @@ def prompt_user_input(in_str):
 
 def get_offset_topic_partition_count(kafka_config):
     """Given a kafka cluster configuration, return the number of partitions
-    in the offset topic. It will raise an exception if the topic cannot be
-    found"""
+    in the offset topic. It will raise an UnknownTopic exception if the topic
+    cannot be found."""
     metadata = get_topic_partition_metadata(kafka_config.broker_list)
     if CONSUMER_OFFSET_TOPIC not in metadata:
         raise UnknownTopic("Consumer offset topic is missing.")
