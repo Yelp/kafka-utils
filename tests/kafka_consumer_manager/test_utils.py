@@ -173,8 +173,7 @@ class TestKafkaGroupReader(object):
     @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
     def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):
         mock_get_metadata.return_value = {'topic1': {0: None}}
-        kafka_config = mock.Mock()
-        kafka_config.broker_list = ['localhost:9092']
+        kafka_config = mock.Mock(broker_list=['localhost:9092'])
         with pytest.raises(UnknownTopic):
             get_offset_topic_partition_count(kafka_config)
 
@@ -182,8 +181,7 @@ class TestKafkaGroupReader(object):
     def test_get_offset_topic_partition_count(self, mock_get_metadata):
         mock_get_metadata.return_value = {'topic1': {0: None},
                                           '__consumer_offsets': {0: None, 1: None}}
-        kafka_config = mock.Mock()
-        kafka_config.broker_list = ['localhost:9092']
+        kafka_config = mock.Mock(broker_list=['localhost:9092'])
         assert get_offset_topic_partition_count(kafka_config) == 2
 
     def test_get_group_partition(self):
