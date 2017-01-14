@@ -93,6 +93,27 @@ def get_consumer_offsets_metadata(
     return result
 
 
+def get_all_topics_watermarks(kafka_client):
+    """This method:
+        * refreshes metadata for the kafka client
+        * fetches all watermarks
+
+    :param kafka_client: KafkaToolClient instance
+    :returns: dict <topic>: [ConsumerPartitionOffsets]
+    """
+    # Refresh client metadata. We do not use the topic list, because we
+    # don't want to accidentally create the topic if it does not exist.
+    # If Kafka is unavailable, let's retry loading client metadata
+    try:
+        kafka_client.load_metadata_for_topics()
+    except KafkaUnavailableError:
+        kafka_client.load_metadata_for_topics()
+
+    return get_topics_watermarks(
+        kafka_client, kafka_client.topic_partitions.keys()
+    )
+
+
 def get_watermark_for_regex(
     kafka_client,
     topic_regex,
@@ -104,9 +125,6 @@ def get_watermark_for_regex(
     :param kafka_client: KafkaToolClient instance
     :param topic: the topic regex
     :returns: dict <topic>: [ConsumerPartitionOffsets]
-    :raises:
-      :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
-      offset_storage choice.
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -123,10 +141,9 @@ def get_watermark_for_regex(
         if topic_regex.match(topic):
             topics_to_be_considered.append(topic)
 
-    watermarks = get_topics_watermarks(
+    return get_topics_watermarks(
         kafka_client, topics_to_be_considered
     )
-    return watermarks
 
 
 def get_watermark_for_topic(
@@ -140,9 +157,6 @@ def get_watermark_for_topic(
     :param kafka_client: KafkaToolClient instance
     :param topic: the topic
     :returns: dict <topic>: [ConsumerPartitionOffsets]
-    :raises:
-      :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
-      offset_storage choice.
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -152,10 +166,9 @@ def get_watermark_for_topic(
     except KafkaUnavailableError:
         kafka_client.load_metadata_for_topics()
 
-    watermarks = get_topics_watermarks(
+    return get_topics_watermarks(
         kafka_client, [topic]
     )
-    return watermarks
 
 
 def get_current_offsets(

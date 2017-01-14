@@ -22,6 +22,7 @@ import sys
 
 from .commands.copy_group import CopyGroup
 from .commands.delete_group import DeleteGroup
+from .commands.empty_topics import EmptyTopics
 from .commands.list_groups import ListGroups
 from .commands.list_topics import ListTopics
 from .commands.offset_advance import OffsetAdvance
@@ -59,19 +60,21 @@ def parse_args():
     )
     subparsers = parser.add_subparsers()
 
-    OffsetGet.add_parser(subparsers)
-    OffsetSave.add_parser(subparsers)
-    OffsetSet.add_parser(subparsers)
-    OffsetAdvance.add_parser(subparsers)
-    OffsetRewind.add_parser(subparsers)
-    WatermarkGet.add_parser(subparsers)
-    ListTopics.add_parser(subparsers)
-    ListGroups.add_parser(subparsers)
-    UnsubscribeTopics.add_parser(subparsers)
+    # Please keep this list in alphabetical order
     CopyGroup.add_parser(subparsers)
     DeleteGroup.add_parser(subparsers)
-    RenameGroup.add_parser(subparsers)
+    EmptyTopics.add_parser(subparsers)
+    ListGroups.add_parser(subparsers)
+    ListTopics.add_parser(subparsers)
+    OffsetAdvance.add_parser(subparsers)
+    OffsetGet.add_parser(subparsers)
     OffsetRestore.add_parser(subparsers)
+    OffsetRewind.add_parser(subparsers)
+    OffsetSave.add_parser(subparsers)
+    OffsetSet.add_parser(subparsers)
+    RenameGroup.add_parser(subparsers)
+    UnsubscribeTopics.add_parser(subparsers)
+    WatermarkGet.add_parser(subparsers)
     return parser.parse_args()
 
 

@@ -57,21 +57,13 @@ class WatermarkGet(OffsetManagerBase):
     def run(cls, args, cluster_config):
         # Setup the Kafka client
         client = KafkaToolClient(cluster_config.broker_list)
-        client.load_metadata_for_topics()
         watermarks = {}
 
-        if args.exact:
-            watermarks = cls.get_watermarks(
-                client,
-                args.topic,
-                exact=True,
-            )
-        else:
-            watermarks = cls.get_watermarks(
-                client,
-                args.topic,
-                exact=False,
-            )
+        watermarks = cls.get_watermarks(
+            client,
+            args.topic,
+            exact=args.exact,
+        )
 
         client.close()
         if args.json:
