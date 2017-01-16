@@ -546,7 +546,7 @@ def set_consumer_offsets(
 def _nullify_partition_offsets(partition_offsets):
     result = {}
     for partition in partition_offsets:
-        result[partition] = -1
+        result[partition] = 0
     return result
 
 

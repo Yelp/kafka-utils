@@ -809,7 +809,7 @@ class TestOffsets(TestOffsetsBase):
             2: 531,
         }
 
-        expected = {0: -1, 1: -1, 2: -1}
+        expected = {0: 0, 1: 0, 2: 0}
         result = _nullify_partition_offsets(partition_offsets)
 
         assert result == expected
@@ -824,7 +824,7 @@ class TestOffsets(TestOffsetsBase):
         }
 
         expected = {
-            'topic1': {0: -1, 1: -1, 2: -1}
+            'topic1': {0: 0, 1: 0, 2: 0}
         }
         result = nullify_offsets(topics)
 
