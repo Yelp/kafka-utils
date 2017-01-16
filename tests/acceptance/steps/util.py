@@ -22,8 +22,8 @@ from kafka.common import LeaderNotAvailableError
 
 from kafka_utils.util import config
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-
 
 ZOOKEEPER_URL = 'zookeeper:2181'
 KAFKA_URL = 'kafka:9092'
@@ -119,6 +119,28 @@ def create_consumer_group(topic, group_name, num_messages=1):
         consumer.task_done(message)
     consumer.commit()
     return consumer
+
+
+def create_consumer_group_with_kafka_storage(topic, group_name):
+    client = KafkaToolClient(KAFKA_URL)
+    set_consumer_offsets(
+        client,
+        group_name,
+        {topic: {0: 1}},
+        offset_storage='kafka',
+        raise_on_error=True,
+    )
+    return client
+
+
+def get_consumer_offsets(topics, group, storage='zookeeper'):
+    client = KafkaToolClient(KAFKA_URL)
+    return get_current_consumer_offsets(
+        client,
+        group,
+        topics,
+        storage
+    )
 
 
 def call_watermark_get(topic_name, storage=None):

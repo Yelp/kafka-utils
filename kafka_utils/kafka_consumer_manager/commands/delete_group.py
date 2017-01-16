@@ -55,7 +55,12 @@ class DeleteGroup(OffsetWriter):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, None, None, cluster_config, client
+            args.groupid,
+            None,
+            None,
+            cluster_config,
+            client,
+            storage=args.storage,
         )
         if not args.storage or args.storage == 'zookeeper':
             cls.delete_group_zk(cluster_config, args.groupid)
