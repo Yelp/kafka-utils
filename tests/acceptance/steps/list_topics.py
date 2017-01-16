@@ -36,7 +36,7 @@ def step_impl1(context):
 
 
 @given('we have a set of existing topics and a consumer group with kafka storage')
-def step_impl81(context):
+def step_impl2(context):
     for topic in test_topics:
         create_random_topic(1, 1, topic_name=topic)
         produce_example_msg(topic)
@@ -56,16 +56,16 @@ def call_list_topics(groupid, storage='zookeeper'):
 
 
 @when('we call the list_topics command')
-def step_impl32(context):
+def step_impl3(context):
     context.output = call_list_topics('group1')
 
 
 @when('we call the list_topics command with kafka storage')
-def step_impl2(context):
+def step_impl4(context):
     context.output = call_list_topics('group1', 'kafka')
 
 
 @then('the topics will be listed')
-def step_impl3(context):
+def step_impl5(context):
     for topic in test_topics:
         assert topic in context.output

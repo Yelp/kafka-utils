@@ -25,6 +25,7 @@ from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
 
+
 ZOOKEEPER_URL = 'zookeeper:2181'
 KAFKA_URL = 'kafka:9092'
 

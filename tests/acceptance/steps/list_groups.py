@@ -71,6 +71,6 @@ def step_impl4(context):
 
 
 @then('the groups will be listed')
-def step_impl6(context):
+def step_impl5(context):
     for group in context.groups:
         assert group in context.output
