@@ -51,7 +51,7 @@ class OffsetRestore(OffsetManagerBase):
         parser_offset_restore.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets.",
-            default='zookeeper'
+            default='kafka'
         )
         parser_offset_restore.set_defaults(command=cls.run)
 

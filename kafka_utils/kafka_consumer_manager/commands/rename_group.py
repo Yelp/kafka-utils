@@ -56,7 +56,7 @@ class RenameGroup(OffsetManagerBase):
         parser_rename_group.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
             help="String describing the storage type",
-            default='zookeeper',
+            default='kafka',
         )
         parser_rename_group.set_defaults(command=cls.run)
 

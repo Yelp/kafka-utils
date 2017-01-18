@@ -61,7 +61,7 @@ class UnsubscribeTopics(OffsetWriter):
             '--storage',
             choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets.",
-            default='zookeeper',
+            default='kafka',
         )
         parser_unsubscribe_topics.set_defaults(command=cls.run)
 
@@ -72,19 +72,19 @@ class UnsubscribeTopics(OffsetWriter):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, args.topic, args.partitions, cluster_config, client
+            args.groupid,
+            args.topic,
+            args.partitions,
+            cluster_config,
+            client,
+            storage=args.storage,
         )
+
         with ZK(cluster_config) as zk:
             if args.storage == 'zookeeper':
                 unsubscriber = ZookeeperUnsubscriber(zk)
-            elif args.storage == 'kafka':
-                unsubscriber = KafkaUnsubscriber(client)
             else:
-                print(
-                    "Invalid storage option: {}".format(args.storage),
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+                unsubscriber = KafkaUnsubscriber(client)
 
             unsubscriber.unsubscribe_topic(
                 args.groupid,
