@@ -2,13 +2,16 @@ import struct
 from collections import namedtuple
 
 import mock
+import pytest
 from kafka.common import ConsumerTimeout
 from kafka.common import KafkaMessage
 from kafka.common import LeaderNotAvailableError
 
 from kafka_utils.kafka_consumer_manager.util import get_group_partition
+from kafka_utils.kafka_consumer_manager.util import get_offset_topic_partition_count
 from kafka_utils.kafka_consumer_manager.util import InvalidMessageException
 from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
+from kafka_utils.util.error import UnknownTopic
 from kafka_utils.util.offsets import PartitionOffsets
 
 Message = namedtuple("Message", ["partition", "offset", "key", "value"])
@@ -132,7 +135,6 @@ class TestKafkaGroupReader(object):
             assert kafka_group_reader.kafka_groups == {}
 
     def test_read_groups(self):
-
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
         with mock.patch(
@@ -168,14 +170,28 @@ class TestKafkaGroupReader(object):
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     assert len(kafka_group_reader.finished_partitions) == 1
 
+    @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
+    def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):
+        mock_get_metadata.return_value = {'topic1': {0: None}}
+        kafka_config = mock.Mock(broker_list=['localhost:9092'])
+        with pytest.raises(UnknownTopic):
+            get_offset_topic_partition_count(kafka_config)
+
+    @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
+    def test_get_offset_topic_partition_count(self, mock_get_metadata):
+        mock_get_metadata.return_value = {'topic1': {0: None},
+                                          '__consumer_offsets': {0: None, 1: None}}
+        kafka_config = mock.Mock(broker_list=['localhost:9092'])
+        assert get_offset_topic_partition_count(kafka_config) == 2
+
     def test_get_group_partition(self):
-        result1 = get_group_partition('815e79b2-be20-11e6-96b6-0697c842cbe5')
-        result2 = get_group_partition('83e3f292-be26-11e6-b509-0697c842cbe5')
-        result3 = get_group_partition('adaceffc-be26-11e6-8eab-0697c842cbe5')
+        result1 = get_group_partition('815e79b2-be20-11e6-96b6-0697c842cbe5', 50)
+        result2 = get_group_partition('83e3f292-be26-11e6-b509-0697c842cbe5', 50)
+        result3 = get_group_partition('adaceffc-be26-11e6-8eab-0697c842cbe5', 20)
 
         assert result1 == 10
         assert result2 == 44
-        assert result3 == 15
+        assert result3 == 5
 
     def test_read_groups_with_consumer_timeout(self):
 
