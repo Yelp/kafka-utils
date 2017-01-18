@@ -114,15 +114,12 @@ class RenameGroup(OffsetManagerBase):
             new_groupid,
             copied_offsets,
             offset_storage='kafka',
-            raise_on_error=True,
         )
-        new_offsets = nullify_offsets(topics)
         set_consumer_offsets(
             client,
             old_groupid,
-            new_offsets,
+            nullify_offsets(topics),
             offset_storage='kafka',
-            raise_on_error=True,
         )
 
     @classmethod
