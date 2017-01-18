@@ -134,13 +134,24 @@ def create_consumer_group_with_kafka_storage(topic, group_name):
     return client
 
 
-def get_consumer_offsets(topics, group, storage='zookeeper'):
+def get_consumer_offset(topics, group, storage='zookeeper'):
     client = KafkaToolClient(KAFKA_URL)
     return get_current_consumer_offsets(
         client,
         group,
         topics,
         storage
+    )
+
+
+def set_consumer_group_offset(topic, group, offset, storage='kafka'):
+    client = KafkaToolClient(KAFKA_URL)
+    set_consumer_offsets(
+        client,
+        group,
+        {topic: {0: offset}},
+        offset_storage=storage,
+        raise_on_error=True,
     )
 
 

@@ -16,6 +16,7 @@ from behave import given
 from behave import when
 
 from .util import create_consumer_group
+from .util import create_consumer_group_with_kafka_storage
 from .util import create_random_group_id
 from .util import create_random_topic
 from .util import initialize_kafka_offsets_topic
@@ -30,14 +31,23 @@ def step_impl1(context):
     context.topic = create_random_topic(1, 1)
 
 
-@when(u'we produce some number of messages into the topic')
+@given(u'we have a kafka consumer group with storage option kafka')
 def step_impl2(context):
+    context.group = create_random_group_id()
+    context.client = create_consumer_group_with_kafka_storage(
+        context.topic,
+        context.group,
+    )
+
+
+@when(u'we produce some number of messages into the topic')
+def step_impl3(context):
     produce_example_msg(context.topic, num_messages=PRODUCED_MSG_COUNT)
     context.msgs_produced = PRODUCED_MSG_COUNT
 
 
 @when(u'we consume some number of messages from the topic')
-def step_impl3(context):
+def step_impl4(context):
     context.group = create_random_group_id()
     context.consumer = create_consumer_group(
         context.topic,
@@ -48,10 +58,10 @@ def step_impl3(context):
 
 
 @given(u'we have initialized kafka offsets storage')
-def step_impl4(context):
+def step_impl5(context):
     initialize_kafka_offsets_topic()
 
 
 @given(u'we have an existing kafka cluster')
-def step_impl5(context):
+def step_impl6(context):
     pass

@@ -12,13 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from behave import given
 from behave import then
 from behave import when
 
 from .util import call_cmd
-from .util import create_consumer_group_with_kafka_storage
-from .util import create_random_group_id
 from .util import get_cluster_config
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.zookeeper import ZK
@@ -27,35 +24,27 @@ from kafka_utils.util.zookeeper import ZK
 NEW_GROUP = 'new_group'
 
 
-def call_copy_group(old_group, new_group, storage='zookeeper'):
+def call_copy_group(old_group, new_group, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'copy_group',
            old_group,
-           new_group,
-           '--storage', storage]
+           new_group]
+    if storage:
+        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@given(u'we have a kafka consumer group with storage option kafka')
-def step_impl1(context):
-    context.group = create_random_group_id()
-    context.client = create_consumer_group_with_kafka_storage(
-        context.topic,
-        context.group,
-    )
-
-
-@when(u'we call the copy_group command with a new groupid')
+@when(u'we call the copy_group command with a new groupid with zookeeper storage')
 def step_impl2(context):
-    call_copy_group(context.group, NEW_GROUP)
+    call_copy_group(context.group, NEW_GROUP, 'zookeeper')
 
 
-@when(u'we call the copy_group command with a new groupid with kafka storage')
+@when(u'we call the copy_group command with a new groupid with default storage')
 def step_impl3(context):
-    call_copy_group(context.group, NEW_GROUP, 'kafka')
+    call_copy_group(context.group, NEW_GROUP)
 
 
 @then('the committed offsets in kafka for the new group will match the old group')
