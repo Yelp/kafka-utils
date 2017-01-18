@@ -1,4 +1,4 @@
-Feature: kafka_consumer_manager delete_group subcommand
+Feature: kafka_consumer_manager rename_group subcommand
 
   Scenario: Calling the rename_group commandi with default storage
      Given we have an existing kafka cluster with a topic
