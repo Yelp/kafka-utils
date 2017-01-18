@@ -174,7 +174,7 @@ def get_current_consumer_offsets(
     group,
     topics,
     raise_on_error=True,
-    offset_storage='zookeeper',
+    offset_storage='kafka',
 ):
     """ Get current consumer offsets.
 
@@ -363,10 +363,10 @@ def _commit_offsets_to_watermark(
             "Unknown watermark: {watermark}".format(watermark=watermark)
         )
 
-    if offset_storage == 'zookeeper' or not offset_storage:
-        send_api = kafka_client.send_offset_commit_request
-    elif offset_storage == 'kafka':
+    if offset_storage == 'kafka' or not offset_storage:
         send_api = kafka_client.send_offset_commit_request_kafka
+    elif offset_storage == 'zookeeper':
+        send_api = kafka_client.send_offset_commit_request
     else:
         raise InvalidOffsetStorageError(offset_storage)
 
@@ -387,7 +387,7 @@ def advance_consumer_offsets(
     group,
     topics,
     raise_on_error=True,
-    offset_storage='zookeeper',
+    offset_storage='kafka',
 ):
     """Advance consumer offsets to the latest message in the topic
     partition (the high watermark).
@@ -430,7 +430,7 @@ def rewind_consumer_offsets(
     group,
     topics,
     raise_on_error=True,
-    offset_storage='zookeeper',
+    offset_storage='kafka',
 ):
     """Rewind consumer offsets to the earliest message in the topic
     partition (the low watermark).
@@ -473,7 +473,7 @@ def set_consumer_offsets(
     group,
     new_offsets,
     raise_on_error=True,
-    offset_storage='zookeeper',
+    offset_storage='kafka',
 ):
     """Set consumer offsets to the specified offsets.
 
@@ -524,10 +524,10 @@ def set_consumer_offsets(
         for partition, offset in new_partition_offsets.iteritems()
     ]
 
-    if offset_storage == 'zookeeper' or not offset_storage:
-        send_api = kafka_client.send_offset_commit_request
-    elif offset_storage == 'kafka':
+    if offset_storage == 'kafka' or not offset_storage:
         send_api = kafka_client.send_offset_commit_request_kafka
+    elif offset_storage == 'zookeeper':
+        send_api = kafka_client.send_offset_commit_request
     else:
         raise InvalidOffsetStorageError(offset_storage)
 
