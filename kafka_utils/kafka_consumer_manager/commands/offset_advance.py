@@ -55,7 +55,8 @@ class OffsetAdvance(OffsetWriter):
         )
         parser_offset_advance.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets."
+            help="String describing where to store the committed offsets.",
+            default='kafka',
         )
         parser_offset_advance.add_argument(
             '--force',

@@ -68,14 +68,14 @@ def step_impl2(context):
     assert os.path.isfile(context.offsets_file.name)
 
 
-@when(u'we call the offset_restore command with the offsets file')
+@when(u'we call the offset_restore command with the offsets file with zookeeper storage')
 def step_impl3(context):
-    call_offset_restore(context.offsets_file.name)
+    call_offset_restore(context.offsets_file.name, storage='zookeeper')
 
 
 @when(u'we call the offset_restore command with the offsets file and kafka storage')
 def step_impl3_2(context):
-    call_offset_restore(context.offsets_file.name, storage='kafka')
+    call_offset_restore(context.offsets_file.name)
 
 
 @then(u'the committed offsets will match the offsets file')

@@ -36,9 +36,9 @@ def call_offset_advance(groupid, topic=None, storage=None, force=False):
     return call_cmd(cmd)
 
 
-@when(u'we call the offset_advance command with a groupid and topic')
+@when(u'we call the offset_advance command with a groupid and topic with zk storage')
 def step_impl3(context):
-    call_offset_advance(context.group)
+    call_offset_advance(context.group, storage='zookeeper')
 
 
 @when(u'we call the offset_advance command and commit into kafka')
@@ -46,17 +46,17 @@ def step_impl3_2(context):
     call_offset_advance(
         context.group,
         topic=context.topic,
-        storage='kafka',
         force=True,
     )
 
 
-@when(u'we call the offset_advance command with a new groupid and the force option')
+@when(u'we call the offset_advance command with a new groupid and the force option with zk storage')
 def step_impl2(context):
     context.group = 'offset_advance_test_group'
     call_offset_advance(
         context.group,
         topic=context.topic,
+        storage='zookeeper',
         force=True,
     )
 

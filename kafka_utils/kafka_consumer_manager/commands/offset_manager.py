@@ -32,12 +32,12 @@ class OffsetManagerBase(object):
         cls,
         cluster_config,
         groupid,
-        storage='zookeeper',
+        storage='kafka',
         fail_on_error=True,
     ):
-        if storage == 'kafka':
-            return cls.get_topics_for_group_from_kafka(cluster_config, groupid)
-        return cls.get_topics_for_group_from_zookeeper(cluster_config, groupid, fail_on_error)
+        if storage == 'zookeeper':
+            return cls.get_topics_for_group_from_zookeeper(cluster_config, groupid, fail_on_error)
+        return cls.get_topics_for_group_from_kafka(cluster_config, groupid)
 
     @classmethod
     def preprocess_args(
@@ -47,7 +47,7 @@ class OffsetManagerBase(object):
         partitions,
         cluster_config,
         client,
-        storage='zookeeper',
+        storage='kafka',
         fail_on_error=True,
         quiet=False
     ):
@@ -167,7 +167,7 @@ class OffsetWriter(OffsetManagerBase):
         partitions,
         cluster_config,
         client,
-        storage='zookeeper',
+        storage='kafka',
         fail_on_error=True,
         force=False,
     ):

@@ -55,7 +55,8 @@ class OffsetRewind(OffsetWriter):
         )
         parser_offset_rewind.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets."
+            help="String describing where to store the committed offsets.",
+            default='kafka',
         )
         parser_offset_rewind.add_argument(
             '--force',
@@ -78,13 +79,14 @@ class OffsetRewind(OffsetWriter):
             cluster_config,
             client,
             force=args.force,
+            storage=args.storage,
         )
         try:
             rewind_consumer_offsets(
                 client,
                 args.groupid,
                 topics_dict,
-                args.storage,
+                offset_storage=args.storage,
             )
         except TypeError:
             print(

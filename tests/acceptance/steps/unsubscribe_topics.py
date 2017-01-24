@@ -20,19 +20,21 @@ from .util import get_cluster_config
 from kafka_utils.util.zookeeper import ZK
 
 
-def call_unsubscribe_topics(groupid):
+def call_unsubscribe_topics(groupid, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'unsubscribe_topics',
            groupid]
+    if storage:
+        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@when('we call the unsubscribe_topics command')
+@when('we call the unsubscribe_topics command with zookeeper storage')
 def step_impl2(context):
-    call_unsubscribe_topics(context.group)
+    call_unsubscribe_topics(context.group, 'zookeeper')
 
 
 @then(u'the committed offsets will no longer exist in zookeeper')

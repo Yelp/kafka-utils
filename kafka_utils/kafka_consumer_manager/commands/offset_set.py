@@ -67,6 +67,7 @@ class OffsetSet(OffsetWriter):
         parser_offset_set.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets.",
+            default='kafka',
         )
         parser_offset_set.add_argument(
             '--force',
@@ -88,6 +89,7 @@ class OffsetSet(OffsetWriter):
             cls.get_topics_from_consumer_group_id(
                 cluster_config,
                 args.groupid,
+                storage=args.storage,
             )
 
         try:

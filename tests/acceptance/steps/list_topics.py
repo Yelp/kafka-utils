@@ -35,7 +35,7 @@ def step_impl1(context):
         create_consumer_group(topic, test_group)
 
 
-@given('we have a set of existing topics and a consumer group with kafka storage')
+@given('we have a set of existing topics and a consumer group with default storage')
 def step_impl2(context):
     for topic in test_topics:
         create_random_topic(1, 1, topic_name=topic)
@@ -44,25 +44,26 @@ def step_impl2(context):
         create_consumer_group_with_kafka_storage(topic, test_group)
 
 
-def call_list_topics(groupid, storage='zookeeper'):
+def call_list_topics(groupid, storage=None):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'list_topics',
-           '--storage', storage,
            groupid]
+    if storage:
+        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@when('we call the list_topics command')
+@when('we call the list_topics command with default storage')
 def step_impl3(context):
     context.output = call_list_topics('group1')
 
 
-@when('we call the list_topics command with kafka storage')
+@when('we call the list_topics command with zookeeper storage')
 def step_impl4(context):
-    context.output = call_list_topics('group1', 'kafka')
+    context.output = call_list_topics('group1', 'zookeeper')
 
 
 @then('the topics will be listed')

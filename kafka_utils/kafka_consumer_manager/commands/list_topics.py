@@ -36,7 +36,7 @@ class ListTopics(OffsetManagerBase):
         parser_list_topics.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
             help="String describing which storage source to query for topics.",
-            default='zookeeper'
+            default='kafka'
         )
         parser_list_topics.add_argument(
             'groupid',
