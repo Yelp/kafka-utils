@@ -15,8 +15,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import sys
-
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import nullify_offsets
@@ -45,6 +43,7 @@ class DeleteGroup(OffsetWriter):
         parser_delete_group.add_argument(
             '--storage', choices=['zookeeper', 'kafka'],
             help="String describing where to store the committed offsets.",
+            default='kafka',
         )
         parser_delete_group.set_defaults(command=cls.run)
 
@@ -55,19 +54,17 @@ class DeleteGroup(OffsetWriter):
         client.load_metadata_for_topics()
 
         topics_dict = cls.preprocess_args(
-            args.groupid, None, None, cluster_config, client
+            args.groupid,
+            None,
+            None,
+            cluster_config,
+            client,
+            storage=args.storage,
         )
-        if not args.storage or args.storage == 'zookeeper':
+        if args.storage == 'zookeeper':
             cls.delete_group_zk(cluster_config, args.groupid)
-        elif args.storage == 'kafka':
-            cls.delete_group_kafka(client, args.groupid, topics_dict)
         else:
-            print(
-                "Error: Invalid offset storage option: "
-                "{}.".format(args.storage),
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            cls.delete_group_kafka(client, args.groupid, topics_dict)
 
     @classmethod
     def delete_group_zk(cls, cluster_config, group):

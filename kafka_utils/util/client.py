@@ -24,7 +24,7 @@ from retrying import retry
 
 from kafka_utils.util.protocol import KafkaToolProtocol
 
-RETRY_ATTEMPTS = 5
+RETRY_ATTEMPTS = 10
 WAIT_BEFORE_RETRYING = 2 * 1000
 
 

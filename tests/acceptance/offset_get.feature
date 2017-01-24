@@ -1,17 +1,17 @@
 Feature: kafka_consumer_manager offset_get subcommand
 
-  Scenario: Calling the offset_get command
+  Scenario: Calling the offset_get command with zookeeper storage
      Given we have an existing kafka cluster with a topic
       when we produce some number of messages into the topic
       when we consume some number of messages from the topic
-      when we call the offset_get command
+      when we call the offset_get command with zookeeper storage
       then the correct offset will be shown
 
   Scenario: Calling the offset_get command with json option
      Given we have an existing kafka cluster with a topic
       when we produce some number of messages into the topic
       when we consume some number of messages from the topic
-      when we call the offset_get command with the json option
+      when we call the offset_get command with the json option with zookeeper storage
       then the correct json output will be shown
 
   @kafka9

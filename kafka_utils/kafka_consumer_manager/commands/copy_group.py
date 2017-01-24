@@ -25,6 +25,8 @@ from kafka_utils.kafka_consumer_manager.util import create_offsets
 from kafka_utils.kafka_consumer_manager.util import fetch_offsets
 from kafka_utils.kafka_consumer_manager.util import preprocess_topics
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
+from kafka_utils.util.offsets import set_consumer_offsets
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -57,6 +59,11 @@ class CopyGroup(OffsetManagerBase):
             "specified, offsets from all partitions of the topic shall "
             "be copied.",
         )
+        parser_copy_group.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing the storage type",
+            default='kafka',
+        )
         parser_copy_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -76,12 +83,47 @@ class CopyGroup(OffsetManagerBase):
             args.partitions,
             cluster_config,
             client,
+            storage=args.storage,
         )
+
+        if args.storage == 'kafka':
+            cls.copy_group_kafka(
+                client,
+                source_topics,
+                args.source_groupid,
+                args.dest_groupid,
+            )
+        else:
+            cls.copy_group_zk(
+                client,
+                source_topics,
+                args.source_groupid,
+                args.dest_groupid,
+                cluster_config,
+            )
+
+    @classmethod
+    def copy_group_kafka(cls, client, topics, source_group, destination_group):
+        copied_offsets = get_current_consumer_offsets(
+            client,
+            source_group,
+            topics,
+            offset_storage='kafka',
+        )
+        set_consumer_offsets(
+            client,
+            destination_group,
+            copied_offsets,
+            offset_storage='kafka',
+        )
+
+    @classmethod
+    def copy_group_zk(cls, client, topics, source_group, destination_group, cluster_config):
         with ZK(cluster_config) as zk:
             try:
                 topics_dest_group = zk.get_children(
                     "/consumers/{groupid}/offsets".format(
-                        groupid=args.dest_groupid,
+                        groupid=destination_group,
                     )
                 )
             except NoNodeError:
@@ -89,12 +131,12 @@ class CopyGroup(OffsetManagerBase):
                 pass
             else:
                 preprocess_topics(
-                    args.source_groupid,
-                    source_topics.keys(),
-                    args.dest_groupid,
+                    source_group,
+                    topics,
+                    destination_group,
                     topics_dest_group,
                 )
 
             # Fetch offsets
-            source_offsets = fetch_offsets(zk, args.source_groupid, source_topics)
-            create_offsets(zk, args.dest_groupid, source_offsets)
+            source_offsets = fetch_offsets(zk, source_group, topics)
+            create_offsets(zk, destination_group, source_offsets)

@@ -17,6 +17,7 @@ from behave import when
 
 from .util import call_cmd
 from .util import get_cluster_config
+from .util import set_consumer_group_offset
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -43,36 +44,53 @@ def call_offset_rewind(groupid, topic, storage=None, force=False):
     return call_cmd(cmd)
 
 
-@when(u'we call the offset_rewind command with a groupid and topic')
+@when(u'we call the offset_rewind command with a groupid and topic with zk storage')
+def step_impl1(context):
+    call_offset_rewind(context.group, context.topic, storage='zookeeper')
+
+
+@when(u'we set the offsets to a high number to emulate consumption')
+def step_impl2(context):
+    set_consumer_group_offset(
+        topic=context.topic,
+        group=context.group,
+        offset=100,
+    )
+
+
+@when(u'we call the offset_rewind command and commit into kafka')
 def step_impl3(context):
     call_offset_rewind(context.group, context.topic)
 
 
-@when(u'we call the offset_rewind command and commit into kafka')
-def step_impl3_2(context):
-    call_offset_rewind(context.group, context.topic, storage='kafka')
-
-
 @when(u'we call the offset_rewind command with a new groupid and the force option')
-def step_impl2(context):
+def step_impl4(context):
     context.group = 'offset_advance_created_group'
     call_offset_rewind(
         context.group,
         topic=context.topic,
+        storage='zookeeper',
         force=True,
     )
 
 
 @then(u'the committed offsets will match the earliest message offsets')
-def step_impl4(context):
+def step_impl5(context):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
         offsets = zk.get_group_offsets(context.group)
     assert offsets[context.topic]["0"] == 0
 
 
+@then(u'consumer_group wont exist since it is rewind to low_offset 0')
+def step_impl6(context):
+    # Since using kafka offset storage, lowmark is 0, then a rewind to lowmark
+    # will remove the consumer group from kafka
+    assert "Current Offset" not in context.output
+
+
 @then(u'the earliest message offsets will be shown')
-def step_impl5_2(context):
+def step_impl7(context):
     offset = 0
     pattern = 'Current Offset: {}'.format(offset)
     assert pattern in context.output

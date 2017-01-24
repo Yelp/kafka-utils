@@ -34,6 +34,11 @@ class ListTopics(OffsetManagerBase):
             help="Show this help message and exit."
         )
         parser_list_topics.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing which storage source to query for topics.",
+            default='kafka'
+        )
+        parser_list_topics.add_argument(
             'groupid',
             help="Consumer Group ID whose topics shall be fetched."
         )
@@ -51,13 +56,15 @@ class ListTopics(OffsetManagerBase):
             partitions=None,
             cluster_config=cluster_config,
             client=client,
+            storage=args.storage,
             fail_on_error=False,
         )
         if not topics_dict:
             print(
                 "Consumer Group ID: {group} does not exist in "
-                "Zookeeper".format(
-                    group=args.groupid
+                "{storage}".format(
+                    group=args.groupid,
+                    storage=args.storage,
                 )
             )
             sys.exit(1)

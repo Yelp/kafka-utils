@@ -16,34 +16,45 @@ from behave import then
 from behave import when
 
 from .util import call_cmd
-from .util import get_cluster_config
-from kafka_utils.util.zookeeper import ZK
+from .util import call_offset_get
 
 
 NEW_GROUP = 'new_group'
 
 
-def call_rename_group(old_group, new_group):
+def call_rename_group(old_group, new_group, storage='zookeeper'):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'rename_group',
            old_group,
-           new_group]
+           new_group,
+           '--storage', storage]
     return call_cmd(cmd)
 
 
-@when(u'we call the rename_group command with a new groupid')
+@when(u'we call the rename_group command')
+def step_impl1(context):
+    call_rename_group(context.group, NEW_GROUP)
+
+
+@when(u'we call the rename_group command with kafka storage')
 def step_impl2(context):
-    call_rename_group(NEW_GROUP)
+    call_rename_group(context.group, NEW_GROUP, 'kafka')
 
 
 @then(u'the committed offsets in the new group will match the expected values')
+def step_impl3(context):
+    new_group = call_offset_get(NEW_GROUP, 'zookeeper', True)
+    old_group = call_offset_get(context.group, 'zookeeper', True)
+    assert "does not exist" in old_group
+    assert context.topic in new_group
+
+
+@then(u'the group named has been changed')
 def step_impl4(context):
-    cluster_config = get_cluster_config()
-    with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(context.group)
-        new_offsets = zk.get_group_offsets(NEW_GROUP)
-    assert offsets is None
-    assert context.topic in new_offsets
+    new_groups = call_offset_get(NEW_GROUP, 'kafka')
+    old_group = call_offset_get(context.group, 'kafka')
+    assert "Offset Distance" in new_groups
+    assert "Offset Distance" not in old_group

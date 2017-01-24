@@ -30,7 +30,7 @@ def step_impl4_2(context):
 
 @when(u'we call the offset_get command with kafka storage')
 def step_impl4_3(context):
-    context.output = call_offset_get(context.group, storage='kafka')
+    context.output = call_offset_get(context.group)
 
 
 @when(u'we call the offset_get command with zookeeper storage')
@@ -38,9 +38,9 @@ def step_impl4_4(context):
     context.output = call_offset_get(context.group, storage='zookeeper')
 
 
-@when(u'we call the offset_get command with the json option')
+@when(u'we call the offset_get command with the json option with zookeeper storage')
 def step_impl4_5(context):
-    context.output = call_offset_get(context.group, json=True)
+    context.output = call_offset_get(context.group, storage='zookeeper', json=True)
 
 
 @then(u'the correct offset will be shown')

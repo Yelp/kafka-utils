@@ -25,6 +25,9 @@ from kafka_utils.kafka_consumer_manager.util import create_offsets
 from kafka_utils.kafka_consumer_manager.util import fetch_offsets
 from kafka_utils.kafka_consumer_manager.util import preprocess_topics
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
+from kafka_utils.util.offsets import nullify_offsets
+from kafka_utils.util.offsets import set_consumer_offsets
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -50,6 +53,11 @@ class RenameGroup(OffsetManagerBase):
             'new_groupid',
             help="New name for the consumer group ID."
         )
+        parser_rename_group.add_argument(
+            '--storage', choices=['zookeeper', 'kafka'],
+            help="String describing the storage type",
+            default='kafka',
+        )
         parser_rename_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -70,12 +78,63 @@ class RenameGroup(OffsetManagerBase):
             partitions=None,
             cluster_config=cluster_config,
             client=client,
+            storage=args.storage,
         )
+        if args.storage == 'kafka':
+            cls.rename_group_with_storage_kafka(
+                client,
+                args.old_groupid,
+                args.new_groupid,
+                topics_dict,
+            )
+        else:
+            cls.rename_group_with_storage_zookeeper(
+                args.old_groupid,
+                args.new_groupid,
+                topics_dict,
+                cluster_config,
+            )
+
+    @classmethod
+    def rename_group_with_storage_kafka(
+        cls,
+        client,
+        old_groupid,
+        new_groupid,
+        topics,
+    ):
+        copied_offsets = get_current_consumer_offsets(
+            client,
+            old_groupid,
+            topics,
+            offset_storage='kafka',
+        )
+        set_consumer_offsets(
+            client,
+            new_groupid,
+            copied_offsets,
+            offset_storage='kafka',
+        )
+        set_consumer_offsets(
+            client,
+            old_groupid,
+            nullify_offsets(topics),
+            offset_storage='kafka',
+        )
+
+    @classmethod
+    def rename_group_with_storage_zookeeper(
+        cls,
+        old_groupid,
+        new_groupid,
+        topics_dict,
+        cluster_config
+    ):
         with ZK(cluster_config) as zk:
             try:
                 topics = zk.get_children(
                     "/consumers/{groupid}/offsets".format(
-                        groupid=args.new_groupid
+                        groupid=new_groupid
                     )
                 )
             except NoNodeError:
@@ -83,17 +142,17 @@ class RenameGroup(OffsetManagerBase):
                 pass
             else:
                 preprocess_topics(
-                    args.old_groupid,
+                    old_groupid,
                     topics_dict.keys(),
-                    args.new_groupid,
+                    new_groupid,
                     topics,
                 )
 
-            old_offsets = fetch_offsets(zk, args.old_groupid, topics_dict)
-            create_offsets(zk, args.new_groupid, old_offsets)
+            old_offsets = fetch_offsets(zk, old_groupid, topics_dict)
+            create_offsets(zk, new_groupid, old_offsets)
             try:
                 old_base_path = "/consumers/{groupid}".format(
-                    groupid=args.old_groupid,
+                    groupid=old_groupid,
                 )
                 zk.delete(old_base_path, recursive=True)
             except:

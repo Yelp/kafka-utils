@@ -45,7 +45,7 @@ def get_consumer_offsets_metadata(
     group,
     topics,
     raise_on_error=True,
-    offset_storage='zookeeper',
+    offset_storage='kafka',
 ):
     """This method:
         * refreshes metadata for the kafka client
