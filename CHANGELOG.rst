@@ -1,3 +1,7 @@
+0.6.3 (January 26, 2017)
+------------------------
+* Fix KafkaGroupreader when reading consumer group with partition zero.
+
 0.6.2 (January 25, 2017)
 ------------------------
 * Add storage option for a few kafka_consumer_manager subcommands
