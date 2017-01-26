@@ -181,7 +181,7 @@ class KafkaGroupReader:
 
     def read_groups(self, partition=None):
         self.log.info("Kafka consumer running")
-        if partition:
+        if partition is not None:
             topic_partition = {CONSUMER_OFFSET_TOPIC: [partition]}
         else:
             topic_partition = CONSUMER_OFFSET_TOPIC
