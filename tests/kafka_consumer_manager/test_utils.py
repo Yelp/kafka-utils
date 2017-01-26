@@ -142,28 +142,28 @@ class TestKafkaGroupReader(object):
                 autospec=True
         ) as mock_consumer:
             with mock.patch.object(
-                kafka_group_reader,
-                'get_current_watermarks',
-                return_value={
-                    0: PartitionOffsets(
-                    'test_topic',
-                    0,
-                    45,
-                    0
-                    )
-                },
-                autospec=True
+                    kafka_group_reader,
+                    'get_current_watermarks',
+                    return_value={
+                        0: PartitionOffsets(
+                            'test_topic',
+                            0,
+                            45,
+                            0
+                        )
+                    },
+                    autospec=True
             ):
                 with mock.patch.object(
-                    kafka_group_reader,
-                    'parse_consumer_offset_message',
-                    return_value=[
-                        'test_group',
-                        'test_topic',
-                        0,
-                        45
-                    ],
-                    autospec=True
+                        kafka_group_reader,
+                        'parse_consumer_offset_message',
+                        return_value=[
+                            'test_group',
+                            'test_topic',
+                            0,
+                            45
+                        ],
+                        autospec=True
                 ):
                     mock_consumer.return_value.next.return_value = mock.Mock(partition=0, topic='test_topic')
                     kafka_group_reader.read_groups()
@@ -179,28 +179,28 @@ class TestKafkaGroupReader(object):
                 autospec=True
         ) as mock_consumer:
             with mock.patch.object(
-                kafka_group_reader,
-                'get_current_watermarks',
-                return_value={
-                    0: PartitionOffsets(
-                    'test_topic',
-                    0,
-                    45,
-                    0
-                    )
-                },
-                autospec=True
+                    kafka_group_reader,
+                    'get_current_watermarks',
+                    return_value={
+                        0: PartitionOffsets(
+                            'test_topic',
+                            0,
+                            45,
+                            0
+                        )
+                    },
+                    autospec=True
             ):
                 with mock.patch.object(
-                    kafka_group_reader,
-                    'parse_consumer_offset_message',
-                    return_value=[
-                        'test_group',
-                        'test_topic',
-                        0,
-                        45
-                    ],
-                    autospec=True
+                        kafka_group_reader,
+                        'parse_consumer_offset_message',
+                        return_value=[
+                            'test_group',
+                            'test_topic',
+                            0,
+                            45
+                        ],
+                        autospec=True
                 ):
                     mock_consumer.return_value.next.return_value = mock.Mock(partition=0, topic='test_topic')
                     kafka_group_reader.read_groups(partition=0)
