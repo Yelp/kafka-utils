@@ -17,11 +17,11 @@ import copy
 import mock
 import pytest
 from kafka.common import NotLeaderForPartitionError
-from kafka.common import OffsetCommitResponse
-from kafka.common import OffsetFetchResponse
-from kafka.common import OffsetResponse
 from kafka.common import RequestTimedOutError
 from kafka.common import UnknownTopicOrPartitionError
+from kafka.structs import OffsetCommitResponsePayload
+from kafka.structs import OffsetFetchResponsePayload
+from kafka.structs import OffsetResponsePayload
 
 from kafka_utils.util.error import InvalidOffsetStorageError
 from kafka_utils.util.offsets import _nullify_partition_offsets
@@ -84,7 +84,7 @@ class MyKafkaToolClient(object):
                 error_code = UnknownTopicOrPartitionError.errno
             else:
                 error_code = 0
-            resps.append(OffsetResponse(
+            resps.append(OffsetResponsePayload(
                 req.topic,
                 req.partition,
                 error_code,
@@ -142,7 +142,7 @@ class MyKafkaToolClient(object):
             if not self.commit_error:
                 self.group_offsets[req.topic][req.partition] = req.offset
                 resps.append(
-                    OffsetCommitResponse(
+                    OffsetCommitResponsePayload(
                         req.topic,
                         req.partition,
                         0
@@ -150,7 +150,7 @@ class MyKafkaToolClient(object):
                 )
             else:
                 resps.append(
-                    OffsetCommitResponse(
+                    OffsetCommitResponsePayload(
                         req.topic,
                         req.partition,
                         RequestTimedOutError.errno
@@ -202,7 +202,7 @@ class MyKafkaToolClient(object):
     ):
         return [
             callback(
-                OffsetFetchResponse(
+                OffsetFetchResponsePayload(
                     req.topic,
                     req.partition,
                     self.group_offsets[req.topic].get(req.partition, -1),

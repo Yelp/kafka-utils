@@ -49,7 +49,7 @@ def step_impl3(context):
 @when(u'we consume some number of messages from the topic')
 def step_impl4(context):
     context.group = create_random_group_id()
-    context.consumer = create_consumer_group(
+    context.client = create_consumer_group(
         context.topic,
         context.group,
         num_messages=CONSUMED_MSG_COUNT,
@@ -59,6 +59,7 @@ def step_impl4(context):
 
 @given(u'we have initialized kafka offsets storage')
 def step_impl5(context):
+
     initialize_kafka_offsets_topic()
 
 

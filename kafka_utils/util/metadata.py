@@ -12,7 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from kafka import KafkaClient
+from kafka.structs import PartitionMetadata
+
+from kafka_utils.util.client import KafkaToolClient
 
 
 LEADER_NOT_AVAILABLE_ERROR = 5
@@ -20,9 +22,21 @@ REPLICA_NOT_AVAILABLE_ERROR = 9
 
 
 def get_topic_partition_metadata(hosts):
-    """Returns topic-partition metadata from Kafka broker."""
-    kafka_client = KafkaClient(hosts, timeout=10)
-    return kafka_client.topic_partitions
+    """Returns topic-partition metadata from Kafka broker.
+
+    kafk-python 1.3+ doesn't include partition metadata information in
+    topic_partitions so we extract it from metadata ourselves.
+    """
+    kafka_client = KafkaToolClient(hosts, timeout=10)
+    topic_partitions = kafka_client.topic_partitions
+    resp = kafka_client.send_metadata_request()
+
+    for _, topic, partitions in resp.topics:
+        for partition_error, partition, leader, replicas, isr in partitions:
+            if topic_partitions.get(topic, {}).get(partition) is not None:
+                topic_partitions[topic][partition] = PartitionMetadata(topic, partition, leader,
+                                                                       replicas, isr, partition_error)
+    return topic_partitions
 
 
 def get_topic_partition_with_error(cluster_config, error):

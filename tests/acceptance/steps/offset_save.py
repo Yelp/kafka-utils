@@ -52,9 +52,7 @@ def step_impl2_2(context):
 
 @then(u'the correct offsets will be saved into the given file')
 def step_impl3(context):
-    offsets = context.consumer.offsets(group='commit')
-    key = (context.topic, 0)
-    offset = offsets[key]
+    offset = context.msgs_consumed
 
     data = json.loads(context.offsets_file.read())
     assert offset == data['offsets'][context.topic]['0']

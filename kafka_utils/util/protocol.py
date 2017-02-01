@@ -12,46 +12,58 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import struct
-
+import kafka.protocol.commit
 from kafka.protocol import KafkaProtocol
+from kafka.structs import ConsumerMetadataResponse
 from kafka.util import group_by_topic_and_partition
-from kafka.util import write_short_string
+from kafka.vendor import six
 
 
 class KafkaToolProtocol(KafkaProtocol):
 
     @classmethod
-    def encode_offset_commit_request_kafka(cls, client_id, correlation_id,
-                                           group, payloads):
+    def encode_offset_commit_request_kafka(cls, group, payloads):
         """
-        Encode some OffsetCommitRequest structs
+        Encode an OffsetCommitRequest struct
         Arguments:
-            client_id: string
-            correlation_id: int
             group: string, the consumer group you are committing offsets for
-            payloads: list of OffsetCommitRequest
+            payloads: list of OffsetCommitRequestPayload
         """
-        grouped_payloads = group_by_topic_and_partition(payloads)
+        return kafka.protocol.commit.OffsetCommitRequest[2](
+            consumer_group=group,
+            consumer_group_generation_id=kafka.protocol.commit.OffsetCommitRequest[2].DEFAULT_GENERATION_ID,
+            consumer_id='',
+            retention_time=kafka.protocol.commit.OffsetCommitRequest[2].DEFAULT_RETENTION_TIME,
+            topics=[(
+                topic,
+                [(
+                    partition,
+                    payload.offset,
+                    payload.metadata)
+                 for partition, payload in six.iteritems(topic_payloads)])
+                for topic, topic_payloads in six.iteritems(group_by_topic_and_partition(payloads))])
 
-        message = []
-        message.append(cls._encode_message_header(
-            client_id, correlation_id,
-            KafkaProtocol.OFFSET_COMMIT_KEY,
-            version=2))
-        message.append(write_short_string(group))
-        message.append(struct.pack('>i', -1))   # ConsumerGroupGenerationId
-        message.append(write_short_string(''))  # ConsumerId
-        message.append(struct.pack('>q', -1))   # Retention time
-        message.append(struct.pack('>i', len(grouped_payloads)))
+    @classmethod
+    def encode_consumer_metadata_request(cls, payloads):
+        """
+        Encode a GroupCoordinatorRequest. Note that ConsumerMetadataRequest is
+        renamed to GroupCoordinatorRequest in 0.9+. Interface is unchanged
+        Arguments:
+            payloads: string (consumer group)
+        """
+        return kafka.protocol.commit.GroupCoordinatorRequest[0](payloads)
 
-        for topic, topic_payloads in grouped_payloads.items():
-            message.append(write_short_string(topic))
-            message.append(struct.pack('>i', len(topic_payloads)))
-
-            for partition, payload in topic_payloads.items():
-                message.append(struct.pack('>iq', partition, payload.offset))
-                message.append(write_short_string(payload.metadata))
-
-        msg = b''.join(message)
-        return struct.pack('>i%ds' % len(msg), len(msg), msg)
+    @classmethod
+    def decode_consumer_metadata_response(cls, response):
+        """
+        Decode GroupCoordinatorResponse. Note that ConsumerMetadataResponse is
+        renamed to GroupCoordinatorResponse in 0.9+
+        Arguments:
+            response: response to decode
+        """
+        return ConsumerMetadataResponse(
+            response.error_code,
+            response.coordinator_id,
+            response.host,
+            response.port,
+        )

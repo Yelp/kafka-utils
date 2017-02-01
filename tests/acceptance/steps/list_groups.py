@@ -73,5 +73,7 @@ def step_impl4(context):
 
 @then('the groups will be listed')
 def step_impl5(context):
+    import pdb
+    pdb.set_trace()
     for group in context.groups:
         assert group in context.output

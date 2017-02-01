@@ -15,15 +15,14 @@
 from collections import defaultdict
 from collections import namedtuple
 
-from kafka.common import BrokerResponseError
-from kafka.common import check_error
-from kafka.common import OffsetCommitRequest
-from kafka.common import OffsetFetchRequest
-from kafka.common import OffsetFetchResponse
-from kafka.common import OffsetRequest
-from kafka.common import OffsetResponse
 from kafka.common import UnknownTopicOrPartitionError
-from kafka.util import kafka_bytestring
+from kafka.structs import BrokerResponseError
+from kafka.structs import check_error
+from kafka.structs import OffsetCommitRequestPayload
+from kafka.structs import OffsetFetchRequestPayload
+from kafka.structs import OffsetFetchResponsePayload
+from kafka.structs import OffsetRequestPayload
+from kafka.structs import OffsetResponsePayload
 
 from kafka_utils.util.error import InvalidOffsetStorageError
 from kafka_utils.util.error import OffsetCommitError
@@ -57,7 +56,7 @@ def pluck_topic_offset_or_zero_on_unknown(resp):
     # The API spec says server wont set an error, but 0.8.1.1 does. The actual
     # check is if the offset is -1.
     if resp.offset == -1:
-        return OffsetFetchResponse(
+        return OffsetFetchResponsePayload(
             resp.topic,
             resp.partition,
             0,
@@ -72,7 +71,7 @@ def _check_fetch_response_error(resp):
         check_error(resp)
     except BrokerResponseError:
         # In case of error we set the offset to (-1,)
-        return OffsetResponse(
+        return OffsetResponsePayload(
             resp.topic,
             resp.partition,
             resp.error,
@@ -208,7 +207,7 @@ def get_current_consumer_offsets(
     topics = _verify_topics_and_partitions(kafka_client, topics, raise_on_error)
 
     group_offset_reqs = [
-        OffsetFetchRequest(kafka_bytestring(topic), partition)
+        OffsetFetchRequestPayload(topic, partition)
         for topic, partitions in topics.iteritems()
         for partition in partitions
     ]
@@ -225,11 +224,14 @@ def get_current_consumer_offsets(
     if group_offset_reqs:
         # fail_on_error = False does not prevent network errors
         group_resps = send_api(
-            group=kafka_bytestring(group),
+            group=group,
             payloads=group_offset_reqs,
             fail_on_error=False,
             callback=pluck_topic_offset_or_zero_on_unknown,
         )
+        print("group offset reqs {} and group_resps {}".format(group_offset_reqs, group_resps))
+        import pdb
+        pdb.set_trace()
         for resp in group_resps:
             group_offsets.setdefault(
                 resp.topic,
@@ -276,14 +278,14 @@ def get_topics_watermarks(kafka_client, topics, raise_on_error=True):
         for partition in partitions:
             # Request the the latest offset
             highmark_offset_reqs.append(
-                OffsetRequest(
-                    kafka_bytestring(topic), partition, -1, max_offsets=1
+                OffsetRequestPayload(
+                    topic, partition, -1, max_offsets=1
                 )
             )
             # Request the earliest offset
             lowmark_offset_reqs.append(
-                OffsetRequest(
-                    kafka_bytestring(topic), partition, -2, max_offsets=1
+                OffsetRequestPayload(
+                    topic, partition, -2, max_offsets=1
                 )
             )
 
@@ -342,18 +344,18 @@ def _commit_offsets_to_watermark(
 
     if watermark == HIGH_WATERMARK:
         group_offset_reqs = [
-            OffsetCommitRequest(
-                kafka_bytestring(topic), partition,
-                watermark_offsets[topic][partition].highmark, None
+            OffsetCommitRequestPayload(
+                topic, partition,
+                watermark_offsets[topic][partition].highmark, ''
             )
             for topic, partitions in topics.iteritems()
             for partition in partitions
         ]
     elif watermark == LOW_WATERMARK:
         group_offset_reqs = [
-            OffsetCommitRequest(
-                kafka_bytestring(topic), partition,
-                watermark_offsets[topic][partition].lowmark, None
+            OffsetCommitRequestPayload(
+                topic, partition,
+                watermark_offsets[topic][partition].lowmark, ''
             )
             for topic, partitions in topics.iteritems()
             for partition in partitions
@@ -373,7 +375,7 @@ def _commit_offsets_to_watermark(
     status = []
     if group_offset_reqs:
         status = send_api(
-            kafka_bytestring(group),
+            group,
             group_offset_reqs,
             raise_on_error,
             callback=_check_commit_response_error
@@ -514,11 +516,11 @@ def set_consumer_offsets(
     )
 
     group_offset_reqs = [
-        OffsetCommitRequest(
-            kafka_bytestring(topic),
+        OffsetCommitRequestPayload(
+            topic,
             partition,
             offset,
-            None
+            '',
         )
         for topic, new_partition_offsets in valid_new_offsets.iteritems()
         for partition, offset in new_partition_offsets.iteritems()
@@ -534,7 +536,7 @@ def set_consumer_offsets(
     status = []
     if group_offset_reqs:
         status = send_api(
-            kafka_bytestring(group),
+            group,
             group_offset_reqs,
             raise_on_error,
             callback=_check_commit_response_error

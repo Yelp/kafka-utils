@@ -190,8 +190,8 @@ class KafkaGroupReader:
             topic_partition,
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
-            auto_offset_reset='smallest',
-            auto_commit_enable=False,
+            auto_offset_reset='earliest',
+            enable_auto_commit=False,
             consumer_timeout_ms=3000,
         )
         self.log.info("Consumer ready")

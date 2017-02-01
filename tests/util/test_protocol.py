@@ -14,7 +14,7 @@
 # limitations under the License.
 import struct
 
-from kafka.common import OffsetCommitRequest
+from kafka.structs import OffsetCommitRequestPayload
 
 from kafka_utils.util.protocol import KafkaToolProtocol
 
@@ -60,9 +60,9 @@ class TestProtocol(object):
         expected2 = b"".join([header, topic2, topic1])
 
         encoded = KafkaToolProtocol.encode_offset_commit_request_kafka(b"client_id", 42, b"group_id", [
-            OffsetCommitRequest(b"topic1", 0, 123, None),
-            OffsetCommitRequest(b"topic1", 1, 234, None),
-            OffsetCommitRequest(b"topic2", 2, 345, None),
+            OffsetCommitRequestPayload(b"topic1", 0, 123, None),
+            OffsetCommitRequestPayload(b"topic1", 1, 234, None),
+            OffsetCommitRequestPayload(b"topic2", 2, 345, None),
         ])
 
         assert encoded in [expected1, expected2]

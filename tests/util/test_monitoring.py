@@ -14,7 +14,7 @@
 # limitations under the License.
 import mock
 import pytest
-from kafka.common import ConsumerCoordinatorNotAvailableCode
+from kafka.common import GroupCoordinatorNotAvailableError
 from kafka.common import KafkaUnavailableError
 from test_offsets import MyKafkaToolClient
 from test_offsets import TestOffsetsBase
@@ -263,7 +263,7 @@ class TestMonitoring(TestOffsetsBase):
         ) as mock_get_zk, mock.patch.object(
             MyKafkaToolClient,
             'send_offset_fetch_request_kafka',
-            side_effect=ConsumerCoordinatorNotAvailableCode('Boom!'),
+            side_effect=GroupCoordinatorNotAvailableError('Boom!'),
             autospec=True,
         ) as mock_get_kafka:
             actual = get_consumer_offsets_metadata(
