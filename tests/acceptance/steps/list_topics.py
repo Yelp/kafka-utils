@@ -68,7 +68,5 @@ def step_impl4(context):
 
 @then('the topics will be listed')
 def step_impl5(context):
-    import pdb
-    pdb.set_trace()
     for topic in test_topics:
         assert topic in context.output

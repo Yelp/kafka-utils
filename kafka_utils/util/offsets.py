@@ -90,6 +90,7 @@ def _check_commit_response_error(resp):
             e.message
         )
         return exception
+    return resp
 
 
 def _validate_topics_list_or_dict(topics):
@@ -229,9 +230,6 @@ def get_current_consumer_offsets(
             fail_on_error=False,
             callback=pluck_topic_offset_or_zero_on_unknown,
         )
-        print("group offset reqs {} and group_resps {}".format(group_offset_reqs, group_resps))
-        import pdb
-        pdb.set_trace()
         for resp in group_resps:
             group_offsets.setdefault(
                 resp.topic,

@@ -26,10 +26,12 @@ from kafka.common import KafkaUnavailableError
 from kafka.common import LeaderNotAvailableError
 from kafka.common import NotLeaderForPartitionError
 from kafka.consumer import KafkaConsumer
+from kafka.structs import TopicPartition
 from kafka.util import read_short_string
 from kafka.util import relative_unpack
 from kazoo.exceptions import NodeExistsError
 
+from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.error import UnknownTopic
 from kafka_utils.util.metadata import get_topic_partition_metadata
 from kafka_utils.util.offsets import get_topics_watermarks
@@ -181,19 +183,19 @@ class KafkaGroupReader:
 
     def read_groups(self, partition=None):
         self.log.info("Kafka consumer running")
-        if partition:
-            topic_partition = {CONSUMER_OFFSET_TOPIC: [partition]}
-        else:
-            topic_partition = CONSUMER_OFFSET_TOPIC
-
         self.consumer = KafkaConsumer(
-            topic_partition,
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
             auto_offset_reset='earliest',
             enable_auto_commit=False,
             consumer_timeout_ms=3000,
         )
+
+        if partition:
+            self.consumer.assign([TopicPartition(CONSUMER_OFFSET_TOPIC, partition)])
+        else:
+            self.consumer.subscribe([CONSUMER_OFFSET_TOPIC])
+
         self.log.info("Consumer ready")
         self.watermarks = self.get_current_watermarks(partition)
         self.retry = 0
@@ -246,9 +248,10 @@ class KafkaGroupReader:
             self.kafka_groups.pop(group, None)
 
     def get_current_watermarks(self, partition=None):
-        self.consumer._client.load_metadata_for_topics()
+        client = KafkaToolClient(self.kafka_config.broker_list)
+        client.load_metadata_for_topics(CONSUMER_OFFSET_TOPIC)
         offsets = get_topics_watermarks(
-            self.consumer._client,
+            client,
             [CONSUMER_OFFSET_TOPIC],
         )
         return {part: offset for part, offset

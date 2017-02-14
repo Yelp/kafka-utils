@@ -593,7 +593,16 @@ class TestOffsets(TestOffsetsBase):
             "group",
             topics
         )
-        assert status == []
+
+        expected_status = [
+            OffsetCommitResponsePayload("topic1", 0, 0),
+            OffsetCommitResponsePayload("topic1", 1, 0),
+            OffsetCommitResponsePayload("topic1", 2, 0),
+            OffsetCommitResponsePayload("topic2", 0, 0),
+            OffsetCommitResponsePayload("topic2", 1, 0),
+        ]
+
+        assert set(status) == set(expected_status)
         assert kafka_client_mock.group_offsets == self.high_offsets
 
     def test_advance_consumer_offsets_fail(self, kafka_client_mock):
@@ -686,7 +695,15 @@ class TestOffsets(TestOffsetsBase):
                 1: 300,
             }
         }
-        assert status == []
+
+        expected_status = [
+            OffsetCommitResponsePayload("topic1", 0, 0),
+            OffsetCommitResponsePayload("topic1", 1, 0),
+            OffsetCommitResponsePayload("topic2", 0, 0),
+            OffsetCommitResponsePayload("topic2", 1, 0),
+        ]
+
+        assert set(status) == set(expected_status)
         assert kafka_client_mock.group_offsets == expected_offsets
 
     def test_set_consumer_offsets_fail(self, kafka_client_mock):

@@ -40,7 +40,7 @@ class KafkaToolProtocol(KafkaProtocol):
                     partition,
                     payload.offset,
                     payload.metadata)
-                 for partition, payload in six.iteritems(topic_payloads)])
+                    for partition, payload in six.iteritems(topic_payloads)])
                 for topic, topic_payloads in six.iteritems(group_by_topic_and_partition(payloads))])
 
     @classmethod

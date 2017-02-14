@@ -28,6 +28,7 @@ def get_topic_partition_metadata(hosts):
     topic_partitions so we extract it from metadata ourselves.
     """
     kafka_client = KafkaToolClient(hosts, timeout=10)
+    kafka_client.load_metadata_for_topics()
     topic_partitions = kafka_client.topic_partitions
     resp = kafka_client.send_metadata_request()
 
