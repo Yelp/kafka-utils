@@ -260,6 +260,8 @@ class KafkaGroupReader:
                 (partition is None or part == partition)}
 
     def get_max_offset(self, partition):
+        if partition not in self.watermarks:
+            self.watermarks.update(self.get_current_watermarks(partition))
         return self.watermarks[partition].highmark
 
     def finished(self):

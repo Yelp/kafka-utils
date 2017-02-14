@@ -24,7 +24,7 @@ REPLICA_NOT_AVAILABLE_ERROR = 9
 def get_topic_partition_metadata(hosts):
     """Returns topic-partition metadata from Kafka broker.
 
-    kafk-python 1.3+ doesn't include partition metadata information in
+    kafka-python 1.3+ doesn't include partition metadata information in
     topic_partitions so we extract it from metadata ourselves.
     """
     kafka_client = KafkaToolClient(hosts, timeout=10)
