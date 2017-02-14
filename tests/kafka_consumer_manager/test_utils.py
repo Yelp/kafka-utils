@@ -6,6 +6,7 @@ import pytest
 from kafka.common import ConsumerTimeout
 from kafka.common import KafkaMessage
 from kafka.common import LeaderNotAvailableError
+from kafka.structs import TopicPartition
 
 from kafka_utils.kafka_consumer_manager.util import get_group_partition
 from kafka_utils.kafka_consumer_manager.util import get_offset_topic_partition_count
@@ -169,7 +170,7 @@ class TestKafkaGroupReader(object):
                     kafka_group_reader.read_groups()
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     assert len(kafka_group_reader.finished_partitions) == 1
-                    assert mock_consumer.call_args[0] == ("__consumer_offsets",)
+                    mock_consumer.return_value.subscribe.assert_called_once_with(["__consumer_offsets"])
 
     def test_read_groups_with_partition(self):
         kafka_config = mock.Mock()
@@ -206,7 +207,7 @@ class TestKafkaGroupReader(object):
                     kafka_group_reader.read_groups(partition=0)
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     assert len(kafka_group_reader.finished_partitions) == 1
-                    assert mock_consumer.call_args[0] == ({"__consumer_offsets": [0]},)
+                    mock_consumer.return_value.assign.assert_called_once_with([TopicPartition("__consumer_offsets", 0)])
 
     @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
     def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):

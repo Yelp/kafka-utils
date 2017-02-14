@@ -191,7 +191,7 @@ class KafkaGroupReader:
             consumer_timeout_ms=3000,
         )
 
-        if partition:
+        if partition is not None:
             self.consumer.assign([TopicPartition(CONSUMER_OFFSET_TOPIC, partition)])
         else:
             self.consumer.subscribe([CONSUMER_OFFSET_TOPIC])
