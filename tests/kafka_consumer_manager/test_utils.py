@@ -3,9 +3,7 @@ from collections import namedtuple
 
 import mock
 import pytest
-from kafka.common import ConsumerTimeout
 from kafka.common import KafkaMessage
-from kafka.common import LeaderNotAvailableError
 from kafka.structs import TopicPartition
 
 from kafka_utils.kafka_consumer_manager.util import get_group_partition
@@ -167,10 +165,16 @@ class TestKafkaGroupReader(object):
                     autospec=True
                 ):
                     mock_consumer.return_value.next.return_value = mock.Mock(partition=0, topic='test_topic')
+                    mock_consumer.return_value.partitions_for_topic.return_value = [0, 1]
                     kafka_group_reader.read_groups()
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     assert len(kafka_group_reader.finished_partitions) == 1
-                    mock_consumer.return_value.subscribe.assert_called_once_with(["__consumer_offsets"])
+                    mock_consumer.return_value.assign.assert_called_once_with(
+                        [
+                            TopicPartition("__consumer_offsets", 0),
+                            TopicPartition("__consumer_offsets", 1)
+                        ]
+                    )
 
     def test_read_groups_with_partition(self):
         kafka_config = mock.Mock()
@@ -207,7 +211,9 @@ class TestKafkaGroupReader(object):
                     kafka_group_reader.read_groups(partition=0)
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     assert len(kafka_group_reader.finished_partitions) == 1
-                    mock_consumer.return_value.assign.assert_called_once_with([TopicPartition("__consumer_offsets", 0)])
+                    mock_consumer.return_value.assign.assert_called_once_with(
+                        [TopicPartition("__consumer_offsets", 0)]
+                    )
 
     @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
     def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):
@@ -231,72 +237,6 @@ class TestKafkaGroupReader(object):
         assert result1 == 10
         assert result2 == 44
         assert result3 == 5
-
-    def test_read_groups_with_consumer_timeout(self):
-
-        kafka_config = mock.Mock()
-        kafka_group_reader = KafkaGroupReader(kafka_config)
-        with mock.patch(
-                'kafka_utils.kafka_consumer_manager.util.KafkaConsumer',
-                autospec=True
-        ) as mock_consumer:
-            with mock.patch.object(
-                kafka_group_reader,
-                'get_current_watermarks',
-                return_value={
-                    0: PartitionOffsets(
-                    'test_topic',
-                    0,
-                    45,
-                    0
-                    )
-                },
-                autospec=True
-            ):
-                with mock.patch.object(
-                    kafka_group_reader,
-                    'process_consumer_offset_message',
-                    autospec=True
-                ) as mock_process_consumer_offset_message:
-                    mock_consumer.return_value.next.side_effect = ConsumerTimeout
-                    kafka_group_reader.read_groups()
-                    assert kafka_group_reader.kafka_groups == {}
-                    assert mock_process_consumer_offset_message.call_count == 0
-                    assert len(kafka_group_reader.finished_partitions) == 0
-                    assert kafka_group_reader.retry != kafka_group_reader.retry_max
-                    assert kafka_group_reader.retry == 0
-
-    def test_read_groups_with_leader_not_available_error(self):
-        kafka_config = mock.Mock()
-        kafka_group_reader = KafkaGroupReader(kafka_config)
-        with mock.patch(
-                'kafka_utils.kafka_consumer_manager.util.KafkaConsumer',
-                autospec=True
-        ) as mock_consumer:
-            with mock.patch.object(
-                kafka_group_reader,
-                'get_current_watermarks',
-                return_value={
-                    0: PartitionOffsets(
-                        'test_topic',
-                        0,
-                        45,
-                        0
-                    )
-                },
-                    autospec=True
-            ):
-                with mock.patch.object(
-                        kafka_group_reader,
-                        'process_consumer_offset_message',
-                        autospec=True
-                ) as mock_process_consumer_offset_message:
-                    mock_consumer.return_value.next.side_effect = LeaderNotAvailableError
-                    kafka_group_reader.read_groups()
-                    assert kafka_group_reader.kafka_groups == {}
-                    assert mock_process_consumer_offset_message.call_count == 0
-                    assert len(kafka_group_reader.finished_partitions) == 0
-                    assert kafka_group_reader.retry == kafka_group_reader.retry_max + 1
 
     def test_get_max_offset(self):
         kafka_config = mock.Mock()

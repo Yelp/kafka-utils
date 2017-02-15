@@ -20,11 +20,6 @@ import logging
 import sys
 from collections import defaultdict
 
-from kafka.common import ConsumerTimeout
-from kafka.common import FailedPayloadsError
-from kafka.common import KafkaUnavailableError
-from kafka.common import LeaderNotAvailableError
-from kafka.common import NotLeaderForPartitionError
 from kafka.consumer import KafkaConsumer
 from kafka.structs import TopicPartition
 from kafka.util import read_short_string
@@ -174,7 +169,6 @@ class KafkaGroupReader:
         self.kafka_config = kafka_config
         self.kafka_groups = defaultdict(set)
         self.finished_partitions = set()
-        self.retry_max = 3
 
     def read_group(self, group_id):
         partition_count = get_offset_topic_partition_count(self.kafka_config)
@@ -194,28 +188,21 @@ class KafkaGroupReader:
         if partition is not None:
             self.consumer.assign([TopicPartition(CONSUMER_OFFSET_TOPIC, partition)])
         else:
-            self.consumer.subscribe([CONSUMER_OFFSET_TOPIC])
+            self.consumer.assign(
+                [
+                    TopicPartition(CONSUMER_OFFSET_TOPIC, p)
+                    for p in self.consumer.partitions_for_topic(CONSUMER_OFFSET_TOPIC)
+                ]
+            )
 
         self.log.info("Consumer ready")
         self.watermarks = self.get_current_watermarks(partition)
-        self.retry = 0
         while not self.finished():
-            try:
-                message = self.consumer.next()
-                max_offset = self.get_max_offset(message.partition)
-                if message.offset >= max_offset - 1:
-                    self.finished_partitions.add(message.partition)
-                self.process_consumer_offset_message(message)
-            except ConsumerTimeout:
-                break
-            except (
-                    FailedPayloadsError,
-                    KafkaUnavailableError,
-                    LeaderNotAvailableError,
-                    NotLeaderForPartitionError,
-            ) as e:
-                self.retry += 1
-                self.log.warning("Got %s, retrying", e.__class__.__name__)
+            message = self.consumer.next()
+            max_offset = self.get_max_offset(message.partition)
+            if message.offset >= max_offset - 1:
+                self.finished_partitions.add(message.partition)
+            self.process_consumer_offset_message(message)
         return self.kafka_groups
 
     def parse_consumer_offset_message(self, message):
@@ -265,4 +252,4 @@ class KafkaGroupReader:
         return self.watermarks[partition].highmark
 
     def finished(self):
-        return (self.retry > self.retry_max) or len(self.finished_partitions) >= len(self.watermarks)
+        return len(self.finished_partitions) >= len(self.watermarks)
