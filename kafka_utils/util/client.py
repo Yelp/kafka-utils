@@ -70,6 +70,12 @@ class KafkaToolClient(SimpleClient):
 
     def send_consumer_metadata_request(self, payloads=[], fail_on_error=True,
                                        callback=None):
+        """
+        Encode and decode consumer metadata requests.
+
+        Uses KafkaToolProtocol instead of upstream KafkaProtocol with
+        custom consumer_metadata encoding and decoding
+        """
         encoder = KafkaToolProtocol.encode_consumer_metadata_request
         decoder = KafkaToolProtocol.decode_consumer_metadata_response
 

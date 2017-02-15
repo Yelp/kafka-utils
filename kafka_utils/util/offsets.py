@@ -344,7 +344,8 @@ def _commit_offsets_to_watermark(
         group_offset_reqs = [
             OffsetCommitRequestPayload(
                 topic, partition,
-                watermark_offsets[topic][partition].highmark, ''
+                watermark_offsets[topic][partition].highmark,
+                metadata=''
             )
             for topic, partitions in topics.iteritems()
             for partition in partitions
@@ -353,7 +354,8 @@ def _commit_offsets_to_watermark(
         group_offset_reqs = [
             OffsetCommitRequestPayload(
                 topic, partition,
-                watermark_offsets[topic][partition].lowmark, ''
+                watermark_offsets[topic][partition].lowmark,
+                metadata=''
             )
             for topic, partitions in topics.iteritems()
             for partition in partitions
@@ -518,7 +520,7 @@ def set_consumer_offsets(
             topic,
             partition,
             offset,
-            '',
+            metadata='',
         )
         for topic, new_partition_offsets in valid_new_offsets.iteritems()
         for partition, offset in new_partition_offsets.iteritems()
