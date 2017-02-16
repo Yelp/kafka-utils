@@ -1,3 +1,8 @@
+0.6.4 (February 15, 2017)
+------------------------
+* Upgrade kafka-python in use to 1.3.2
+* Use new KafkaConsumer for KafkaGroupReader
+
 0.6.3 (January 26, 2017)
 ------------------------
 * Fix KafkaGroupreader when reading consumer group with partition zero.
