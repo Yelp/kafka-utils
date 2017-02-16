@@ -16,7 +16,7 @@ import logging
 import re
 from collections import namedtuple
 
-from kafka.common import ConsumerCoordinatorNotAvailableCode
+from kafka.common import GroupCoordinatorNotAvailableError
 from kafka.common import KafkaUnavailableError
 
 from kafka_utils.util.error import InvalidOffsetStorageError
@@ -196,7 +196,7 @@ def _get_current_offsets_dual(
         kafka_offsets = get_current_consumer_offsets(
             kafka_client, group, topics, False, 'kafka',
         )
-    except ConsumerCoordinatorNotAvailableCode:
+    except GroupCoordinatorNotAvailableError:
         kafka_offsets = {}
     return merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
 

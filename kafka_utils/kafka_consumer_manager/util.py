@@ -21,15 +21,13 @@ import sys
 from collections import defaultdict
 
 from kafka.common import ConsumerTimeout
-from kafka.common import FailedPayloadsError
-from kafka.common import KafkaUnavailableError
-from kafka.common import LeaderNotAvailableError
-from kafka.common import NotLeaderForPartitionError
 from kafka.consumer import KafkaConsumer
+from kafka.structs import TopicPartition
 from kafka.util import read_short_string
 from kafka.util import relative_unpack
 from kazoo.exceptions import NodeExistsError
 
+from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.error import UnknownTopic
 from kafka_utils.util.metadata import get_topic_partition_metadata
 from kafka_utils.util.offsets import get_topics_watermarks
@@ -172,7 +170,6 @@ class KafkaGroupReader:
         self.kafka_config = kafka_config
         self.kafka_groups = defaultdict(set)
         self.finished_partitions = set()
-        self.retry_max = 3
 
     def read_group(self, group_id):
         partition_count = get_offset_topic_partition_count(self.kafka_config)
@@ -181,39 +178,34 @@ class KafkaGroupReader:
 
     def read_groups(self, partition=None):
         self.log.info("Kafka consumer running")
-        if partition is not None:
-            topic_partition = {CONSUMER_OFFSET_TOPIC: [partition]}
-        else:
-            topic_partition = CONSUMER_OFFSET_TOPIC
-
         self.consumer = KafkaConsumer(
-            topic_partition,
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
-            auto_offset_reset='smallest',
-            auto_commit_enable=False,
+            auto_offset_reset='earliest',
+            enable_auto_commit=False,
             consumer_timeout_ms=3000,
         )
+
+        if partition is not None:
+            self.consumer.assign([TopicPartition(CONSUMER_OFFSET_TOPIC, partition)])
+        else:
+            self.consumer.assign(
+                [
+                    TopicPartition(CONSUMER_OFFSET_TOPIC, p)
+                    for p in self.consumer.partitions_for_topic(CONSUMER_OFFSET_TOPIC)
+                ]
+            )
+
         self.log.info("Consumer ready")
         self.watermarks = self.get_current_watermarks(partition)
-        self.retry = 0
         while not self.finished():
-            try:
-                message = self.consumer.next()
-                max_offset = self.get_max_offset(message.partition)
-                if message.offset >= max_offset - 1:
-                    self.finished_partitions.add(message.partition)
-                self.process_consumer_offset_message(message)
-            except ConsumerTimeout:
-                break
-            except (
-                    FailedPayloadsError,
-                    KafkaUnavailableError,
-                    LeaderNotAvailableError,
-                    NotLeaderForPartitionError,
-            ) as e:
-                self.retry += 1
-                self.log.warning("Got %s, retrying", e.__class__.__name__)
+            message = self.consumer.next()
+            if message is None:
+                raise ConsumerTimeout("Timed out fetching messages from kafka")
+            max_offset = self.get_max_offset(message.partition)
+            if message.offset >= max_offset - 1:
+                self.finished_partitions.add(message.partition)
+            self.process_consumer_offset_message(message)
         return self.kafka_groups
 
     def parse_consumer_offset_message(self, message):
@@ -246,9 +238,10 @@ class KafkaGroupReader:
             self.kafka_groups.pop(group, None)
 
     def get_current_watermarks(self, partition=None):
-        self.consumer._client.load_metadata_for_topics()
+        client = KafkaToolClient(self.kafka_config.broker_list)
+        client.load_metadata_for_topics(CONSUMER_OFFSET_TOPIC)
         offsets = get_topics_watermarks(
-            self.consumer._client,
+            client,
             [CONSUMER_OFFSET_TOPIC],
         )
         return {part: offset for part, offset
@@ -257,7 +250,9 @@ class KafkaGroupReader:
                 (partition is None or part == partition)}
 
     def get_max_offset(self, partition):
+        if partition not in self.watermarks:
+            self.watermarks.update(self.get_current_watermarks(partition))
         return self.watermarks[partition].highmark
 
     def finished(self):
-        return (self.retry > self.retry_max) or len(self.finished_partitions) >= len(self.watermarks)
+        return len(self.finished_partitions) >= len(self.watermarks)

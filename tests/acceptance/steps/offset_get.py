@@ -45,9 +45,7 @@ def step_impl4_5(context):
 
 @then(u'the correct offset will be shown')
 def step_impl5(context):
-    offsets = context.consumer.offsets(group='commit')
-    key = (context.topic, 0)
-    offset = offsets[key]
+    offset = context.msgs_consumed
     pattern = 'Current Offset: {}'.format(offset)
     assert pattern in context.output
 
@@ -61,9 +59,7 @@ def step_impl5_2(context):
 
 @then(u'the correct json output will be shown')
 def step_impl5_3(context):
-    offsets = context.consumer.offsets(group='commit')
-    key = (context.topic, 0)
-    offset = offsets[key]
+    offset = context.msgs_consumed
     import json
     if context.msgs_produced > 0.0:
         percentage_distance = round((context.msgs_produced - offset) * 100.0 / context.msgs_produced, 2)

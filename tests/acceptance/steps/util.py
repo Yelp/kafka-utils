@@ -16,7 +16,6 @@ import subprocess
 import time
 import uuid
 
-from kafka import KafkaConsumer
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
 
@@ -109,17 +108,15 @@ def produce_example_msg(topic, num_messages=1):
 
 
 def create_consumer_group(topic, group_name, num_messages=1):
-    consumer = KafkaConsumer(
-        topic,
-        group_id=group_name,
-        auto_commit_enable=False,
-        bootstrap_servers=[KAFKA_URL],
-        auto_offset_reset='smallest')
-    for i in xrange(num_messages):
-        message = consumer.next()
-        consumer.task_done(message)
-    consumer.commit()
-    return consumer
+    client = KafkaToolClient(KAFKA_URL)
+    set_consumer_offsets(
+        client,
+        group_name,
+        {topic: {0: num_messages}},
+        offset_storage='zookeeper',
+        raise_on_error=True,
+    )
+    return client
 
 
 def create_consumer_group_with_kafka_storage(topic, group_name):
@@ -186,8 +183,8 @@ def initialize_kafka_offsets_topic():
     set_consumer_offsets(
         kafka,
         create_random_group_id(),
-        {topic: {0: 0}},
+        {topic: {0: 1}},
         offset_storage='kafka',
-        raise_on_error=False,
+        raise_on_error=True,
     )
     time.sleep(20)

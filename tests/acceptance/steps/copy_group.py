@@ -49,7 +49,7 @@ def step_impl3(context):
 
 @then('the committed offsets in kafka for the new group will match the old group')
 def step_impl4(context):
-    old_group__offsets = get_current_consumer_offsets(
+    old_group_offsets = get_current_consumer_offsets(
         context.client,
         context.group,
         [context.topic],
@@ -61,7 +61,7 @@ def step_impl4(context):
         [context.topic],
         offset_storage='kafka',
     )
-    assert old_group__offsets == new_group_offsets
+    assert old_group_offsets == new_group_offsets
 
 
 @then(u'the committed offsets in the new group will match the old group')
