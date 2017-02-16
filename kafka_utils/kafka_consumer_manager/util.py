@@ -20,6 +20,7 @@ import logging
 import sys
 from collections import defaultdict
 
+from kafka.common import ConsumerTimeout
 from kafka.consumer import KafkaConsumer
 from kafka.structs import TopicPartition
 from kafka.util import read_short_string
@@ -199,6 +200,8 @@ class KafkaGroupReader:
         self.watermarks = self.get_current_watermarks(partition)
         while not self.finished():
             message = self.consumer.next()
+            if message is None:
+                raise ConsumerTimeout("Timed out fetching messages from kafka")
             max_offset = self.get_max_offset(message.partition)
             if message.offset >= max_offset - 1:
                 self.finished_partitions.add(message.partition)

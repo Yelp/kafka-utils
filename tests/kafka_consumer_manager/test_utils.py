@@ -3,6 +3,7 @@ from collections import namedtuple
 
 import mock
 import pytest
+from kafka.common import ConsumerTimeout
 from kafka.common import KafkaMessage
 from kafka.structs import TopicPartition
 
@@ -214,6 +215,30 @@ class TestKafkaGroupReader(object):
                     mock_consumer.return_value.assign.assert_called_once_with(
                         [TopicPartition("__consumer_offsets", 0)]
                     )
+
+    def test_read_groups_timeout(self):
+        kafka_config = mock.Mock()
+        kafka_group_reader = KafkaGroupReader(kafka_config)
+        with mock.patch(
+            'kafka_utils.kafka_consumer_manager.util.KafkaConsumer',
+            autospec=True
+        ) as mock_consumer:
+            with mock.patch.object(
+                kafka_group_reader,
+                'get_current_watermarks',
+                return_value={
+                    0: PartitionOffsets(
+                        'test_topic',
+                        0,
+                        45,
+                        0
+                    )
+                },
+                autospec=True
+            ):
+                mock_consumer.return_value.next.return_value = None
+                with pytest.raises(ConsumerTimeout):
+                    kafka_group_reader.read_groups()
 
     @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
     def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):
