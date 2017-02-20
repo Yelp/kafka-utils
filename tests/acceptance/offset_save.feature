@@ -16,7 +16,7 @@ Feature: kafka_consumer_manager offset_save subcommand
       when we call the offset_save command with an offsets file and zookeeper storage
       then the restored offsets will be saved into the given file
 
-  @kafka9
+  @kafka_offset_storage 
   Scenario: Calling offset_save after offset_restore with default storage
      Given we have an existing kafka cluster with a topic
      Given we have initialized kafka offsets storage
