@@ -234,8 +234,8 @@ class KafkaGroupReader:
 
         if offset:
             self.kafka_groups[group].add(topic)
-        else:  # No offset means group deletion
-            self.kafka_groups.pop(group, None)
+        else:  # No offset means topic deletion
+            self.kafka_groups[group].discard(topic)
 
     def get_current_watermarks(self, partition=None):
         client = KafkaToolClient(self.kafka_config.broker_list)
