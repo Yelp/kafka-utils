@@ -1,3 +1,7 @@
+0.6.5 (February 22, 2017)
+------------------------
+* Fix list_topics flakiness in kafka-consumer-manager
+
 0.6.4 (February 15, 2017)
 ------------------------
 * Upgrade kafka-python in use to 1.3.2
