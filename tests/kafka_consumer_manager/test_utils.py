@@ -81,7 +81,7 @@ class TestKafkaGroupReader(object):
             message = mock.MagicMock(spec=KafkaMessage)
             kafka_group_reader.process_consumer_offset_message(message)
 
-        expected = {'test.a': {'topic1', 'topic2'}, 'my_test2': {'topic3'}}
+        expected = {'test.a': {'topic1', 'topic2'}, 'my_test2': {'topic3'}, 'my_test': {'topic1'}}
         assert kafka_group_reader.kafka_groups == expected
 
     @mock.patch.object(KafkaGroupReader, 'parse_consumer_offset_message')
@@ -117,8 +117,8 @@ class TestKafkaGroupReader(object):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
 
-        kafka_group_reader.kafka_groups['test_group'] = {'test_topic'}
-        assert kafka_group_reader.kafka_groups['test_group'] == {'test_topic'}
+        kafka_group_reader.kafka_groups['test_group'] = set(['test_topic'])
+        assert kafka_group_reader.kafka_groups['test_group'] == set(['test_topic'])
 
         with mock.patch.object(
             kafka_group_reader,
@@ -132,7 +132,7 @@ class TestKafkaGroupReader(object):
             autospec=True
         ):
             kafka_group_reader.process_consumer_offset_message('test message')
-            assert kafka_group_reader.kafka_groups == {}
+            assert kafka_group_reader.kafka_groups == {'test_group': set([])}
 
     def test_read_groups(self):
         kafka_config = mock.Mock()
