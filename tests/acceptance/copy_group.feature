@@ -7,7 +7,7 @@ Feature: kafka_consumer_manager copy_group subcommand
       when we call the copy_group command with a new groupid with zookeeper storage
       then the committed offsets in the new group will match the old group
 
-  @kafka9
+  @kafka_offset_storage	
   Scenario: Calling the copy_group command with default storage
      Given we have an existing kafka cluster with a topic
      Given we have initialized kafka offsets storage

@@ -13,13 +13,16 @@ clean:
 test:
 	tox
 
-acceptance: acceptance8 acceptance9
+acceptance: acceptance8 acceptance9 acceptance10
 
 acceptance8:
 	tox -e docker_itest_8
 
 acceptance9:
 	tox -e docker_itest_9
+
+acceptance10:
+	tox -e docker_itest_10
 
 coverage:
 	tox -e coverage

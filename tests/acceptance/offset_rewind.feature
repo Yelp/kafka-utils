@@ -7,7 +7,7 @@ Feature: kafka_consumer_manager offset_rewind subcommand
       when we call the offset_rewind command with a groupid and topic with zk storage
       then the committed offsets will match the earliest message offsets
 
-  @kafka9
+  @kafka_offset_storage
   Scenario: Calling the offset_rewind command with default storage
      Given we have an existing kafka cluster with a topic
      Given we have initialized kafka offsets storage
