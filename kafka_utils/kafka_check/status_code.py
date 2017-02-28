@@ -37,5 +37,10 @@ def terminate(signal, msg, json):
         }
         print_json(output)
     else:
-        print('%s: %s' % (STATUS_STRING[signal], msg))
+        print('{status}: {msg}'.format(
+            status=STATUS_STRING[signal],
+            msg=msg['message'],
+        ))
+        if 'verbose' in msg:
+            print(msg['verbose'])
     sys.exit(signal)

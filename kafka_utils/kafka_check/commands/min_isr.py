@@ -90,15 +90,17 @@ def _process_metadata_response(topics, zk, default_min_isr):
 
 
 def _prepare_output(partitions, json, verbose):
+    out = {}
     partitions_count = len(partitions)
     if not json:
         if partitions_count == 0:
-            out = "All replicas in sync."
+            out['message'] = 'All replicas in sync.'
         else:
-            out = (
+            out['message'] = (
                 "{0} partition(s) have the number of replicas in "
                 "sync that is lower than the specified min ISR."
             ).format(partitions_count)
+
             if verbose:
                 lines = (
                     "isr={isr} is lower than min_isr={min_isr} for {topic}:{partition}"
@@ -110,12 +112,9 @@ def _prepare_output(partitions, json, verbose):
                     )
                     for p in partitions
                 )
-                out += "\npartitions:\n"
-                out += "\n".join(lines)
+                out['verbose'] = "Partitions:\n" + "\n".join(lines)
     else:
-        out = {
-            'partitions_count': partitions_count,
-        }
+        out['not_enough_replicas_count'] = partitions_count
         if verbose:
             out['partitions'] = partitions
     return out

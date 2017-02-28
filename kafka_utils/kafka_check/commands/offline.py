@@ -45,23 +45,21 @@ class OfflineCmd(KafkaCheckCmd):
 
 
 def _prepare_output(partitions, json, verbose):
+    out = {}
     partitions_count = len(partitions)
     if not json:
         if partitions_count == 0:
-            out = 'No offline partitions.'
+            out['message'] = 'No offline partitions.'
         else:
-            out = "{count} offline partitions.".format(count=partitions_count)
+            out['message'] = "{count} offline partitions.".format(count=partitions_count)
             if verbose:
                 lines = (
                     '{}:{}'.format(topic, partition)
                     for (topic, partition) in partitions
                 )
-                out += "\npartitions:\n"
-                out += "\n".join(lines)
+                out['verbose'] = "Partitions:\n" + "\n".join(lines)
     else:
-        out = {
-            'partitions_count': partitions_count,
-        }
+        out['offline_count'] = partitions_count
         if verbose:
             out['partitions'] = [
                 '{}:{}'.format(topic, partition)

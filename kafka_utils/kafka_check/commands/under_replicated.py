@@ -48,11 +48,12 @@ class UnderReplicatedCmd(KafkaCheckCmd):
 
 def _prepare_output(partitions, json, verbose):
     partitions_count = len(partitions)
+    out = {}
     if not json:
         if partitions_count == 0:
-            out = 'No under replicated partitions.'
+            out['message'] = 'No under replicated partitions.'
         else:
-            out = "{under_replicated} under replicated partitions.".format(
+            out['message'] = "{under_replicated} under replicated partitions.".format(
                 under_replicated=partitions_count,
             )
             if verbose:
@@ -60,12 +61,9 @@ def _prepare_output(partitions, json, verbose):
                     '{}:{}'.format(topic, partition)
                     for (topic, partition) in partitions
                 )
-                out += "\npartitions:\n"
-                out += "\n".join(lines)
+                out['verbose'] = "Partitions:\n" + "\n".join(lines)
     else:
-        out = {
-            'partitions_count': partitions_count,
-        }
+        out['under_replicated_count'] = partitions_count
         if verbose:
             out['partitions'] = [
                 '{}:{}'.format(topic, partition)
