@@ -39,7 +39,7 @@ from kafka_utils.util.zookeeper import ZK
 
 
 RESTART_COMMAND = "service kafka restart"
-DEFAULT_CFGMNT_AGENT_CMD = "run-puppet"
+DEFAULT_KAFKA_INSTALL_CMD = "run-puppet"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
@@ -142,7 +142,7 @@ def parse_opts():
         help='command to install kafka on the machine, or a configmgt agent command'
              'to get kafka package, example "run-puppet", "salt-call" etc',
         type=str,
-        default=DEFAULT_CFGMNT_AGENT_CMD,
+        default=DEFAULT_KAFKA_INSTALL_CMD,
     )
     parser.add_argument(
         '--ensure-configs',
