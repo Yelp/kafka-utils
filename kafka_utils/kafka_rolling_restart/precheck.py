@@ -45,7 +45,7 @@ class PrecheckFailedException(Exception):
 @task
 def execute_package_update(cmd):
     """Execute preconditions before restarting broker"""
-    print("Executing a configuration management update to get latest packages")
+    print("Attempting to get latest package")
     with hide('output', 'running', 'warnings'), settings(warn_only=True):
         sudo(cmd)
 
@@ -88,7 +88,7 @@ def check_preconditions(package_name, package_version, configs, config_file, hos
             package_version,
         )
         are_preconditions_met = are_preconditions_met and \
-            all(execute(check_package_version_func, hosts=host)).values()
+            all(execute(check_package_version_func, hosts=host).values())
     if configs:
         check_configs_present_func = partial(
             check_configs_present,
@@ -96,7 +96,7 @@ def check_preconditions(package_name, package_version, configs, config_file, hos
             config_file,
         )
         are_preconditions_met = are_preconditions_met and \
-            all(execute(check_configs_present_func, hosts=host)).values()
+            all(execute(check_configs_present_func, hosts=host).values())
     return are_preconditions_met
 
 

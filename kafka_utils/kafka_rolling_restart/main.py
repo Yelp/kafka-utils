@@ -358,7 +358,7 @@ def execute_rolling_restart(
     all_hosts = [b[1] for b in brokers]
     hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
-        with settings(forward_agent=True, connection_attempts=3, timeout=200), hide(*hidden):
+        with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
             ensure_preconditions_before_executing_restart(prechecks, host)
             wait_for_stable_cluster(
                 all_hosts,
