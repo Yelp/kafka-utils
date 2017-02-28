@@ -41,17 +41,34 @@ class UnderReplicatedCmd(KafkaCheckCmd):
             REPLICA_NOT_AVAILABLE_ERROR,
         )
 
-        if not under_replicated:
-            return status_code.OK, 'No under replicated partitions.'
-        else:
-            if self.args.verbose:
-                for (topic, partition) in under_replicated:
-                    print('{topic}:{partition}'.format(
-                        topic=topic,
-                        partition=partition,
-                    ))
+        errcode = status_code.OK if not under_replicated else status_code.CRITICAL
+        out = _prepare_output(under_replicated, self.args.json, self.args.verbose)
+        return errcode, out
 
-            msg = "{under_replicated} under replicated partitions.".format(
-                under_replicated=len(under_replicated),
+
+def _prepare_output(partitions, json, verbose):
+    partitions_count = len(partitions)
+    if not json:
+        if partitions_count == 0:
+            out = 'No under replicated partitions.'
+        else:
+            out = "{under_replicated} under replicated partitions.".format(
+                under_replicated=partitions_count,
             )
-            return status_code.CRITICAL, msg
+            if verbose:
+                lines = (
+                    '{}:{}'.format(topic, partition)
+                    for (topic, partition) in partitions
+                )
+                out += "\npartitions:\n"
+                out += "\n".join(lines)
+    else:
+        out = {
+            'partitions_count': partitions_count,
+        }
+        if verbose:
+            out['partitions'] = [
+                '{}:{}'.format(topic, partition)
+                for (topic, partition) in partitions
+            ]
+    return out

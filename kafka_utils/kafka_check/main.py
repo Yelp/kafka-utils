@@ -101,6 +101,13 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        '-j',
+        '--json',
+        help='Print output in json format. Default: %(default)s',
+        action="store_true",
+        default=False,
+    )
 
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)
@@ -122,13 +129,21 @@ def run():
         terminate(
             status_code.WARNING,
             "Only one of controller_only and first_broker_only should be used",
+            args.json,
         )
 
     if args.controller_only or args.first_broker_only:
         if args.broker_id is None:
-            terminate(status_code.WARNING, "broker_id is not specified")
+            terminate(status_code.WARNING, "broker_id is not specified", args.json)
         elif args.broker_id == -1:
-            args.broker_id = get_broker_id(args.data_path)
+            try:
+                args.broker_id = get_broker_id(args.data_path)
+            except Exception as e:
+                terminate(
+                    status_code.WARNING,
+                    "{}".format(e),
+                    args.json,
+                )
 
     try:
         cluster_config = config.get_cluster_config(
@@ -138,6 +153,6 @@ def run():
         )
         code, msg = args.command(cluster_config, args)
     except ConfigurationError as e:
-        terminate(status_code.CRITICAL, "ConfigurationError {0}".format(e))
+        terminate(status_code.CRITICAL, "ConfigurationError {0}".format(e), args.json)
 
-    terminate(code, msg)
+    terminate(code, msg, args.json)

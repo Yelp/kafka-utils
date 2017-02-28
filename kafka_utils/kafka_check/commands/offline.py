@@ -39,18 +39,32 @@ class OfflineCmd(KafkaCheckCmd):
             LEADER_NOT_AVAILABLE_ERROR,
         )
 
-        if not offline:
-            return status_code.OK, 'No offline partitions.'
-        else:
-            if self.args.verbose:
-                for (topic, partition) in offline:
-                    print('{topic}:{partition}'.format(
-                        topic=topic,
-                        partition=partition,
-                    )
-                    )
+        errcode = status_code.OK if not offline else status_code.CRITICAL
+        out = _prepare_output(offline, self.args.json, self.args.verbose)
+        return errcode, out
 
-            msg = "{offline_n} offline partitions.".format(
-                offline_n=len(offline),
-            )
-            return status_code.CRITICAL, msg
+
+def _prepare_output(partitions, json, verbose):
+    partitions_count = len(partitions)
+    if not json:
+        if partitions_count == 0:
+            out = 'No offline partitions.'
+        else:
+            out = "{count} offline partitions.".format(count=partitions_count)
+            if verbose:
+                lines = (
+                    '{}:{}'.format(topic, partition)
+                    for (topic, partition) in partitions
+                )
+                out += "\npartitions:\n"
+                out += "\n".join(lines)
+    else:
+        out = {
+            'partitions_count': partitions_count,
+        }
+        if verbose:
+            out['partitions'] = [
+                '{}:{}'.format(topic, partition)
+                for (topic, partition) in partitions
+            ]
+    return out

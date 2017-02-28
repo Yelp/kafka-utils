@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
-from __future__ import print_function
 
 from kazoo.exceptions import NoNodeError
 
@@ -46,22 +45,18 @@ class MinIsrCmd(KafkaCheckCmd):
         """Min_isr command, checks number of actual min-isr
         for each topic-partition with configuration for that topic."""
         topics = get_topic_partition_metadata(self.cluster_config.broker_list)
-        not_in_sync = process_metadata_response(
+        not_in_sync = _process_metadata_response(
             topics,
             self.zk,
             self.args.default_min_isr,
-            self.args.verbose,
         )
 
-        if not_in_sync == 0:
-            return status_code.OK, "All replicas in sync."
-        else:
-            msg = ("{0} partition(s) have the number of replicas in "
-                   "sync that is lower than the specified min ISR.").format(not_in_sync)
-            return status_code.CRITICAL, msg
+        errcode = status_code.OK if not not_in_sync else status_code.CRITICAL
+        out = _prepare_output(not_in_sync, self.args.json, self.args.verbose)
+        return errcode, out
 
 
-def get_min_isr(zk, topic):
+def _get_min_isr(zk, topic):
     """Return the min-isr for topic, or None if not specified"""
     ISR_CONF_NAME = 'min.insync.replicas'
     try:
@@ -74,22 +69,53 @@ def get_min_isr(zk, topic):
         return None
 
 
-def process_metadata_response(topics, zk, default_min_isr, verbose):
-    not_in_sync = 0
+def _process_metadata_response(topics, zk, default_min_isr):
+    """Returns not in sync partitions."""
+    not_in_sync_partitions = []
     for topic_name, partitions in topics.items():
-        min_isr = get_min_isr(zk, topic_name) or default_min_isr
+        min_isr = _get_min_isr(zk, topic_name) or default_min_isr
         if min_isr is None:
             continue
         for metadata in partitions.values():
             cur_isr = len(metadata.isr)
             if cur_isr < min_isr:
-                if verbose:
-                    print("isr={isr} is lower than min_isr={min_isr} for {topic}:{partition}".format(
-                        isr=cur_isr,
-                        min_isr=min_isr,
-                        topic=metadata.topic,
-                        partition=metadata.partition,
-                    ))
-                not_in_sync += 1
+                not_in_sync_partitions.append({
+                    'isr': cur_isr,
+                    'min_isr': min_isr,
+                    'topic': metadata.topic,
+                    'partition': metadata.partition,
+                })
 
-    return not_in_sync
+    return not_in_sync_partitions
+
+
+def _prepare_output(partitions, json, verbose):
+    partitions_count = len(partitions)
+    if not json:
+        if partitions_count == 0:
+            out = "All replicas in sync."
+        else:
+            out = (
+                "{0} partition(s) have the number of replicas in "
+                "sync that is lower than the specified min ISR."
+            ).format(partitions_count)
+            if verbose:
+                lines = (
+                    "isr={isr} is lower than min_isr={min_isr} for {topic}:{partition}"
+                    .format(
+                        isr=p['isr'],
+                        min_isr=p['min_isr'],
+                        topic=p['topic'],
+                        partition=p['partition'],
+                    )
+                    for p in partitions
+                )
+                out += "\npartitions:\n"
+                out += "\n".join(lines)
+    else:
+        out = {
+            'partitions_count': partitions_count,
+        }
+        if verbose:
+            out['partitions'] = partitions
+    return out
