@@ -23,37 +23,28 @@ from kafka_utils.util.validation import assignment_to_plan
 from kafka_utils.util.validation import validate_plan
 
 
-DEFAULT_MAX_PARTITION_MOVEMENTS = 1
 DEFAULT_MAX_LEADER_CHANGES = 5
 
 
-class DecommissionCmd(ClusterManagerCmd):
+class RevokeLeadershipCmd(ClusterManagerCmd):
 
     def __init__(self):
-        super(DecommissionCmd, self).__init__()
+        super(RevokeLeadershipCmd, self).__init__()
         self.log = logging.getLogger(self.__class__.__name__)
 
     def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
-            'decommission',
-            description='Decommission one or more brokers of the cluster.',
-            help='This command is used to move all the replicas assigned to given '
-            'brokers and redistribute them across all the other brokers while '
-            'trying to keep the cluster balanced.',
+            'revoke-leadership',
+            description='Re-assign leadership for all partitions on given brokers to other brokers',
+            help='This command is used to move leadership for all partitions '
+            'on given brokers to other brokers in balanced order. The generated plan include'
+            ' only leadership changes.'
         )
         subparser.add_argument(
             'broker_ids',
             nargs='+',
             type=int,
-            help='Broker ids of the brokers to decommission.',
-        )
-        subparser.add_argument(
-            '--max-partition-movements',
-            type=positive_int,
-            default=DEFAULT_MAX_PARTITION_MOVEMENTS,
-            help='Maximum number of partition-movements in final set of actions.'
-                 ' DEFAULT: %(default)s. RECOMMENDATION: Should be at least max '
-                 'replication-factor across the cluster.',
+            help='Broker ids of the brokers to revoke leadership for.',
         )
         subparser.add_argument(
             '--max-leader-changes',
@@ -67,7 +58,7 @@ class DecommissionCmd(ClusterManagerCmd):
     def run_command(self, cluster_topology, cluster_balancer):
         base_assignment = cluster_topology.assignment
 
-        cluster_balancer.decommission_brokers(self.args.broker_ids)
+        cluster_balancer.revoke_leadership(self.args.broker_ids)
 
         if not validate_plan(
             assignment_to_plan(cluster_topology.assignment),
@@ -80,17 +71,17 @@ class DecommissionCmd(ClusterManagerCmd):
             )
             sys.exit(1)
 
-        # Reduce the proposed assignment based on max_partition_movements
-        # and max_leader_changes
+        # Reduce the proposed assignment based on max_leader_changes
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
             cluster_topology.assignment,
-            self.args.max_partition_movements,
+            0,  # Number of partition movements
             self.args.max_leader_changes,
         )
         if reduced_assignment:
             self.process_assignment(reduced_assignment)
         else:
-            msg_str = "Cluster already balanced. No more replicas in decommissioned brokers."
-            self.log.info(msg_str)
-            print(msg_str)
+            msg = "Cluster already balanced. No more partitions as leaders in " \
+                "revoked-leadership brokers."
+            self.log.info(msg)
+            print(msg)

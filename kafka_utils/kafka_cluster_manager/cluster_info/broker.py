@@ -28,6 +28,7 @@ class Broker(object):
         self._metadata = metadata
         self._partitions = partitions or set()
         self._decommissioned = False
+        self._revoked_leadership = False
         self._inactive = False
         self._replication_group = None
 
@@ -40,6 +41,11 @@ class Broker(object):
         have partitions assigned.
         """
         self._decommissioned = True
+
+    def mark_revoked_leadership(self):
+        """Mark a broker as to be revoked from leadership.
+        """
+        self._revoked_leadership = True
 
     def mark_inactive(self):
         """Mark a broker as inactive. Inactive brokers may not have metadata."""
@@ -60,6 +66,10 @@ class Broker(object):
     @property
     def decommissioned(self):
         return self._decommissioned
+
+    @property
+    def revoked_leadership(self):
+        return self._revoked_leadership
 
     @property
     def partitions(self):
@@ -185,7 +195,7 @@ class Broker(object):
             self.partitions,
         )
         for partition in owned_partitions:
-            # Partition not available to grant leadership when:-
+            # Partition not available to grant leadership when:
             # 1. Broker is already under leadership change or
             # 2. Partition has already granted leadership before
             if partition.leader in skip_brokers or partition in skip_partitions:
@@ -195,7 +205,9 @@ class Broker(object):
             # Partition shouldn't be used again
             skip_partitions.append(partition)
             # Continue if prev-leader remains balanced
-            if prev_leader.count_preferred_replica() >= opt_count:
+            # If leadership of prev_leader is to be revoked continue, it is considered balanced
+            if prev_leader.count_preferred_replica() >= opt_count or \
+                    prev_leader.revoked_leadership:
                 # If current broker is leader-balanced return else
                 # request next-partition
                 if self.count_preferred_replica() >= opt_count:
@@ -266,7 +278,8 @@ class Broker(object):
                 # new-leader didn't unbalance
                 if follower.count_preferred_replica() <= opt_count + 1:
                     # over-broker balanced
-                    if self.count_preferred_replica() <= opt_count + 1:
+                    if (self.count_preferred_replica() <= opt_count + 1 and not self.revoked_leadership) or \
+                            (self.count_preferred_replica() == 0 and self.revoked_leadership):
                         return
                     else:
                         # Try next-partition, not another follower
@@ -285,7 +298,8 @@ class Broker(object):
                         used_edges.append((partition, follower, self))
                         # New-leader can be reused
                         skip_brokers.remove(follower)
-                        if self.count_preferred_replica() <= opt_count + 1:
+                        if (self.count_preferred_replica() <= opt_count + 1 and not self.revoked_leadership) or \
+                                (self.count_preferred_replica() == 0 and self.revoked_leadership):
                             # Now broker is balanced
                             return
                         else:

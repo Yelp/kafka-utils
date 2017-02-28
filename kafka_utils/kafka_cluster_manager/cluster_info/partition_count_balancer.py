@@ -200,6 +200,77 @@ class PartitionCountBalancer(ClusterBalancer):
         for rg in self.cluster_topology.rgs.itervalues():
             rg.rebalance_brokers()
 
+    def revoke_leadership(self, broker_ids):
+        """Revoke leadership for given brokers.
+
+        :param broker_ids: List of broker-ids whose leadership needs to be revoked.
+        """
+        for b_id in broker_ids:
+            try:
+                broker = self.cluster_topology.brokers[b_id]
+            except KeyError:
+                self.log.error("Invalid broker id %s.", b_id)
+                raise InvalidBrokerIdError(
+                    "Broker id {} does not exist in cluster".format(b_id),
+                )
+            broker.mark_revoked_leadership()
+
+        assert(len(self.cluster_topology.brokers) - len(broker_ids) > 0), "Not " \
+            "all brokers can be revoked for leadership"
+        opt_leader_cnt = len(self.cluster_topology.partitions) // (
+            len(self.cluster_topology.brokers) - len(broker_ids)
+        )
+        # Balanced brokers transfer leadership to their under-balanced followers
+        self.rebalancing_non_followers(opt_leader_cnt)
+
+        # If the broker-ids to be revoked from leadership are still leaders for any
+        # partitions, try to forcefully move their leadership to followers if possible
+        pending_brokers = [
+            b for b in self.cluster_topology.brokers.itervalues()
+            if b.revoked_leadership and b.count_preferred_replica() > 0
+        ]
+        for b in pending_brokers:
+            self._force_revoke_leadership(b)
+
+    def _force_revoke_leadership(self, broker):
+        """Revoke the leadership of given broker for any remaining partitions.
+
+        Algorithm:
+        1. Find the partitions (owned_partitions) with given broker as leader.
+        2. For each partition find the eligible followers.
+           Brokers which are not to be revoked from leadership are eligible followers.
+        3. Select the follower who is leader for minimum partitions.
+        4. Assign the selected follower as leader.
+        5. Notify for any pending owned_partitions whose leader cannot be changed.
+        This could be due to replica size 1 or eligible followers are None.
+        """
+        owned_partitions = filter(
+            lambda p: broker is p.leader,
+            broker.partitions,
+        )
+        for partition in owned_partitions:
+            if len(partition.replicas) == 1:
+                self.log.error(
+                    "Cannot be revoked leadership for broker {b} for partition {p}. Replica count: 1"
+                    .format(p=partition, b=broker),
+                )
+                continue
+            eligible_followers = [follower for follower in partition.followers if not follower.revoked_leadership]
+            if eligible_followers:
+                # Pick follower with least leader-count
+                best_fit_follower = min(
+                    eligible_followers,
+                    key=lambda follower: follower.count_preferred_replica(),
+                )
+                partition.swap_leader(best_fit_follower)
+            else:
+                self.log.error(
+                    "All replicas for partition {p} on broker {b} are to be revoked for leadership.".format(
+                        p=partition,
+                        b=broker,
+                    )
+                )
+
     # Re-balancing leaders
     def rebalance_leaders(self):
         """Re-order brokers in replicas such that, every broker is assigned as
@@ -230,8 +301,9 @@ class PartitionCountBalancer(ClusterBalancer):
             2. If path found, update UB-broker and delete path-edges (skip-partitions).
             3. Continue with step-1 until all possible paths explored.
         """
+        # Don't included leaders if they are marked for leadership removal
         under_brokers = filter(
-            lambda b: b.count_preferred_replica() < opt_cnt,
+            lambda b: b.count_preferred_replica() < opt_cnt and not b.revoked_leadership,
             self.cluster_topology.brokers.itervalues(),
         )
         if under_brokers:
