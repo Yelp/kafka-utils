@@ -166,6 +166,12 @@ class TestBroker(object):
 
         assert broker.decommissioned
 
+    def test_mark_revoked_leadership(self):
+        broker = Broker('test-broker')
+        broker.mark_revoked_leadership()
+
+        assert broker.revoked_leadership
+
     def test_empty(self):
         broker = Broker('test-broker')
         # No partitions for this broker

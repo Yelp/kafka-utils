@@ -766,3 +766,141 @@ class TestPartitionCountBalancer(object):
             get_broker_leader_counts(ct.brokers.values()),
         )
         assert leader_imbal == 0
+
+    # Revoke leadership tests
+    def test_revoke_leadership_no_change(
+            self,
+            create_balancer,
+            create_cluster_topology,
+    ):
+        # No leadership changes to be made to broker 2
+        assignment = dict(
+            [
+                ((u'T0', 0), ['1', '0']),
+                ((u'T1', 0), ['0', '1']),
+                ((u'T1', 1), ['0']),
+                ((u'T2', 0), ['1']),
+            ]
+        )
+        ct = create_cluster_topology(assignment, broker_range(3))
+        cb = create_balancer(ct)
+        cb.revoke_leadership(['2'])
+
+        # Since Broker '2' wasn't leader of any partition
+        # so there is no change in assignment
+        assert ct.assignment == assignment
+
+    def test_revoke_leadership_single_broker(
+            self,
+            create_balancer,
+            create_cluster_topology,
+    ):
+        assignment = dict(
+            [
+                ((u'T0', 0), ['2', '0']),
+                ((u'T1', 0), ['2', '1']),
+                ((u'T1', 1), ['0', '2']),
+                ((u'T2', 0), ['1', '0']),
+            ]
+        )
+        ct = create_cluster_topology(assignment, broker_range(3))
+        cb = create_balancer(ct)
+        cb.revoke_leadership(['2'])
+
+        new_leaders_per_broker = {
+            broker.id: broker.count_preferred_replica()
+            for broker in ct.brokers.itervalues()
+        }
+        _, total_movements = \
+            calculate_partition_movement(assignment, ct.assignment)
+        # Get net imbalance statistics excluding brokers to be revoked
+        # leadership from
+        brokers = [
+            b for b in ct.brokers.itervalues()
+            if b.id not in ['2', '3']
+        ]
+        new_net_imbal = get_net_imbalance(get_broker_leader_counts(brokers))
+        # Verify that broker '2' is not leader of any partition
+        assert new_leaders_per_broker['2'] == 0
+        assert new_leaders_per_broker['1'] == 2
+        assert new_leaders_per_broker['0'] == 2
+        # Assert no partition movements
+        assert total_movements == 0
+        # Assert remaining brokers are balanced with leader count
+        assert new_net_imbal == 0
+
+    def test_revoke_leadership_multiple_brokers(
+            self,
+            create_balancer,
+            create_cluster_topology,
+    ):
+        assignment = dict(
+            [
+                ((u'T0', 0), ['2', '0']),
+                ((u'T1', 0), ['2', '1']),
+                ((u'T1', 1), ['0', '2']),
+                ((u'T2', 0), ['0', '3']),
+                ((u'T3', 0), ['3', '1']),
+                ((u'T3', 1), ['3', '1']),
+            ]
+        )
+        ct = create_cluster_topology(assignment, broker_range(4))
+        cb = create_balancer(ct)
+        cb.revoke_leadership(['2', '3'])
+
+        new_leaders_per_broker = {
+            broker.id: broker.count_preferred_replica()
+            for broker in ct.brokers.itervalues()
+        }
+        _, total_movements = \
+            calculate_partition_movement(assignment, ct.assignment)
+        # Get net imbalance statistics excluding brokers to be revoked
+        # leadership from
+        brokers = [
+            b for b in ct.brokers.itervalues()
+            if b.id not in ['2', '3']
+        ]
+        new_net_imbal = get_net_imbalance(get_broker_leader_counts(brokers))
+        # Verify that broker '2' and '3' is not leader of any partition
+        assert new_leaders_per_broker['0'] == 3
+        assert new_leaders_per_broker['1'] == 3
+        assert new_leaders_per_broker['2'] == 0
+        assert new_leaders_per_broker['3'] == 0
+        # Assert no partition movements
+        assert total_movements == 0
+        # Assert remaining brokers are balanced with leader count
+        assert new_net_imbal == 0
+
+    def test_revoke_leadership_not_possible(
+            self,
+            create_balancer,
+            create_cluster_topology,
+    ):
+        assignment = dict(
+            [
+                ((u'T0', 0), ['2', '3']),
+                ((u'T1', 0), ['3']),
+                ((u'T1', 1), ['0', '1']),
+                ((u'T2', 0), ['1', '0']),
+            ]
+        )
+        ct = create_cluster_topology(assignment, broker_range(4))
+        cb = create_balancer(ct)
+        cb.revoke_leadership(['2', '3'])
+
+        new_leaders_per_broker = {
+            broker.id: broker.count_preferred_replica()
+            for broker in ct.brokers.itervalues()
+        }
+        # Broker '2' and '3' are to be revoked from leadership
+        # But (u'T0, 0) has replicas '2' and '3'
+        # and (u'T1', 0) has only single replica
+        # Assert no leadership changes
+        assert new_leaders_per_broker['0'] == 1
+        assert new_leaders_per_broker['1'] == 1
+        assert new_leaders_per_broker['2'] == 1
+        assert new_leaders_per_broker['3'] == 1
+        # Assert no partition movements
+        _, total_movements = \
+            calculate_partition_movement(assignment, ct.assignment)
+        assert total_movements == 0
