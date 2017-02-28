@@ -21,7 +21,6 @@ import logging
 import math
 import sys
 import time
-from functools import partial
 from operator import itemgetter
 
 from fabric.api import execute
@@ -29,6 +28,9 @@ from fabric.api import hide
 from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
+from precheck import ensure_preconditions_before_executing_restart
+from precheck import PrecheckFailedException
+from precheck import prechecks
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
@@ -38,7 +40,6 @@ from kafka_utils.util.zookeeper import ZK
 
 RESTART_COMMAND = "service kafka restart"
 DEFAULT_CFGMNT_AGENT_CMD = "run-puppet"
-CHECK_KAFKA_PACKAGE = "dpkg -s {} | grep '^Version: {}'"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
@@ -47,13 +48,10 @@ DEFAULT_CHECK_COUNT = 12
 DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
+DEFAULT_CONFIG_FILE_LOCATION = "/etc/kafka/server.properties"
 
 
 class WaitTimeoutException(Exception):
-    pass
-
-
-class PrecheckFailedException(Exception):
     pass
 
 
@@ -145,6 +143,18 @@ def parse_opts():
              'to get kafka package, example "run-puppet", "salt-call" etc',
         type=str,
         default=DEFAULT_CFGMNT_AGENT_CMD,
+    )
+    parser.add_argument(
+        '--ensure-configs',
+        help="kafka configs which need to be ensured to be present",
+        type=str,
+        default='',
+    )
+    parser.add_argument(
+        '--config-file',
+        help="location of config file",
+        type=str,
+        default=DEFAULT_CONFIG_FILE_LOCATION,
     )
     return parser.parse_args()
 
@@ -250,69 +260,6 @@ def restart_broker():
     sudo(RESTART_COMMAND)
 
 
-@task
-def execute_package_update(cmd):
-    """Execute preconditions before restarting broker"""
-    print("Executing a configuration management update to get latest packages")
-    with hide('output', 'running', 'warnings'), settings(warn_only=True):
-        sudo(cmd)
-
-
-@task
-def check_kafka_package_name_version(package_name, package_version):
-    """Check if package exists with given package name, return true if it exists"""
-    if package_name:
-        cmd = CHECK_KAFKA_PACKAGE.format(package_name, package_version)
-        with hide('output', 'running', 'warnings'), settings(warn_only=True):
-            output = sudo(cmd)
-            if output.return_code:
-                return False
-    return True
-
-
-def check_preconditions(package_name, package_version, host):
-    '''Checks whether the preconditions of specific kafka package/version
-    are valid for the host
-    '''
-    preconditions = {}
-    if package_name and package_version:
-        check_package_version_func = partial(
-            check_kafka_package_name_version,
-            package_name,
-            package_version,
-        )
-        preconditions = execute(check_package_version_func, hosts=host)
-    return preconditions
-
-
-def ensure_preconditions_before_executing_restart(
-    package_name,
-    package_version,
-    host,
-    cmd,
-):
-    '''Execute a set of prechecks to ensure the required kafka package
-    exists on the machine. Incase the required package is not present, schedule a run
-    of the configuration management agent, to get the packages installed, and execute
-    a post check. Incase package is still not available, this raises an exception
-    '''
-    preconditions = check_preconditions(package_name, package_version, host)
-    if preconditions and not all(preconditions.values()):
-        print("Precondition check for name: {}, version: {} failed".format(
-              package_name,
-              package_version))
-        execute_package_update_func = partial(execute_package_update, cmd)
-        execute(execute_package_update_func, hosts=host)
-
-        # checking if those preconditions are now met else exit
-        preconditions = check_preconditions(package_name, package_version, host)
-        if not all(preconditions.values()):
-            print("Precondition check for name: {}, version: {} failed".format(
-                package_name,
-                package_version))
-            raise PrecheckFailedException()
-
-
 def wait_for_stable_cluster(
     hosts,
     jolokia_port,
@@ -373,11 +320,9 @@ def execute_rolling_restart(
     check_interval,
     check_count,
     unhealthy_time_limit,
-    package_name,
-    package_version,
     skip,
+    prechecks,
     verbose,
-    cmd,
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -400,12 +345,11 @@ def execute_rolling_restart(
     :param unhealthy_time_limit: the maximum number of seconds it will wait for
     the cluster to become stable before exiting with error
     :type unhealthy_time_limit: integer
-    :param package_name: the name of the kafka package to expect
-    :type str:
-    :param package_version: the version of the kafka package to expect
-    :type str:
     :param skip: the number of brokers to skip
     :type skip: integer
+    :param prechecks: the tuple containing the checks which need to be ensured
+    before rolling restart
+    :type prechecks: prechecks tuple
     :param verbose: print commend execution information
     :type verbose: bool
     :param cmd: command to install kafka on the machine
@@ -415,12 +359,7 @@ def execute_rolling_restart(
     hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=200), hide(*hidden):
-            ensure_preconditions_before_executing_restart(
-                package_name,
-                package_version,
-                host,
-                cmd,
-            )
+            ensure_preconditions_before_executing_restart(prechecks, host)
             wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
@@ -472,6 +411,11 @@ def validate_opts(opts, brokers_num):
     return False
 
 
+def extract_configs(config):
+    '''extract and return a list of configs'''
+    return set(config.split(','))
+
+
 def run():
     opts = parse_opts()
     if opts.verbose:
@@ -486,6 +430,14 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
+    configs = extract_configs(opts.ensure_configs)
+    precheck_conditions = prechecks(
+        package_name=opts.package_name,
+        package_version=opts.package_version,
+        install_cmd=opts.kafka_install_cmd,
+        configs=configs,
+        config_file=opts.config_file,
+    )
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
@@ -497,12 +449,13 @@ def run():
                 opts.check_interval,
                 opts.check_count,
                 opts.unhealthy_time_limit,
-                opts.package_name,
-                opts.package_version,
                 opts.skip,
+                precheck_conditions,
                 opts.verbose,
-                opts.kafka_install_cmd,
             )
+        except PrecheckFailedException:
+            print("ERROR: preconditions cannot be ensured, exiting")
+            sys.exit(1)
         except WaitTimeoutException:
             print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)
