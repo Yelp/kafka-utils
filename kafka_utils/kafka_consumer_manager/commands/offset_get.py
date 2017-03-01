@@ -114,19 +114,9 @@ class OffsetGet(OffsetManagerBase):
         client.close()
 
         if args.sort_by_distance:
-            sorted_offsets = sorted(
-                consumer_offsets_metadata.items(),
-                key=lambda (topic, offsets): sum([o.highmark - o.current for o in offsets])
-            )
-            consumer_offsets_metadata = OrderedDict(sorted_offsets)
+            consumer_offsets_metadata = cls.sort_by_distance(consumer_offsets_metadata)
         elif args.sort_by_distance_percentage:
-            sorted_offsets = sorted(
-                consumer_offsets_metadata.items(),
-                key=lambda (topic, offsets): sum(
-                    [cls.percentage_distance(o.highmark, o.current) for o in offsets]
-                )
-            )
-            consumer_offsets_metadata = OrderedDict(sorted_offsets)
+            consumer_offsets_metadata = cls.sort_by_distance_percentage(consumer_offsets_metadata)
 
         if args.json:
             partitions_info = []
@@ -151,6 +141,29 @@ class OffsetGet(OffsetManagerBase):
                         file=sys.stderr,
                     )
             cls.print_output(consumer_offsets_metadata, args.watermark)
+
+    @classmethod
+    def sort_by_distance(cls, consumer_offsets_metadata):
+        """Receives a dict of (topic_name: ConsumerPartitionOffset) and return an
+        equivalent dict where the topics are sorted by total offset distance."""
+        sorted_offsets = sorted(
+            consumer_offsets_metadata.items(),
+            key=lambda (topic, offsets): sum([o.highmark - o.current for o in offsets])
+        )
+        return OrderedDict(sorted_offsets)
+
+    @classmethod
+    def sort_by_distance_percentage(cls, consumer_offsets_metadata):
+        """Receives a dict of (topic_name: ConsumerPartitionOffset) and return an
+        equivalent dict where the topics are sorted by average offset distance
+        in percentage."""
+        sorted_offsets = sorted(
+            consumer_offsets_metadata.items(),
+            key=lambda (topic, offsets): sum(
+                [cls.percentage_distance(o.highmark, o.current) for o in offsets]
+            )
+        )
+        return OrderedDict(sorted_offsets)
 
     @classmethod
     def get_offsets(cls, client, group, topics_dict, storage):

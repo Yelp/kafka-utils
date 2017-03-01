@@ -12,11 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import OrderedDict
+
 import mock
 import pytest
 
 from kafka_utils.kafka_consumer_manager. \
     commands.offset_get import OffsetGet
+from kafka_utils.util.monitoring import ConsumerPartitionOffsets
 
 
 class TestOffsetGet(object):
@@ -69,3 +72,23 @@ class TestOffsetGet(object):
             assert client.load_metadata_for_topics.call_count == 1
             assert client.send_offset_fetch_request.call_count == 0
             assert client.send_offset_fetch_request_kafka.call_count == 1
+
+    def test_output_sorting(self):
+        offsets = OrderedDict(
+            [("topic2", [ConsumerPartitionOffsets("t2", 0, 0, 10, 0)]),
+             ("topic1", [ConsumerPartitionOffsets("t1", 0, 5, 10, 0),
+                         ConsumerPartitionOffsets("t1", 1, 9, 10, 0)])])
+
+        sorted_dict = OffsetGet.sort_by_distance(offsets)
+        assert sorted_dict.keys()[0] == "topic1"
+        assert sorted_dict.keys()[1] == "topic2"
+
+    def test_output_sorting_parcentage(self):
+        offsets = OrderedDict(
+            [("topic1", [ConsumerPartitionOffsets("t1", 0, 1, 10, 0),
+                         ConsumerPartitionOffsets("t1", 1, 2, 10, 0)]),
+             ("topic2", [ConsumerPartitionOffsets("t2", 0, 900, 1000, 0)])])
+
+        sorted_dict = OffsetGet.sort_by_distance_percentage(offsets)
+        assert sorted_dict.keys()[0] == "topic2"
+        assert sorted_dict.keys()[1] == "topic1"
