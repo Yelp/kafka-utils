@@ -144,8 +144,8 @@ class OffsetGet(OffsetManagerBase):
 
     @classmethod
     def sort_by_distance(cls, consumer_offsets_metadata):
-        """Receives a dict of (topic_name: ConsumerPartitionOffset) and return an
-        equivalent dict where the topics are sorted by total offset distance."""
+        """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns a
+        similar dict where the topics are sorted by total offset distance."""
         sorted_offsets = sorted(
             consumer_offsets_metadata.items(),
             key=lambda (topic, offsets): sum([o.highmark - o.current for o in offsets])
@@ -154,8 +154,8 @@ class OffsetGet(OffsetManagerBase):
 
     @classmethod
     def sort_by_distance_percentage(cls, consumer_offsets_metadata):
-        """Receives a dict of (topic_name: ConsumerPartitionOffset) and return an
-        equivalent dict where the topics are sorted by average offset distance
+        """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns an
+        similar dict where the topics are sorted by average offset distance
         in percentage."""
         sorted_offsets = sorted(
             consumer_offsets_metadata.items(),
@@ -181,8 +181,8 @@ class OffsetGet(OffsetManagerBase):
     @classmethod
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
         for topic, metadata_tuples in consumer_offsets_metadata.iteritems():
-            total_lag = sum([t.highmark - t.current for t in metadata_tuples])
-            print ("Topic Name: {topic}  Total lag: {lag}".format(topic=topic, lag=total_lag))
+            diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
+            print ("Topic Name: {topic}  Total difference: {diff}".format(topic=topic, diff=diff_sum))
             for metadata_tuple in metadata_tuples:
                 print (
                     "\tPartition ID: {partition}".format(
