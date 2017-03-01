@@ -1,3 +1,8 @@
+0.6.6 (March 1st, 2017)
+------------------------
+* kafka-python>=1.3.2,<1.4.0 in setup.py
+* 0.10 integration tests
+
 0.6.5 (February 22, 2017)
 ------------------------
 * Fix list_topics flakiness in kafka-consumer-manager
