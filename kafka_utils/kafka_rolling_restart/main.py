@@ -31,9 +31,11 @@ from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
+from .precheck import Prechecker
+from .precheck import PrecheckFailedException
 from kafka_utils.util import config
+from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
-
 
 RESTART_COMMAND = "service kafka restart"
 
@@ -121,6 +123,20 @@ def parse_opts():
         '--verbose',
         help='print verbose execution information. Default: %(default)s',
         action="store_true",
+    )
+    parser.add_argument(
+        '--precheck',
+        type=str,
+        action='append',
+        help='Module containing an implementation of PreChecker. '
+        'The module should be specified as path_to_include_to_py_path:module. '
+    )
+    parser.add_argument(
+        '--precheck-args',
+        type=str,
+        action='append',
+        help='Arguements which are needed by the prechecker.'
+        'The args should be specified as "-n  '
     )
     return parser.parse_args()
 
@@ -279,6 +295,24 @@ def wait_for_stable_cluster(
         time.sleep(check_interval)
 
 
+def execute_prechecks(prechecks, host):
+    """execute the all the prechecks for this host
+    We will try once, and  check for expected PrecheckFailedException in
+    case of failure of a precheck. Then failure() func is executed. Post this
+    we run run() to assert if precheck is now valid()
+    """
+    for precheck in prechecks:
+        try:
+            precheck.run(host)
+        except PrecheckFailedException:
+            precheck.failure(host)
+        else:
+            precheck.success(host)
+            continue
+
+        precheck.run(host)
+
+
 def execute_rolling_restart(
     brokers,
     jolokia_port,
@@ -288,6 +322,7 @@ def execute_rolling_restart(
     unhealthy_time_limit,
     skip,
     verbose,
+    prechecks,
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -314,11 +349,14 @@ def execute_rolling_restart(
     :type skip: integer
     :param verbose: print commend execution information
     :type verbose: bool
+    :param prechecks: a list of prechecks to execute before running restart
+    :type prechecks: list
     """
     all_hosts = [b[1] for b in brokers]
     hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
+            execute_prechecks(prechecks, host)
             wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
@@ -381,6 +419,12 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
+    # list of precheck conditions
+    precheck = []
+    precheck_args_itr = opts.precheck_args.__iter__()
+    if opts.precheck:
+        precheck = [dynamic_import(func, Prechecker)(precheck_args_itr.next())
+                    for func in opts.precheck]
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
@@ -394,7 +438,11 @@ def run():
                 opts.unhealthy_time_limit,
                 opts.skip,
                 opts.verbose,
+                precheck,
             )
+        except PrecheckFailedException:
+            print("ERROR: prechecks failed, exiting")
+            sys.exit(1)
         except WaitTimeoutException:
             print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)
