@@ -20,7 +20,7 @@ class PrecheckFailedException(Exception):
 
 
 class Precheck(object):
-    """Base class for implementing Prechecker
+    """Base class for implementing Precheck
     All the args passed can be accessed via self.args
 
     :param args: The program arguments
