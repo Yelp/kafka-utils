@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from kafka_utils.kafka_check.metadata_file import parse_meta_properties_file
+from kafka_utils.kafka_check.metadata_file import _parse_meta_properties_file
 
 
 META_PROPERTIES_CONTENT = [
@@ -26,11 +26,11 @@ META_PROPERTIES_CONTENT = [
 class TestParseMetaPropertiesFile(object):
 
     def test_parse_meta_properties_file(self):
-        broker_id = parse_meta_properties_file(META_PROPERTIES_CONTENT)
+        broker_id = _parse_meta_properties_file(META_PROPERTIES_CONTENT)
 
         assert broker_id == 123
 
     def test_parse_meta_properties_file_empty(self):
-        broker_id = parse_meta_properties_file([])
+        broker_id = _parse_meta_properties_file([])
 
         assert broker_id is None

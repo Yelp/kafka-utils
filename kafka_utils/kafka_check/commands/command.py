@@ -50,11 +50,13 @@ class KafkaCheckCmd(object):
                 terminate(
                     status_code.OK,
                     'Broker %s is not the controller, nothing to check' % (args.broker_id),
+                    args.json,
                 )
             if args.first_broker_only and not is_first_broker(self.zk, args.broker_id):
                 terminate(
                     status_code.OK,
                     'Broker %s is not the lowest id, nothing to check' % (args.broker_id),
+                    args.json,
                 )
             return self.run_command()
 
