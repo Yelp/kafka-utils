@@ -1,14 +1,19 @@
+0.6.7 (March 2nd, 2017)
+-----------------------
+* Optionally sort kafka-consumer-manager output by offset distance
+* Support json output for kafka-checks
+
 0.6.6 (March 1st, 2017)
-------------------------
+-----------------------
 * kafka-python>=1.3.2,<1.4.0 in setup.py
 * 0.10 integration tests
 
 0.6.5 (February 22, 2017)
-------------------------
+-------------------------
 * Fix list_topics flakiness in kafka-consumer-manager
 
 0.6.4 (February 15, 2017)
-------------------------
+-------------------------
 * Upgrade kafka-python in use to 1.3.2
 * Use new KafkaConsumer for KafkaGroupReader
 
