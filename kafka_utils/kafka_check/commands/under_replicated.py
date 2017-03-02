@@ -42,31 +42,35 @@ class UnderReplicatedCmd(KafkaCheckCmd):
         )
 
         errcode = status_code.OK if not under_replicated else status_code.CRITICAL
-        out = _prepare_output(under_replicated, self.args.json, self.args.verbose)
+        out = _prepare_output(under_replicated, self.args.verbose)
         return errcode, out
 
 
-def _prepare_output(partitions, json, verbose):
+def _prepare_output(partitions, verbose):
+    """Returns dict with 'raw' and 'message' keys filled."""
     partitions_count = len(partitions)
     out = {}
-    if not json:
-        if partitions_count == 0:
-            out['message'] = 'No under replicated partitions.'
-        else:
-            out['message'] = "{under_replicated} under replicated partitions.".format(
-                under_replicated=partitions_count,
-            )
-            if verbose:
-                lines = (
-                    '{}:{}'.format(topic, partition)
-                    for (topic, partition) in partitions
-                )
-                out['verbose'] = "Partitions:\n" + "\n".join(lines)
+    out['raw'] = {
+        'under_replicated_count': partitions_count,
+    }
+
+    if partitions_count == 0:
+        out['message'] = 'No under replicated partitions.'
     else:
-        out['under_replicated_count'] = partitions_count
+        out['message'] = "{under_replicated} under replicated partitions.".format(
+            under_replicated=partitions_count,
+        )
         if verbose:
-            out['partitions'] = [
+            lines = (
                 '{}:{}'.format(topic, partition)
                 for (topic, partition) in partitions
-            ]
+            )
+            out['verbose'] = "Partitions:\n" + "\n".join(lines)
+
+    if verbose:
+        out['raw']['partitions'] = [
+            {'topic': topic, 'partition': partition}
+            for (topic, partition) in partitions
+        ]
+
     return out

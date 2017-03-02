@@ -40,29 +40,33 @@ class OfflineCmd(KafkaCheckCmd):
         )
 
         errcode = status_code.OK if not offline else status_code.CRITICAL
-        out = _prepare_output(offline, self.args.json, self.args.verbose)
+        out = _prepare_output(offline, self.args.verbose)
         return errcode, out
 
 
-def _prepare_output(partitions, json, verbose):
+def _prepare_output(partitions, verbose):
+    """Returns dict with 'raw' and 'message' keys filled."""
     out = {}
     partitions_count = len(partitions)
-    if not json:
-        if partitions_count == 0:
-            out['message'] = 'No offline partitions.'
-        else:
-            out['message'] = "{count} offline partitions.".format(count=partitions_count)
-            if verbose:
-                lines = (
-                    '{}:{}'.format(topic, partition)
-                    for (topic, partition) in partitions
-                )
-                out['verbose'] = "Partitions:\n" + "\n".join(lines)
+    out['raw'] = {
+        'offline_count': partitions_count,
+    }
+
+    if partitions_count == 0:
+        out['message'] = 'No offline partitions.'
     else:
-        out['offline_count'] = partitions_count
+        out['message'] = "{count} offline partitions.".format(count=partitions_count)
         if verbose:
-            out['partitions'] = [
+            lines = (
                 '{}:{}'.format(topic, partition)
                 for (topic, partition) in partitions
-            ]
+            )
+            out['verbose'] = "Partitions:\n" + "\n".join(lines)
+
+    if verbose:
+        out['raw']['partitions'] = [
+            {'topic': topic, 'partition': partition}
+            for (topic, partition) in partitions
+        ]
+
     return out

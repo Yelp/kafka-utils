@@ -33,7 +33,7 @@ def terminate(signal, msg, json):
     if json:
         output = {
             'status': STATUS_STRING[signal],
-            'data': msg,
+            'data': msg['raw'],
         }
         print_json(output)
     else:

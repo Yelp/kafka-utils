@@ -175,48 +175,41 @@ def test_run_command_all_fail(min_isr_mock):
     assert sorted(result) == sorted(NOT_IN_SYNC_PARTITIONS)
 
 
-def test_prepare_output_ok_no_json_no_verbose():
+def test_prepare_output_ok_no_verbose():
     origin = {
         'message': "All replicas in sync.",
+        'raw': {
+            'not_enough_replicas_count': 0,
+        }
     }
-    assert _prepare_output([], False, False) == origin
+    assert _prepare_output([], False) == origin
 
 
-def test_prepare_output_ok_json_no_verbose():
-    assert _prepare_output([], True, False) == {'not_enough_replicas_count': 0}
-
-
-def test_prepare_output_ok_no_json_verbose():
+def test_prepare_output_ok_verbose():
     origin = {
         'message': "All replicas in sync.",
+        'raw': {
+            'not_enough_replicas_count': 0,
+            'partitions': [],
+        }
     }
-    assert _prepare_output([], False, True) == origin
+    assert _prepare_output([], True) == origin
 
 
-def test_prepare_output_ok_json_verbose():
-    origin = {
-        'not_enough_replicas_count': 0,
-        'partitions': [],
-    }
-    assert _prepare_output([], True, True) == origin
-
-
-def test_prepare_output_critical_no_json_no_verbose():
+def test_prepare_output_critical_no_verbose():
     origin = {
         'message': (
             "2 partition(s) have the number of replicas in "
             "sync that is lower than the specified min ISR."
         ),
+        'raw': {
+            'not_enough_replicas_count': 2,
+        }
     }
-    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, False, False) == origin
+    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, False) == origin
 
 
-def test_prepare_output_critical_json_no_verbose():
-    origin = {'not_enough_replicas_count': 2}
-    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, True, False) == origin
-
-
-def test_prepare_output_critical_no_json_verbose():
+def test_prepare_output_critical_verbose():
     origin = {
         'message': (
             "2 partition(s) have the number of replicas in "
@@ -227,26 +220,22 @@ def test_prepare_output_critical_no_json_verbose():
             "isr=1 is lower than min_isr=3 for topic_0:0\n"
             "isr=2 is lower than min_isr=3 for topic_1:0"
         ),
+        'raw': {
+            'not_enough_replicas_count': 2,
+            'partitions': [
+                {
+                    'isr': 1,
+                    'min_isr': 3,
+                    'partition': 0,
+                    'topic': 'topic_0'
+                },
+                {
+                    'isr': 2,
+                    'min_isr': 3,
+                    'partition': 0,
+                    'topic': 'topic_1'
+                }
+            ],
+        }
     }
-    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, False, True) == origin
-
-
-def test_prepare_output_critical_json_verbose():
-    origin = {
-        'not_enough_replicas_count': 2,
-        'partitions': [
-            {
-                'isr': 1,
-                'min_isr': 3,
-                'partition': 0,
-                'topic': 'topic_0'
-            },
-            {
-                'isr': 2,
-                'min_isr': 3,
-                'partition': 0,
-                'topic': 'topic_1'
-            }
-        ],
-    }
-    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, True, True) == origin
+    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, True) == origin

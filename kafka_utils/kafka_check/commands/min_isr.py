@@ -52,7 +52,7 @@ class MinIsrCmd(KafkaCheckCmd):
         )
 
         errcode = status_code.OK if not not_in_sync else status_code.CRITICAL
-        out = _prepare_output(not_in_sync, self.args.json, self.args.verbose)
+        out = _prepare_output(not_in_sync, self.args.verbose)
         return errcode, out
 
 
@@ -89,32 +89,35 @@ def _process_metadata_response(topics, zk, default_min_isr):
     return not_in_sync_partitions
 
 
-def _prepare_output(partitions, json, verbose):
+def _prepare_output(partitions, verbose):
+    """Returns dict with 'raw' and 'message' keys filled."""
     out = {}
     partitions_count = len(partitions)
-    if not json:
-        if partitions_count == 0:
-            out['message'] = 'All replicas in sync.'
-        else:
-            out['message'] = (
-                "{0} partition(s) have the number of replicas in "
-                "sync that is lower than the specified min ISR."
-            ).format(partitions_count)
+    out['raw'] = {
+        'not_enough_replicas_count': partitions_count,
+    }
 
-            if verbose:
-                lines = (
-                    "isr={isr} is lower than min_isr={min_isr} for {topic}:{partition}"
-                    .format(
-                        isr=p['isr'],
-                        min_isr=p['min_isr'],
-                        topic=p['topic'],
-                        partition=p['partition'],
-                    )
-                    for p in partitions
-                )
-                out['verbose'] = "Partitions:\n" + "\n".join(lines)
+    if partitions_count == 0:
+        out['message'] = 'All replicas in sync.'
     else:
-        out['not_enough_replicas_count'] = partitions_count
+        out['message'] = (
+            "{0} partition(s) have the number of replicas in "
+            "sync that is lower than the specified min ISR."
+        ).format(partitions_count)
+
         if verbose:
-            out['partitions'] = partitions
+            lines = (
+                "isr={isr} is lower than min_isr={min_isr} for {topic}:{partition}"
+                .format(
+                    isr=p['isr'],
+                    min_isr=p['min_isr'],
+                    topic=p['topic'],
+                    partition=p['partition'],
+                )
+                for p in partitions
+            )
+            out['verbose'] = "Partitions:\n" + "\n".join(lines)
+    if verbose:
+        out['raw']['partitions'] = partitions
+
     return out
