@@ -17,6 +17,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import sys
+from collections import OrderedDict
 
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
@@ -74,6 +75,15 @@ class OffsetGet(OffsetManagerBase):
             "-j", "--json", action="store_true",
             help="Export data in json format."
         )
+        sort_parser = parser_offset_get.add_mutually_exclusive_group()
+        sort_parser.add_argument(
+            "--sort-by-distance", action="store_true",
+            help="Sort the output by increasing topic distance."
+        )
+        sort_parser.add_argument(
+            "--sort-by-distance-percentage", action="store_true",
+            help="Sort the output by increasing topic distance percentage."
+        )
         parser_offset_get.set_defaults(command=cls.run)
 
     @classmethod
@@ -100,6 +110,11 @@ class OffsetGet(OffsetManagerBase):
         )
         client.close()
 
+        if args.sort_by_distance:
+            consumer_offsets_metadata = cls.sort_by_distance(consumer_offsets_metadata)
+        elif args.sort_by_distance_percentage:
+            consumer_offsets_metadata = cls.sort_by_distance_percentage(consumer_offsets_metadata)
+
         if args.json:
             partitions_info = []
             for partitions in consumer_offsets_metadata.values():
@@ -107,8 +122,8 @@ class OffsetGet(OffsetManagerBase):
                     partition_info = partition._asdict()
                     partition_info['offset_distance'] = partition_info['highmark'] - partition_info['current']
                     partition_info['percentage_distance'] = cls.percentage_distance(
-                        int(partition_info['highmark']),
-                        int(partition_info['current'])
+                        partition_info['highmark'],
+                        partition_info['current']
                     )
                     partitions_info.append(partition_info)
             print_json(partitions_info)
@@ -123,6 +138,29 @@ class OffsetGet(OffsetManagerBase):
                         file=sys.stderr,
                     )
             cls.print_output(consumer_offsets_metadata, args.watermark)
+
+    @classmethod
+    def sort_by_distance(cls, consumer_offsets_metadata):
+        """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns a
+        similar dict where the topics are sorted by total offset distance."""
+        sorted_offsets = sorted(
+            consumer_offsets_metadata.items(),
+            key=lambda (topic, offsets): sum([o.highmark - o.current for o in offsets])
+        )
+        return OrderedDict(sorted_offsets)
+
+    @classmethod
+    def sort_by_distance_percentage(cls, consumer_offsets_metadata):
+        """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns an
+        similar dict where the topics are sorted by average offset distance
+        in percentage."""
+        sorted_offsets = sorted(
+            consumer_offsets_metadata.items(),
+            key=lambda (topic, offsets): sum(
+                [cls.percentage_distance(o.highmark, o.current) for o in offsets]
+            )
+        )
+        return OrderedDict(sorted_offsets)
 
     @classmethod
     def get_offsets(cls, client, group, topics_dict, storage):
@@ -140,7 +178,8 @@ class OffsetGet(OffsetManagerBase):
     @classmethod
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
         for topic, metadata_tuples in consumer_offsets_metadata.iteritems():
-            print ("Topic Name: {topic}".format(topic=topic))
+            diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
+            print ("Topic Name: {topic}  Total Distance: {diff}".format(topic=topic, diff=diff_sum))
             for metadata_tuple in metadata_tuples:
                 print (
                     "\tPartition ID: {partition}".format(
@@ -167,8 +206,8 @@ class OffsetGet(OffsetManagerBase):
                     )
                 if watermark_filter == "all" or watermark_filter == "distance":
                     per_distance = cls.percentage_distance(
-                        int(metadata_tuple.highmark),
-                        int(metadata_tuple.current)
+                        metadata_tuple.highmark,
+                        metadata_tuple.current
                     )
                     print(
                         "\t\tOffset Distance: {distance}".format(
@@ -184,6 +223,8 @@ class OffsetGet(OffsetManagerBase):
     @classmethod
     def percentage_distance(cls, highmark, current):
         """Percentage of distance the current offset is behind the highmark."""
+        highmark = int(highmark)
+        current = int(current)
         if highmark > 0:
             return round(
                 (highmark - current) * 100.0 / highmark,
