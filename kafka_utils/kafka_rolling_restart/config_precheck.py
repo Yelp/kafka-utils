@@ -21,7 +21,7 @@ from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
 
-from .precheck import Prechecker
+from .precheck import Precheck
 from .precheck import PrecheckFailedException
 
 
@@ -29,7 +29,7 @@ KAFKA_UPDATE_CMD = "run-puppet"
 DEFAULT_CONFIG_FILE_LOCATION = "/etc/kafka/server.properties"
 
 
-class ConfigPreCheck(Prechecker):
+class ConfigPrecheck(Precheck):
     """Class to check for kafka configs"""
 
     def parse_args(self, args):
@@ -49,41 +49,42 @@ class ConfigPreCheck(Prechecker):
         return parser.parse_args(args)
 
     @task
-    def execute_package_update(self, cmd):
+    def _execute_cmd(self, cmd):
+        """Execute the command, and return the output"""
+        with hide('output', 'running', 'warnings'), settings(warn_only=True):
+            return sudo(cmd)
+
+    def _execute_package_update(self, cmd, host):
         """Execute preconditions before restarting broker"""
         print("Attempting to get latest package")
-        with hide('output', 'running', 'warnings'), settings(warn_only=True):
-            sudo(cmd)
+        execute_package_update_func = partial(
+            self._execute_cmd,
+            ConfigPrecheck,
+            KAFKA_UPDATE_CMD,
+        )
+        execute(execute_package_update_func, hosts=host)
 
-    @task
-    def assert_configs_present(self, configs, config_file):
+    def _assert_configs_present(self, host):
         '''Check if the configs are present on the host'''
-        with hide('output', 'running', 'warnings'):
-            cmd = 'cat ' + config_file
-            output = sudo(cmd)
-            config_on_host = set(output.split('\r\n'))
-            config_present = configs.issubset(config_on_host)
-            if not config_present:
-                raise PrecheckFailedException
+        cmd = 'cat ' + self.args.config_file
+        configs = set(self.args.ensure_configs.split(','))
+        execute_cmd_func = partial(
+            self._execute_cmd,
+            ConfigPrecheck,
+            cmd,
+        )
+        output = execute(execute_cmd_func, hosts=host).get(host)
+        config_on_host = set(output.split('\r\n'))
+        config_present = configs.issubset(config_on_host)
+        if not config_present:
+            raise PrecheckFailedException
 
     def run(self, host):
-        configs = set(self.args.ensure_configs.split(','))
-        assert_configis_present_func = partial(
-            self.assert_configs_present,
-            ConfigPreCheck,
-            configs,
-            self.args.config_file,
-        )
-        execute(assert_configis_present_func, hosts=host)
+        self._assert_configs_present(host)
 
     def success(self, host):
         print("Precheck for configs is successfull")
 
     def failure(self, host):
         print("WARN: Precheck failed for configs")
-        execute_package_update_func = partial(
-            self.execute_package_update,
-            ConfigPreCheck,
-            KAFKA_UPDATE_CMD,
-        )
-        execute(execute_package_update_func, hosts=host)
+        self._execute_package_update(KAFKA_UPDATE_CMD, host)

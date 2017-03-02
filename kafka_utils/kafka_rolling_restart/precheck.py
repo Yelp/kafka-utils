@@ -19,9 +19,11 @@ class PrecheckFailedException(Exception):
     pass
 
 
-class Prechecker(object):
+class Precheck(object):
     """Base class for implementing Prechecker
     All the args passed can be accessed via self.args
+
+    :param args: The program arguments
     """
 
     def __init__(self, args):
@@ -32,14 +34,32 @@ class Prechecker(object):
         else:
             self.args = self.parse_args([])
 
+    def parse_args(self, args):
+        """Parse partition measurer command line arguments.
+        :param args: The list of arguments as strings.
+        """
+        pass
+
     def run(self, host):
-        """This contains the main logic of the precheck"""
-        raise NotImplementedError("implemented in subclass")
+        """This contains the main logic of the precheck
+
+        :param host: the host on which precheck is executed on
+        :type host: string
+        """
+        raise NotImplementedError("Implemented in subclass")
 
     def success(self, host):
-        """This contains the main logic incase precheck is successful"""
-        raise NotImplementedError("implemented in subclass")
+        """This contains the main logic incase precheck is successful
+
+        :param host: the host on which precheck is executed on
+        :type host: string
+        """
+        raise NotImplementedError("Implemented in subclass")
 
     def failure(self, host):
-        """This contains the main logic incase the precheck fails"""
-        raise NotImplementedError("implemented in subclass")
+        """This contains the main logic incase the precheck fails
+
+        :param host: the host on which precheck is executed on
+        :type host: string
+        """
+        raise NotImplementedError("Implemented in subclass")

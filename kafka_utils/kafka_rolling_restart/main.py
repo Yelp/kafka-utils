@@ -31,7 +31,7 @@ from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
-from .precheck import Prechecker
+from .precheck import Precheck
 from .precheck import PrecheckFailedException
 from kafka_utils.util import config
 from kafka_utils.util.utils import dynamic_import
@@ -423,7 +423,7 @@ def run():
     precheck = []
     precheck_args_itr = opts.precheck_args.__iter__()
     if opts.precheck:
-        precheck = [dynamic_import(func, Prechecker)(precheck_args_itr.next())
+        precheck = [dynamic_import(func, Precheck)(precheck_args_itr.next())
                     for func in opts.precheck]
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
