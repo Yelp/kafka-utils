@@ -75,11 +75,12 @@ class OffsetGet(OffsetManagerBase):
             "-j", "--json", action="store_true",
             help="Export data in json format."
         )
-        parser_offset_get.add_argument(
+        sort_parser = parser_offset_get.add_mutually_exclusive_group()
+        sort_parser.add_argument(
             "--sort-by-distance", action="store_true",
             help="Sort the output by increasing topic distance."
         )
-        parser_offset_get.add_argument(
+        sort_parser.add_argument(
             "--sort-by-distance-percentage", action="store_true",
             help="Sort the output by increasing topic distance percentage."
         )
@@ -87,10 +88,6 @@ class OffsetGet(OffsetManagerBase):
 
     @classmethod
     def run(cls, args, cluster_config):
-        if args.sort_by_distance and args.sort_by_distance_percentage:
-            print("Invalid sorting parameters.", file=sys.stderr)
-            sys.exit(1)
-
         # Setup the Kafka client
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
@@ -182,7 +179,7 @@ class OffsetGet(OffsetManagerBase):
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
         for topic, metadata_tuples in consumer_offsets_metadata.iteritems():
             diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
-            print ("Topic Name: {topic}  Total difference: {diff}".format(topic=topic, diff=diff_sum))
+            print ("Topic Name: {topic}  Total Distance: {diff}".format(topic=topic, diff=diff_sum))
             for metadata_tuple in metadata_tuples:
                 print (
                     "\tPartition ID: {partition}".format(
