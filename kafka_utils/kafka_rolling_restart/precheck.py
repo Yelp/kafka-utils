@@ -35,7 +35,7 @@ class Precheck(object):
             self.args = self.parse_args([])
 
     def parse_args(self, args):
-        """Parse partition measurer command line arguments.
+        """Parse args command line arguments.
         :param args: The list of arguments as strings.
         """
         pass

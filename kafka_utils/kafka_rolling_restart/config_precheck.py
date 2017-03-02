@@ -38,7 +38,8 @@ class ConfigPrecheck(Precheck):
             '--ensure-configs',
             type=str,
             required=True,
-            help='kafka configs which need to be ensured to be present',
+            help='kafka configs which need to be ensured to be present,'
+            'ex. --ensure-configs config1=4,config2=5'
         )
         parser.add_argument(
             '--config-file',
@@ -55,7 +56,7 @@ class ConfigPrecheck(Precheck):
             return sudo(cmd)
 
     def _execute_package_update(self, cmd, host):
-        """Execute preconditions before restarting broker"""
+        """Execute a package update"""
         print("Attempting to get latest package")
         execute_package_update_func = partial(
             self._execute_cmd,
@@ -65,7 +66,7 @@ class ConfigPrecheck(Precheck):
         execute(execute_package_update_func, hosts=host)
 
     def _assert_configs_present(self, host):
-        '''Check if the configs are present on the host'''
+        """Check if the configs are present on the host"""
         cmd = 'cat ' + self.args.config_file
         configs = set(self.args.ensure_configs.split(','))
         execute_cmd_func = partial(

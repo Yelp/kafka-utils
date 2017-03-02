@@ -37,6 +37,7 @@ from kafka_utils.util import config
 from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
+
 RESTART_COMMAND = "service kafka restart"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
@@ -128,14 +129,15 @@ def parse_opts():
         '--precheck',
         type=str,
         action='append',
-        help='Module containing an implementation of PreChecker. '
-        'The module should be specified as path_to_include_to_py_path:module. '
+        help='Module containing an implementation of PreCheck. '
+        'The module should be specified as path_to_include_to_py_path. '
+        'ex. --precheck kafka_utils.kafka_rolling_restart.version_precheck'
     )
     parser.add_argument(
         '--precheck-args',
         type=str,
         action='append',
-        help='Arguements which are needed by the prechecker.'
+        help='Arguements which are needed by the precheck.'
         'The args should be specified as "-n  '
     )
     return parser.parse_args()
@@ -296,10 +298,10 @@ def wait_for_stable_cluster(
 
 
 def execute_prechecks(prechecks, host):
-    """execute the all the prechecks for this host
-    We will try once, and  check for expected PrecheckFailedException in
-    case of failure of a precheck. Then failure() func is executed. Post this
-    we run run() to assert if precheck is now valid()
+    """execute all the prechecks for the host
+    This trying to run(), and on getting a PrecheckFailedException executes failure().
+    It will try to run run() before exiting(incase of faiilure) to assert if
+    precheck is now valid()
     """
     for precheck in prechecks:
         try:

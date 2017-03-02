@@ -64,7 +64,8 @@ class VersionPrecheck(Precheck):
         execute(execute_package_update_func, hosts=host)
 
     def _assert_kafka_package_name_version(self, host):
-        """Check if package exists with given package name abd version, else raise PrecheckFailedException"""
+        """Check if package exists with given package name and version,
+        else raises PrecheckFailedException"""
         if self.args.package_name:
             cmd = CHECK_KAFKA_PACKAGE.format(self.args.package_name, self.args.package_version)
             assert_kafka_package_name_version_func = partial(
