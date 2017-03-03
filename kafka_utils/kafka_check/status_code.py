@@ -29,6 +29,13 @@ STATUS_STRING = {
 }
 
 
+def prepare_terminate_message(string):
+    return {
+        'message': string,
+        'raw': string,
+    }
+
+
 def terminate(signal, msg, json):
     if json:
         output = {
