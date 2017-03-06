@@ -128,20 +128,12 @@ def parse_opts():
         action="store_true",
     )
     parser.add_argument(
-        '--prestoptask',
+        '--task',
         type=str,
         action='append',
         help='Module containing an implementation of Task.'
         'The module should be specified as path_to_include_to_py_path. '
-        'ex. --prestoptask kafka_utils.kafka_rolling_restart.lookup'
-    )
-    parser.add_argument(
-        '--poststoptask',
-        type=str,
-        action='append',
-        help='Module containing an implementation of Task.'
-        'The module should be specified as path_to_include_to_py_path. '
-        'ex. --poststoptask kafka_utils.kafka_rolling_restart.lookup'
+        'ex. --task kafka_utils.kafka_rolling_restart.version_precheck'
     )
     parser.add_argument(
         '--task-args',
@@ -428,6 +420,34 @@ def validate_opts(opts, brokers_num):
     return False
 
 
+def get_task_class(tasks, task_args):
+    """Reads in a list of tasks provided by the user,
+    loads the appropiate task, and returns two lists,
+    pre_stop_tasks and post_stop_tasks
+    :param tasks: list of strings locating tasks to load
+    :type tasks: list
+    :param task_args: list of strings to be used as args
+    :type task_args: list
+    """
+    pre_stop_task = []
+    post_stop_task = []
+    task_args_itr = task_args.__iter__()
+    tasks_classes = [PreStopTask, PostStopTask]
+
+    for func in tasks:
+        for task_class in tasks_classes:
+            imported_class = dynamic_import(func, task_class)
+            if imported_class:
+                if task_class is PreStopTask:
+                    pre_stop_task.append(imported_class(task_args_itr.next()))
+                elif task_class is PostStopTask:
+                    post_stop_task.append(imported_class(task_args_itr.next()))
+                else:
+                    print("ERROR: Class is not a type of Pre/Post StopTask:" + func)
+                    sys.exit(1)
+    return pre_stop_task, post_stop_task
+
+
 def run():
     opts = parse_opts()
     if opts.verbose:
@@ -442,17 +462,7 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-
-    # list of task
-    pre_stop_task = []
-    post_stop_task = []
-    task_args_itr = opts.task_args.__iter__()
-    if opts.prestoptask:
-        pre_stop_task = [dynamic_import(func, PreStopTask)(task_args_itr.next())
-                         for func in opts.prestoptask]
-    if opts.poststoptask:
-        post_stop_task = [dynamic_import(func, PostStopTask)(task_args_itr.next())
-                          for func in opts.poststoptask]
+    pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
@@ -466,8 +476,8 @@ def run():
                 opts.unhealthy_time_limit,
                 opts.skip,
                 opts.verbose,
-                pre_stop_task,
-                post_stop_task,
+                pre_stop_tasks,
+                post_stop_tasks,
             )
         except TaskFailedException:
             print("ERROR: pre/post tasks failed, exiting")
