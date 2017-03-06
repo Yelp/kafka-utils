@@ -78,11 +78,11 @@ class VersionPrecheck(PreStopTask):
                 raise TaskFailedException()
 
     def run(self, host):
+        try:
+            self._assert_kafka_package_name_version(host)
+            print("Precheck for package name and version is successful")
+            return
+        except TaskFailedException:
+            print("WARN: Precheck for package name and version failed")
+            self._execute_package_update(KAFKA_UPDATE_CMD, host)
         self._assert_kafka_package_name_version(host)
-
-    def success(self, host):
-        print("Precheck for package name and version is successful")
-
-    def failure(self, host):
-        print("WARN: Precheck failed for package name and package version")
-        self._execute_package_update(KAFKA_UPDATE_CMD, host)

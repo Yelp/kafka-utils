@@ -81,11 +81,11 @@ class ConfigPrecheck(PreStopTask):
             raise TaskFailedException
 
     def run(self, host):
+        try:
+            self._assert_configs_present(host)
+            print("Precheck for configs is successful")
+            return
+        except TaskFailedException:
+            print("ERROR: Precheck for configs failed")
+            self._execute_package_update(KAFKA_UPDATE_CMD, host)
         self._assert_configs_present(host)
-
-    def success(self, host):
-        print("Precheck for configs is successfull")
-
-    def failure(self, host):
-        print("WARN: Precheck failed for configs")
-        self._execute_package_update(KAFKA_UPDATE_CMD, host)

@@ -42,23 +42,7 @@ class Task(object):
 
     def run(self, host):
         """This contains the main logic of the task
-
-        :param host: the host on which precheck is executed on
-        :type host: string
-        """
-        raise NotImplementedError("Implemented in subclass")
-
-    def success(self, host):
-        """This contains the main logic incase precheck is successful
-
-        :param host: the host on which precheck is executed on
-        :type host: string
-        """
-        raise NotImplementedError("Implemented in subclass")
-
-    def failure(self, host):
-        """This contains the main logic incase the precheck fails
-
+        Please note an exception from this method will completely stop the restart
         :param host: the host on which precheck is executed on
         :type host: string
         """

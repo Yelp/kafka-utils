@@ -311,14 +311,6 @@ def execute_task(tasks, host):
     precheck is now valid()
     """
     for t in tasks:
-        try:
-            t.run(host)
-        except TaskFailedException:
-            t.failure(host)
-        else:
-            t.success(host)
-            continue
-
         t.run(host)
 
 
