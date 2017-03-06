@@ -21,14 +21,14 @@ from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
 
-from .precheck import Precheck
-from .precheck import PrecheckFailedException
+from .task import PreStopTask
+from .task import TaskFailedException
 
 CHECK_KAFKA_PACKAGE = "dpkg -s {} | grep '^Version: {}'"
 KAFKA_UPDATE_CMD = "run-puppet"
 
 
-class VersionPrecheck(Precheck):
+class VersionPrecheck(PreStopTask):
     """Class to check for kafka package/version"""
 
     def parse_args(self, args):
@@ -48,8 +48,8 @@ class VersionPrecheck(Precheck):
         return parser.parse_args(args)
 
     @task
-    def _execute_cmd(self, cmd):
-        """Execute the command, and return the output"""
+    def execute_cmd(self, cmd):
+        """Execute the command on remote broker, and return the output"""
         with hide('output', 'running', 'warnings'), settings(warn_only=True):
             return sudo(cmd).return_code
 
@@ -57,7 +57,7 @@ class VersionPrecheck(Precheck):
         """Run the kafka update command to get the latest package"""
         print("Attempting to get latest package")
         execute_package_update_func = partial(
-            self._execute_cmd,
+            self.execute_cmd,
             VersionPrecheck,
             KAFKA_UPDATE_CMD,
         )
@@ -69,13 +69,13 @@ class VersionPrecheck(Precheck):
         if self.args.package_name:
             cmd = CHECK_KAFKA_PACKAGE.format(self.args.package_name, self.args.package_version)
             assert_kafka_package_name_version_func = partial(
-                self._execute_cmd,
+                self.execute_cmd,
                 VersionPrecheck,
                 cmd,
             )
             output = execute(assert_kafka_package_name_version_func, hosts=host).get(host)
             if output:
-                raise PrecheckFailedException()
+                raise TaskFailedException()
 
     def run(self, host):
         self._assert_kafka_package_name_version(host)

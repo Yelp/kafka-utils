@@ -31,14 +31,16 @@ from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
-from .precheck import Precheck
-from .precheck import PrecheckFailedException
+from .task import PostStopTask
+from .task import PreStopTask
+from .task import TaskFailedException
 from kafka_utils.util import config
 from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
 
-RESTART_COMMAND = "service kafka restart"
+STOP_COMMAND = "service kafka stop"
+START_COMMAND = "service kafka start"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
@@ -126,19 +128,26 @@ def parse_opts():
         action="store_true",
     )
     parser.add_argument(
-        '--precheck',
+        '--prestoptask',
         type=str,
         action='append',
-        help='Module containing an implementation of PreCheck. '
+        help='Module containing an implementation of Task.'
         'The module should be specified as path_to_include_to_py_path. '
-        'ex. --precheck kafka_utils.kafka_rolling_restart.version_precheck'
+        'ex. --prestoptask kafka_utils.kafka_rolling_restart.lookup'
     )
     parser.add_argument(
-        '--precheck-args',
+        '--poststoptask',
         type=str,
         action='append',
-        help='Arguements which are needed by the precheck.'
-        'The args should be specified as "-n  '
+        help='Module containing an implementation of Task.'
+        'The module should be specified as path_to_include_to_py_path. '
+        'ex. --poststoptask kafka_utils.kafka_rolling_restart.lookup'
+    )
+    parser.add_argument(
+        '--task-args',
+        type=str,
+        action='append',
+        help='Arguements which are needed by the task(prestoptask or poststoptask).'
     )
     return parser.parse_args()
 
@@ -239,9 +248,15 @@ def ask_confirmation():
 
 
 @task
-def restart_broker():
-    """Execute the restart"""
-    sudo(RESTART_COMMAND)
+def start_broker():
+    """Execute the start"""
+    sudo(START_COMMAND)
+
+
+@task
+def stop_broker():
+    """Execute the stop"""
+    sudo(STOP_COMMAND)
 
 
 def wait_for_stable_cluster(
@@ -297,22 +312,22 @@ def wait_for_stable_cluster(
         time.sleep(check_interval)
 
 
-def execute_prechecks(prechecks, host):
+def execute_task(checks, host):
     """execute all the prechecks for the host
     This trying to run(), and on getting a PrecheckFailedException executes failure().
     It will try to run run() before exiting(incase of faiilure) to assert if
     precheck is now valid()
     """
-    for precheck in prechecks:
+    for check in checks:
         try:
-            precheck.run(host)
-        except PrecheckFailedException:
-            precheck.failure(host)
+            check.run(host)
+        except TaskFailedException:
+            check.failure(host)
         else:
-            precheck.success(host)
+            check.success(host)
             continue
 
-        precheck.run(host)
+        check.run(host)
 
 
 def execute_rolling_restart(
@@ -324,7 +339,8 @@ def execute_rolling_restart(
     unhealthy_time_limit,
     skip,
     verbose,
-    prechecks,
+    pre_stop_task,
+    post_stop_task,
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -351,14 +367,16 @@ def execute_rolling_restart(
     :type skip: integer
     :param verbose: print commend execution information
     :type verbose: bool
-    :param prechecks: a list of prechecks to execute before running restart
-    :type prechecks: list
+    :param pre_stop_task: a list of prechecks to execute before running stop
+    :type pre_stop_tasks: list
+    :param post_stop_task: a list of postchecks to execute after running stop
+    :type post_stop_task: list
     """
     all_hosts = [b[1] for b in brokers]
     hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
-            execute_prechecks(prechecks, host)
+            execute_task(pre_stop_task, host)
             wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
@@ -367,8 +385,11 @@ def execute_rolling_restart(
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
             )
-            print("Restarting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            execute(restart_broker, hosts=host)
+            print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
+            execute(stop_broker, hosts=host)
+            execute_task(post_stop_task, host)
+            print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
+            execute(start_broker, hosts=host)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
@@ -421,12 +442,17 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    # list of precheck conditions
-    precheck = []
-    precheck_args_itr = opts.precheck_args.__iter__()
-    if opts.precheck:
-        precheck = [dynamic_import(func, Precheck)(precheck_args_itr.next())
-                    for func in opts.precheck]
+
+    # list of task
+    pre_stop_task = []
+    post_stop_task = []
+    task_args_itr = opts.task_args.__iter__()
+    if opts.prestoptask:
+        pre_stop_task = [dynamic_import(func, PreStopTask)(task_args_itr.next())
+                         for func in opts.prestoptask]
+    if opts.poststoptask:
+        post_stop_task = [dynamic_import(func, PostStopTask)(task_args_itr.next())
+                          for func in opts.poststoptask]
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
@@ -440,10 +466,11 @@ def run():
                 opts.unhealthy_time_limit,
                 opts.skip,
                 opts.verbose,
-                precheck,
+                pre_stop_task,
+                post_stop_task,
             )
-        except PrecheckFailedException:
-            print("ERROR: prechecks failed, exiting")
+        except TaskFailedException:
+            print("ERROR: pre/post tasks failed, exiting")
             sys.exit(1)
         except WaitTimeoutException:
             print("ERROR: cluster is still unhealthy, exiting")

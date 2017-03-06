@@ -16,7 +16,7 @@ import mock
 import pytest
 
 from kafka_utils.kafka_rolling_restart.config_precheck import ConfigPrecheck
-from kafka_utils.kafka_rolling_restart.precheck import PrecheckFailedException
+from kafka_utils.kafka_rolling_restart.task import TaskFailedException
 
 
 @mock.patch(
@@ -40,7 +40,7 @@ def test_assert_config(mock_execute):
 def test_assert_config_raises_exception(mock_execute):
     args = '--ensure-configs auto.create.topics.enable=false'
     version_precheck = ConfigPrecheck(args)
-    with pytest.raises(PrecheckFailedException):
+    with pytest.raises(TaskFailedException):
         version_precheck._assert_configs_present('test_host')
 
     assert mock_execute.call_count == 1

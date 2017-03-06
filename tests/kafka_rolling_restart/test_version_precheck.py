@@ -15,7 +15,7 @@
 import mock
 import pytest
 
-from kafka_utils.kafka_rolling_restart.precheck import PrecheckFailedException
+from kafka_utils.kafka_rolling_restart.task import TaskFailedException
 from kafka_utils.kafka_rolling_restart.version_precheck import VersionPrecheck
 
 
@@ -40,7 +40,7 @@ def test_assert_kafka_package_name_version(mock_execute):
 def test_assert_kafka_package_name_version_raises_exception(mock_execute):
     args = '--package-name kafka --package-version 0.9.0.2'
     version_precheck = VersionPrecheck(args)
-    with pytest.raises(PrecheckFailedException):
+    with pytest.raises(TaskFailedException):
         version_precheck._assert_kafka_package_name_version('test_host')
 
     assert mock_execute.call_count == 1

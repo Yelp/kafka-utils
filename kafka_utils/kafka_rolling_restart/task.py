@@ -15,12 +15,12 @@
 import shlex
 
 
-class PrecheckFailedException(Exception):
+class TaskFailedException(Exception):
     pass
 
 
-class Precheck(object):
-    """Base class for implementing Precheck
+class Task(object):
+    """Base class for implementing Task
     All the args passed can be accessed via self.args
 
     :param args: The program arguments
@@ -41,7 +41,7 @@ class Precheck(object):
         pass
 
     def run(self, host):
-        """This contains the main logic of the precheck
+        """This contains the main logic of the task
 
         :param host: the host on which precheck is executed on
         :type host: string
@@ -63,3 +63,11 @@ class Precheck(object):
         :type host: string
         """
         raise NotImplementedError("Implemented in subclass")
+
+
+class PreStopTask(Task):
+    """Class to be used for any pre stop checks"""
+
+
+class PostStopTask(Task):
+    """Class to be used for any post stop checks"""

@@ -21,15 +21,15 @@ from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
 
-from .precheck import Precheck
-from .precheck import PrecheckFailedException
+from .task import PreStopTask
+from .task import TaskFailedException
 
 
 KAFKA_UPDATE_CMD = "run-puppet"
 DEFAULT_CONFIG_FILE_LOCATION = "/etc/kafka/server.properties"
 
 
-class ConfigPrecheck(Precheck):
+class ConfigPrecheck(PreStopTask):
     """Class to check for kafka configs"""
 
     def parse_args(self, args):
@@ -49,28 +49,28 @@ class ConfigPrecheck(Precheck):
         )
         return parser.parse_args(args)
 
-    @task
-    def _execute_cmd(self, cmd):
-        """Execute the command, and return the output"""
-        with hide('output', 'running', 'warnings'), settings(warn_only=True):
-            return sudo(cmd)
-
     def _execute_package_update(self, cmd, host):
         """Execute a package update"""
         print("Attempting to get latest package")
         execute_package_update_func = partial(
-            self._execute_cmd,
+            self.execute_cmd,
             ConfigPrecheck,
             KAFKA_UPDATE_CMD,
         )
         execute(execute_package_update_func, hosts=host)
+
+    @task
+    def execute_cmd(self, cmd):
+        """Execute the command on remote broker, and return the output"""
+        with hide('output', 'running', 'warnings'), settings(warn_only=True):
+            return sudo(cmd)
 
     def _assert_configs_present(self, host):
         """Check if the configs are present on the host"""
         cmd = 'cat ' + self.args.config_file
         configs = set(self.args.ensure_configs.split(','))
         execute_cmd_func = partial(
-            self._execute_cmd,
+            self.execute_cmd,
             ConfigPrecheck,
             cmd,
         )
@@ -78,7 +78,7 @@ class ConfigPrecheck(Precheck):
         config_on_host = set(output.split('\r\n'))
         config_present = configs.issubset(config_on_host)
         if not config_present:
-            raise PrecheckFailedException
+            raise TaskFailedException
 
     def run(self, host):
         self._assert_configs_present(host)
