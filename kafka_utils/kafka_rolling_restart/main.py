@@ -304,22 +304,22 @@ def wait_for_stable_cluster(
         time.sleep(check_interval)
 
 
-def execute_task(checks, host):
+def execute_task(tasks, host):
     """execute all the prechecks for the host
     This trying to run(), and on getting a PrecheckFailedException executes failure().
     It will try to run run() before exiting(incase of faiilure) to assert if
     precheck is now valid()
     """
-    for check in checks:
+    for t in tasks:
         try:
-            check.run(host)
+            t.run(host)
         except TaskFailedException:
-            check.failure(host)
+            t.failure(host)
         else:
-            check.success(host)
+            t.success(host)
             continue
 
-        check.run(host)
+        t.run(host)
 
 
 def execute_rolling_restart(
