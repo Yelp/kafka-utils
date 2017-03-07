@@ -145,7 +145,7 @@ def parse_opts():
     parser.add_argument(
         '--global-event',
         type=str,
-        help='Module containing an implementation of Task.'
+        help='Module containing an implementation of Event.'
         'This would be run before the start of the rolling restart,'
         'and after the end of the rolling restart. This can be used as a way to emit events,'
         'or serve as a notification etc.'
