@@ -451,6 +451,7 @@ def get_task_class(tasks, task_args):
 
 def run():
     opts = parse_opts()
+    global_event = None
     if opts.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
@@ -463,7 +464,8 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    global_task = dynamic_import(opts.global_event, Event)(opts)
+    if opts.global_event:
+        global_event = dynamic_import(opts.global_event, Event)(opts)
     pre_stop_tasks = []
     post_stop_tasks = []
     if opts.task:
@@ -472,8 +474,8 @@ def run():
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
         try:
-            if global_task:
-                global_task.start()
+            if global_event:
+                global_event.start()
             execute_rolling_restart(
                 brokers,
                 opts.jolokia_port,
@@ -493,5 +495,5 @@ def run():
             print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)
         finally:
-            if global_task:
-                global_task.stop()
+            if global_event:
+                global_event.stop()
