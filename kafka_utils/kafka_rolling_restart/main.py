@@ -454,7 +454,10 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
+    pre_stop_tasks = []
+    post_stop_tasks = []
+    if opts.task:
+        pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
