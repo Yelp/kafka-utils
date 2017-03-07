@@ -31,6 +31,7 @@ from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
+from .event import Event
 from .task import PostStopTask
 from .task import PreStopTask
 from .task import TaskFailedException
@@ -140,6 +141,14 @@ def parse_opts():
         type=str,
         action='append',
         help='Arguements which are needed by the task(prestoptask or poststoptask).'
+    )
+    parser.add_argument(
+        '--global-event',
+        type=str,
+        help='Module containing an implementation of Task.'
+        'This would be run before the start of the rolling restart,'
+        'and after the end of the rolling restart. This can be used as a way to emit events,'
+        'or serve as a notification etc.'
     )
     return parser.parse_args()
 
@@ -454,11 +463,17 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
-    pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
+    global_task = dynamic_import(opts.global_event, Event)(opts)
+    pre_stop_tasks = []
+    post_stop_tasks = []
+    if opts.task:
+        pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
         try:
+            if global_task:
+                global_task.start()
             execute_rolling_restart(
                 brokers,
                 opts.jolokia_port,
@@ -477,3 +492,6 @@ def run():
         except WaitTimeoutException:
             print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)
+        finally:
+            if global_task:
+                global_task.stop()
