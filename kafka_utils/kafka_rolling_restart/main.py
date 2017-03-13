@@ -421,23 +421,23 @@ def get_task_class(tasks, task_args):
     :param task_args: list of strings to be used as args
     :type task_args: list
     """
-    pre_stop_task = []
-    post_stop_task = []
-    task_args_itr = task_args.__iter__()
+    pre_stop_tasks = []
+    post_stop_tasks = []
+    task_to_task_args = dict(zip(tasks, task_args))
     tasks_classes = [PreStopTask, PostStopTask]
 
-    for func in tasks:
+    for func, task_args in task_to_task_args.items():
         for task_class in tasks_classes:
             imported_class = dynamic_import(func, task_class)
             if imported_class:
                 if task_class is PreStopTask:
-                    pre_stop_task.append(imported_class(task_args_itr.next()))
+                    pre_stop_tasks.append(imported_class(task_args))
                 elif task_class is PostStopTask:
-                    post_stop_task.append(imported_class(task_args_itr.next()))
+                    post_stop_tasks.append(imported_class(task_args))
                 else:
                     print("ERROR: Class is not a type of Pre/Post StopTask:" + func)
                     sys.exit(1)
-    return pre_stop_task, post_stop_task
+    return pre_stop_tasks, post_stop_tasks
 
 
 def run():
