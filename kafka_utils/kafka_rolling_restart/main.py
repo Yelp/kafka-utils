@@ -305,7 +305,8 @@ def wait_for_stable_cluster(
 
 
 def execute_task(tasks, host):
-    """execute all the prechecks for the host. Excepted to raise a TaskFailedException()
+    """Execute all the prechecks for the host.
+    Excepted to raise a TaskFailedException() in case of failing to execute a task.
     """
     for t in tasks:
         t.run(host)
