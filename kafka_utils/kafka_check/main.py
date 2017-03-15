@@ -27,6 +27,7 @@ from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
 from kafka_utils.kafka_check.commands.offline import OfflineCmd
 from kafka_utils.kafka_check.commands.under_replicated import UnderReplicatedCmd
 from kafka_utils.kafka_check.metadata_file import get_broker_id
+from kafka_utils.kafka_check.status_code import prepare_terminate_message
 from kafka_utils.kafka_check.status_code import terminate
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -101,6 +102,13 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        '-j',
+        '--json',
+        help='Print output in json format. Default: %(default)s',
+        action="store_true",
+        default=False,
+    )
 
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)
@@ -121,14 +129,28 @@ def run():
     if args.controller_only and args.first_broker_only:
         terminate(
             status_code.WARNING,
-            "Only one of controller_only and first_broker_only should be used",
+            prepare_terminate_message(
+                "Only one of controller_only and first_broker_only should be used",
+            ),
+            args.json,
         )
 
     if args.controller_only or args.first_broker_only:
         if args.broker_id is None:
-            terminate(status_code.WARNING, "broker_id is not specified")
+            terminate(
+                status_code.WARNING,
+                prepare_terminate_message("broker_id is not specified"),
+                args.json,
+            )
         elif args.broker_id == -1:
-            args.broker_id = get_broker_id(args.data_path)
+            try:
+                args.broker_id = get_broker_id(args.data_path)
+            except Exception as e:
+                terminate(
+                    status_code.WARNING,
+                    prepare_terminate_message("{}".format(e)),
+                    args.json,
+                )
 
     try:
         cluster_config = config.get_cluster_config(
@@ -138,6 +160,10 @@ def run():
         )
         code, msg = args.command(cluster_config, args)
     except ConfigurationError as e:
-        terminate(status_code.CRITICAL, "ConfigurationError {0}".format(e))
+        terminate(
+            status_code.CRITICAL,
+            prepare_terminate_message("ConfigurationError {0}".format(e)),
+            args.json,
+        )
 
-    terminate(code, msg)
+    terminate(code, msg, args.json)

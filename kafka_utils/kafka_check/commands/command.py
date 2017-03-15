@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from kafka_utils.kafka_check import status_code
+from kafka_utils.kafka_check.status_code import prepare_terminate_message
 from kafka_utils.kafka_check.status_code import terminate
 from kafka_utils.util.zookeeper import ZK
 
@@ -49,12 +50,20 @@ class KafkaCheckCmd(object):
             if args.controller_only and not is_controller(self.zk, args.broker_id):
                 terminate(
                     status_code.OK,
-                    'Broker %s is not the controller, nothing to check' % (args.broker_id),
+                    prepare_terminate_message(
+                        'Broker {} is not the controller, nothing to check'
+                        .format(args.broker_id),
+                    ),
+                    args.json,
                 )
             if args.first_broker_only and not is_first_broker(self.zk, args.broker_id):
                 terminate(
                     status_code.OK,
-                    'Broker %s is not the lowest id, nothing to check' % (args.broker_id),
+                    prepare_terminate_message(
+                        'Broker {} has not the lowest id, nothing to check'
+                        .format(args.broker_id),
+                    ),
+                    args.json,
                 )
             return self.run_command()
 

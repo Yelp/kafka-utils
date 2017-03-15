@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import sys
 
+from kafka_utils.util import print_json
+
 OK = 0
 WARNING = 1
 CRITICAL = 2
@@ -27,6 +29,25 @@ STATUS_STRING = {
 }
 
 
-def terminate(signal, msg):
-    print('%s: %s' % (STATUS_STRING[signal], msg))
+def prepare_terminate_message(string):
+    return {
+        'message': string,
+        'raw': string,
+    }
+
+
+def terminate(signal, msg, json):
+    if json:
+        output = {
+            'status': STATUS_STRING[signal],
+            'data': msg['raw'],
+        }
+        print_json(output)
+    else:
+        print('{status}: {msg}'.format(
+            status=STATUS_STRING[signal],
+            msg=msg['message'],
+        ))
+        if 'verbose' in msg:
+            print(msg['verbose'])
     sys.exit(signal)
