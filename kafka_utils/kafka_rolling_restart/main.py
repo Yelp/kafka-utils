@@ -305,10 +305,7 @@ def wait_for_stable_cluster(
 
 
 def execute_task(tasks, host):
-    """execute all the prechecks for the host
-    This trying to run(), and on getting a PrecheckFailedException executes failure().
-    It will try to run run() before exiting(incase of faiilure) to assert if
-    precheck is now valid()
+    """execute all the prechecks for the host. Excepted to raise a TaskFailedException()
     """
     for t in tasks:
         t.run(host)
@@ -351,9 +348,9 @@ def execute_rolling_restart(
     :type skip: integer
     :param verbose: print commend execution information
     :type verbose: bool
-    :param pre_stop_task: a list of prechecks to execute before running stop
+    :param pre_stop_task: a list of tasks to execute before running stop
     :type pre_stop_tasks: list
-    :param post_stop_task: a list of postchecks to execute after running stop
+    :param post_stop_task: a list of task to execute after running stop
     :type post_stop_task: list
     """
     all_hosts = [b[1] for b in brokers]
