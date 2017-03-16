@@ -28,6 +28,9 @@ from fabric.api import hide
 from fabric.api import settings
 from fabric.api import sudo
 from fabric.api import task
+from precheck import ensure_preconditions_before_executing_restart
+from precheck import PrecheckFailedException
+from precheck import prechecks
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
@@ -36,6 +39,7 @@ from kafka_utils.util.zookeeper import ZK
 
 
 RESTART_COMMAND = "service kafka restart"
+DEFAULT_KAFKA_INSTALL_CMD = "run-puppet"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
@@ -44,6 +48,7 @@ DEFAULT_CHECK_COUNT = 12
 DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
+DEFAULT_CONFIG_FILE_LOCATION = "/etc/kafka/server.properties"
 
 
 class WaitTimeoutException(Exception):
@@ -110,6 +115,16 @@ def parse_opts():
         action="store_true",
     )
     parser.add_argument(
+        '--package-name',
+        help='The name of the kafka package expected to be present',
+        type=str,
+    )
+    parser.add_argument(
+        '--package-version',
+        help='The version of the kafka package expected to be present',
+        type=str,
+    )
+    parser.add_argument(
         '--skip',
         help=('the number of brokers to skip without restarting. Brokers are '
               'restarted in increasing broker-id order. Default: %(default)s'),
@@ -121,6 +136,25 @@ def parse_opts():
         '--verbose',
         help='print verbose execution information. Default: %(default)s',
         action="store_true",
+    )
+    parser.add_argument(
+        '--kafka-install-cmd',
+        help='command to install kafka on the machine, or a configmgt agent command'
+             'to get kafka package, example "run-puppet", "salt-call" etc',
+        type=str,
+        default=DEFAULT_KAFKA_INSTALL_CMD,
+    )
+    parser.add_argument(
+        '--ensure-configs',
+        help="kafka configs which need to be ensured to be present",
+        type=str,
+        default='',
+    )
+    parser.add_argument(
+        '--config-file',
+        help="location of config file",
+        type=str,
+        default=DEFAULT_CONFIG_FILE_LOCATION,
     )
     return parser.parse_args()
 
@@ -287,6 +321,7 @@ def execute_rolling_restart(
     check_count,
     unhealthy_time_limit,
     skip,
+    prechecks,
     verbose,
 ):
     """Execute the rolling restart on the specified brokers. It checks the
@@ -312,13 +347,19 @@ def execute_rolling_restart(
     :type unhealthy_time_limit: integer
     :param skip: the number of brokers to skip
     :type skip: integer
+    :param prechecks: the tuple containing the checks which need to be ensured
+    before rolling restart
+    :type prechecks: prechecks tuple
     :param verbose: print commend execution information
     :type verbose: bool
+    :param cmd: command to install kafka on the machine
+    :type str:
     """
     all_hosts = [b[1] for b in brokers]
     hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
+            ensure_preconditions_before_executing_restart(prechecks, host)
             wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
@@ -364,7 +405,15 @@ def validate_opts(opts, brokers_num):
     if opts.check_interval < 0:
         print("Error: --check-interval must be >= 0")
         return True
+    if bool(opts.package_version) ^ bool(opts.package_name):
+        print("Error: either specify both --package-version and --package-name or none")
+        return True
     return False
+
+
+def extract_configs(config):
+    '''extract and return a list of configs'''
+    return set(config.split(','))
 
 
 def run():
@@ -381,6 +430,14 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
+    configs = extract_configs(opts.ensure_configs)
+    precheck_conditions = prechecks(
+        package_name=opts.package_name,
+        package_version=opts.package_version,
+        install_cmd=opts.kafka_install_cmd,
+        configs=configs,
+        config_file=opts.config_file,
+    )
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
@@ -393,8 +450,12 @@ def run():
                 opts.check_count,
                 opts.unhealthy_time_limit,
                 opts.skip,
+                precheck_conditions,
                 opts.verbose,
             )
+        except PrecheckFailedException:
+            print("ERROR: preconditions cannot be ensured, exiting")
+            sys.exit(1)
         except WaitTimeoutException:
             print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)
