@@ -31,11 +31,16 @@ from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
+from .task import PostStopTask
+from .task import PreStopTask
+from .task import TaskFailedException
 from kafka_utils.util import config
+from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
 
-RESTART_COMMAND = "service kafka restart"
+STOP_COMMAND = "service kafka stop"
+START_COMMAND = "service kafka start"
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
@@ -121,6 +126,20 @@ def parse_opts():
         '--verbose',
         help='print verbose execution information. Default: %(default)s',
         action="store_true",
+    )
+    parser.add_argument(
+        '--task',
+        type=str,
+        action='append',
+        help='Module containing an implementation of Task.'
+        'The module should be specified as path_to_include_to_py_path. '
+        'ex. --task kafka_utils.kafka_rolling_restart.version_precheck'
+    )
+    parser.add_argument(
+        '--task-args',
+        type=str,
+        action='append',
+        help='Arguements which are needed by the task(prestoptask or poststoptask).'
     )
     return parser.parse_args()
 
@@ -221,9 +240,15 @@ def ask_confirmation():
 
 
 @task
-def restart_broker():
-    """Execute the restart"""
-    sudo(RESTART_COMMAND)
+def start_broker():
+    """Execute the start"""
+    sudo(START_COMMAND)
+
+
+@task
+def stop_broker():
+    """Execute the stop"""
+    sudo(STOP_COMMAND)
 
 
 def wait_for_stable_cluster(
@@ -279,6 +304,14 @@ def wait_for_stable_cluster(
         time.sleep(check_interval)
 
 
+def execute_task(tasks, host):
+    """Execute all the prechecks for the host.
+    Excepted to raise a TaskFailedException() in case of failing to execute a task.
+    """
+    for t in tasks:
+        t.run(host)
+
+
 def execute_rolling_restart(
     brokers,
     jolokia_port,
@@ -288,6 +321,8 @@ def execute_rolling_restart(
     unhealthy_time_limit,
     skip,
     verbose,
+    pre_stop_task,
+    post_stop_task,
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -314,11 +349,16 @@ def execute_rolling_restart(
     :type skip: integer
     :param verbose: print commend execution information
     :type verbose: bool
+    :param pre_stop_task: a list of tasks to execute before running stop
+    :type pre_stop_tasks: list
+    :param post_stop_task: a list of task to execute after running stop
+    :type post_stop_task: list
     """
     all_hosts = [b[1] for b in brokers]
     hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
         with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
+            execute_task(pre_stop_task, host)
             wait_for_stable_cluster(
                 all_hosts,
                 jolokia_port,
@@ -327,8 +367,11 @@ def execute_rolling_restart(
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
             )
-            print("Restarting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            execute(restart_broker, hosts=host)
+            print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
+            execute(stop_broker, hosts=host)
+            execute_task(post_stop_task, host)
+            print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
+            execute(start_broker, hosts=host)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
@@ -367,6 +410,34 @@ def validate_opts(opts, brokers_num):
     return False
 
 
+def get_task_class(tasks, task_args):
+    """Reads in a list of tasks provided by the user,
+    loads the appropiate task, and returns two lists,
+    pre_stop_tasks and post_stop_tasks
+    :param tasks: list of strings locating tasks to load
+    :type tasks: list
+    :param task_args: list of strings to be used as args
+    :type task_args: list
+    """
+    pre_stop_tasks = []
+    post_stop_tasks = []
+    task_to_task_args = dict(zip(tasks, task_args))
+    tasks_classes = [PreStopTask, PostStopTask]
+
+    for func, task_args in task_to_task_args.items():
+        for task_class in tasks_classes:
+            imported_class = dynamic_import(func, task_class)
+            if imported_class:
+                if task_class is PreStopTask:
+                    pre_stop_tasks.append(imported_class(task_args))
+                elif task_class is PostStopTask:
+                    post_stop_tasks.append(imported_class(task_args))
+                else:
+                    print("ERROR: Class is not a type of Pre/Post StopTask:" + func)
+                    sys.exit(1)
+    return pre_stop_tasks, post_stop_tasks
+
+
 def run():
     opts = parse_opts()
     if opts.verbose:
@@ -381,6 +452,10 @@ def run():
     brokers = get_broker_list(cluster_config)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
+    pre_stop_tasks = []
+    post_stop_tasks = []
+    if opts.task:
+        pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
         print("Execute restart")
@@ -394,7 +469,12 @@ def run():
                 opts.unhealthy_time_limit,
                 opts.skip,
                 opts.verbose,
+                pre_stop_tasks,
+                post_stop_tasks,
             )
+        except TaskFailedException:
+            print("ERROR: pre/post tasks failed, exiting")
+            sys.exit(1)
         except WaitTimeoutException:
             print("ERROR: cluster is still unhealthy, exiting")
             sys.exit(1)

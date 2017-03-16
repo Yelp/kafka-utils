@@ -18,11 +18,7 @@ from __future__ import unicode_literals
 
 import argparse
 import ConfigParser
-import importlib
-import inspect
 import logging
-import os
-import sys
 from logging.config import fileConfig
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
@@ -45,7 +41,7 @@ from kafka_utils.kafka_cluster_manager.cmds.stats import StatsCmd
 from kafka_utils.kafka_cluster_manager.cmds.store_assignments \
     import StoreAssignmentsCmd
 from kafka_utils.util import config
-
+from kafka_utils.util.utils import dynamic_import
 
 _log = logging.getLogger()
 
@@ -53,26 +49,6 @@ GENETIC_BALANCER_MODULE = \
     "kafka_utils.kafka_cluster_manager.cluster_info.genetic_balancer"
 PARTITION_COUNT_BALANCER_MODULE = \
     "kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer"
-
-
-def get_module(module_full_name):
-    if ':' in module_full_name:
-        path, module_name = module_full_name.rsplit(':', 1)
-        if not os.path.isdir(path):
-            print("{0} is not a valid directory".format(path), file=sys.stderr)
-            sys.exit(1)
-        sys.path.append(path)
-        return importlib.import_module(module_name)
-    else:
-        return importlib.import_module(module_full_name)
-
-
-def dynamic_import(module_full_name, base_class):
-    module = get_module(module_full_name)
-    for _, class_type in inspect.getmembers(module, inspect.isclass):
-        if (issubclass(class_type, base_class) and
-                class_type is not base_class):
-            return class_type
 
 
 def parse_args():
