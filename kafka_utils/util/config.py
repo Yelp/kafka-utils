@@ -138,11 +138,12 @@ class TopologyConfiguration(object):
         self.log.debug("Topology configuration %s", topology_config)
         try:
             self.clusters = topology_config['clusters']
-            self.local_config = topology_config['local_config']
         except KeyError:
             self.log.exception("Invalid topology file")
             raise InvalidConfigurationError("Invalid topology file {0}".format(
                 config_path))
+        if 'local_config' in topology_config:
+            self.local_config = topology_config['local_config']
 
     def get_all_clusters(self):
         return [
@@ -167,17 +168,19 @@ class TopologyConfiguration(object):
         raise ConfigurationError("No cluster with name: {0}".format(name))
 
     def get_local_cluster(self):
-        try:
-            if self.local_config:
+        if self.local_config:
+            try:
                 local_cluster = self.clusters[self.local_config['cluster']]
                 return ClusterConfig(
                     type=self.cluster_type,
                     name=self.local_config['cluster'],
                     broker_list=local_cluster['broker_list'],
                     zookeeper=local_cluster['zookeeper'])
-        except KeyError:
-            self.log.exception("Invalid topology file")
-            raise InvalidConfigurationError("Invalid topology file")
+            except KeyError:
+                self.log.exception("Invalid topology file")
+                raise InvalidConfigurationError("Invalid topology file")
+        else:
+            raise ConfigurationError("No default local cluster configured")
 
     def __repr__(self):
         return ("TopologyConfig: cluster_type {0}, clusters: {1},"

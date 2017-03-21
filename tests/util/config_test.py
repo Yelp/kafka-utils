@@ -245,6 +245,27 @@ class TestTopologyConfig(object):
         with pytest.raises(ConfigurationError):
             topology.get_local_cluster()
 
+    def test_get_log_cluster_missing(self, mock_yaml):
+        # Should raise ConfigurationError if a cluster is in region but not in
+        # the cluster list
+        mock_yaml.side_effect = None
+        mock_yaml.return_value = {
+            'clusters': {
+                'cluster1': {
+                    'broker_list': ['mybroker'],
+                    'zookeeper': '0.1.2.3,0.2.3.4/kafka'
+                },
+            },
+        }
+        # The configuration is valid, but there is no local cluster.
+        topology = TopologyConfiguration(
+            cluster_type='mykafka',
+            kafka_topology_path=TEST_BASE_KAFKA,
+        )
+        # Raise ConfigurationError because there is no local cluster
+        with pytest.raises(ConfigurationError):
+            topology.get_local_cluster()
+
     def test_get_all_clusters(self, mock_yaml):
         topology = TopologyConfiguration(
             cluster_type='mykafka',
