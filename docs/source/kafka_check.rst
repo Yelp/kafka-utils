@@ -70,7 +70,7 @@ The parameters specific to under_replicated check are:
 .. code-block:: bash
 
    $ kafka-check --cluster-type=sample_type under_replicated
-   OK: No under replicated partitions.
+   OK: All replicas available for communication.
 
 In case of not first broker in the broker list in Zookeeper:
 
