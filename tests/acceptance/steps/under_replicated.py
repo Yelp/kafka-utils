@@ -33,4 +33,4 @@ def step_impl2(context):
 
 @then(u'OK under_replicated will be printed')
 def step_impl5(context):
-    assert context.under_replicated_out == 'OK: No under replicated partitions.\n', context.under_replicated_out
+    assert context.under_replicated_out == 'OK: All replicas available for communication.\n', context.under_replicated_out
