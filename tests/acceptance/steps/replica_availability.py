@@ -17,20 +17,20 @@ from behave import when
 from util import call_cmd
 
 
-def call_under_replicated():
+def call_replica_availability():
     cmd = ['kafka-check',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
-           'under_replicated']
+           'replica_availability']
     return call_cmd(cmd)
 
 
-@when(u'we call the under_replicated command')
+@when(u'we call the replica_availability command')
 def step_impl2(context):
-    context.under_replicated_out = call_under_replicated()
+    context.replica_availability_out = call_replica_availability()
 
 
-@then(u'OK under_replicated will be printed')
+@then(u'OK replica_availability will be printed')
 def step_impl5(context):
-    assert context.under_replicated_out == 'OK: All replicas available for communication.\n', context.under_replicated_out
+    assert context.replica_availability_out == 'OK: All replicas available for communication.\n', context.replica_availability_out

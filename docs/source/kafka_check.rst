@@ -55,36 +55,32 @@ In case of min isr violations:
     CRITICAL: 1 partition(s) have the number of replicas in sync that is lower
     than the specified min ISR.
 
-Checking under replicated partitions
-====================================
-The :code:`under_replicated` subcommand checks if the number of under replicated partitions
-is equal to zero. It will report the aggregated result of under replicated partitions
-of each broker if any.
+Checking replicas available
+===========================
+The :code:`replica_availability` subcommand checks if the number of replicas not
+available for communication is equal to zero. It will report the aggregated result
+of unavailable replicas of each broker if any.
 
-The parameters specific to under_replicated check are:
-
-* :code:`--minimum-replication MINIMUM_REPLICATION`: Minimum number of in-sync replicas
-  for under replicated partition. If the current number of in-sync replicas for partition which has
-  under replicated replicas below that param, the check will tell about this topic-partition.
+The parameters specific to replica_availability check are:
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type under_replicated
+   $ kafka-check --cluster-type=sample_type replica_availability
    OK: All replicas available for communication.
 
 In case of not first broker in the broker list in Zookeeper:
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type --broker-id 3 under_replicated --first-broker-only
+   $ kafka-check --cluster-type=sample_type --broker-id 3 replica_availability--first-broker-only
    OK: Provided broker is not the first in broker-list.
 
-In case where some partitions are under-replicated.
+In case where some partitions replicas not available for communication.
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type under_replicated
-   CRITICAL: 2 under replicated partitions.
+   $ kafka-check --cluster-type=sample_type replica_availability
+   CRITICAL: 2 replica(s) not available for communication.
 
 Checking offline partitions
 ===========================
