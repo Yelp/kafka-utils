@@ -37,7 +37,7 @@ class ListGroups(OffsetManagerBase):
             '--storage',
             choices=['zookeeper', 'kafka', 'dual'],
             help="String describing where to fetch the committed offsets.",
-            default='dual'
+            default='kafka'
         )
         parser_list_groups.set_defaults(command=cls.run)
 
@@ -57,13 +57,7 @@ class ListGroups(OffsetManagerBase):
     def get_kafka_groups(cls, cluster_config):
         '''Get the group_id of groups committed into Kafka.'''
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        try:
-            return kafka_group_reader.read_groups().keys()
-        except:
-            print(
-                "Error: No consumer offsets topic found in Kafka",
-                file=sys.stderr,
-            )
+        return kafka_group_reader.read_groups().keys()
 
     @classmethod
     def print_groups(cls, groups, cluster_config):

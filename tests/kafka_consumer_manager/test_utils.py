@@ -3,8 +3,7 @@ from collections import namedtuple
 
 import mock
 import pytest
-from kafka.common import ConsumerTimeout
-from kafka.common import KafkaMessage
+from kafka.consumer.fetcher import ConsumerRecord
 from kafka.structs import TopicPartition
 
 from kafka_utils.kafka_consumer_manager.util import get_group_partition
@@ -68,7 +67,7 @@ class TestKafkaGroupReader(object):
         assert offset is None
 
     @mock.patch.object(KafkaGroupReader, 'parse_consumer_offset_message')
-    def test_process_consumer_offset_message_grous(self, parse_mock):
+    def test_process_consumer_offset_message_group(self, parse_mock):
         parse_mock.side_effect = [('test.a', 'topic1', 0, 123),
                                   ('test.a', 'topic1', 1, 124),
                                   ('test.a', 'topic2', 0, 125),
@@ -78,7 +77,7 @@ class TestKafkaGroupReader(object):
                                   ('my_test2', 'topic3', 0, 123), ]
         kafka_group_reader = KafkaGroupReader(mock.Mock())
         for _ in range(7):
-            message = mock.MagicMock(spec=KafkaMessage)
+            message = mock.MagicMock(spec=ConsumerRecord)
             kafka_group_reader.process_consumer_offset_message(message)
 
         expected = {'test.a': {'topic1', 'topic2'}, 'my_test2': {'topic3'}, 'my_test': {'topic1'}}
@@ -88,7 +87,7 @@ class TestKafkaGroupReader(object):
     def test_process_consumer_offset_message_invalid_message(self, parse_mock):
         parse_mock.side_effect = InvalidMessageException
         kafka_group_reader = KafkaGroupReader(mock.Mock())
-        message = mock.MagicMock(spec=KafkaMessage)
+        message = mock.MagicMock(spec=ConsumerRecord)
         kafka_group_reader.process_consumer_offset_message(message)
 
         assert kafka_group_reader.kafka_groups == dict()
@@ -145,37 +144,37 @@ class TestKafkaGroupReader(object):
                 kafka_group_reader,
                 'get_current_watermarks',
                 return_value={
-                    0: PartitionOffsets(
-                        'test_topic',
-                        0,
-                        45,
-                        0
-                    )
+                    0: PartitionOffsets('__consumer_offsets', 0, 45, 0),
+                    1: PartitionOffsets('__consumer_offsets', 1, 20, 0),
+                    2: PartitionOffsets('__consumer_offsets', 2, 25, 25),
+                    3: PartitionOffsets('__consumer_offsets', 3, 0, 0),
                 },
                 autospec=True
             ):
                 with mock.patch.object(
                     kafka_group_reader,
                     'parse_consumer_offset_message',
-                    return_value=[
-                        'test_group',
-                        'test_topic',
-                        0,
-                        45
-                    ],
-                    autospec=True
+                    side_effect=iter([
+                        ('test_group', 'test_topic', 0, 45),
+                        ('test_group2', 'test_topic2', 0, 20),
+                    ]),
+                    autospec=True,
                 ):
-                    mock_consumer.return_value.next.return_value = mock.Mock(partition=0, topic='test_topic')
+                    mock_consumer.return_value.next.side_effect = iter([
+                        mock.Mock(offset=44, partition=0, topic='test_topic'),
+                        mock.Mock(offset=19, partition=1, topic='test_topic'),
+                    ])
                     mock_consumer.return_value.partitions_for_topic.return_value = [0, 1]
                     kafka_group_reader.read_groups()
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
-                    assert len(kafka_group_reader.finished_partitions) == 1
-                    mock_consumer.return_value.assign.assert_called_once_with(
-                        [
+                    assert kafka_group_reader.kafka_groups['test_group2'] == {"test_topic2"}
+                    mock_consumer.return_value.assign.call_args_list == [
+                        mock.call([
                             TopicPartition("__consumer_offsets", 0),
-                            TopicPartition("__consumer_offsets", 1)
-                        ]
-                    )
+                            TopicPartition("__consumer_offsets", 1),
+                        ]),
+                        mock.call([TopicPartition("__consumer_offsets", 0)]),
+                    ]
 
     def test_read_groups_with_partition(self):
         kafka_config = mock.Mock()
@@ -211,34 +210,9 @@ class TestKafkaGroupReader(object):
                     mock_consumer.return_value.next.return_value = mock.Mock(partition=0, topic='test_topic')
                     kafka_group_reader.read_groups(partition=0)
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
-                    assert len(kafka_group_reader.finished_partitions) == 1
                     mock_consumer.return_value.assign.assert_called_once_with(
                         [TopicPartition("__consumer_offsets", 0)]
                     )
-
-    def test_read_groups_timeout(self):
-        kafka_config = mock.Mock()
-        kafka_group_reader = KafkaGroupReader(kafka_config)
-        with mock.patch(
-            'kafka_utils.kafka_consumer_manager.util.KafkaConsumer',
-            autospec=True
-        ) as mock_consumer:
-            with mock.patch.object(
-                kafka_group_reader,
-                'get_current_watermarks',
-                return_value={
-                    0: PartitionOffsets(
-                        'test_topic',
-                        0,
-                        45,
-                        0
-                    )
-                },
-                autospec=True
-            ):
-                mock_consumer.return_value.next.return_value = None
-                with pytest.raises(ConsumerTimeout):
-                    kafka_group_reader.read_groups()
 
     @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
     def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):
@@ -262,23 +236,3 @@ class TestKafkaGroupReader(object):
         assert result1 == 10
         assert result2 == 44
         assert result3 == 5
-
-    def test_get_max_offset(self):
-        kafka_config = mock.Mock()
-        kafka_group_reader = KafkaGroupReader(kafka_config)
-        with mock.patch.object(
-            kafka_group_reader,
-            'get_current_watermarks',
-            return_value={
-                0: PartitionOffsets(
-                'test_topic',
-                0,
-                45,
-                0
-                )
-            },
-                autospec=True
-        ) as mock_get_watermarks:
-            kafka_group_reader.watermarks = mock_get_watermarks()
-            highmark = kafka_group_reader.get_max_offset(0)
-            assert highmark == 45

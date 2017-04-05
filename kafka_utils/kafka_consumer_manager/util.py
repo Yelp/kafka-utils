@@ -20,7 +20,6 @@ import logging
 import sys
 from collections import defaultdict
 
-from kafka.common import ConsumerTimeout
 from kafka.consumer import KafkaConsumer
 from kafka.structs import TopicPartition
 from kafka.util import read_short_string
@@ -169,7 +168,8 @@ class KafkaGroupReader:
         self.log = logging.getLogger(__name__)
         self.kafka_config = kafka_config
         self.kafka_groups = defaultdict(set)
-        self.finished_partitions = set()
+        self.active_partitions = {}
+        self._finished = False
 
     def read_group(self, group_id):
         partition_count = get_offset_topic_partition_count(self.kafka_config)
@@ -177,36 +177,75 @@ class KafkaGroupReader:
         return self.read_groups(partition).get(group_id, [])
 
     def read_groups(self, partition=None):
-        self.log.info("Kafka consumer running")
         self.consumer = KafkaConsumer(
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
             auto_offset_reset='earliest',
             enable_auto_commit=False,
-            consumer_timeout_ms=3000,
+            consumer_timeout_ms=30000,
+            fetch_max_wait_ms=2000,
+            max_partition_fetch_bytes=10 * 1024 * 1024,  # 10MB
         )
 
         if partition is not None:
-            self.consumer.assign([TopicPartition(CONSUMER_OFFSET_TOPIC, partition)])
+            self.active_partitions = {
+                partition: TopicPartition(CONSUMER_OFFSET_TOPIC, partition),
+            }
         else:
-            self.consumer.assign(
-                [
-                    TopicPartition(CONSUMER_OFFSET_TOPIC, p)
-                    for p in self.consumer.partitions_for_topic(CONSUMER_OFFSET_TOPIC)
-                ]
-            )
+            self.active_partitions = {
+                p: TopicPartition(CONSUMER_OFFSET_TOPIC, p)
+                for p in self.consumer.partitions_for_topic(CONSUMER_OFFSET_TOPIC)
+            }
+        self.watermarks = self.get_current_watermarks(self.active_partitions.values())
+        # Active partitions are not empty. Remove the empty ones.
+        self.active_partitions = {
+            p: tp for p, tp in self.active_partitions.items()
+            if tp.partition in self.watermarks and
+            self.watermarks[tp.partition].highmark > 0 and
+            self.watermarks[tp.partition].highmark > self.watermarks[tp.partition].lowmark
+        }
+        # Cannot consume if there are no active partitions
+        if not self.active_partitions:
+            return {}
 
-        self.log.info("Consumer ready")
-        self.watermarks = self.get_current_watermarks(partition)
+        self.consumer.assign(self.active_partitions.values())
+        self.log.info("Consuming from %s", self.active_partitions)
         while not self.finished():
-            message = self.consumer.next()
-            if message is None:
-                raise ConsumerTimeout("Timed out fetching messages from kafka")
-            max_offset = self.get_max_offset(message.partition)
-            if message.offset >= max_offset - 1:
-                self.finished_partitions.add(message.partition)
+            try:
+                message = self.consumer.next()
+            except StopIteration:
+                continue
+            if message.offset >= self.watermarks[message.partition].highmark - 1:
+                self.remove_partition_from_consumer(message.partition)
             self.process_consumer_offset_message(message)
-        return self.kafka_groups
+
+        return {
+            group: topics
+            for group, topics in self.kafka_groups.items()
+            if topics
+        }
+
+    def remove_partition_from_consumer(self, partition):
+        deleted = self.active_partitions.pop(partition)
+        # Terminate if there are no more partitions to consume
+        if not self.active_partitions:
+            self.log.info("Completed reading from all partitions")
+            self._finished = True
+            return
+        # Reassign the remaining partitions to the consumer while saving the
+        # position
+        positions = [
+            (p, self.consumer.position(p))
+            for p in self.active_partitions.values()
+        ]
+        self.consumer.assign(self.active_partitions.values())
+        for topic_partition, position in positions:
+            self.consumer.seek(topic_partition, position)
+        self.log.info(
+            "Completed reading from %s. Remaining partitions: %s",
+            deleted,
+            self.active_partitions,
+        )
 
     def parse_consumer_offset_message(self, message):
         key = bytearray(message.key)
@@ -232,27 +271,27 @@ class KafkaGroupReader:
         except InvalidMessageException:
             return
 
-        if offset:
+        if offset and (group not in self.kafka_groups or
+                       topic not in self.kafka_groups[group]):
             self.kafka_groups[group].add(topic)
-        else:  # No offset means topic deletion
+            self.log.info("Added group %s topic %s to list of groups", group, topic)
+        elif not offset and group in self.kafka_groups and \
+                topic in self.kafka_groups[group]:  # No offset means topic deletion
             self.kafka_groups[group].discard(topic)
+            self.log.info("Removed group %s topic %s from list of groups", group, topic)
 
-    def get_current_watermarks(self, partition=None):
+    def get_current_watermarks(self, partitions=None):
         client = KafkaToolClient(self.kafka_config.broker_list)
         client.load_metadata_for_topics(CONSUMER_OFFSET_TOPIC)
         offsets = get_topics_watermarks(
             client,
             [CONSUMER_OFFSET_TOPIC],
         )
+        partitions_set = set(tp.partition for tp in partitions) if partitions else None
         return {part: offset for part, offset
                 in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
                 if offset.highmark > offset.lowmark and
-                (partition is None or part == partition)}
-
-    def get_max_offset(self, partition):
-        if partition not in self.watermarks:
-            self.watermarks.update(self.get_current_watermarks(partition))
-        return self.watermarks[partition].highmark
+                (partitions is None or part in partitions_set)}
 
     def finished(self):
-        return len(self.finished_partitions) >= len(self.watermarks)
+        return self._finished
