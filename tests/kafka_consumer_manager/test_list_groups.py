@@ -83,21 +83,6 @@ class TestListGroups(object):
             assert m.read_groups.call_count == 1
 
     @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)
-    def test_get_kafka_groups_error(self, mock_print):
-        with self.mock_kafka_info() as (_, mock_kafka_reader):
-            m = mock_kafka_reader.return_value
-            m.read_groups.side_effect = Exception("Boom!")
-
-            cluster_config = mock.Mock(zookeeper='some_ip', type='some_cluster_type')
-            cluster_config.configure_mock(name='some_cluster_name')
-
-            ListGroups.get_kafka_groups(cluster_config)
-            mock_print.assert_any_call(
-                "Error: No consumer offsets topic found in Kafka",
-                file=sys.stderr,
-            )
-
-    @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)
     def test_print_groups(self, mock_print):
         groups = ['group1', 'group2', 'group3']
 
