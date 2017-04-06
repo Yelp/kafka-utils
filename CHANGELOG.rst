@@ -1,10 +1,30 @@
+0.6.12 (April 6th, 2017)
+------------------------
+* Refactor kafka group reader
+
+0.6.11 (March 22th, 2017)
+------------------------
+* Support missing local cluster in config
+
+0.6.10 (March 16th, 2017)
+------------------------
+* add generic prechecks in kafka-rolling-restart tool
+
+0.6.9 (March 15th, 2017)
+------------------------
+* pin upper limit of kafka-python
+
+0.6.8 (March 2nd, 2017)
+------------------------
+* Fixes terminate for expection cases in kafka-check
+
 0.6.7 (March 2nd, 2017)
------------------------
+------------------------
 * Optionally sort kafka-consumer-manager output by offset distance
 * Support json output for kafka-checks
 
 0.6.6 (March 1st, 2017)
------------------------
+-------------------------
 * kafka-python>=1.3.2,<1.4.0 in setup.py
 * 0.10 integration tests
 
