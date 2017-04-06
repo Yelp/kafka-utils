@@ -215,6 +215,8 @@ class KafkaGroupReader:
                 message = self.consumer.next()
             except StopIteration:
                 continue
+            # Stop when reaching the last message writter to the
+            # __consumer_offsets topic when KafkaGroupReader first started
             if message.offset >= self.watermarks[message.partition].highmark - 1:
                 self.remove_partition_from_consumer(message.partition)
             self.process_consumer_offset_message(message)
