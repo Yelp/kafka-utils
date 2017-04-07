@@ -20,11 +20,11 @@ from kafka_utils.util.metadata import get_topic_partition_with_error
 from kafka_utils.util.metadata import REPLICA_NOT_AVAILABLE_ERROR
 
 
-class ReplicaAvailabilityCmd(KafkaCheckCmd):
+class ReplicaUnavailabilityCmd(KafkaCheckCmd):
 
     def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
-            'replica_availability',
+            'replica_unavailability',
             description='Check availability of replicas for all brokers in cluster.',
             help='This command will fail if there are any replicas which are not'
                  ' available for communication in the cluster.',
@@ -32,15 +32,15 @@ class ReplicaAvailabilityCmd(KafkaCheckCmd):
         return subparser
 
     def run_command(self):
-        """Replica_availability command, checks number of replicas not available
+        """replica_unavailability command, checks number of replicas not available
         for communication over all brokers in the Kafka cluster."""
-        replica_availability = get_topic_partition_with_error(
+        replica_unavailability = get_topic_partition_with_error(
             self.cluster_config,
             REPLICA_NOT_AVAILABLE_ERROR,
         )
 
-        errcode = status_code.OK if not replica_availability else status_code.CRITICAL
-        out = _prepare_output(replica_availability, self.args.verbose)
+        errcode = status_code.OK if not replica_unavailability else status_code.CRITICAL
+        out = _prepare_output(replica_unavailability, self.args.verbose)
         return errcode, out
 
 
@@ -49,14 +49,14 @@ def _prepare_output(partitions, verbose):
     partitions_count = len(partitions)
     out = {}
     out['raw'] = {
-        'replica_availability_count': partitions_count,
+        'replica_unavailability_count': partitions_count,
     }
 
     if partitions_count == 0:
         out['message'] = 'All replicas available for communication.'
     else:
-        out['message'] = "{replica_availability} replicas not available for communication.".format(
-            replica_availability=partitions_count,
+        out['message'] = "{replica_unavailability} replicas unavailable for communication.".format(
+            replica_unavailability=partitions_count,
         )
         if verbose:
             lines = (

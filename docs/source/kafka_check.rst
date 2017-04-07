@@ -57,30 +57,30 @@ In case of min isr violations:
 
 Checking replicas available
 ===========================
-The :code:`replica_availability` subcommand checks if the number of replicas not
+The :code:`replica_unavailability` subcommand checks if the number of replicas not
 available for communication is equal to zero. It will report the aggregated result
 of unavailable replicas of each broker if any.
 
-The parameters specific to replica_availability check are:
+The parameters specific to replica_unavailability check are:
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type replica_availability
+   $ kafka-check --cluster-type=sample_type replica_unavailability
    OK: All replicas available for communication.
 
 In case of not first broker in the broker list in Zookeeper:
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type --broker-id 3 replica_availability--first-broker-only
+   $ kafka-check --cluster-type=sample_type --broker-id 3 replica_unavailability --first-broker-only
    OK: Provided broker is not the first in broker-list.
 
 In case where some partitions replicas not available for communication.
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type replica_availability
-   CRITICAL: 2 replica(s) not available for communication.
+   $ kafka-check --cluster-type=sample_type replica_unavailability
+   CRITICAL: 2 replica(s) unavailable for communication.
 
 Checking offline partitions
 ===========================
