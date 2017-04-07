@@ -86,10 +86,10 @@ From PyPI:
     $ kafka-check --cluster-type sample_type min_isr
 ```
 
-### Check number of under replicated partitions
+### Check number of unavailable replicas
 
 ```shell
-    $ kafka-check --cluster-type sample_type under_replicated
+    $ kafka-check --cluster-type sample_type replica_unavailability
 ```
 
 ## Documentation

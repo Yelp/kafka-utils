@@ -25,7 +25,7 @@ import logging
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
 from kafka_utils.kafka_check.commands.offline import OfflineCmd
-from kafka_utils.kafka_check.commands.under_replicated import UnderReplicatedCmd
+from kafka_utils.kafka_check.commands.replica_unavailability import ReplicaUnavailabilityCmd
 from kafka_utils.kafka_check.metadata_file import get_broker_id
 from kafka_utils.kafka_check.status_code import prepare_terminate_message
 from kafka_utils.kafka_check.status_code import terminate
@@ -112,7 +112,7 @@ def parse_args():
 
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)
-    UnderReplicatedCmd().add_subparser(subparsers)
+    ReplicaUnavailabilityCmd().add_subparser(subparsers)
     OfflineCmd().add_subparser(subparsers)
 
     return parser.parse_args()

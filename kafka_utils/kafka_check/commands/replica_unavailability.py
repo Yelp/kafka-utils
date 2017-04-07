@@ -20,29 +20,27 @@ from kafka_utils.util.metadata import get_topic_partition_with_error
 from kafka_utils.util.metadata import REPLICA_NOT_AVAILABLE_ERROR
 
 
-class UnderReplicatedCmd(KafkaCheckCmd):
+class ReplicaUnavailabilityCmd(KafkaCheckCmd):
 
     def build_subparser(self, subparsers):
         subparser = subparsers.add_parser(
-            'under_replicated',
-            description='Check under replicated partitions for all '
-                        'brokers in cluster.',
-            help='This command will fail if there are any under replicated '
-                 'partitions in the cluster.',
+            'replica_unavailability',
+            description='Check availability of replicas for all brokers in cluster.',
+            help='This command will fail if there are any replicas which are not'
+                 ' available for communication in the cluster.',
         )
-
         return subparser
 
     def run_command(self):
-        """Under_replicated command, checks number of under replicated partitions for
-        all brokers in the Kafka cluster."""
-        under_replicated = get_topic_partition_with_error(
+        """replica_unavailability command, checks number of replicas not available
+        for communication over all brokers in the Kafka cluster."""
+        replica_unavailability = get_topic_partition_with_error(
             self.cluster_config,
             REPLICA_NOT_AVAILABLE_ERROR,
         )
 
-        errcode = status_code.OK if not under_replicated else status_code.CRITICAL
-        out = _prepare_output(under_replicated, self.args.verbose)
+        errcode = status_code.OK if not replica_unavailability else status_code.CRITICAL
+        out = _prepare_output(replica_unavailability, self.args.verbose)
         return errcode, out
 
 
@@ -51,14 +49,14 @@ def _prepare_output(partitions, verbose):
     partitions_count = len(partitions)
     out = {}
     out['raw'] = {
-        'under_replicated_count': partitions_count,
+        'replica_unavailability_count': partitions_count,
     }
 
     if partitions_count == 0:
-        out['message'] = 'No under replicated partitions.'
+        out['message'] = 'All replicas available for communication.'
     else:
-        out['message'] = "{under_replicated} under replicated partitions.".format(
-            under_replicated=partitions_count,
+        out['message'] = "{replica_unavailability} replicas unavailable for communication.".format(
+            replica_unavailability=partitions_count,
         )
         if verbose:
             lines = (
