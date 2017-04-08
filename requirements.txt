@@ -1,3 +1,4 @@
+kafka-python==1.3.2.post9
 Fabric==1.8.1
 PyStaticConfiguration==0.9.0
 PyYAML==3.11
@@ -9,7 +10,6 @@ ecdsa==0.11
 enum34==1.0.4
 futures==3.0.1
 jsonschema==2.4.0
-kafka-python==1.3.2
 kazoo==2.2
 ndg-httpsclient==0.3.3
 paramiko==1.16.0

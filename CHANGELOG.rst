@@ -1,3 +1,7 @@
+1.0.0 (April 7hd, 2017)
+-----------------------
+* Bump version to change command from under_replicated to replica_unavailability
+
 0.6.12 (April 6th, 2017)
 ------------------------
 * Refactor kafka group reader
