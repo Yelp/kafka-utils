@@ -1,6 +1,10 @@
+1.0.0 (April 7th, 2017)
+-----------------------
+* Bump version to change command from under_replicated to replica_unavailability
+
 0.6.12 (April 6th, 2017)
 ------------------------
-* Refactor kafka group reader
+* Re-factor kafka group reader
 
 0.6.11 (March 22th, 2017)
 ------------------------
@@ -8,15 +12,15 @@
 
 0.6.10 (March 16th, 2017)
 ------------------------
-* add generic prechecks in kafka-rolling-restart tool
+* Add generic pre-checks in kafka-rolling-restart tool
 
 0.6.9 (March 15th, 2017)
 ------------------------
-* pin upper limit of kafka-python
+* Pin upper limit of kafka-python
 
 0.6.8 (March 2nd, 2017)
 ------------------------
-* Fixes terminate for expection cases in kafka-check
+* Fixes terminate for exception cases in kafka-check
 
 0.6.7 (March 2nd, 2017)
 ------------------------
