@@ -1,3 +1,11 @@
+1.0.1 (April 12th, 2017)
+-----------------------
+* Bump version to fix v1.0.0 tagging issue
+
+1.0.0 (April 7th, 2017)
+-----------------------
+* Bump version to change command from under_replicated to replica_unavailability
+
 0.6.12 (April 6th, 2017)
 ------------------------
 * Refactor kafka group reader
