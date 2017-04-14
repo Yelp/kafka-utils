@@ -14,6 +14,8 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import sys
+
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.util.metadata import get_topic_partition_with_error
@@ -62,6 +64,10 @@ def _prepare_output(partitions, verbose):
                 for (topic, partition) in partitions
             )
             out['verbose'] = "Partitions:\n" + "\n".join(lines)
+        else:
+            cmdline = sys.argv[:]
+            cmdline.insert(1, '-v')
+            out['message'] += '\nTo see all offline partitions run: ' + ' '.join(cmdline)
 
     if verbose:
         out['raw']['partitions'] = [
