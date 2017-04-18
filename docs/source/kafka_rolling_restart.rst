@@ -42,7 +42,7 @@ The parameters specific for kafka-rolling-restart are:
 Examples
 ========
 
-Restart the generic dev cluster, checking the JXM metrics every 30 seconds, and
+Restart the generic dev cluster, checking the JMX metrics every 30 seconds, and
 restarting the next broker after 5 consecutive checks have confirmed the health
 of the cluster:
 
