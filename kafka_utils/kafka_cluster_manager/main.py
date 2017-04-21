@@ -36,6 +36,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info.replication_group_parser \
 from kafka_utils.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 from kafka_utils.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 from kafka_utils.kafka_cluster_manager.cmds.replace import ReplaceBrokerCmd
+from kafka_utils.kafka_cluster_manager.cmds.revoke_leadership import RevokeLeadershipCmd
 from kafka_utils.kafka_cluster_manager.cmds.set_replication_factor import SetReplicationFactorCmd
 from kafka_utils.kafka_cluster_manager.cmds.stats import StatsCmd
 from kafka_utils.kafka_cluster_manager.cmds.store_assignments \
@@ -162,6 +163,7 @@ def parse_args():
     subparsers = parser.add_subparsers()
     RebalanceCmd().add_subparser(subparsers)
     DecommissionCmd().add_subparser(subparsers)
+    RevokeLeadershipCmd().add_subparser(subparsers)
     StatsCmd().add_subparser(subparsers)
     StoreAssignmentsCmd().add_subparser(subparsers)
     ReplaceBrokerCmd().add_subparser(subparsers)
