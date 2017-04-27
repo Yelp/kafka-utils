@@ -769,9 +769,9 @@ class TestPartitionCountBalancer(object):
 
     # Revoke leadership tests
     def test_revoke_leadership_no_change(
-            self,
-            create_balancer,
-            create_cluster_topology,
+        self,
+        create_balancer,
+        create_cluster_topology,
     ):
         # No leadership changes to be made to broker 2
         assignment = dict(
@@ -791,9 +791,9 @@ class TestPartitionCountBalancer(object):
         assert ct.assignment == assignment
 
     def test_revoke_leadership_single_broker(
-            self,
-            create_balancer,
-            create_cluster_topology,
+        self,
+        create_balancer,
+        create_cluster_topology,
     ):
         assignment = dict(
             [
@@ -830,9 +830,9 @@ class TestPartitionCountBalancer(object):
         assert new_net_imbal == 0
 
     def test_revoke_leadership_multiple_brokers(
-            self,
-            create_balancer,
-            create_cluster_topology,
+        self,
+        create_balancer,
+        create_cluster_topology,
     ):
         assignment = dict(
             [
@@ -872,9 +872,9 @@ class TestPartitionCountBalancer(object):
         assert new_net_imbal == 0
 
     def test_revoke_leadership_not_possible(
-            self,
-            create_balancer,
-            create_cluster_topology,
+        self,
+        create_balancer,
+        create_cluster_topology,
     ):
         assignment = dict(
             [
