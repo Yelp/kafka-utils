@@ -499,18 +499,6 @@ class GeneticBalancer(ClusterBalancer):
                 self.args.max_movement_size):
             return None
 
-        # Ensure leader change limit is not surpassed
-        if (state.replicas[partition][0] == source and
-                self.args.max_leader_changes is not None and
-                state.leader_movement_count >=
-                self.args.max_leader_changes):
-            return None
-
-        # Ensure movement count capacity is not surpassed
-        if (self.args.max_partition_movements is not None and
-                state.movement_count >= self.args.max_partition_movements):
-            return None
-
         return state.move(partition, source, dest)
 
     def _move_leadership(self, state):
