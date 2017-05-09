@@ -53,7 +53,7 @@ setup(
         "fabric>=1.8.0,<1.11.0",
         "PyYAML<4.0.0",
         "requests-futures>0.9.0",
-        "kafka-python>=1.3.2,<1.3.3",
+        "kafka-python>=1.3.2,<1.3.4",
         "requests<3.0.0",
         'retrying'
     ],
