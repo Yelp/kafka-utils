@@ -144,13 +144,17 @@ class TestGeneticBalancer(object):
         """
         assert self.move_partition_valid(5, 1, 3)
 
-    def test_move_partition_too_many_movements(self):
+    def test_move_partition_ignores_max_partition_movements(self):
         """Test _move_partition when the partition movement limit has been
         reached.
 
-        Moving any partition is invalid because max_partition_movements is 0.
+        Moving any partition is still valide despite max_partition_movements is 0.
+        The genetic balancer should not make assumption about how the plan will
+        be further reduced.
+        All the configured generations should be explored in order to find the
+        best possible plan despite movements limits.
         """
-        assert not self.move_partition_valid(5, 1, 3, max_partition_movements=0)
+        assert self.move_partition_valid(5, 1, 3, max_partition_movements=0)
 
     def test_move_partition_movement_size_too_large(self):
         """Test _move_partition when the partition movement size limit has been
@@ -161,14 +165,17 @@ class TestGeneticBalancer(object):
         """
         assert not self.move_partition_valid(5, 1, 3, max_movement_size=1)
 
-    def test_move_partition_too_many_leader_changes_leader(self):
+    def test_move_partition_ignores_max_leader_movements(self):
         """Test _move_partition when the leadership change limit has been
         reached and the movement causes a leader change.
 
-        Moving partition 4 from broker 2 is invalid because max_leader_changes
-        is 0, but 2 is the leader of partition 4.
+        Moving partition 4 from the leader broker 2 is still valid despite
+        max_leader_changes is 0. The genetic balancer should not make assumption
+        about how the plan will be further reduced.
+        All the configured generations should be explored in order to find the
+        best possible plan despite movements limits.
         """
-        assert not self.move_partition_valid(4, 2, 3, max_leader_changes=0)
+        assert self.move_partition_valid(4, 2, 3, max_leader_changes=0)
 
     def test_move_partition_too_many_leader_changes_non_leader(self):
         """Test _move_partition when the partition movement size limit has been
