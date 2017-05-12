@@ -1,3 +1,7 @@
+1.0.2 (May 11th, 2017)
+----------------------
+* Fix genetic balancer generation limit
+
 1.0.1 (April 12th, 2017)
 -----------------------
 * Bump version to fix v1.0.0 tagging issue
