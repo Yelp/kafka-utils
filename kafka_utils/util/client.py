@@ -136,8 +136,7 @@ class KafkaToolClient(SimpleClient):
             # decoder_fn=None signal that the server is expected to not
             # send a response.  This probably only applies to
             # ProduceRequest w/ acks = 0
-            expect_response = (decoder_fn is not None)
-            future = conn.send(request, expect_response=expect_response)
+            future = conn.send(request)
 
             while not future.is_done:
                 conn.recv()
@@ -145,7 +144,7 @@ class KafkaToolClient(SimpleClient):
             if future.failed():
                 failed_payloads(payloads)
 
-            elif not expect_response:
+            elif not request.expect_response():
                 failed_payloads(payloads)
 
             else:
