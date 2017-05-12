@@ -1,3 +1,7 @@
+1.0.3 (May 11th, 2017)
+----------------------
+* Bump kafka-python to 1.3.3
+
 1.0.2 (May 11th, 2017)
 ----------------------
 * Fix genetic balancer generation limit
