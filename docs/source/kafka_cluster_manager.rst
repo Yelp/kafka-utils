@@ -263,6 +263,16 @@ Or using the `Genetic Balancer`_:
   --partition-measurer $HOME/measurer:sample_measurer decommission
   123456 123457 123458
 
+Revoke Leadership
+=================
+This command provides functionalities to revoke leadership for a particular given
+set of brokers. The key idea is to move leadership for all partitions on given brokers
+to other brokers while keeping the cluster balanced.
+
+.. code-block:: bash
+
+  $ kafka-cluster-manager --cluster-type sample_type revoke-leadership 123456 123457 123458
+
 Set Replication Factor
 ======================
 This command provides the ability to increase or decrease the replication-factor
