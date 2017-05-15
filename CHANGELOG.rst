@@ -1,3 +1,7 @@
+1.1.0 (May 15th, 2017)
+----------------------
+* Add revoke-leadership feature in kafka-cluster-manager
+
 1.0.3 (May 11th, 2017)
 ----------------------
 * Bump kafka-python to 1.3.3
