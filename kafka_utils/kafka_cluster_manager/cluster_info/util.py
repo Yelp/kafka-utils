@@ -15,7 +15,7 @@
 
 
 def compute_optimum(groups, elements):
-    """Compute the number of elements per group and the reminder.
+    """Compute the number of elements per group and the remainder.
 
         :param elements: total number of elements
         :param groups: total number of groups

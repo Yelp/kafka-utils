@@ -188,7 +188,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 "brokers"
             )
 
-        # Balance partition-count over replication-groups
+        # Balance replica-count over replication-groups
         self.rebalance_replicas()
 
         # Balance partition-count over replication-groups

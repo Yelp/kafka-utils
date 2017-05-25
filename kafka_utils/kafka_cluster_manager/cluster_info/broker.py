@@ -251,7 +251,7 @@ class Broker(object):
 
         :Algorithm:
         * Over-loaded leader tries to donate its leadership to one of its followers
-        * Follower will be tried to balanced recursively if it becomes over-balanced
+        * Follower will try to be balanced recursively if it becomes over-balanced
         * If it is successful, over-loaded leader moves to next partition if required,
             return otherwise.
         * If it is unsuccessful, it tries for next-follower or next-partition whatever
@@ -278,7 +278,7 @@ class Broker(object):
                 if follower.count_preferred_replica() <= opt_count + 1:
                     # over-broker balanced
                     # If over-broker is the one which needs to be revoked from leadership
-                    # it's considered balanced only if it's preferred replica count is 0
+                    # it's considered balanced only if its preferred replica count is 0
                     if (self.count_preferred_replica() <= opt_count + 1 and not self.revoked_leadership) or \
                             (self.count_preferred_replica() == 0 and self.revoked_leadership):
                         return
@@ -300,7 +300,7 @@ class Broker(object):
                         # New-leader can be reused
                         skip_brokers.remove(follower)
                         # If broker is the one which needs to be revoked from leadership
-                        # it's considered balanced only if it's preferred replica count is 0
+                        # it's considered balanced only if its preferred replica count is 0
                         if (self.count_preferred_replica() <= opt_count + 1 and not self.revoked_leadership) or \
                                 (self.count_preferred_replica() == 0 and self.revoked_leadership):
                             # Now broker is balanced
