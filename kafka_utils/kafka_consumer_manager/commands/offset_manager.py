@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 import sys
 
+import six
 from kazoo.exceptions import NoNodeError
 
 from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
@@ -190,7 +191,7 @@ class OffsetWriter(OffsetManagerBase):
             )
 
         topics_str = ""
-        for local_topic, local_partitions in topics_dict.iteritems():
+        for local_topic, local_partitions in six.iteritems(topics_dict):
             temp_str = "Topic: {topic}, Partitions: {partitions}\n".format(
                 topic=local_topic,
                 partitions=local_partitions

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
@@ -12,7 +13,10 @@ from multiprocessing import Process
 from operator import itemgetter
 
 import paramiko
+import six
 from kafka import KafkaClient
+from six.moves import range
+from six.moves import zip
 
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -47,7 +51,7 @@ def chunks(l, n):
     :returns: a sequence of n-sized chunks of the input list
     :rtype: generator
     """
-    for i in xrange(0, len(l), n):
+    for i in range(0, len(l), n):
         yield l[i:i + n]
 
 
@@ -162,7 +166,7 @@ def get_broker_list(cluster_config):
     :rtype: map of (broker_id, host) pairs
     """
     with ZK(cluster_config) as zk:
-        brokers = sorted(zk.get_brokers().items(), key=itemgetter(0))
+        brokers = sorted(list(zk.get_brokers().items()), key=itemgetter(0))
         return [(int(id), data['host']) for id, data in brokers]
 
 
@@ -354,8 +358,8 @@ def get_partition_leaders(cluster_config):
     """
     client = KafkaClient(cluster_config.broker_list)
     result = {}
-    for topic, topic_data in client.topic_partitions.iteritems():
-        for partition, p_data in topic_data.iteritems():
+    for topic, topic_data in six.iteritems(client.topic_partitions):
+        for partition, p_data in six.iteritems(topic_data):
             topic_partition = topic + "-" + str(partition)
             result[topic_partition] = p_data.leader
     return result

@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
 from __future__ import division
 
 from math import sqrt
@@ -74,7 +75,7 @@ def test_get_extra_element_count_multiple_extra_one_allowed():
 def test_get_replication_group_imbalance_stats(create_cluster_topology):
     ct = create_cluster_topology()
     rgs = [ct.rgs['rg1'], ct.rgs['rg2']]
-    partitions = ct.partitions.values()
+    partitions = list(ct.partitions.values())
 
     net_imbalance, extra_replica_cnt_per_rg = \
         stats.get_replication_group_imbalance_stats(rgs, partitions)
@@ -86,7 +87,7 @@ def test_get_replication_group_imbalance_stats(create_cluster_topology):
 
 def test_get_broker_partition_counts(create_cluster_topology):
     ct = create_cluster_topology()
-    brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
+    brokers = sorted(list(ct.brokers.values()), key=lambda b: b.id)
 
     counts = stats.get_broker_partition_counts(brokers)
 
@@ -95,7 +96,7 @@ def test_get_broker_partition_counts(create_cluster_topology):
 
 def test_get_broker_weights(create_cluster_topology):
     ct = create_cluster_topology()
-    brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
+    brokers = sorted(list(ct.brokers.values()), key=lambda b: b.id)
 
     weights = stats.get_broker_weights(brokers)
 
@@ -104,7 +105,7 @@ def test_get_broker_weights(create_cluster_topology):
 
 def test_get_broker_leader_counts(create_cluster_topology):
     ct = create_cluster_topology()
-    brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
+    brokers = sorted(list(ct.brokers.values()), key=lambda b: b.id)
 
     counts = stats.get_broker_leader_counts(brokers)
 
@@ -113,7 +114,7 @@ def test_get_broker_leader_counts(create_cluster_topology):
 
 def test_get_broker_leader_weights(create_cluster_topology):
     ct = create_cluster_topology()
-    brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
+    brokers = sorted(list(ct.brokers.values()), key=lambda b: b.id)
 
     weights = stats.get_broker_leader_weights(brokers)
 
@@ -122,8 +123,8 @@ def test_get_broker_leader_weights(create_cluster_topology):
 
 def test_get_topic_imbalance_stats(create_cluster_topology):
     ct = create_cluster_topology()
-    brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
-    topics = ct.topics.values()
+    brokers = sorted(list(ct.brokers.values()), key=lambda b: b.id)
+    topics = list(ct.topics.values())
 
     net_imbalance, extra_partition_cnt_per_broker = \
         stats.get_topic_imbalance_stats(brokers, topics)
@@ -136,8 +137,8 @@ def test_get_topic_imbalance_stats(create_cluster_topology):
 
 def test_get_weighted_topic_imbalance_stats(create_cluster_topology):
     ct = create_cluster_topology()
-    brokers = sorted(ct.brokers.values(), key=lambda b: b.id)
-    topics = ct.topics.values()
+    brokers = sorted(list(ct.brokers.values()), key=lambda b: b.id)
+    topics = list(ct.topics.values())
 
     total_imbalance, weighted_imbalance_per_broker = \
         stats.get_weighted_topic_imbalance_stats(brokers, topics)

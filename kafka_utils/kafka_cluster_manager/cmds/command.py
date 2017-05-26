@@ -12,10 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import json
 import logging
 import sys
 from collections import defaultdict
+
+import six
+from six.moves import input
 
 from kafka_utils.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
@@ -179,7 +184,7 @@ class ClusterManagerCmd(object):
         # The replica set stays the same for leaders only changes
         leaders_changes = [
             (t_p, new_assignment[t_p])
-            for t_p, replica in original_assignment.iteritems()
+            for t_p, replica in six.iteritems(original_assignment)
             if replica != new_assignment[t_p] and
             set(replica) == set(new_assignment[t_p])
         ]
@@ -191,7 +196,7 @@ class ClusterManagerCmd(object):
                 t_p,
                 len(set(replica) - set(new_assignment[t_p])),
             )
-            for t_p, replica in original_assignment.iteritems()
+            for t_p, replica in six.iteritems(original_assignment)
             if set(replica) != set(new_assignment[t_p])
         ]
 
@@ -250,7 +255,7 @@ class ClusterManagerCmd(object):
         action_available = True
         while curr_movements < max_movements and action_available:
             action_available = False
-            for topic, actions in topic_actions.iteritems():
+            for topic, actions in six.iteritems(topic_actions):
                 for action in actions:
                     if curr_movements + action[1] > max_movements:
                         # Remove action since it won't be possible to use it
@@ -268,7 +273,7 @@ class ClusterManagerCmd(object):
         """Confirm from your if proposed-plan be executed."""
         permit = ''
         while permit.lower() not in ('yes', 'no'):
-            permit = raw_input('Execute Proposed Plan? [yes/no] ')
+            permit = input('Execute Proposed Plan? [yes/no] ')
         if permit.lower() == 'yes':
             return True
         else:

@@ -19,6 +19,8 @@ from __future__ import unicode_literals
 import logging
 from collections import OrderedDict
 
+import six
+
 from .broker import Broker
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
@@ -76,7 +78,7 @@ class ClusterTopology(object):
 
     def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
-        for broker_id, metadata in brokers.iteritems():
+        for broker_id, metadata in six.iteritems(brokers):
             self.brokers[broker_id] = self._create_broker(broker_id, metadata)
 
     def _create_broker(self, broker_id, metadata=None):
@@ -98,7 +100,7 @@ class ClusterTopology(object):
         topic objects.
         """
         self.partitions = {}
-        for partition_name, replica_ids in assignment.iteritems():
+        for partition_name, replica_ids in six.iteritems(assignment):
             # Get topic
             topic_id = partition_name[0]
             partition_id = partition_name[1]
@@ -120,7 +122,7 @@ class ClusterTopology(object):
             # Updating corresponding broker objects
             for broker_id in replica_ids:
                 # Check if broker-id is present in current active brokers
-                if broker_id not in self.brokers.keys():
+                if broker_id not in list(self.brokers.keys()):
                     self.log.warning(
                         "Broker %s containing partition %s is not in "
                         "active brokers.",
@@ -135,19 +137,19 @@ class ClusterTopology(object):
     def active_brokers(self):
         """Set of brokers that are not inactive or decommissioned."""
         return {
-            broker for broker in self.brokers.itervalues()
+            broker for broker in six.itervalues(self.brokers)
             if not broker.inactive and not broker.decommissioned
         }
 
     @property
     def assignment(self):
         assignment = {}
-        for partition in self.partitions.itervalues():
+        for partition in six.itervalues(self.partitions):
             assignment[
                 (partition.topic.id, partition.partition_id)
             ] = [broker.id for broker in partition.replicas]
         # assignment map created in sorted order for deterministic solution
-        return OrderedDict(sorted(assignment.items(), key=lambda t: t[0]))
+        return OrderedDict(sorted(list(assignment.items()), key=lambda t: t[0]))
 
     def replace_broker(self, source_id, dest_id):
         """Move all partitions in source broker to destination broker.
@@ -184,7 +186,7 @@ class ClusterTopology(object):
         :raises: InvalidPartitionError when partition-name is invalid
         """
         try:
-            for partition_name, replica_ids in assignment.iteritems():
+            for partition_name, replica_ids in six.iteritems(assignment):
                 try:
                     new_replicas = [self.brokers[b_id] for b_id in replica_ids]
                 except KeyError:

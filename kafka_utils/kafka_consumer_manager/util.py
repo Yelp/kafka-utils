@@ -20,11 +20,13 @@ import logging
 import sys
 from collections import defaultdict
 
+import six
 from kafka.consumer import KafkaConsumer
 from kafka.structs import TopicPartition
 from kafka.util import read_short_string
 from kafka.util import relative_unpack
 from kazoo.exceptions import NodeExistsError
+from six.moves import input
 
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.error import UnknownTopic
@@ -79,8 +81,8 @@ def create_offsets(zk, consumer_group, offsets):
     :type offsets: dict(topic, dict(partition, offset))
     """
     # Create new offsets
-    for topic, partition_offsets in offsets.iteritems():
-        for partition, offset in partition_offsets.iteritems():
+    for topic, partition_offsets in six.iteritems(offsets):
+        for partition, offset in six.iteritems(partition_offsets):
             new_path = "/consumers/{groupid}/offsets/{topic}/{partition}".format(
                 groupid=consumer_group,
                 topic=topic,
@@ -106,7 +108,7 @@ def fetch_offsets(zk, consumer_group, topics):
     :rtype: dict(topic, dict(partition, offset))
     """
     source_offsets = defaultdict(dict)
-    for topic, partitions in topics.iteritems():
+    for topic, partitions in six.iteritems(topics):
         for partition in partitions:
             offset, _ = zk.get(
                 "/consumers/{groupid}/offsets/{topic}/{partition}".format(
@@ -121,7 +123,7 @@ def fetch_offsets(zk, consumer_group, topics):
 
 def prompt_user_input(in_str):
     while(True):
-        answer = raw_input(in_str + ' ')
+        answer = input(in_str + ' ')
         if answer == "n" or answer == "no":
             sys.exit(0)
         if answer == "y" or answer == "yes":
@@ -196,7 +198,7 @@ class KafkaGroupReader:
                 p: TopicPartition(CONSUMER_OFFSET_TOPIC, p)
                 for p in self.consumer.partitions_for_topic(CONSUMER_OFFSET_TOPIC)
             }
-        self.watermarks = self.get_current_watermarks(self.active_partitions.values())
+        self.watermarks = self.get_current_watermarks(list(self.active_partitions.values()))
         # Active partitions are not empty. Remove the empty ones.
         self.active_partitions = {
             p: tp for p, tp in self.active_partitions.items()
@@ -208,11 +210,11 @@ class KafkaGroupReader:
         if not self.active_partitions:
             return {}
 
-        self.consumer.assign(self.active_partitions.values())
+        self.consumer.assign(list(self.active_partitions.values()))
         self.log.info("Consuming from %s", self.active_partitions)
         while not self.finished():
             try:
-                message = self.consumer.next()
+                message = next(self.consumer)
             except StopIteration:
                 continue
             # Stop when reaching the last message written to the
@@ -240,7 +242,7 @@ class KafkaGroupReader:
             (p, self.consumer.position(p))
             for p in self.active_partitions.values()
         ]
-        self.consumer.assign(self.active_partitions.values())
+        self.consumer.assign(list(self.active_partitions.values()))
         for topic_partition, position in positions:
             self.consumer.seek(topic_partition, position)
         self.log.info(
@@ -291,7 +293,7 @@ class KafkaGroupReader:
         )
         partitions_set = set(tp.partition for tp in partitions) if partitions else None
         return {part: offset for part, offset
-                in offsets[CONSUMER_OFFSET_TOPIC].iteritems()
+                in six.iteritems(offsets[CONSUMER_OFFSET_TOPIC])
                 if offset.highmark > offset.lowmark and
                 (partitions is None or part in partitions_set)}
 

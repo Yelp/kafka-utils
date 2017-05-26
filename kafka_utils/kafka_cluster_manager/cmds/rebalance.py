@@ -12,8 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import print_function
+
 import logging
 import sys
+
+import six
 
 from .command import ClusterManagerCmd
 from kafka_utils.kafka_cluster_manager.cluster_info.display \
@@ -122,7 +127,7 @@ class RebalanceCmd(ClusterManagerCmd):
         if self.args.max_movement_size:
             total_weight = sum(
                 partition.weight
-                for partition in cluster_topology.partitions.itervalues()
+                for partition in six.itervalues(cluster_topology.partitions)
             )
             broker_count = len(cluster_topology.brokers)
             optimal_weight = total_weight / broker_count
@@ -166,7 +171,7 @@ class RebalanceCmd(ClusterManagerCmd):
         elif self.args.auto_max_movement_size:
             self.args.max_movement_size = max(
                 partition.size
-                for partition in cluster_topology.partitions.itervalues()
+                for partition in six.itervalues(cluster_topology.partitions)
             )
             self.log.info(
                 'Auto-max-movement-size: using {max_movement_size} as'
@@ -178,8 +183,8 @@ class RebalanceCmd(ClusterManagerCmd):
         base_assignment = cluster_topology.assignment
         base_score = cluster_balancer.score()
         rg_imbalance, _ = get_replication_group_imbalance_stats(
-            cluster_topology.rgs.values(),
-            cluster_topology.partitions.values()
+            list(cluster_topology.rgs.values()),
+            list(cluster_topology.partitions.values())
         )
 
         cluster_balancer.rebalance()
@@ -187,16 +192,16 @@ class RebalanceCmd(ClusterManagerCmd):
         assignment = cluster_topology.assignment
         score = cluster_balancer.score()
         new_rg_imbalance, _ = get_replication_group_imbalance_stats(
-            cluster_topology.rgs.values(),
-            cluster_topology.partitions.values()
+            list(cluster_topology.rgs.values()),
+            list(cluster_topology.partitions.values())
         )
 
         if self.args.show_stats:
             display_cluster_topology_stats(cluster_topology, base_assignment)
             if base_score is not None and score is not None:
-                print('\nScore before: %f' % base_score)
-                print('Score after:  %f' % score)
-                print('Score improvement: %f' % (score - base_score))
+                print(('\nScore before: %f' % base_score))
+                print(('Score after:  %f' % score))
+                print(('Score improvement: %f' % (score - base_score)))
 
         if not validate_plan(
             assignment_to_plan(assignment),

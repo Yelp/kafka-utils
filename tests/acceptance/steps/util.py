@@ -12,12 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import subprocess
 import time
 import uuid
 
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
+from six.moves import range
 
 from kafka_utils.util import config
 from kafka_utils.util.client import KafkaToolClient
@@ -105,7 +108,7 @@ def create_random_group_id():
 def produce_example_msg(topic, num_messages=1):
     kafka = KafkaToolClient(KAFKA_URL)
     producer = SimpleProducer(kafka)
-    for i in xrange(num_messages):
+    for i in range(num_messages):
         try:
             producer.send_messages(topic, b'some message')
         except LeaderNotAvailableError:

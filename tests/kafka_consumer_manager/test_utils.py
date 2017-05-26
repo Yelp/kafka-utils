@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import struct
 from collections import namedtuple
 
@@ -5,6 +7,7 @@ import mock
 import pytest
 from kafka.consumer.fetcher import ConsumerRecord
 from kafka.structs import TopicPartition
+from six.moves import range
 
 from kafka_utils.kafka_consumer_manager.util import get_group_partition
 from kafka_utils.kafka_consumer_manager.util import get_offset_topic_partition_count

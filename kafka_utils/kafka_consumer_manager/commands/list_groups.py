@@ -57,7 +57,7 @@ class ListGroups(OffsetManagerBase):
     def get_kafka_groups(cls, cluster_config):
         '''Get the group_id of groups committed into Kafka.'''
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        return kafka_group_reader.read_groups().keys()
+        return list(kafka_group_reader.read_groups().keys())
 
     @classmethod
     def print_groups(cls, groups, cluster_config):

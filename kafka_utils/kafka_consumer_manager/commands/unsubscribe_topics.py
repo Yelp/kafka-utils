@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import sys
 
+import six
 from kazoo.exceptions import NoNodeError
 
 from .offset_manager import OffsetWriter
@@ -114,7 +115,7 @@ class TopicUnsubscriber(object):
         elif topic:
             self.delete_topic(group, topic)
         else:
-            for topic, partitions in topics_dict.iteritems():
+            for topic, partitions in six.iteritems(topics_dict):
                 self.delete_topic(group, topic)
 
     def unsubscribe_partitions(self, group, topic, partitions):

@@ -12,11 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import contextlib
-from StringIO import StringIO
 
 import mock
 import pytest
+from StringIO import StringIO
 
 from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.config import load_yaml_config
@@ -173,14 +175,12 @@ def mock_yaml():
         else:
             return MOCK_YAML_2
 
-    with contextlib.nested(
-        mock.patch(
-            'kafka_utils.util.config.load_yaml_config',
-            side_effect=get_fake_yaml,
-            create=True,
-        ),
-        mock.patch('os.path.isfile', return_value=True)
-    ) as (m, mock_isfile):
+    with mock.patch(
+        'kafka_utils.util.config.load_yaml_config',
+        side_effect=get_fake_yaml,
+        create=True,
+    ) as m, \
+            mock.patch('os.path.isfile', return_value=True):
         yield m
 
 
