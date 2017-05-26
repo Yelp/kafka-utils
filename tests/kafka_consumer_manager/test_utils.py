@@ -141,7 +141,6 @@ class TestKafkaGroupReader(object):
         kafka_group_reader = KafkaGroupReader(kafka_config)
         with mock.patch(
             'kafka_utils.kafka_consumer_manager.util.KafkaConsumer',
-            autospec=True
         ) as mock_consumer:
             with mock.patch.object(
                 kafka_group_reader,
@@ -163,7 +162,7 @@ class TestKafkaGroupReader(object):
                     ]),
                     autospec=True,
                 ):
-                    mock_consumer.return_value.next.side_effect = iter([
+                    mock_consumer.return_value.__iter__.return_value = iter([
                         mock.Mock(offset=44, partition=0, topic='test_topic'),
                         mock.Mock(offset=19, partition=1, topic='test_topic'),
                     ])
@@ -184,7 +183,6 @@ class TestKafkaGroupReader(object):
         kafka_group_reader = KafkaGroupReader(kafka_config)
         with mock.patch(
             'kafka_utils.kafka_consumer_manager.util.KafkaConsumer',
-            autospec=True
         ) as mock_consumer:
             with mock.patch.object(
                 kafka_group_reader,
@@ -210,7 +208,7 @@ class TestKafkaGroupReader(object):
                     ],
                     autospec=True
                 ):
-                    mock_consumer.return_value.next.return_value = mock.Mock(partition=0, topic='test_topic')
+                    mock_consumer.return_value.__iter__.return_value = iter([mock.Mock(partition=0, topic='test_topic', offset=45)])
                     kafka_group_reader.read_groups(partition=0)
                     assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic"}
                     mock_consumer.return_value.assign.assert_called_once_with(

@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-
-from .util import call_offset_get
+from util import call_offset_get
+from util import load_json
 
 
 @when(u'we call the offset_get command')
@@ -62,12 +62,13 @@ def step_impl5_2(context):
 @then(u'the correct json output will be shown')
 def step_impl5_3(context):
     offset = context.msgs_consumed
-    import json
     if context.msgs_produced > 0.0:
         percentage_distance = round((context.msgs_produced - offset) * 100.0 / context.msgs_produced, 2)
     else:
         percentage_distance = 0.0
-    assert json.loads(context.output) == [
+
+    parsed_output = load_json(context.output)
+    assert parsed_output == [
         {
             "topic": context.topic,
             "partition": 0,

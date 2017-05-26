@@ -17,12 +17,13 @@ from __future__ import absolute_import
 import os
 import tempfile
 
+import six
 from behave import given
 from behave import then
 from behave import when
+from util import call_cmd
+from util import get_cluster_config
 
-from .util import call_cmd
-from .util import get_cluster_config
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -42,6 +43,10 @@ def create_restore_file(group, topic, offset):
     '''.format(group=group, topic=topic, offset=offset)
 
     f = tempfile.NamedTemporaryFile()
+
+    if six.PY3:
+        offset_restore_data = offset_restore_data.encode()
+
     f.write(offset_restore_data)
     f.flush()
     return f

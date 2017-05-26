@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .steps.util import delete_topic
-from .steps.util import list_topics
+from steps.util import delete_topic
+from steps.util import list_topics
 
 
 def before_scenario(context, scenario):

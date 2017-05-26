@@ -17,12 +17,11 @@ from __future__ import absolute_import
 from behave import given
 from behave import then
 from behave import when
-
-from .util import call_cmd
-from .util import create_consumer_group
-from .util import create_consumer_group_with_kafka_storage
-from .util import create_random_topic
-from .util import produce_example_msg
+from util import call_cmd
+from util import create_consumer_group
+from util import create_consumer_group_with_kafka_storage
+from util import create_random_topic
+from util import produce_example_msg
 
 test_group = 'group1'
 test_topics = ['topic1', 'topic2', 'topic3']

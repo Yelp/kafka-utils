@@ -14,11 +14,8 @@
 # limitations under the License.
 from __future__ import absolute_import
 
-import contextlib
-
 import mock
 import pytest
-from StringIO import StringIO
 
 from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.config import load_yaml_config
@@ -185,13 +182,8 @@ def mock_yaml():
 
 
 def test_load_yaml():
-    stio = StringIO()
-    stio.write(MOCK_TOPOLOGY_CONFIG)
-    stio.seek(0)
-    with mock.patch(
-        '__builtin__.open',
-        return_value=contextlib.closing(stio)
-    ) as mock_open:
+    mocked_open = mock.mock_open(read_data=MOCK_TOPOLOGY_CONFIG)
+    with mock.patch('kafka_utils.util.config.open', mocked_open) as mock_open:
         actual = load_yaml_config('test')
         mock_open.assert_called_once_with("test", "r")
         assert actual == MOCK_YAML_1

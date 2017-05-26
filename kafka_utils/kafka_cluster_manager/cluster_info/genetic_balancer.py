@@ -610,8 +610,9 @@ class _State(object):
             brokers or list(cluster_topology.brokers.values()),
             key=lambda b: b.id
         ))
+
         self.rgs = tuple(sorted(
-            list(cluster_topology.rgs.values()),
+            [rg for rg in cluster_topology.rgs.values() if rg.id],
             key=lambda r: r.id
         ))
 

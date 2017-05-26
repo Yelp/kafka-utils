@@ -170,9 +170,9 @@ class ClusterTopology(object):
                 # Replace broker in replica
                 partition.replace(source, dest)
         except KeyError as e:
-            self.log.error("Invalid broker id %s.", e[0])
+            self.log.error("Invalid broker id %s.", e.args[0])
             raise InvalidBrokerIdError(
-                "Broker id {} does not exist in cluster".format(e[0])
+                "Broker id {} does not exist in cluster".format(e.args[0])
             )
 
     def update_cluster_topology(self, assignment):

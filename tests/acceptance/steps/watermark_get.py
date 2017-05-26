@@ -16,8 +16,7 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-
-from .util import call_watermark_get
+from util import call_watermark_get
 
 
 @when(u'we call the watermark_get command')

@@ -14,10 +14,12 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import json
 import subprocess
 import time
 import uuid
 
+import six
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
 from six.moves import range
@@ -30,6 +32,19 @@ from kafka_utils.util.offsets import set_consumer_offsets
 
 ZOOKEEPER_URL = 'zookeeper:2181'
 KAFKA_URL = 'kafka:9092'
+
+
+if six.PY3:
+    def load_json(bytes_or_str):
+        if isinstance(bytes_or_str, six.binary_type):
+            data = bytes_or_str.decode()
+        else:
+            data = bytes_or_str
+
+        return json.loads(data)
+else:
+    def load_json(data_str):
+        return json.loads(data_str)
 
 
 def get_cluster_config():
@@ -77,6 +92,9 @@ def delete_topic(topic_name):
 
 def call_cmd(cmd):
     output = ''
+
+    communicate_input = b'y' if six.PY3 else 'y'
+
     try:
         p = subprocess.Popen(
             cmd,
@@ -84,13 +102,21 @@ def call_cmd(cmd):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        out, err = p.communicate('y')
+        out, err = p.communicate(communicate_input)
+    except subprocess.CalledProcessError as e:
+        output += e.output
+
+    if six.PY3:
+        if out:
+            output += out.decode()
+        if err:
+            output += err.decode()
+    else:
         if out:
             output += out
         if err:
             output += err
-    except subprocess.CalledProcessError as e:
-        output += e.output
+
     return output
 
 

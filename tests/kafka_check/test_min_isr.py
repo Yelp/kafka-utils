@@ -174,7 +174,10 @@ def test_run_command_all_fail(min_isr_mock):
         default_min_isr=1,
     )
 
-    assert sorted(result) == sorted(NOT_IN_SYNC_PARTITIONS)
+    def dict_comparator(d):
+        return sorted(d.items())
+
+    assert sorted(result, key=dict_comparator) == sorted(NOT_IN_SYNC_PARTITIONS, key=dict_comparator)
 
 
 def test_prepare_output_ok_no_verbose():

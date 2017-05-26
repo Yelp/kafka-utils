@@ -14,13 +14,12 @@
 # limitations under the License.
 from __future__ import absolute_import
 
-import json
 import tempfile
 
 from behave import then
 from behave import when
-
-from .util import call_cmd
+from util import call_cmd
+from util import load_json
 
 
 def create_saved_file():
@@ -56,7 +55,7 @@ def step_impl2_2(context):
 def step_impl3(context):
     offset = context.msgs_consumed
 
-    data = json.loads(context.offsets_file.read())
+    data = load_json(context.offsets_file.read())
     assert offset == data['offsets'][context.topic]['0']
     context.offsets_file.close()
 
@@ -65,6 +64,6 @@ def step_impl3(context):
 def step_impl3_2(context):
     offset = context.restored_offset
 
-    data = json.loads(context.offsets_file.read())
+    data = load_json(context.offsets_file.read())
     assert offset == data['offsets'][context.topic]['0']
     context.offsets_file.close()

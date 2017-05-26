@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import json
 
 import mock
+import six
 
 from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.zookeeper import ZK
@@ -178,7 +179,7 @@ class TestZK(object):
         with ZK(self.cluster_config) as zk:
             zk.zk.get = mock.Mock(
                 return_value=(
-                    '{"version": 1, "config": {"cleanup.policy": "compact"}}',
+                    b'{"version": 1, "config": {"cleanup.policy": "compact"}}',
                     "Random node info that doesn't matter"
                 )
             )
@@ -193,14 +194,24 @@ class TestZK(object):
             autospec=True
         ) as mock_set:
             with ZK(self.cluster_config) as zk:
+                config = {"version": 1, "config": {"cleanup.policy": "compact"}}
+
                 zk.set_topic_config(
                     "some_topic",
-                    {"version": 1, "config": {"cleanup.policy": "compact"}}
+                    config,
                 )
+
+                if six.PY3:
+                    serialized_config = json.dumps(config).encode()
+                    expected_topic = b'some_topic'
+                else:
+                    serialized_config = json.dumps(config)
+                    expected_topic = 'some_topic'
+
                 mock_set.assert_called_once_with(
                     zk,
                     '/config/topics/some_topic',
-                    json.dumps({"version": 1, "config": {"cleanup.policy": "compact"}})
+                    serialized_config,
                 )
 
                 expected_create_call = mock.call(
@@ -220,20 +231,34 @@ class TestZK(object):
             autospec=True
         ) as mock_set:
             with ZK(self.cluster_config) as zk:
+                config = {"version": 1, "config": {"cleanup.policy": "compact"}}
+                config_change = {"version": 1, "entity_type": "topics", "entity_name": "some_topic"}
+
                 zk.set_topic_config(
                     "some_topic",
-                    {"version": 1, "config": {"cleanup.policy": "compact"}},
+                    config,
                     (0, 9, 2)
                 )
+                if six.PY3:
+                    serialized_config = json.dumps(config).encode()
+                    serialized_config_change = json.dumps(config_change).encode()
+                    expected_topic = b'some_topic'
+                else:
+                    serialized_config = json.dumps(config)
+                    serialized_config_change = json.dumps(config_change).encode()
+                    expected_topic = 'some_topic'
+
+
                 mock_set.assert_called_once_with(
                     zk,
                     '/config/topics/some_topic',
-                    json.dumps({"version": 1, "config": {"cleanup.policy": "compact"}})
+                    serialized_config,
                 )
 
                 expected_create_call = mock.call(
                     '/config/changes/config_change_',
                     json.dumps({"version": 1, "entity_type": "topics", "entity_name": "some_topic"}),
+                    serialized_config_change,
                     None,
                     False,
                     True,

@@ -63,7 +63,7 @@ class ListGroups(OffsetManagerBase):
     def print_groups(cls, groups, cluster_config):
         print("Consumer Groups:")
         for groupid in groups:
-            print("\t{groupid}".format(groupid=groupid.encode()))
+            print("\t{groupid}".format(groupid=groupid))
         print(
             "{num_groups} groups found for cluster {cluster_name} "
             "of type {cluster_type}".format(

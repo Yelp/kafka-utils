@@ -231,6 +231,6 @@ def merge_partition_offsets(*partition_offsets):
     output = dict()
     for partition_offset in partition_offsets:
         for partition, offset in six.iteritems(partition_offset):
-            prev_offset = output.get(partition, None)
+            prev_offset = output.get(partition, 0)
             output[partition] = max(prev_offset, offset)
     return output

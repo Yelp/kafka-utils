@@ -31,6 +31,14 @@ REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
 
 
+if six.PY3:
+    def load_json(data_bytes):
+        return json.loads(data_bytes.decode())
+else:
+    def load_json(data_str):
+        return json.loads(data_str)
+
+
 class ZK:
     """Opens a connection to a kafka zookeeper. "
     "To be used in the 'with' statement."""
@@ -81,7 +89,7 @@ class ZK:
     def get_json(self, path, watch=None):
         """Reads the data of the specified node and converts it to json."""
         data, _ = self.get(path, watch)
-        return json.loads(data) if data else None
+        return load_json(data) if data else None
 
     def get_broker_metadata(self, broker_id):
         try:
@@ -93,7 +101,7 @@ class ZK:
                 "broker '{b_id}' not found.".format(b_id=broker_id),
             )
             raise
-        return json.loads(broker_json)
+        return load_json(broker_json)
 
     def get_brokers(self, names_only=False):
         """Get information on all the available brokers.
@@ -113,7 +121,7 @@ class ZK:
         :rtype : dict of configuration
         """
         try:
-            config_data = json.loads(
+            config_data = load_json(
                 self.get(
                     "/config/topics/{topic}".format(topic=topic)
                 )[0]
@@ -136,8 +144,12 @@ class ZK:
             Defaults to (0, 10, x). Kafka version 9 and kafka 10
             support this feature.
         """
+        config_data = json.dumps(value)
+
+        if six.PY3:
+            config_data = config_data.encode()
+
         try:
-            config_data = json.dumps(value)
             # Change value
             return_value = self.set(
                 "/config/topics/{topic}".format(topic=topic),
@@ -164,9 +176,14 @@ class ZK:
                     "version": 2,
                     "entity_path": "topics/" + topic,
                 })
+
+            if six.PY3:
+                change_node = change_node.encode()
+
             self.create(
                 '/config/changes/config_change_',
                 change_node,
+                serialized_topic,
                 sequence=True
             )
         except NoNodeError as e:
@@ -219,7 +236,7 @@ class ZK:
         topics_data = {}
         for topic_id in topic_ids:
             try:
-                topic_data = json.loads(
+                topic_data = load_json(
                     self.get("/brokers/topics/{id}".format(id=topic_id))[0],
                 )
             except NoNodeError:
@@ -335,7 +352,7 @@ class ZK:
                 try:
                     # Get current offset
                     offset_json, _ = self.get(path)
-                    group_offsets[topic][partition] = json.loads(offset_json)
+                    group_offsets[topic][partition] = load_json(offset_json)
                 except NoNodeError:
                     _log.error("Path {path} not found".format(path=path))
                     raise
@@ -348,7 +365,7 @@ class ZK:
             partition_json, _ = self.get(
                 state_path.format(topic_id=topic_id, p_id=partition_id),
             )
-            return json.loads(partition_json)
+            return load_json(partition_json)
         except NoNodeError:
             return {}  # The partition has no data
 
@@ -474,7 +491,7 @@ class ZK:
             return True
         except NodeExistsError:
             _log.warning('Previous plan in progress. Exiting..')
-            in_progress_plan = json.loads(self.get(reassignment_path)[0])
+            in_progress_plan = load_json(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
                     topic=p_data['topic'],
@@ -525,6 +542,6 @@ class ZK:
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         try:
             result = self.get(reassignment_path)
-            return json.loads(result[0])
+            return load_json(result[0])
         except NoNodeError:
             return {}

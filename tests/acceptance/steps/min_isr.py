@@ -16,9 +16,9 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
+from util import call_cmd
+from util import get_cluster_config
 
-from .util import call_cmd
-from .util import get_cluster_config
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -39,7 +39,10 @@ def set_min_isr(topic, min_isr):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
         config = zk.get_topic_config(topic)
-        config['config'] = {ISR_CONF_NAME: str(min_isr)}
+
+        serialized_min_isr = str(min_isr)
+
+        config['config'] = {ISR_CONF_NAME: serialized_min_isr}
         zk.set_topic_config(topic, config)
 
 

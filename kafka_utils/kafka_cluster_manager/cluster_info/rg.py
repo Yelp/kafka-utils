@@ -290,7 +290,7 @@ class ReplicationGroup(object):
         # minimum same-partition-count
         # Set result in format: (source, dest, preferred-partition)
         target = (None, None, None)
-        min_distance = sys.maxint
+        min_distance = sys.maxsize
         best_partition = None
         for source in over_loaded_brokers:
             for dest in under_loaded_brokers:
