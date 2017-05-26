@@ -26,9 +26,6 @@ install:
 - pip install tox tox-travis
 script:
 - tox
-- tox -e docker_itest_8
-- tox -e docker_itest_9
-- tox -e docker_itest_10
 deploy:
   provider: pypi
   user: yelplabs
