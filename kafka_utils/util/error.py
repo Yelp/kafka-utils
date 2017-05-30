@@ -66,3 +66,8 @@ class OffsetCommitError(KafkaToolError):
         ]):
             return True
         return False
+
+
+class MaxConnectionAttemptsError(KafkaToolError):
+    """Exceeded max connection attempts."""
+    pass

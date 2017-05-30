@@ -23,11 +23,6 @@ import sys
 import time
 from operator import itemgetter
 
-from fabric.api import execute
-from fabric.api import hide
-from fabric.api import settings
-from fabric.api import sudo
-from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
@@ -35,6 +30,9 @@ from .task import PostStopTask
 from .task import PreStopTask
 from .task import TaskFailedException
 from kafka_utils.util import config
+from kafka_utils.util.ssh import report_stderr
+from kafka_utils.util.ssh import report_stdout
+from kafka_utils.util.ssh import ssh
 from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
@@ -239,16 +237,20 @@ def ask_confirmation():
             print("Please respond with 'yes' or 'no'")
 
 
-@task
-def start_broker():
+def start_broker(host, connection, verbose):
     """Execute the start"""
-    sudo(START_COMMAND)
+    _, stdout, stderr = connection.sudo_command(START_COMMAND)
+    if verbose:
+        report_stdout(host, stdout)
+        report_stderr(host, stderr)
 
 
-@task
-def stop_broker():
+def stop_broker(host, connection, verbose):
     """Execute the stop"""
-    sudo(STOP_COMMAND)
+    _, stdout, stderr = connection.sudo_command(STOP_COMMAND)
+    if verbose:
+        report_stdout(host, stdout)
+        report_stderr(host, stderr)
 
 
 def wait_for_stable_cluster(
@@ -355,9 +357,8 @@ def execute_rolling_restart(
     :type post_stop_task: list
     """
     all_hosts = [b[1] for b in brokers]
-    hidden = [] if verbose else ['output', 'running']
     for n, host in enumerate(all_hosts[skip:]):
-        with settings(forward_agent=True, connection_attempts=3, timeout=2), hide(*hidden):
+        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2) as connection:
             execute_task(pre_stop_task, host)
             wait_for_stable_cluster(
                 all_hosts,
@@ -368,10 +369,10 @@ def execute_rolling_restart(
                 unhealthy_time_limit,
             )
             print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            execute(stop_broker, hosts=host)
+            stop_broker(host, connection, verbose)
             execute_task(post_stop_task, host)
             print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            execute(start_broker, hosts=host)
+            start_broker(host, connection, verbose)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,

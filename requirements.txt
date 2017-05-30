@@ -1,4 +1,3 @@
-Fabric==1.8.1
 PyStaticConfiguration==0.9.0
 PyYAML==3.11
 argcomplete==0.8.1
