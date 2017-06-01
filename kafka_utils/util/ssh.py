@@ -110,16 +110,17 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
         while attempts < max_attempts:
             try:
                 attempts += 1
-                client.connect(host=host, timeout=max_timeout)
-                yield Connection(client, forward_agent, sudoable)
+                client.connect(hostname=host, timeout=max_timeout)
+                break
             except socket.error:
                 if attempts < max_attempts:
                     time.sleep(max_timeout)
-                continue
+        else:
+            raise MaxConnectionAttemptsError(
+                "Exceeded max attempts to connect to host: {0}".format(max_attempts)
+            )
 
-        raise MaxConnectionAttemptsError(
-            "Exceeded max attempts to connect to host: {0}".format(max_attempts)
-        )
+        yield Connection(client, forward_agent, sudoable)
 
 
 def report_stdout(host, stdout):
