@@ -63,16 +63,13 @@ class ListTopics(OffsetManagerBase):
             fail_on_error=False,
         )
         if not topics_dict:
-            print((
-                "Consumer Group ID: {group} does not exist in "
-                "{storage}".format(
-                    group=args.groupid,
-                    storage=args.storage,
-                )
+            print("Consumer Group ID: {group} does not exist in {storage}".format(
+                group=args.groupid,
+                storage=args.storage,
             ))
             sys.exit(1)
 
-        print(("Consumer Group ID: {groupid}".format(groupid=args.groupid)))
+        print("Consumer Group ID: {groupid}".format(groupid=args.groupid))
         for topic, partitions in six.iteritems(topics_dict):
-            print(("\tTopic: {topic}".format(topic=topic)))
-            print(("\t\tPartitions: {partitions}".format(partitions=partitions)))
+            print("\tTopic: {topic}".format(topic=topic))
+            print("\t\tPartitions: {partitions}".format(partitions=partitions))

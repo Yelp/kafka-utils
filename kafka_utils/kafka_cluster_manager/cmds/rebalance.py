@@ -199,9 +199,9 @@ class RebalanceCmd(ClusterManagerCmd):
         if self.args.show_stats:
             display_cluster_topology_stats(cluster_topology, base_assignment)
             if base_score is not None and score is not None:
-                print(('\nScore before: %f' % base_score))
-                print(('Score after:  %f' % score))
-                print(('Score improvement: %f' % (score - base_score)))
+                print('\nScore before: %f' % base_score)
+                print('Score after:  %f' % score)
+                print('Score improvement: %f' % (score - base_score))
 
         if not validate_plan(
             assignment_to_plan(assignment),
