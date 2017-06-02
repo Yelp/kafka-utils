@@ -144,7 +144,7 @@ class ZK:
             version = kafka_version[1]
 
             # this feature is supported in kafka 9 and kafka 10
-            assert version in [9, 10]
+            assert version in [9, 10], "Feature supported with kafka 9 and kafka 10"
 
             if version == 9:
                 # https://github.com/apache/kafka/blob/0.9.0.1/
