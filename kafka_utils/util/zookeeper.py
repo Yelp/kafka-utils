@@ -125,7 +125,14 @@ class ZK:
     def set_topic_config(self, topic, value, kafka_version=(0, 10, )):
         """Set configuration information for specified topic.
 
-        :rtype : dict of new configuration"""
+        :topic : topic whose configuration needs to be changed
+        :value :  config value with which the topic needs to be
+            updated with. This would be of the form key=value.
+            Example 'cleanup.policy=compact'
+        :kafka_version :tuple kafka version the brokers are running on.
+            Defaults to (0, 10, x). Kafka version 9 and kafka 10
+            support this feature.
+        """
         try:
             config_data = json.dumps(value)
             # Change value
@@ -135,6 +142,10 @@ class ZK:
             )
             # Create change
             version = kafka_version[1]
+
+            # this feature is supported in kafka 9 and kafka 10
+            assert version in [9, 10]
+
             if version == 9:
                 # https://github.com/apache/kafka/blob/0.9.0.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L334
@@ -143,7 +154,7 @@ class ZK:
                     "entity_type": "topics",
                     "entity_name": topic
                 })
-            elif version == 10:
+            else:  # kafka 10
                 # https://github.com/apache/kafka/blob/0.10.2.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L574
                 change_node = json.dumps({
