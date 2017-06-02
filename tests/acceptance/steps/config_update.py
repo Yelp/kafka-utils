@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
+
 from behave import then
 from behave import when
 from kafka.errors import MessageSizeTooLargeError
@@ -46,6 +48,7 @@ def step_impl3(context):
         current_config = zk.get_topic_config(context.topic)
         current_config['config']['max.message.bytes'] = '1000'
         zk.set_topic_config(context.topic, value=current_config)
+    time.sleep(2)  # sleeping for 2 seconds to ensure config is actually picked up
 
 
 @when(u'we change the topic config in zk to 10000 bytes for kafka 9')
@@ -55,6 +58,7 @@ def step_impl4(context):
         current_config = zk.get_topic_config(context.topic)
         current_config['config']['max.message.bytes'] = '1000'
         zk.set_topic_config(context.topic, value=current_config, kafka_version=(0, 9, 2))
+    time.sleep(2)  # sleeping for 2 seconds to ensure config is actually picked up
 
 
 @then(u'we produce to a kafka topic it should succeed')
