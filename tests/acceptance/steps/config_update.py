@@ -22,7 +22,7 @@ from .util import update_topic_config
 from kafka_utils.util.zookeeper import ZK
 
 
-@when(u'we set the configuration of the topic to 10 bytes')
+@when(u'we set the configuration of the topic to 0 bytes')
 def step_impl1(context):
     context.output = update_topic_config(
         context.topic,
