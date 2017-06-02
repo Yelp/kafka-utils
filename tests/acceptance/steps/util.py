@@ -37,6 +37,14 @@ def get_cluster_config():
     )
 
 
+def update_topic_config(topic_name, config):
+    cmd = ['kafka-topics.sh', '--alter',
+           '--zookeeper', ZOOKEEPER_URL,
+           '--topic', topic_name,
+           '--config', config]
+    subprocess.check_call(cmd)
+
+
 def create_topic(topic_name, replication_factor, partitions):
     cmd = ['kafka-topics.sh', '--create',
            '--zookeeper', ZOOKEEPER_URL,

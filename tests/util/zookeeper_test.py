@@ -203,7 +203,7 @@ class TestZK(object):
 
                 expected_create_call = mock.call(
                     '/config/changes/config_change_',
-                    "some_topic",
+                    json.dumps({"entity_path": "topics/some_topic", "version": 2}),
                     None,
                     False,
                     True,

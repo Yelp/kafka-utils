@@ -122,7 +122,7 @@ class ZK:
             raise e
         return config_data
 
-    def set_topic_config(self, topic, value):
+    def set_topic_config(self, topic, value, kafka_version=(0, 10, )):
         """Set configuration information for specified topic.
 
         :rtype : dict of new configuration"""
@@ -134,9 +134,25 @@ class ZK:
                 config_data
             )
             # Create change
+            version = kafka_version[1]
+            if version == 9:
+                # https://github.com/apache/kafka/blob/0.9.0.1/
+                #     core/src/main/scala/kafka/admin/AdminUtils.scala#L334
+                change_node = json.dumps({
+                    "version": 1,
+                    "entity_type": "topics",
+                    "entity_name": topic
+                })
+            elif version == 10:
+                # https://github.com/apache/kafka/blob/0.10.2.1/
+                #     core/src/main/scala/kafka/admin/AdminUtils.scala#L574
+                change_node = json.dumps({
+                    "version": 2,
+                    "entity_path": "topics/" + topic,
+                })
             self.create(
                 '/config/changes/config_change_',
-                topic,
+                change_node,
                 sequence=True
             )
         except NoNodeError as e:
