@@ -12,15 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import time
 
 from behave import then
 from behave import when
 from kafka.errors import MessageSizeTooLargeError
+from util import get_cluster_config
+from util import produce_example_msg
+from util import update_topic_config
 
-from .util import get_cluster_config
-from .util import produce_example_msg
-from .util import update_topic_config
 from kafka_utils.util.zookeeper import ZK
 
 

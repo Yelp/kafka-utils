@@ -23,6 +23,15 @@ from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.zookeeper import ZK
 
 
+def dump_to_json_and_encode(obj):
+    serialized = json.dumps(obj, sort_keys=True)
+
+    if six.PY3:
+        serialized = serialized.encode()
+
+    return serialized
+
+
 @mock.patch(
     'kafka_utils.util.zookeeper.KazooClient',
     autospec=True
@@ -195,18 +204,15 @@ class TestZK(object):
         ) as mock_set:
             with ZK(self.cluster_config) as zk:
                 config = {"version": 1, "config": {"cleanup.policy": "compact"}}
+                config_change = {"entity_path": "topics/some_topic", "version": 2}
 
                 zk.set_topic_config(
                     "some_topic",
                     config,
                 )
 
-                if six.PY3:
-                    serialized_config = json.dumps(config).encode()
-                    expected_topic = b'some_topic'
-                else:
-                    serialized_config = json.dumps(config)
-                    expected_topic = 'some_topic'
+                serialized_config = dump_to_json_and_encode(config)
+                serialized_config_change = dump_to_json_and_encode(config_change)
 
                 mock_set.assert_called_once_with(
                     zk,
@@ -216,7 +222,7 @@ class TestZK(object):
 
                 expected_create_call = mock.call(
                     '/config/changes/config_change_',
-                    json.dumps({"entity_path": "topics/some_topic", "version": 2}),
+                    serialized_config_change,
                     None,
                     False,
                     True,
@@ -239,15 +245,9 @@ class TestZK(object):
                     config,
                     (0, 9, 2)
                 )
-                if six.PY3:
-                    serialized_config = json.dumps(config).encode()
-                    serialized_config_change = json.dumps(config_change).encode()
-                    expected_topic = b'some_topic'
-                else:
-                    serialized_config = json.dumps(config)
-                    serialized_config_change = json.dumps(config_change).encode()
-                    expected_topic = 'some_topic'
 
+                serialized_config = dump_to_json_and_encode(config)
+                serialized_config_change = dump_to_json_and_encode(config_change)
 
                 mock_set.assert_called_once_with(
                     zk,
@@ -257,7 +257,6 @@ class TestZK(object):
 
                 expected_create_call = mock.call(
                     '/config/changes/config_change_',
-                    json.dumps({"version": 1, "entity_type": "topics", "entity_name": "some_topic"}),
                     serialized_config_change,
                     None,
                     False,

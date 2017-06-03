@@ -39,6 +39,15 @@ else:
         return json.loads(data_str)
 
 
+def dump_json(obj):
+    serialized = json.dumps(obj, sort_keys=True)
+
+    if six.PY3:
+        serialized = serialized.encode()
+
+    return serialized
+
+
 class ZK:
     """Opens a connection to a kafka zookeeper. "
     "To be used in the 'with' statement."""
@@ -144,10 +153,7 @@ class ZK:
             Defaults to (0, 10, x). Kafka version 9 and kafka 10
             support this feature.
         """
-        config_data = json.dumps(value)
-
-        if six.PY3:
-            config_data = config_data.encode()
+        config_data = dump_json(value)
 
         try:
             # Change value
@@ -164,7 +170,7 @@ class ZK:
             if version == 9:
                 # https://github.com/apache/kafka/blob/0.9.0.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L334
-                change_node = json.dumps({
+                change_node = dump_json({
                     "version": 1,
                     "entity_type": "topics",
                     "entity_name": topic
@@ -172,18 +178,14 @@ class ZK:
             else:  # kafka 10
                 # https://github.com/apache/kafka/blob/0.10.2.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L574
-                change_node = json.dumps({
+                change_node = dump_json({
                     "version": 2,
                     "entity_path": "topics/" + topic,
                 })
 
-            if six.PY3:
-                change_node = change_node.encode()
-
             self.create(
                 '/config/changes/config_change_',
                 change_node,
-                serialized_topic,
                 sequence=True
             )
         except NoNodeError as e:
@@ -475,7 +477,7 @@ class ZK:
         """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
-        plan_json = json.dumps(plan)
+        plan_json = dump_json(plan)
         base_plan = self.get_cluster_plan()
         if not validate_plan(plan, base_plan, allow_rf_change=allow_rf_change):
             _log.error('Given plan is invalid. ABORTING reassignment...')
