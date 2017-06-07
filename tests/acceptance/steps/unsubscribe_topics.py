@@ -17,6 +17,8 @@ from behave import when
 
 from .util import call_cmd
 from .util import get_cluster_config
+from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -43,3 +45,23 @@ def step_impl4(context):
     with ZK(cluster_config) as zk:
         offsets = zk.get_group_offsets(context.group)
     assert context.topic not in offsets
+
+
+@when('we call the unsubscribe_topics command with kafka storage')
+def step_impl2_kafka(context):
+    call_unsubscribe_topics(context.group, 'kafka')
+
+
+@then(u'the committed offsets will no longer exist in kafka')
+def step_impl4_kafka(context):
+    cluster_config = get_cluster_config()
+    client = KafkaToolClient(cluster_config.broker_list)
+    client.load_metadata_for_topics()
+
+    offsets = get_current_consumer_offsets(
+        client,
+        context.group,
+        [context.topic],
+        offset_storage='kafka',
+    )
+    assert offsets[context.topic] == {0: 0}
