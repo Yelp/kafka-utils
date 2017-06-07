@@ -93,7 +93,7 @@ def delete_topic(topic_name):
 def call_cmd(cmd):
     output = ''
 
-    communicate_input = b'y' if six.PY3 else 'y'
+    communicate_input = b'y'
 
     try:
         p = subprocess.Popen(

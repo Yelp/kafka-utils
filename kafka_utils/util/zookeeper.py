@@ -31,12 +31,13 @@ REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
 
 
-if six.PY3:
-    def load_json(data_bytes):
-        return json.loads(data_bytes.decode())
-else:
-    def load_json(data_str):
-        return json.loads(data_str)
+def load_json(input_data):
+    if six.PY3:
+        data_str = input_data.decode()
+    else:
+        data_str = input_data
+
+    return json.loads(data_str)
 
 
 def dump_json(obj):

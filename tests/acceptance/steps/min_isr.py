@@ -39,10 +39,7 @@ def set_min_isr(topic, min_isr):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
         config = zk.get_topic_config(topic)
-
-        serialized_min_isr = str(min_isr)
-
-        config['config'] = {ISR_CONF_NAME: serialized_min_isr}
+        config['config'] = {ISR_CONF_NAME: str(min_isr)}
         zk.set_topic_config(topic, config)
 
 

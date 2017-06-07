@@ -332,7 +332,7 @@ class TestPartitionCountBalancer(object):
         cb._rebalance_groups_partition_cnt()
 
         # Assert partition is moved from rg1 only
-        print((ct.assignment))
+        print(ct.assignment)
         assert len(ct.rgs['rg1'].partitions) == 3
         _, total_movements = \
             calculate_partition_movement(assignment, ct.assignment)
