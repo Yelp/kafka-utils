@@ -108,7 +108,7 @@ class ClusterManagerCmd(object):
                     'Plan sent to zookeeper for reassignment successfully.',
                 )
         else:
-            self.log.info('Proposed plan won\'t be executed.')
+            self.log.info('Proposed plan won\'t be executed (--apply and confirmation needed).')
 
     def should_execute(self):
         """Confirm if proposed-plan should be executed."""
