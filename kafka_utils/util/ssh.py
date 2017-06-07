@@ -54,7 +54,7 @@ class Connection:
         new_command = "sudo -S -p 'sudo password:' {0}".format(command)
         return self.exec_command(new_command, bufsize)
 
-    def exec_command(self, command, bufsize=-1):
+    def exec_command(self, command, bufsize=-1, check_status=True):
         """Execute a command on the SSH server while preserving underling
         agent forwarding and sudo privileges.
         https://github.com/paramiko/paramiko/blob/1.8/paramiko/client.py#L348
@@ -63,6 +63,9 @@ class Connection:
         :type command: str
         :param bufsize: interpreted the same way as by the built-in C{file()} function in python
         :type bufsize: int
+        :param check_staus: if enabled, waits for the command to complete and return an exception
+        if the status is non-zero.
+        :type check_staus: bool
         :returns the stdin, stdout, and stderr of the executing command
         :rtype: tuple(L{ChannelFile}, L{ChannelFile}, L{ChannelFile})
 
@@ -76,6 +79,8 @@ class Connection:
             channel.get_pty()
 
         channel.exec_command(command)
+        if check_status and channel.recv_exit_status() != 0:
+            raise RuntimeError("Command execution error: {}".format(command))
 
         stdin = channel.makefile('wb', bufsize)
         stdout = channel.makefile('rb', bufsize)
@@ -110,16 +115,17 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
         while attempts < max_attempts:
             try:
                 attempts += 1
-                client.connect(host=host, timeout=max_timeout)
-                yield Connection(client, forward_agent, sudoable)
+                client.connect(hostname=host, timeout=max_timeout)
+                break
             except socket.error:
                 if attempts < max_attempts:
                     time.sleep(max_timeout)
-                continue
+        else:
+            raise MaxConnectionAttemptsError(
+                "Exceeded max attempts to connect to host: {0}".format(max_attempts)
+            )
 
-        raise MaxConnectionAttemptsError(
-            "Exceeded max attempts to connect to host: {0}".format(max_attempts)
-        )
+        yield Connection(client, forward_agent, sudoable)
 
 
 def report_stdout(host, stdout):
