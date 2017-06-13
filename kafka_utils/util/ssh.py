@@ -51,7 +51,7 @@ class Connection:
 
         :raises SSHException: if the server fails to execute the command
         """
-        new_command = "sudo -S -p 'sudo password:' {0}".format(command)
+        new_command = "sudo {0}".format(command)
         return self.exec_command(new_command, bufsize)
 
     def exec_command(self, command, bufsize=-1, check_status=True):
