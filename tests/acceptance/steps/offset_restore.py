@@ -21,8 +21,8 @@ import six
 from behave import given
 from behave import then
 from behave import when
-from util import call_cmd
-from util import get_cluster_config
+from steps.util import call_cmd
+from steps.util import get_cluster_config
 
 from kafka_utils.util.zookeeper import ZK
 

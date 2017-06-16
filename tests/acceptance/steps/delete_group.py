@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-from util import call_cmd
+from steps.util import call_cmd
 
 
 def call_delete_group(groupid, storage=None):

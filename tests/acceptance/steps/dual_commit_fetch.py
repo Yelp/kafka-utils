@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-from util import create_random_group_id
-from util import get_cluster_config
+from steps.util import create_random_group_id
+from steps.util import get_cluster_config
 
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.monitoring import get_current_offsets

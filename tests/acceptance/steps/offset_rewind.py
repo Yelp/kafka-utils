@@ -16,9 +16,9 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-from util import call_cmd
-from util import get_cluster_config
-from util import set_consumer_group_offset
+from steps.util import call_cmd
+from steps.util import get_cluster_config
+from steps.util import set_consumer_group_offset
 
 from kafka_utils.util.zookeeper import ZK
 

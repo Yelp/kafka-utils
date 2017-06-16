@@ -14,22 +14,11 @@
 # limitations under the License.
 from __future__ import absolute_import
 
-import json
-
 import mock
-import six
 
 from kafka_utils.util.config import ClusterConfig
+from kafka_utils.util.serialization import dump_json
 from kafka_utils.util.zookeeper import ZK
-
-
-def dump_to_json_and_encode(obj):
-    serialized = json.dumps(obj, sort_keys=True)
-
-    if six.PY3:
-        serialized = serialized.encode()
-
-    return serialized
 
 
 @mock.patch(
@@ -211,8 +200,8 @@ class TestZK(object):
                     config,
                 )
 
-                serialized_config = dump_to_json_and_encode(config)
-                serialized_config_change = dump_to_json_and_encode(config_change)
+                serialized_config = dump_json(config)
+                serialized_config_change = dump_json(config_change)
 
                 mock_set.assert_called_once_with(
                     zk,
@@ -246,8 +235,8 @@ class TestZK(object):
                     (0, 9, 2)
                 )
 
-                serialized_config = dump_to_json_and_encode(config)
-                serialized_config_change = dump_to_json_and_encode(config_change)
+                serialized_config = dump_json(config)
+                serialized_config_change = dump_json(config_change)
 
                 mock_set.assert_called_once_with(
                     zk,

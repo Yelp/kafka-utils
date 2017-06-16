@@ -14,7 +14,6 @@
 # limitations under the License.
 from __future__ import absolute_import
 
-import json
 import logging
 
 import six
@@ -23,30 +22,14 @@ from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
 from kazoo.retry import KazooRetry
 
+from kafka_utils.util.serialization import dump_json
+from kafka_utils.util.serialization import load_json
 from kafka_utils.util.validation import validate_plan
 
 
 ADMIN_PATH = "/admin"
 REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
-
-
-def load_json(input_data):
-    if six.PY3:
-        data_str = input_data.decode()
-    else:
-        data_str = input_data
-
-    return json.loads(data_str)
-
-
-def dump_json(obj):
-    serialized = json.dumps(obj, sort_keys=True)
-
-    if six.PY3:
-        serialized = serialized.encode()
-
-    return serialized
 
 
 class ZK:

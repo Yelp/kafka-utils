@@ -18,8 +18,8 @@ import tempfile
 
 from behave import then
 from behave import when
-from util import call_cmd
-from util import load_json
+from steps.util import call_cmd
+from steps.util import load_json
 
 
 def create_saved_file():

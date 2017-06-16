@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-from util import call_offset_get
-from util import load_json
+from steps.util import call_offset_get
+from steps.util import load_json
 
 
 @when(u'we call the offset_get command')

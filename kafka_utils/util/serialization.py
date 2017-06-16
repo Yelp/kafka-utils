@@ -12,22 +12,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+import json
 
-from behave import then
-from behave import when
-from steps.util import call_watermark_get
+import six
 
 
-@when(u'we call the watermark_get command')
-def step_impl4(context):
-    context.output = call_watermark_get(context.topic)
+def load_json(input_data):
+    if six.PY3:
+        data_str = input_data.decode()
+    else:
+        data_str = input_data
+
+    return json.loads(data_str)
 
 
-@then(u'the correct watermark will be shown')
-def step_impl5(context):
-    highmark = context.msgs_produced
-    highmark_pattern = 'High Watermark: {}'.format(highmark)
-    lowmark_pattern = 'Low Watermark: 0'
-    assert highmark_pattern in context.output
-    assert lowmark_pattern in context.output
+def dump_json(obj):
+    serialized = json.dumps(obj, sort_keys=True)
+
+    if six.PY3:
+        serialized = serialized.encode()
+
+    return serialized

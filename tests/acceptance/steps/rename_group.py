@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 from behave import then
 from behave import when
-from util import call_cmd
-from util import call_offset_get
+from steps.util import call_cmd
+from steps.util import call_offset_get
 
 
 NEW_GROUP = 'new_group'
