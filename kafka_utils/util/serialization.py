@@ -12,27 +12,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+import json
 
-from kafka_utils.kafka_check.metadata_file import _parse_meta_properties_file
-
-
-META_PROPERTIES_CONTENT = [
-    "#\n",
-    "#Thu May 12 17:59:12 BST 2016\n",
-    "version=0\n",
-    "broker.id=123\n",
-]
+import six
 
 
-class TestParseMetaPropertiesFile(object):
+def load_json(input_data):
+    if six.PY3:
+        data_str = input_data.decode()
+    else:
+        data_str = input_data
 
-    def test_parse_meta_properties_file(self):
-        broker_id = _parse_meta_properties_file(META_PROPERTIES_CONTENT)
+    return json.loads(data_str)
 
-        assert broker_id == 123
 
-    def test_parse_meta_properties_file_empty(self):
-        broker_id = _parse_meta_properties_file([])
+def dump_json(obj):
+    serialized = json.dumps(obj, sort_keys=True)
 
-        assert broker_id is None
+    if six.PY3:
+        serialized = serialized.encode()
+
+    return serialized

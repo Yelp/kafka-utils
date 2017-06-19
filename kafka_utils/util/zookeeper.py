@@ -12,14 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
+from __future__ import absolute_import
+
 import logging
 
+import six
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
 from kazoo.retry import KazooRetry
 
+from kafka_utils.util.serialization import dump_json
+from kafka_utils.util.serialization import load_json
 from kafka_utils.util.validation import validate_plan
 
 
@@ -78,7 +82,7 @@ class ZK:
     def get_json(self, path, watch=None):
         """Reads the data of the specified node and converts it to json."""
         data, _ = self.get(path, watch)
-        return json.loads(data) if data else None
+        return load_json(data) if data else None
 
     def get_broker_metadata(self, broker_id):
         try:
@@ -90,7 +94,7 @@ class ZK:
                 "broker '{b_id}' not found.".format(b_id=broker_id),
             )
             raise
-        return json.loads(broker_json)
+        return load_json(broker_json)
 
     def get_brokers(self, names_only=False):
         """Get information on all the available brokers.
@@ -110,7 +114,7 @@ class ZK:
         :rtype : dict of configuration
         """
         try:
-            config_data = json.loads(
+            config_data = load_json(
                 self.get(
                     "/config/topics/{topic}".format(topic=topic)
                 )[0]
@@ -133,8 +137,9 @@ class ZK:
             Defaults to (0, 10, x). Kafka version 9 and kafka 10
             support this feature.
         """
+        config_data = dump_json(value)
+
         try:
-            config_data = json.dumps(value)
             # Change value
             return_value = self.set(
                 "/config/topics/{topic}".format(topic=topic),
@@ -149,7 +154,7 @@ class ZK:
             if version == 9:
                 # https://github.com/apache/kafka/blob/0.9.0.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L334
-                change_node = json.dumps({
+                change_node = dump_json({
                     "version": 1,
                     "entity_type": "topics",
                     "entity_name": topic
@@ -157,10 +162,11 @@ class ZK:
             else:  # kafka 10
                 # https://github.com/apache/kafka/blob/0.10.2.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L574
-                change_node = json.dumps({
+                change_node = dump_json({
                     "version": 2,
                     "entity_path": "topics/" + topic,
                 })
+
             self.create(
                 '/config/changes/config_change_',
                 change_node,
@@ -216,7 +222,7 @@ class ZK:
         topics_data = {}
         for topic_id in topic_ids:
             try:
-                topic_data = json.loads(
+                topic_data = load_json(
                     self.get("/brokers/topics/{id}".format(id=topic_id))[0],
                 )
             except NoNodeError:
@@ -226,7 +232,7 @@ class ZK:
                 return {}
             # Prepare data for each partition
             partitions_data = {}
-            for p_id, replicas in topic_data['partitions'].iteritems():
+            for p_id, replicas in six.iteritems(topic_data['partitions']):
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
@@ -332,7 +338,7 @@ class ZK:
                 try:
                     # Get current offset
                     offset_json, _ = self.get(path)
-                    group_offsets[topic][partition] = json.loads(offset_json)
+                    group_offsets[topic][partition] = load_json(offset_json)
                 except NoNodeError:
                     _log.error("Path {path} not found".format(path=path))
                     raise
@@ -345,7 +351,7 @@ class ZK:
             partition_json, _ = self.get(
                 state_path.format(topic_id=topic_id, p_id=partition_id),
             )
-            return json.loads(partition_json)
+            return load_json(partition_json)
         except NoNodeError:
             return {}  # The partition has no data
 
@@ -455,7 +461,7 @@ class ZK:
         """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
-        plan_json = json.dumps(plan)
+        plan_json = dump_json(plan)
         base_plan = self.get_cluster_plan()
         if not validate_plan(plan, base_plan, allow_rf_change=allow_rf_change):
             _log.error('Given plan is invalid. ABORTING reassignment...')
@@ -471,7 +477,7 @@ class ZK:
             return True
         except NodeExistsError:
             _log.warning('Previous plan in progress. Exiting..')
-            in_progress_plan = json.loads(self.get(reassignment_path)[0])
+            in_progress_plan = load_json(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
                     topic=p_data['topic'],
@@ -508,8 +514,8 @@ class ZK:
                 'partition': int(p_id),
                 'replicas': partitions_data['replicas']
             }
-            for topic_id, topic_info in cluster_layout.iteritems()
-            for p_id, partitions_data in topic_info['partitions'].iteritems()
+            for topic_id, topic_info in six.iteritems(cluster_layout)
+            for p_id, partitions_data in six.iteritems(topic_info['partitions'])
         ]
         return {
             'version': 1,
@@ -522,6 +528,6 @@ class ZK:
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         try:
             result = self.get(reassignment_path)
-            return json.loads(result[0])
+            return load_json(result[0])
         except NoNodeError:
             return {}

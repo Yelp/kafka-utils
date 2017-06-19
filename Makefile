@@ -11,18 +11,18 @@ clean:
 	make -C docs clean
 
 test:
-	tox
+	tox -e py{27,34,35,36}-unittest
 
 acceptance: acceptance8 acceptance9 acceptance10
 
 acceptance8:
-	tox -e docker_itest_8
+	tox -e py{27,34,35,36}-kafka8-dockeritest
 
 acceptance9:
-	tox -e docker_itest_9
+	tox -e py{27,34,35,36}-kafka9-dockeritest
 
 acceptance10:
-	tox -e docker_itest_10
+	tox -e py{27,34,35,36}-kafka10-dockeritest
 
 coverage:
 	tox -e coverage

@@ -12,8 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import contextlib
-from StringIO import StringIO
+from __future__ import absolute_import
 
 import mock
 import pytest
@@ -173,25 +172,18 @@ def mock_yaml():
         else:
             return MOCK_YAML_2
 
-    with contextlib.nested(
-        mock.patch(
-            'kafka_utils.util.config.load_yaml_config',
-            side_effect=get_fake_yaml,
-            create=True,
-        ),
-        mock.patch('os.path.isfile', return_value=True)
-    ) as (m, mock_isfile):
+    with mock.patch(
+        'kafka_utils.util.config.load_yaml_config',
+        side_effect=get_fake_yaml,
+        create=True,
+    ) as m, \
+            mock.patch('os.path.isfile', return_value=True):
         yield m
 
 
 def test_load_yaml():
-    stio = StringIO()
-    stio.write(MOCK_TOPOLOGY_CONFIG)
-    stio.seek(0)
-    with mock.patch(
-        '__builtin__.open',
-        return_value=contextlib.closing(stio)
-    ) as mock_open:
+    mocked_open = mock.mock_open(read_data=MOCK_TOPOLOGY_CONFIG)
+    with mock.patch('kafka_utils.util.config.open', mocked_open) as mock_open:
         actual = load_yaml_config('test')
         mock_open.assert_called_once_with("test", "r")
         assert actual == MOCK_YAML_1

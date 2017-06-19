@@ -12,12 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import glob
 import logging
 import os
 from collections import namedtuple
 
+import six
 import yaml
+from six.moves import map
 
 from kafka_utils.util.error import ConfigurationError
 from kafka_utils.util.error import InvalidConfigurationError
@@ -55,8 +59,8 @@ class ClusterConfig(
         return hash((
             self.type,
             self.name,
-            ",".join(sorted(filter(None, broker_list))),
-            ",".join(sorted(filter(None, zk_list)))
+            ",".join(sorted([_f for _f in broker_list if _f])),
+            ",".join(sorted([_f for _f in zk_list if _f]))
         ))
 
 
@@ -153,7 +157,7 @@ class TopologyConfiguration(object):
                 broker_list=cluster['broker_list'],
                 zookeeper=cluster['zookeeper'],
             )
-            for name, cluster in self.clusters.iteritems()
+            for name, cluster in six.iteritems(self.clusters)
         ]
 
     def get_cluster_by_name(self, name):
@@ -259,13 +263,10 @@ def iter_configurations(kafka_topology_base_path=None):
 
     types = set()
     for config_dir in config_dirs:
-        new_types = filter(
-            lambda x: x not in types,
-            map(
-                lambda x: os.path.basename(x)[:-5],
-                glob.glob('{0}/*.yaml'.format(config_dir)),
-            )
-        )
+        new_types = [x for x in map(
+            lambda x: os.path.basename(x)[:-5],
+            glob.glob('{0}/*.yaml'.format(config_dir)),
+        ) if x not in types]
         for cluster_type in new_types:
             try:
                 topology = TopologyConfiguration(

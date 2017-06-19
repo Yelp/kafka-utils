@@ -17,6 +17,8 @@
 Useful as part of reassignment project when deciding upon moving
 partitions of same topic over different brokers.
 """
+from __future__ import absolute_import
+
 import logging
 
 

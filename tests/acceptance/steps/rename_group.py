@@ -12,11 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 from behave import then
 from behave import when
-
-from .util import call_cmd
-from .util import call_offset_get
+from steps.util import call_cmd
+from steps.util import call_offset_get
 
 
 NEW_GROUP = 'new_group'

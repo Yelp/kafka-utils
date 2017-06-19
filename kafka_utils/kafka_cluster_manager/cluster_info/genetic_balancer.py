@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
 from __future__ import division
 
 import argparse
@@ -21,6 +22,9 @@ import time
 from collections import defaultdict
 from copy import copy
 from math import sqrt
+
+import six
+from six.moves import range
 
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
@@ -204,7 +208,7 @@ class GeneticBalancer(ClusterBalancer):
         if do_rebalance:
             self.log.info("Rebalancing with genetic algorithm.")
             # Run the genetic algorithm for a fixed number of generations.
-            for i in xrange(self.args.num_gens):
+            for i in range(self.args.num_gens):
                 start = time.time()
                 pop_candidates = self._explore(pop)
                 pop = self._prune(pop_candidates)
@@ -267,7 +271,7 @@ class GeneticBalancer(ClusterBalancer):
         active_brokers = self.cluster_topology.active_brokers
 
         # Add partition replicas to active brokers one-by-one.
-        for partition_name, count in partitions.iteritems():
+        for partition_name, count in six.iteritems(partitions):
             partition = self.cluster_topology.partitions[partition_name]
             try:
                 self.add_replica(partition_name, count)
@@ -315,10 +319,10 @@ class GeneticBalancer(ClusterBalancer):
         state = _State(self.cluster_topology, brokers=active_brokers)
         partition_index = state.partitions.index(partition)
 
-        for _ in xrange(count):
+        for _ in range(count):
             # Find eligible replication-groups.
             non_full_rgs = [
-                rg for rg in self.cluster_topology.rgs.itervalues()
+                rg for rg in six.itervalues(self.cluster_topology.rgs)
                 if rg.count_replica(partition) < len(rg.active_brokers)
             ]
             # Since replicas can only be added to non-full rgs, only consider
@@ -386,10 +390,10 @@ class GeneticBalancer(ClusterBalancer):
         state = _State(self.cluster_topology)
         partition_index = state.partitions.index(partition)
 
-        for _ in xrange(count):
+        for _ in range(count):
             # Find eligible replication groups.
             non_empty_rgs = [
-                rg for rg in self.cluster_topology.rgs.itervalues()
+                rg for rg in six.itervalues(self.cluster_topology.rgs)
                 if rg.count_replica(partition) > 0
             ]
             rgs_with_osr = [
@@ -453,7 +457,7 @@ class GeneticBalancer(ClusterBalancer):
             mutations.append(self._move_leadership)
 
         for state in pop:
-            for _ in xrange(exploration_per_state):
+            for _ in range(exploration_per_state):
                 new_state = random.choice(mutations)(state)
                 if new_state:
                     new_pop.add(new_state)
@@ -595,19 +599,20 @@ class _State(object):
         # original object. Since dict.values() has an arbitrary order, the
         # lists are sorted so that results are reproducible.
         self.partitions = tuple(sorted(
-            cluster_topology.partitions.values(),
+            list(cluster_topology.partitions.values()),
             key=lambda p: p.name,
         ))
         self.topics = tuple(sorted(
-            cluster_topology.topics.values(),
+            list(cluster_topology.topics.values()),
             key=lambda t: t.id,
         ))
         self.brokers = tuple(sorted(
-            brokers or cluster_topology.brokers.values(),
+            brokers or list(cluster_topology.brokers.values()),
             key=lambda b: b.id
         ))
+
         self.rgs = tuple(sorted(
-            cluster_topology.rgs.values(),
+            [rg for rg in cluster_topology.rgs.values() if rg.id],
             key=lambda r: r.id
         ))
 
@@ -685,7 +690,7 @@ class _State(object):
         # across all brokers in the cluster.
         self.topic_broker_imbalance = tuple(
             self._calculate_topic_imbalance(topic)
-            for topic in xrange(len(self.topics))
+            for topic in range(len(self.topics))
         )
 
         # A weighted sum of the imbalance values in topic_broker_imbalance.

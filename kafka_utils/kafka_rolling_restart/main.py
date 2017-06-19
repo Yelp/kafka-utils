@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
@@ -30,6 +31,8 @@ from fabric.api import sudo
 from fabric.api import task
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
+from six.moves import input
+from six.moves import zip
 
 from .task import PostStopTask
 from .task import PreStopTask
@@ -151,7 +154,7 @@ def get_broker_list(cluster_config):
     :type cluster_config: map
     """
     with ZK(cluster_config) as zk:
-        brokers = sorted(zk.get_brokers().items(), key=itemgetter(0))
+        brokers = sorted(list(zk.get_brokers().items()), key=itemgetter(0))
         return [(id, data['host']) for id, data in brokers]
 
 
@@ -230,7 +233,7 @@ def ask_confirmation():
     """
     while True:
         print("Do you want to restart these brokers? ", end="")
-        choice = raw_input().lower()
+        choice = input().lower()
         if choice in ['yes', 'y']:
             return True
         elif choice in ['no', 'n']:
@@ -421,7 +424,7 @@ def get_task_class(tasks, task_args):
     """
     pre_stop_tasks = []
     post_stop_tasks = []
-    task_to_task_args = dict(zip(tasks, task_args))
+    task_to_task_args = dict(list(zip(tasks, task_args)))
     tasks_classes = [PreStopTask, PostStopTask]
 
     for func, task_args in task_to_task_args.items():

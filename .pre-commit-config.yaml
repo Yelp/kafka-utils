@@ -2,18 +2,12 @@
     sha: 29bf11d13689a0a9a895c41eb3591c7e942d377d
     hooks:
     -   id: check-added-large-files
-        language_version: python2.7
     -   id: check-merge-conflict
-        language_version: python2.7
     -   id: trailing-whitespace
-        language_version: python2.7
     -   id: end-of-file-fixer
-        language_version: python2.7
     -   id: autopep8-wrapper
-        language_version: python2.7
         args: [--ignore=E501, --in-place]
     -   id: flake8
-        language_version: python2.7
         args: [--ignore=E501]
 
 -   repo: https://github.com/asottile/reorder_python_imports.git
@@ -21,4 +15,3 @@
     hooks:
     -   id: reorder-python-imports
         files: .*\.py$
-        language_version: python2.7

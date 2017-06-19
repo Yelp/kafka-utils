@@ -12,9 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import itertools
 import logging
 import shlex
+
+import six
 
 from .util import separate_groups
 
@@ -99,7 +103,7 @@ class ClusterBalancer(object):
         """
         movement_count = 0
         movement_size = 0
-        for partition in self.cluster_topology.partitions.itervalues():
+        for partition in six.itervalues(self.cluster_topology.partitions):
             count, size = self._rebalance_partition_replicas(
                 partition,
                 None if not max_movement_count
@@ -122,7 +126,7 @@ class ClusterBalancer(object):
         # Separate replication-groups into under and over replicated
         total = partition.replication_factor
         over_replicated_rgs, under_replicated_rgs = separate_groups(
-            self.cluster_topology.rgs.values(),
+            list(self.cluster_topology.rgs.values()),
             lambda g: g.count_replica(partition),
             total,
         )
@@ -167,7 +171,7 @@ class ClusterBalancer(object):
                 break
             # Re-compute under and over-replicated replication-groups
             over_replicated_rgs, under_replicated_rgs = separate_groups(
-                self.cluster_topology.rgs.values(),
+                list(self.cluster_topology.rgs.values()),
                 lambda g: g.count_replica(partition),
                 total,
             )

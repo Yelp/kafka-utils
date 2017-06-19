@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 from collections import OrderedDict
 
 import mock
@@ -80,8 +82,8 @@ class TestOffsetGet(object):
                          ConsumerPartitionOffsets("t1", 1, 9, 10, 0)])])
 
         sorted_dict = OffsetGet.sort_by_distance(offsets)
-        assert sorted_dict.keys()[0] == "topic1"
-        assert sorted_dict.keys()[1] == "topic2"
+        assert list(sorted_dict.keys())[0] == "topic1"
+        assert list(sorted_dict.keys())[1] == "topic2"
 
     def test_output_sorting_parcentage(self):
         offsets = OrderedDict(
@@ -90,5 +92,5 @@ class TestOffsetGet(object):
              ("topic2", [ConsumerPartitionOffsets("t2", 0, 900, 1000, 0)])])
 
         sorted_dict = OffsetGet.sort_by_distance_percentage(offsets)
-        assert sorted_dict.keys()[0] == "topic2"
-        assert sorted_dict.keys()[1] == "topic1"
+        assert list(sorted_dict.keys())[0] == "topic2"
+        assert list(sorted_dict.keys())[1] == "topic1"

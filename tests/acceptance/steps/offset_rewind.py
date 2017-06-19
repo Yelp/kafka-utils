@@ -12,12 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 from behave import then
 from behave import when
+from steps.util import call_cmd
+from steps.util import get_cluster_config
+from steps.util import set_consumer_group_offset
 
-from .util import call_cmd
-from .util import get_cluster_config
-from .util import set_consumer_group_offset
 from kafka_utils.util.zookeeper import ZK
 
 

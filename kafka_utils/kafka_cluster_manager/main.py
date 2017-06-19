@@ -17,9 +17,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import ConfigParser
 import logging
 from logging.config import fileConfig
+
+import six.moves.configparser
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
@@ -176,7 +177,7 @@ def configure_logging(log_conf=None):
     if log_conf:
         try:
             fileConfig(log_conf, disable_existing_loggers=False)
-        except ConfigParser.NoSectionError:
+        except six.moves.configparser.NoSectionError:
             logging.basicConfig(level=logging.INFO)
             _log.error(
                 'Failed to load {logconf} file.'

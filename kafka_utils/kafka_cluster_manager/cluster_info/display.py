@@ -19,6 +19,9 @@ from __future__ import print_function
 import logging
 from collections import OrderedDict
 
+import six
+from six.moves import zip
+
 import kafka_utils.kafka_cluster_manager.cluster_info.stats as stats
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
@@ -67,7 +70,7 @@ def _display_table_title_multicolumn(title, key_name, keys, names, values):
     else:
         print(title)
         headers = [key_name] + names
-    display_table(headers, zip(keys, *values))
+    display_table(headers, list(zip(keys, *values)))
 
 
 def display_replica_imbalance(cluster_topologies):
@@ -78,25 +81,25 @@ def display_replica_imbalance(cluster_topologies):
     """
     assert cluster_topologies
 
-    rg_ids = next(cluster_topologies.itervalues()).rgs.keys()
+    rg_ids = list(next(six.itervalues(cluster_topologies)).rgs.keys())
     assert all(
         set(rg_ids) == set(cluster_topology.rgs.keys())
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     )
 
     rg_imbalances = [
         stats.get_replication_group_imbalance_stats(
-            cluster_topology.rgs.values(),
-            cluster_topology.partitions.values(),
+            list(cluster_topology.rgs.values()),
+            list(cluster_topology.partitions.values()),
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
 
     _display_table_title_multicolumn(
         'Extra Replica Count',
         'Replication Group',
         rg_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         [
             [erc[rg_id] for rg_id in rg_ids]
             for _, erc in rg_imbalances
@@ -104,7 +107,7 @@ def display_replica_imbalance(cluster_topologies):
     )
 
     for name, imbalance in zip(
-            cluster_topologies.iterkeys(),
+            six.iterkeys(cluster_topologies),
             (imbalance for imbalance, _ in rg_imbalances)
     ):
         print(
@@ -124,31 +127,31 @@ def display_partition_imbalance(cluster_topologies):
     :param cluster_topologies: A dictionary mapping a string name to a
         ClusterTopology object.
     """
-    broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
+    broker_ids = list(next(six.itervalues(cluster_topologies)).brokers.keys())
     assert all(
         set(broker_ids) == set(cluster_topology.brokers.keys())
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     )
     broker_partition_counts = [
         stats.get_broker_partition_counts(
             cluster_topology.brokers[broker_id]
             for broker_id in broker_ids
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
     broker_weights = [
         stats.get_broker_weights(
             cluster_topology.brokers[broker_id]
             for broker_id in broker_ids
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
 
     _display_table_title_multicolumn(
         'Partition Count',
         'Broker',
         broker_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         broker_partition_counts,
     )
 
@@ -158,12 +161,12 @@ def display_partition_imbalance(cluster_topologies):
         'Partition Weight',
         'Broker',
         broker_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         broker_weights,
     )
 
     for name, bpc, bw in zip(
-            cluster_topologies.keys(),
+            list(cluster_topologies.keys()),
             broker_partition_counts,
             broker_weights
     ):
@@ -190,10 +193,10 @@ def display_leader_imbalance(cluster_topologies):
     :param cluster_topologies: A dictionary mapping a string name to a
         ClusterTopology object.
     """
-    broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
+    broker_ids = list(next(six.itervalues(cluster_topologies)).brokers.keys())
     assert all(
         set(broker_ids) == set(cluster_topology.brokers.keys())
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     )
 
     broker_leader_counts = [
@@ -201,21 +204,21 @@ def display_leader_imbalance(cluster_topologies):
             cluster_topology.brokers[broker_id]
             for broker_id in broker_ids
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
     broker_leader_weights = [
         stats.get_broker_leader_weights(
             cluster_topology.brokers[broker_id]
             for broker_id in broker_ids
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
 
     _display_table_title_multicolumn(
         'Leader Count',
         'Brokers',
         broker_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         broker_leader_counts,
     )
 
@@ -225,12 +228,12 @@ def display_leader_imbalance(cluster_topologies):
         'Leader weight',
         'Brokers',
         broker_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         broker_leader_weights,
     )
 
     for name, blc, blw in zip(
-            cluster_topologies.keys(),
+            list(cluster_topologies.keys()),
             broker_leader_counts,
             broker_leader_weights
     ):
@@ -257,15 +260,15 @@ def display_topic_broker_imbalance(cluster_topologies):
     :param cluster_topologies: A dictionary mapping a string name to a
         ClusterTopology object.
     """
-    broker_ids = next(cluster_topologies.itervalues()).brokers.keys()
+    broker_ids = list(next(six.itervalues(cluster_topologies)).brokers.keys())
     assert all(
         set(broker_ids) == set(cluster_topology.brokers.keys())
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     )
-    topic_names = next(cluster_topologies.itervalues()).topics.keys()
+    topic_names = list(next(six.itervalues(cluster_topologies)).topics.keys())
     assert all(
         set(topic_names) == set(cluster_topology.topics.keys())
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     )
 
     imbalances = [
@@ -273,21 +276,21 @@ def display_topic_broker_imbalance(cluster_topologies):
             [cluster_topology.brokers[broker_id] for broker_id in broker_ids],
             [cluster_topology.topics[tname] for tname in topic_names],
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
     weighted_imbalances = [
         stats.get_weighted_topic_imbalance_stats(
             [cluster_topology.brokers[broker_id] for broker_id in broker_ids],
             [cluster_topology.topics[tname] for tname in topic_names],
         )
-        for cluster_topology in cluster_topologies.itervalues()
+        for cluster_topology in six.itervalues(cluster_topologies)
     ]
 
     _display_table_title_multicolumn(
         'Extra-Topic-Partition Count',
         'Brokers',
         broker_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         [
             [i[1][broker_id] for broker_id in broker_ids]
             for i in imbalances
@@ -300,7 +303,7 @@ def display_topic_broker_imbalance(cluster_topologies):
         'Weighted Topic Imbalance',
         'Brokers',
         broker_ids,
-        cluster_topologies.keys(),
+        list(cluster_topologies.keys()),
         [
             [wi[1][broker_id] for broker_id in broker_ids]
             for wi in weighted_imbalances
@@ -308,7 +311,7 @@ def display_topic_broker_imbalance(cluster_topologies):
     )
 
     for name, topic_imbalance, weighted_topic_imbalance in zip(
-            cluster_topologies.iterkeys(),
+            six.iterkeys(cluster_topologies),
             (i[0] for i in imbalances),
             (wi[0] for wi in weighted_imbalances),
     ):

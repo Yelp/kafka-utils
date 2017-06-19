@@ -12,10 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 from argparse import Namespace
 
 import mock
 import pytest
+import six
 
 from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info \
@@ -47,7 +50,7 @@ class TestClusterBalancer(object):
         """Verify that the partition replicas are balanced across
         replication-groups.
         """
-        for rg in ct.rgs.itervalues():
+        for rg in six.itervalues(ct.rgs):
             replica_cnt_rg = rg.count_replica(partition)
 
             # Verify evenly-balanced partition
