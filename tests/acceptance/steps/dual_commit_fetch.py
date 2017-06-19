@@ -12,11 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 from behave import then
 from behave import when
+from steps.util import create_random_group_id
+from steps.util import get_cluster_config
 
-from .util import create_random_group_id
-from .util import get_cluster_config
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.monitoring import get_current_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
@@ -56,7 +58,7 @@ def step_impl4(context):
 
 @when(u'we fetch offsets for the group with the dual option')
 def step_impl4_2(context):
-    topics = context.offsets.keys()
+    topics = list(context.offsets.keys())
     context.fetched_offsets = fetch_offsets(
         context.group,
         topics,
@@ -66,7 +68,7 @@ def step_impl4_2(context):
 
 @when(u'we fetch offsets for the group with the kafka option')
 def step_impl4_3(context):
-    topics = context.offsets.keys()
+    topics = list(context.offsets.keys())
     context.fetched_offsets = fetch_offsets(
         context.group,
         topics,

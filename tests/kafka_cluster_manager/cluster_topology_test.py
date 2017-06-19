@@ -12,7 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import pytest
+import six
 
 from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info \
@@ -34,7 +37,7 @@ class TestClusterTopology(object):
 
         # Verify that partitions remain same
         assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
-        for t_p, new_replicas in new_assignment.iteritems():
+        for t_p, new_replicas in six.iteritems(new_assignment):
             orig_replicas = orig_assignment[t_p]
             # Verify that new-replicas are amongst given broker-list
             assert all([broker in orig_brokers for broker in new_replicas])
@@ -137,7 +140,7 @@ class TestClusterTopology(object):
             default_partition_weight,
     ):
         ct = create_cluster_topology()
-        for name, weight in default_partition_weight.iteritems():
+        for name, weight in six.iteritems(default_partition_weight):
             assert ct.partitions[name].weight == weight
 
     def test_cluster_topology_partition_size(
@@ -146,7 +149,7 @@ class TestClusterTopology(object):
             default_partition_size,
     ):
         ct = create_cluster_topology()
-        for name, size in default_partition_size.iteritems():
+        for name, size in six.iteritems(default_partition_size):
             assert ct.partitions[name].size == size
 
     def test_update_cluster_topology_invalid_broker(

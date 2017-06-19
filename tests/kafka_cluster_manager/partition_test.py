@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import pytest
 from mock import sentinel
 
@@ -83,7 +85,7 @@ class TestPartition(object):
         # Verify leader changed to b
         assert partition.leader == b
         # Verify that replica set remains same
-        assert sorted(old_replicas) == sorted(partition.replicas)
+        assert sorted(old_replicas, key=id) == sorted(partition.replicas, key=id)
 
     def test_followers_1(self, partition):
         # Case:1 With followers

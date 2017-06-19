@@ -143,7 +143,7 @@ class RenameGroup(OffsetManagerBase):
             else:
                 preprocess_topics(
                     old_groupid,
-                    topics_dict.keys(),
+                    list(topics_dict.keys()),
                     new_groupid,
                     topics,
                 )

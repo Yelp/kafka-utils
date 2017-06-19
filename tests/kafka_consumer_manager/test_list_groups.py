@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import contextlib
 import sys
 
@@ -79,7 +81,7 @@ class TestListGroups(object):
             cluster_config.configure_mock(name='some_cluster_name')
 
             result = ListGroups.get_kafka_groups(cluster_config)
-            assert result == expected_groups.keys()
+            assert result == list(expected_groups.keys())
             assert m.read_groups.call_count == 1
 
     @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)

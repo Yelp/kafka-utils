@@ -12,11 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
+from __future__ import absolute_import
 
 import mock
 
 from kafka_utils.util.config import ClusterConfig
+from kafka_utils.util.serialization import dump_json
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -176,7 +177,7 @@ class TestZK(object):
         with ZK(self.cluster_config) as zk:
             zk.zk.get = mock.Mock(
                 return_value=(
-                    '{"version": 1, "config": {"cleanup.policy": "compact"}}',
+                    b'{"version": 1, "config": {"cleanup.policy": "compact"}}',
                     "Random node info that doesn't matter"
                 )
             )
@@ -184,26 +185,68 @@ class TestZK(object):
             expected = {"version": 1, "config": {"cleanup.policy": "compact"}}
             assert actual == expected
 
-    def test_set_topic_config(self, mock_client):
+    def test_set_topic_config_kafka_10(self, mock_client):
         with mock.patch.object(
             ZK,
             'set',
             autospec=True
         ) as mock_set:
             with ZK(self.cluster_config) as zk:
+                config = {"version": 1, "config": {"cleanup.policy": "compact"}}
+                config_change = {"entity_path": "topics/some_topic", "version": 2}
+
                 zk.set_topic_config(
                     "some_topic",
-                    {"version": 1, "config": {"cleanup.policy": "compact"}}
+                    config,
                 )
+
+                serialized_config = dump_json(config)
+                serialized_config_change = dump_json(config_change)
+
                 mock_set.assert_called_once_with(
                     zk,
                     '/config/topics/some_topic',
-                    json.dumps({"version": 1, "config": {"cleanup.policy": "compact"}})
+                    serialized_config,
                 )
 
                 expected_create_call = mock.call(
                     '/config/changes/config_change_',
+                    serialized_config_change,
+                    None,
+                    False,
+                    True,
+                    False
+                )
+                assert mock_client.return_value.create.call_args_list == [expected_create_call]
+
+    def test_set_topic_config_kafka_9(self, mock_client):
+        with mock.patch.object(
+            ZK,
+            'set',
+            autospec=True
+        ) as mock_set:
+            with ZK(self.cluster_config) as zk:
+                config = {"version": 1, "config": {"cleanup.policy": "compact"}}
+                config_change = {"version": 1, "entity_type": "topics", "entity_name": "some_topic"}
+
+                zk.set_topic_config(
                     "some_topic",
+                    config,
+                    (0, 9, 2)
+                )
+
+                serialized_config = dump_json(config)
+                serialized_config_change = dump_json(config_change)
+
+                mock_set.assert_called_once_with(
+                    zk,
+                    '/config/topics/some_topic',
+                    serialized_config,
+                )
+
+                expected_create_call = mock.call(
+                    '/config/changes/config_change_',
+                    serialized_config_change,
                     None,
                     False,
                     True,

@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """"Provide functions to validate and generate a Kafka assignment"""
+from __future__ import absolute_import
+
 import logging
 from collections import Counter
+
+import six
 
 _log = logging.getLogger(__name__)
 
@@ -39,7 +43,7 @@ def assignment_to_plan(assignment):
         [{'topic': t_p[0],
           'partition': t_p[1],
           'replicas': replica
-          } for t_p, replica in assignment.iteritems()]
+          } for t_p, replica in six.iteritems(assignment)]
     }
 
 
@@ -128,7 +132,7 @@ def _validate_plan_base(
     }
     if not allow_rf_change:
         invalid_replication_factor = False
-        for new_partition, replicas in new_partition_replicas.iteritems():
+        for new_partition, replicas in six.iteritems(new_partition_replicas):
             base_replica_cnt = len(base_partition_replicas[new_partition])
             if len(replicas) != base_replica_cnt:
                 invalid_replication_factor = True
@@ -171,7 +175,7 @@ def _validate_format(plan):
         _log.error(
             'Invalid or incomplete keys in given plan. Expected: "version", '
             '"partitions". Found:{keys}'
-            .format(keys=', '.join(plan.keys())),
+            .format(keys=', '.join(list(plan.keys()))),
         )
         return False
 
@@ -201,11 +205,11 @@ def _validate_format(plan):
         if set(p_data.keys()) != set(['topic', 'partition', 'replicas']):
             _log.error(
                 'Invalid keys in partition-data {keys}'
-                .format(keys=', '.join(p_data.keys())),
+                .format(keys=', '.join(list(p_data.keys()))),
             )
             return False
         # Check types
-        if not isinstance(p_data['topic'], unicode):
+        if not isinstance(p_data['topic'], six.text_type):
             _log.error(
                 '"topic" of type unicode expected {p_data}, found {t_type}'
                 .format(p_data=p_data, t_type=type(p_data['topic'])),
@@ -259,7 +263,7 @@ def _validate_plan(plan):
         for p_data in plan['partitions']
     ]
     duplicate_partitions = [
-        partition for partition, count in Counter(partition_names).iteritems()
+        partition for partition, count in six.iteritems(Counter(partition_names))
         if count > 1
     ]
     if duplicate_partitions:
@@ -293,7 +297,7 @@ def _validate_plan(plan):
     for partition_info in plan['partitions']:
         topic = partition_info['topic']
         replication_factor = len(partition_info['replicas'])
-        if topic in topic_replication_factor.keys():
+        if topic in list(topic_replication_factor.keys()):
             if topic_replication_factor[topic] != replication_factor:
                 _log.error(
                     'Mismatch in replication-factor of partitions for topic '

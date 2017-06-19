@@ -1,3 +1,7 @@
+1.1.1 (June 5th, 2017)
+----------------------
+* fix kafka topic config setter
+
 1.1.0 (May 15th, 2017)
 ----------------------
 * Add revoke-leadership feature in kafka-cluster-manager

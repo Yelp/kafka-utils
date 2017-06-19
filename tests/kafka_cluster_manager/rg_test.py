@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import pytest
 from mock import Mock
 from mock import sentinel
@@ -98,7 +100,7 @@ class TestReplicationGroup(object):
         rg_unbalanced.rebalance_brokers()
 
         # No partitions are missing
-        assert sorted(orig_partitions) == sorted(rg_unbalanced.partitions)
+        assert sorted(orig_partitions, key=id) == sorted(rg_unbalanced.partitions, key=id)
         assert_rg_balanced(rg_unbalanced)
 
     def test_rebalance_brokers_one_inactive(
@@ -117,7 +119,7 @@ class TestReplicationGroup(object):
         rg_unbalanced.rebalance_brokers()
 
         # No partitions are missing
-        assert sorted(orig_partitions) == sorted(rg_unbalanced.partitions)
+        assert sorted(orig_partitions, key=id) == sorted(rg_unbalanced.partitions, key=id)
         # b4 has not changed
         assert b4.partitions == set([p51])
         for broker in rg_unbalanced.brokers:
@@ -156,7 +158,7 @@ class TestReplicationGroup(object):
         rg_balanced.rebalance_brokers()
 
         assert broker.empty() is True
-        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        assert sorted(orig_partitions, key=id) == sorted(rg_balanced.partitions, key=id)
         expected_count = len(rg_balanced.partitions) // broker_count
         for broker in rg_balanced.brokers:
             if not broker.decommissioned:
@@ -172,7 +174,7 @@ class TestReplicationGroup(object):
 
         rg_balanced.rebalance_brokers()
 
-        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        assert sorted(orig_partitions, key=id) == sorted(rg_balanced.partitions, key=id)
         assert_rg_balanced(rg_balanced)
 
     def test_rebalance_balanced_inactive_broker(self, rg_balanced):
@@ -260,7 +262,7 @@ class TestReplicationGroup(object):
         rg_balanced.rebalance_brokers()
 
         assert broker.empty() is True
-        assert sorted(orig_partitions) == sorted(rg_balanced.partitions)
+        assert sorted(orig_partitions, key=id) == sorted(rg_balanced.partitions, key=id)
         expected_count = len(rg_balanced.partitions) // broker_count
         for broker in rg_balanced.brokers:
             if not broker.decommissioned:
@@ -306,7 +308,7 @@ class TestReplicationGroup(object):
             sentinel.p1,
         ]
 
-        assert sorted(expected) == sorted(rg.partitions)
+        assert sorted(expected, key=id) == sorted(rg.partitions, key=id)
 
     def test_acquire_partition(self, create_partition):
         p10 = create_partition('t1', 0)

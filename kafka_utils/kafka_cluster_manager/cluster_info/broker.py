@@ -12,7 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+
 import logging
+
+from six.moves import filter
 
 
 class Broker(object):
@@ -189,10 +193,10 @@ class Broker(object):
                 otherwise it moves ahead with next partition.
         """
         # Possible partitions which can grant leadership to broker
-        owned_partitions = filter(
+        owned_partitions = list(filter(
             lambda p: self is not p.leader and len(p.replicas) > 1,
             self.partitions,
-        )
+        ))
         for partition in owned_partitions:
             # Partition not available to grant leadership when:
             # 1. Broker is already under leadership change or
@@ -251,22 +255,22 @@ class Broker(object):
 
         :Algorithm:
         * Over-loaded leader tries to donate its leadership to one of its followers
-        * Follower will be tried to balanced recursively if it becomes over-balanced
+        * Follower will try to be balanced recursively if it becomes over-balanced
         * If it is successful, over-loaded leader moves to next partition if required,
             return otherwise.
         * If it is unsuccessful, it tries for next-follower or next-partition whatever
             or returns if none available.
         """
-        owned_partitions = filter(
+        owned_partitions = list(filter(
             lambda p: self is p.leader and len(p.replicas) > 1,
             self.partitions,
-        )
+        ))
         for partition in owned_partitions:
             # Skip using same partition with broker if already used before
-            potential_new_leaders = filter(
+            potential_new_leaders = list(filter(
                 lambda f: f not in skip_brokers,
                 partition.followers,
-            )
+            ))
             for follower in potential_new_leaders:
                 # Don't swap the broker-pair if already swapped before
                 # in same partition
@@ -278,7 +282,7 @@ class Broker(object):
                 if follower.count_preferred_replica() <= opt_count + 1:
                     # over-broker balanced
                     # If over-broker is the one which needs to be revoked from leadership
-                    # it's considered balanced only if it's preferred replica count is 0
+                    # it's considered balanced only if its preferred replica count is 0
                     if (self.count_preferred_replica() <= opt_count + 1 and not self.revoked_leadership) or \
                             (self.count_preferred_replica() == 0 and self.revoked_leadership):
                         return
@@ -300,7 +304,7 @@ class Broker(object):
                         # New-leader can be reused
                         skip_brokers.remove(follower)
                         # If broker is the one which needs to be revoked from leadership
-                        # it's considered balanced only if it's preferred replica count is 0
+                        # it's considered balanced only if its preferred replica count is 0
                         if (self.count_preferred_replica() <= opt_count + 1 and not self.revoked_leadership) or \
                                 (self.count_preferred_replica() == 0 and self.revoked_leadership):
                             # Now broker is balanced

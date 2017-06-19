@@ -19,6 +19,8 @@ from __future__ import unicode_literals
 import sys
 from collections import OrderedDict
 
+import six
+
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
 from kafka_utils.util.client import KafkaToolClient
@@ -144,8 +146,8 @@ class OffsetGet(OffsetManagerBase):
         """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns a
         similar dict where the topics are sorted by total offset distance."""
         sorted_offsets = sorted(
-            consumer_offsets_metadata.items(),
-            key=lambda (topic, offsets): sum([o.highmark - o.current for o in offsets])
+            list(consumer_offsets_metadata.items()),
+            key=lambda topic_offsets: sum([o.highmark - o.current for o in topic_offsets[1]])
         )
         return OrderedDict(sorted_offsets)
 
@@ -155,9 +157,9 @@ class OffsetGet(OffsetManagerBase):
         similar dict where the topics are sorted by average offset distance
         in percentage."""
         sorted_offsets = sorted(
-            consumer_offsets_metadata.items(),
-            key=lambda (topic, offsets): sum(
-                [cls.percentage_distance(o.highmark, o.current) for o in offsets]
+            list(consumer_offsets_metadata.items()),
+            key=lambda topic_offsets1: sum(
+                [cls.percentage_distance(o.highmark, o.current) for o in topic_offsets1[1]]
             )
         )
         return OrderedDict(sorted_offsets)
@@ -177,11 +179,11 @@ class OffsetGet(OffsetManagerBase):
 
     @classmethod
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
-        for topic, metadata_tuples in consumer_offsets_metadata.iteritems():
+        for topic, metadata_tuples in six.iteritems(consumer_offsets_metadata):
             diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
-            print ("Topic Name: {topic}  Total Distance: {diff}".format(topic=topic, diff=diff_sum))
+            print("Topic Name: {topic}  Total Distance: {diff}".format(topic=topic, diff=diff_sum))
             for metadata_tuple in metadata_tuples:
-                print (
+                print(
                     "\tPartition ID: {partition}".format(
                         partition=metadata_tuple.partition
                     )
