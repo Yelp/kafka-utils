@@ -1,4 +1,4 @@
-ipdb==0.10.0
+ipdb==0.10.3
 ipython==4.2.0
 ipython-genutils==0.1.0
 pre-commit==0.8.0
