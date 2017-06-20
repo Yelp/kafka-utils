@@ -1,6 +1,11 @@
+1.2.0 (June 19th, 2017)
+-----------------------
+* Add python3 support (kennydo)
+* Remove fabric dependency and use paramiko (jparkie)
+
 1.1.1 (June 5th, 2017)
 ----------------------
-* fix kafka topic config setter
+* Fix kafka topic config setter
 
 1.1.0 (May 15th, 2017)
 ----------------------
