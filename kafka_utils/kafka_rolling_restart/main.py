@@ -203,7 +203,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
             under_replicated += json['value']
         except RequestException as e:
             print("Broker {0} is down: {1}."
-                  "This maybe because it is starting up".ormat(host, e), file=sys.stderr)
+                  "This maybe because it is starting up".format(host, e), file=sys.stderr)
             missing_brokers += 1
         except KeyError:
             print("Cannot find the key, Kafka is probably still starting up", file=sys.stderr)
