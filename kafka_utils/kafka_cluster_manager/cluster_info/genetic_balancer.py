@@ -571,6 +571,7 @@ class GeneticBalancer(ClusterBalancer):
             max_score += self.args.partition_weight_cv_score_weight
             max_score += self.args.leader_weight_cv_score_weight
             max_score += self.args.topic_broker_imbalance_score_weight
+            max_score += self.args.broker_partition_count_score_weight
 
         if self.args.max_movement_size is not None and score_movement:
             score += self.args.movement_size_score_weight * \
