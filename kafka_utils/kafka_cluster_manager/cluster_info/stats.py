@@ -39,7 +39,7 @@ def variance(data, data_mean=None):
     return sum((x - data_mean) ** 2 for x in data) / len(data)
 
 
-def standard_deviation(data, data_mean=None, data_variance=None):
+def standard_deviation_p(data, data_mean=None, data_variance=None):
     """Return standard deviation of a sequence of numbers.
     :param data_mean: Precomputed mean of the sequence.
     :param data_variance: Precomputed variance of the sequence.
@@ -51,11 +51,11 @@ def standard_deviation(data, data_mean=None, data_variance=None):
 def coefficient_of_variation(data, data_mean=None, data_stdev=None):
     """Return the coefficient of variation (CV) of a sequence of numbers.
     :param data_mean: Precomputed mean of the sequence.
-    :param data_standard_deviation: Precomputed standard_deviation of the
+    :param data_standard_deviation_p: Precomputed standard_deviation_p of the
         sequence.
     """
     data_mean = data_mean or mean(data)
-    data_stdev = data_stdev or standard_deviation(data, data_mean)
+    data_stdev = data_stdev or standard_deviation_p(data, data_mean)
     if data_mean == 0:
         return float("inf") if data_stdev != 0 else 0
     else:
