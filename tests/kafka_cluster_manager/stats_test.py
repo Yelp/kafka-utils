@@ -28,8 +28,8 @@ def test_variance():
     assert stats.variance([1, 2, 3, 4, 5]) == 2
 
 
-def test_standard_deviation_p():
-    assert stats.standard_deviation_p([1, 2, 3, 4, 5]) == sqrt(2)
+def test_stdevp():
+    assert stats.stdevp([1, 2, 3, 4, 5]) == sqrt(2)
 
 
 def test_coefficient_of_variation():

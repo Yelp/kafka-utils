@@ -181,7 +181,7 @@ def display_partition_imbalance(cluster_topologies):
                 name='' if len(cluster_topologies) == 1 else name + '\n',
                 net_imbalance=stats.get_net_imbalance(bpc),
                 weight_mean=stats.mean(bw),
-                weight_stdev=stats.standard_deviation_p(bw),
+                weight_stdev=stats.stdevp(bw),
                 weight_cv=stats.coefficient_of_variation(bw),
             )
         )
@@ -248,7 +248,7 @@ def display_leader_imbalance(cluster_topologies):
                 name='' if len(cluster_topologies) == 1 else name + '\n',
                 net_imbalance=stats.get_net_imbalance(blc),
                 weight_mean=stats.mean(blw),
-                weight_stdev=stats.standard_deviation_p(blw),
+                weight_stdev=stats.stdevp(blw),
                 weight_cv=stats.coefficient_of_variation(blw),
             )
         )
