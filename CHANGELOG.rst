@@ -1,3 +1,7 @@
+1.3.0 (July 31st, 2017)
+-----------------------
+* Add partition count and leader count to genetic rebalancer criterias
+
 1.2.0 (June 19th, 2017)
 -----------------------
 * Add python3 support (kennydo)
