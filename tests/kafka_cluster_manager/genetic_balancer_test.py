@@ -356,6 +356,12 @@ class Test_State(object):
         """
         assert self.state.broker_leader_weights == (24, 2, 9, 0, 0)
 
+    def test_broker_leader_counts(self):
+        """Test that the broker leader count map has been correctly
+        initialized.
+        """
+        assert self.state.broker_leader_counts == (4, 1, 2, 0, 0)
+
     def test_total_weight(self):
         """Test that the total weight has been correctly initialized."""
         assert self.state.total_weight == 97
@@ -404,6 +410,12 @@ class Test_State(object):
         """Test that the state assignment matches the default_assignment."""
         assert self.state.assignment == default_assignment
 
+    def test_broker_partition_count_cv(self):
+        """Test that broker_partition_count_cv returns the correct value for the
+        default assignment.
+        """
+        assert abs(self.state.broker_partition_count_cv - 0.4527) < 1e-4
+
     def test_broker_weight_cv(self):
         """Test that broker_weight_cv returns the correct value for the
         default assignment.
@@ -415,6 +427,12 @@ class Test_State(object):
         default assignment.
         """
         assert abs(self.state.broker_leader_weight_cv - 1.3030) < 1e-4
+
+    def test_broker_leader_count_cv(self):
+        """Test that broker_leader_count_cv returns the correct value for the
+        default assignment.
+        """
+        assert abs(self.state.broker_leader_count_cv - 1.0690) < 1e-4
 
     def test_weighted_topic_broker_imbalance(self):
         """Test that weighted_topic_broker_imbalance returns the correct value
@@ -438,8 +456,10 @@ class Test_State(object):
             (0, 1, 2),
             (0, 1, 4),
         )
+        assert new_state.broker_partition_counts == (4, 5, 5, 3, 2)
         assert new_state.broker_weights == (24, 26, 23, 12, 12)
         assert new_state.broker_leader_weights == (24, 2, 9, 0, 0)
+        assert new_state.broker_leader_counts == (4, 1, 2, 0, 0)
         assert new_state.topic_broker_count == (
             (0, 1, 2, 1, 0),
             (2, 2, 1, 2, 1),
@@ -447,6 +467,7 @@ class Test_State(object):
             (2, 2, 1, 0, 1),
         )
         assert new_state.topic_broker_imbalance == (1, 0, 0, 1)
+        assert abs(new_state.broker_partition_count_cv - 0.3068) < 1e-4
         assert abs(new_state.broker_weight_cv - 0.3154) < 1e-4
         assert abs(new_state.broker_leader_weight_cv - 1.3030) < 1e-4
         assert abs(new_state.weighted_topic_broker_imbalance - 55 / 97) < 1e-4
@@ -474,8 +495,10 @@ class Test_State(object):
             (0, 1, 2),
             (0, 1, 4),
         )
+        assert new_state.broker_partition_counts == (4, 5, 5, 4, 1)
         assert new_state.broker_weights == (24, 26, 21, 18, 8)
         assert new_state.broker_leader_weights == (24, 2, 3, 6, 0)
+        assert new_state.broker_leader_counts == (4, 1, 1, 1, 0)
         assert new_state.topic_broker_count == (
             (0, 1, 2, 1, 0),
             (2, 2, 2, 2, 0),
@@ -483,6 +506,7 @@ class Test_State(object):
             (2, 2, 1, 0, 1),
         )
         assert new_state.topic_broker_imbalance == (1, 1, 0, 1)
+        assert abs(new_state.broker_partition_count_cv - 0.3867) < 1e-4
         assert abs(new_state.broker_weight_cv - 0.3254) < 1e-4
         assert abs(new_state.broker_leader_weight_cv - 1.2453) < 1e-4
         assert abs(new_state.weighted_topic_broker_imbalance - 91 / 97) < 1e-4
@@ -511,8 +535,10 @@ class Test_State(object):
             (0, 1, 2),
             (3, 1, 4),
         )
+        assert new_state.broker_partition_counts == (3, 4, 5, 4, 3)
         assert new_state.broker_weights == (16, 21, 24, 20, 16)
         assert new_state.broker_leader_weights == (16, 2, 6, 8, 3)
+        assert new_state.broker_leader_counts == (3, 1, 1, 1, 1)
         assert new_state.topic_broker_count == (
             (0, 1, 1, 1, 1),
             (2, 1, 2, 2, 1),
@@ -520,6 +546,7 @@ class Test_State(object):
             (1, 2, 1, 1, 1),
         )
         assert new_state.topic_broker_imbalance == (0, 0, 0, 0)
+        assert abs(new_state.broker_partition_count_cv - 0.1969) < 1e-4
         assert abs(new_state.broker_weight_cv - 0.1584) < 1e-4
         assert abs(new_state.broker_leader_weight_cv - 0.7114) < 1e-4
         assert new_state.weighted_topic_broker_imbalance == 0
@@ -547,6 +574,8 @@ class Test_State(object):
             (0, 1, 2),
             (0, 1, 4),
         )
+        assert new_state.broker_partition_counts == (4, 5, 6, 3, 1)
+        assert new_state.broker_leader_counts == (3, 1, 3, 0, 0)
         assert new_state.broker_leader_weights == (19, 2, 14, 0, 0)
         assert abs(new_state.broker_leader_weight_cv - 1.1357) < 1e-4
         assert new_state.rg_replicas == (
@@ -573,8 +602,10 @@ class Test_State(object):
             (0, 1, 2),
             (0, 1, 4),
         )
+        assert new_state.broker_partition_counts == (4, 5, 6, 3, 2)
         assert new_state.broker_weights == (24, 26, 27, 12, 14)
         assert new_state.broker_leader_weights == (24, 2, 9, 0, 0)
+        assert new_state.broker_leader_counts == (4, 1, 2, 0, 0)
         assert new_state.topic_broker_count == (
             (0, 1, 2, 1, 0),
             (2, 2, 2, 2, 0),
@@ -582,6 +613,7 @@ class Test_State(object):
             (2, 2, 1, 0, 1),
         )
         assert new_state.topic_broker_imbalance == (1, 1, 0, 1)
+        assert abs(new_state.broker_partition_count_cv - 0.3535) < 1e-4
         assert abs(new_state.broker_weight_cv - 0.3064) < 1e-4
         assert abs(new_state.broker_leader_weight_cv - 1.3030) < 1e-4
         assert abs(new_state.weighted_topic_broker_imbalance - 91 / 103) < 1e-4
@@ -609,8 +641,10 @@ class Test_State(object):
             (0, 1),
             (0, 1, 4),
         )
+        assert new_state.broker_partition_counts == (4, 5, 5, 3, 1)
         assert new_state.broker_weights == (24, 26, 20, 12, 8)
         assert new_state.broker_leader_weights == (24, 2, 9, 0, 0)
+        assert new_state.broker_leader_counts == (4, 1, 2, 0, 0)
         assert new_state.topic_broker_count == (
             (0, 1, 2, 1, 0),
             (2, 2, 2, 2, 0),
@@ -621,6 +655,7 @@ class Test_State(object):
         assert abs(new_state.broker_weight_cv - 0.3849) < 1e-4
         assert abs(new_state.broker_leader_weight_cv - 1.3030) < 1e-4
         assert abs(new_state.weighted_topic_broker_imbalance - 122 / 90) < 1e-4
+        assert abs(new_state.broker_partition_count_cv - 0.4157) < 1e-4
         assert new_state.rg_replicas == (
             (1, 0, 2, 2, 0, 2, 3),
             (1, 2, 2, 2, 1, 0, 0),

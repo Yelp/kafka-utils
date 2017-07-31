@@ -49,9 +49,11 @@ DEFAULT_MAX_EXPLORATION = 10000
 # In practice, overall weight is more important than leader weight which is
 # more important than topic-broker imbalance so different weights are used
 # to adjust for this.
-DEFAULT_PARTITION_WEIGHT_CV_SCORE_WEIGHT = 0.6
-DEFAULT_LEADER_WEIGHT_CV_SCORE_WEIGHT = 0.3
+DEFAULT_PARTITION_WEIGHT_CV_SCORE_WEIGHT = 0.40
+DEFAULT_LEADER_WEIGHT_CV_SCORE_WEIGHT = 0.25
 DEFAULT_TOPIC_BROKER_IMBALANCE_SCORE_WEIGHT = 0.1
+DEFAULT_BROKER_PARTITION_COUNT_SCORE_WEIGHT = 0.15
+DEFAULT_BROKER_LEADER_COUNT_SCORE_WEIGHT = 0.10
 # Movement size is included in the scoring function to prevent fewer large
 # movements from being favored over more smaller movements (since only one
 # partition is moved each generation). This weight is smaller than the others
@@ -133,6 +135,20 @@ class GeneticBalancer(ClusterBalancer):
             type=positive_float,
             default=DEFAULT_TOPIC_BROKER_IMBALANCE_SCORE_WEIGHT,
             help='How much to value topic broker imbalance when scoring'
+            'assignments during the genetic algorithm. Default: %(default)',
+        )
+        parser.add_argument(
+            '--broker-partition-count-score-weight',
+            type=positive_float,
+            default=DEFAULT_BROKER_PARTITION_COUNT_SCORE_WEIGHT,
+            help='How much to value partition count imbalance when scoring'
+            'assignments during the genetic algorithm. Default: %(default)',
+        )
+        parser.add_argument(
+            '--broker-leader-count-score-weight',
+            type=positive_float,
+            default=DEFAULT_BROKER_LEADER_COUNT_SCORE_WEIGHT,
+            help='How much to value leader count imbalance when scoring'
             'assignments during the genetic algorithm. Default: %(default)',
         )
         parser.add_argument(
@@ -475,12 +491,6 @@ class GeneticBalancer(ClusterBalancer):
         """
         partition = random.randint(0, len(self.cluster_topology.partitions) - 1)
 
-        # Moving zero weight partitions will not improve balance for any of the
-        # balance criteria. Disallow these movements here to avoid wasted
-        # effort.
-        if state.partition_weights[partition] == 0:
-            return None
-
         # Choose distinct source and destination brokers.
         source = random.choice(state.replicas[partition])
         dest = random.randint(0, len(self.cluster_topology.brokers) - 1)
@@ -564,9 +574,15 @@ class GeneticBalancer(ClusterBalancer):
                 (1 - state.broker_leader_weight_cv / sqrt(len(state.brokers)))
             score += self.args.topic_broker_imbalance_score_weight * \
                 (1 - state.weighted_topic_broker_imbalance)
+            score += self.args.broker_partition_count_score_weight * \
+                (1 - state.broker_partition_count_cv / sqrt(len(state.brokers)))
+            score += self.args.broker_leader_count_score_weight * \
+                (1 - state.broker_leader_count_cv / sqrt(len(state.brokers)))
             max_score += self.args.partition_weight_cv_score_weight
             max_score += self.args.leader_weight_cv_score_weight
             max_score += self.args.topic_broker_imbalance_score_weight
+            max_score += self.args.broker_partition_count_score_weight
+            max_score += self.args.broker_leader_count_score_weight
 
         if self.args.max_movement_size is not None and score_movement:
             score += self.args.movement_size_score_weight * \
@@ -651,6 +667,16 @@ class _State(object):
         # A tuple mapping a broker index to the leader weight of that broker.
         self.broker_leader_weights = tuple(
             broker.leader_weight for broker in self.brokers
+        )
+
+        # A tuple mapping a broker index to the partition count of that broker.
+        self.broker_partition_counts = tuple(
+            len(broker.partitions) for broker in self.brokers
+        )
+
+        # A tuple mapping a broker index to the leader count of that broker.
+        self.broker_leader_counts = tuple(
+            broker.count_preferred_replica() for broker in self.brokers
         )
 
         # The total weight of all partition replicas on the cluster.
@@ -757,12 +783,24 @@ class _State(object):
             (dest, lambda broker_weight: broker_weight + partition_weight),
         )
 
+        # Update the broker partition count
+        new_state.broker_partition_counts = tuple_alter(
+            self.broker_partition_counts,
+            (source, lambda partition_count: partition_count - 1),
+            (dest, lambda partition_count: partition_count + 1),
+        )
+
         # Update the broker leader weights
         if source_index == 0:
             new_state.broker_leader_weights = tuple_alter(
                 self.broker_leader_weights,
                 (source, lambda lw: lw - partition_weight),
                 (dest, lambda lw: lw + partition_weight),
+            )
+            new_state.broker_leader_counts = tuple_alter(
+                self.broker_leader_counts,
+                (source, lambda leader_count: leader_count - 1),
+                (dest, lambda leader_count: leader_count + 1),
             )
             new_state.leader_movement_count += 1
 
@@ -836,6 +874,13 @@ class _State(object):
             )),
         )
 
+        # Update the leader count
+        new_state.broker_leader_counts = tuple_alter(
+            self.broker_leader_counts,
+            (source, lambda leader_count: leader_count - 1),
+            (new_leader, lambda leader_count: leader_count + 1),
+        )
+
         # Update the broker leader weights
         partition_weight = self.partition_weights[partition]
         new_state.broker_leader_weights = tuple_alter(
@@ -856,6 +901,12 @@ class _State(object):
         new_state.replicas = tuple_alter(
             self.replicas,
             (partition, lambda replicas: replicas + (broker, )),
+        )
+
+        # Update the broker partition count
+        new_state.broker_partition_counts = tuple_alter(
+            self.broker_partition_counts,
+            (broker, lambda partition_count: partition_count + 1),
         )
 
         # Update the broker weight
@@ -922,6 +973,12 @@ class _State(object):
         new_state.replicas = tuple_alter(
             self.replicas,
             (partition, lambda replicas: tuple_remove(replicas, broker)),
+        )
+
+        # Update the broker partition count
+        new_state.broker_partition_counts = tuple_alter(
+            self.broker_partition_counts,
+            (broker, lambda partition_count: partition_count - 1),
         )
 
         # Update the broker weight
@@ -995,6 +1052,14 @@ class _State(object):
     def broker_weight_cv(self):
         """Return the coefficient of variation of the weight of the brokers."""
         return coefficient_of_variation(self.broker_weights)
+
+    @property
+    def broker_partition_count_cv(self):
+        return coefficient_of_variation(self.broker_partition_counts)
+
+    @property
+    def broker_leader_count_cv(self):
+        return coefficient_of_variation(self.broker_leader_counts)
 
     @property
     def broker_leader_weight_cv(self):
