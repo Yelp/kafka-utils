@@ -159,7 +159,7 @@ class GeneticBalancer(ClusterBalancer):
             ' during the genetic algorithm. Default: %(default)',
         )
         parser.add_argument(
-            '--leader_change-score-weight',
+            '--leader-change-score-weight',
             type=positive_float,
             default=DEFAULT_LEADER_CHANGE_SCORE_WEIGHT,
             help='How much to value leader changes when scoring assignments'
