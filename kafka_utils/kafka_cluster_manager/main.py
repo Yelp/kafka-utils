@@ -176,13 +176,12 @@ def parse_args():
 
 def exception_logger(exc_type, exc_value, exc_traceback):
     """Log unhandled exceptions"""
-    if issubclass(exc_type, KeyboardInterrupt):  # do not log Ctrl-C
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
-    _log.critical(
-        "Uncaught exception:",
-        exc_info=(exc_type, exc_value, exc_traceback)
-    )
+    if not issubclass(exc_type, KeyboardInterrupt):  # do not log Ctrl-C
+        _log.critical(
+            "Uncaught exception:",
+            exc_info=(exc_type, exc_value, exc_traceback)
+        )
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
 
 def configure_logging(log_conf=None, log_unhandled_exceptions=True):
