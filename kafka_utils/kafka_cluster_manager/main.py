@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
+import sys
 from logging.config import fileConfig
 
 import six.moves.configparser
@@ -173,7 +174,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def configure_logging(log_conf=None):
+def exception_logger(exc_type, exc_value, exc_traceback):
+    """Log unhandled exceptions"""
+    if not issubclass(exc_type, KeyboardInterrupt):  # do not log Ctrl-C
+        _log.critical(
+            "Uncaught exception:",
+            exc_info=(exc_type, exc_value, exc_traceback)
+        )
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+
+def configure_logging(log_conf=None, log_unhandled_exceptions=True):
     if log_conf:
         try:
             fileConfig(log_conf, disable_existing_loggers=False)
@@ -185,6 +196,8 @@ def configure_logging(log_conf=None):
             )
     else:
         logging.basicConfig(level=logging.INFO)
+    if log_unhandled_exceptions:
+        sys.excepthook = exception_logger
 
 
 def run():
