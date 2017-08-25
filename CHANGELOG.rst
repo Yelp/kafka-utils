@@ -1,3 +1,8 @@
+1.3.1 (Aug 25th, 2017)
+-----------------------
+* Add unhandled exception logging to kafka-cluster-manager
+* Fix kafka-cluster-manager-argument
+
 1.3.0 (July 31st, 2017)
 -----------------------
 * Add partition count and leader count to genetic rebalancer criterias
