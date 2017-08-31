@@ -38,6 +38,8 @@ The parameters specific for kafka-rolling-restart are:
 * ``--skip N``: Skip the first N servers. Useful to recover from a partial
   rolling restart. Default 0.
 * ``--verbose``: Turn on verbose output.
+* ``--start-command``: Provide your own custom start command
+* ``--stop-command``: Provide your own custom stop command
 
 Examples
 ========
