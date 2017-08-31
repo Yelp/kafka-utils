@@ -145,14 +145,14 @@ def parse_opts():
         '--start-command',
         type=str,
         help=('Override start command for kafka (do not include sudo)'
-              'Default: %(default)'),
+              'Default: %(default)s'),
         default=DEFAULT_START_COMMAND,
     )
     parser.add_argument(
         '--stop-command',
         type=str,
         help=('Override stop command for kafka (do not include sudo)'
-              'Default: %(default)'),
+              'Default: %(default)s'),
         default=DEFAULT_STOP_COMMAND,
     )
     return parser.parse_args()
