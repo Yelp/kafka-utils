@@ -698,12 +698,7 @@ class TestOffsets(TestOffsetsBase):
             }
         }
 
-        expected_status = [
-            OffsetCommitResponsePayload("topic1", 0, 0),
-            OffsetCommitResponsePayload("topic1", 1, 0),
-            OffsetCommitResponsePayload("topic2", 0, 0),
-            OffsetCommitResponsePayload("topic2", 1, 0),
-        ]
+        expected_status = []
 
         assert set(status) == set(expected_status)
         assert kafka_client_mock.group_offsets == expected_offsets
