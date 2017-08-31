@@ -40,9 +40,6 @@ from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
 
-STOP_COMMAND = "service kafka stop"
-START_COMMAND = "service kafka start"
-
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
 
 DEFAULT_CHECK_INTERVAL_SECS = 10
@@ -50,6 +47,8 @@ DEFAULT_CHECK_COUNT = 12
 DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
+DEFAULT_STOP_COMMAND = "service kafka stop"
+DEFAULT_START_COMMAND = "service kafka start"
 
 
 class WaitTimeoutException(Exception):
@@ -141,6 +140,20 @@ def parse_opts():
         type=str,
         action='append',
         help='Arguements which are needed by the task(prestoptask or poststoptask).'
+    )
+    parser.add_argument(
+        '--start-command',
+        type=str,
+        help=('Override start command for kafka (do not include sudo)'
+              'Default: %(default)'),
+        default=DEFAULT_START_COMMAND,
+    )
+    parser.add_argument(
+        '--stop-command',
+        type=str,
+        help=('Override stop command for kafka (do not include sudo)'
+              'Default: %(default)'),
+        default=DEFAULT_STOP_COMMAND,
     )
     return parser.parse_args()
 
@@ -241,17 +254,17 @@ def ask_confirmation():
             print("Please respond with 'yes' or 'no'")
 
 
-def start_broker(host, connection, verbose):
+def start_broker(host, connection, start_command, verbose):
     """Execute the start"""
-    _, stdout, stderr = connection.sudo_command(START_COMMAND)
+    _, stdout, stderr = connection.sudo_command(start_command)
     if verbose:
         report_stdout(host, stdout)
         report_stderr(host, stderr)
 
 
-def stop_broker(host, connection, verbose):
+def stop_broker(host, connection, stop_command, verbose):
     """Execute the stop"""
-    _, stdout, stderr = connection.sudo_command(STOP_COMMAND)
+    _, stdout, stderr = connection.sudo_command(stop_command)
     if verbose:
         report_stdout(host, stdout)
         report_stderr(host, stderr)
@@ -329,6 +342,8 @@ def execute_rolling_restart(
     verbose,
     pre_stop_task,
     post_stop_task,
+    start_command,
+    stop_command
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -356,9 +371,13 @@ def execute_rolling_restart(
     :param verbose: print commend execution information
     :type verbose: bool
     :param pre_stop_task: a list of tasks to execute before running stop
-    :type pre_stop_tasks: list
+    :type pre_stop_task: list
     :param post_stop_task: a list of task to execute after running stop
     :type post_stop_task: list
+    :param start_command: the start command for kafka
+    :type start_command: string
+    :param stop_command: the stop command for kafka
+    :type stop_command: string
     """
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
@@ -373,10 +392,10 @@ def execute_rolling_restart(
                 unhealthy_time_limit,
             )
             print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            stop_broker(host, connection, verbose)
+            stop_broker(host, connection, stop_command, verbose)
             execute_task(post_stop_task, host)
             print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            start_broker(host, connection, verbose)
+            start_broker(host, connection, start_command, verbose)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
@@ -476,6 +495,8 @@ def run():
                 opts.verbose,
                 pre_stop_tasks,
                 post_stop_tasks,
+                opts.start_command,
+                opts.stop_command
             )
         except TaskFailedException:
             print("ERROR: pre/post tasks failed, exiting")
