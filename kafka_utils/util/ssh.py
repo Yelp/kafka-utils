@@ -133,7 +133,7 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
                     cfg["sock"] = ProxyCommand(host_config["proxycommand"])
 
                 if "identityfile" in host_config:
-                    cfg['key_filename'] = host_config['identityfile'][0]
+                    cfg['key_filename'] = host_config['identityfile']
 
                 if "port" in host_config:
                     cfg["port"] = int(host_config["port"])
