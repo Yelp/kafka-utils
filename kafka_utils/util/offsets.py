@@ -545,7 +545,8 @@ def set_consumer_offsets(
             callback=_check_commit_response_error
         )
 
-    return [_f for _f in status if _f]
+    return [_f for _f in status
+            if _f and _f.error != 0]
 
 
 def _nullify_partition_offsets(partition_offsets):

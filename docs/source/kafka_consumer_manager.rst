@@ -120,7 +120,7 @@ command takes a group id, and a set of topics, partitions, and offsets.
 
 .. code-block:: bash
 
-   $ kafka-consumer-manager --cluster-type test --cluster-name my_cluster offset_set my_group topic1.0.38531
+   $ kafka-consumer-manager --cluster-type test --cluster-name my_cluster offset_set my_group topic1.0=38531
 
 There is also an :code:`offset_advance` command, which will advance the current offset
 to the same value as the high watermark of a topic, and an :code:`offset_rewind`
