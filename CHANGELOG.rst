@@ -1,4 +1,10 @@
-1.3.1 (Aug 25th, 2017)
+1.3.2 (September 13th, 2017)
+----------------------------
+* Add ssh config support to kafka-rolling-restarat (stephane)
+* Add custom start and stop command to kafka-rolling-restart (stephane)
+* Fix documentation for offset_get command
+
+1.3.1 (August 25th, 2017)
 -----------------------
 * Add unhandled exception logging to kafka-cluster-manager
 * Fix kafka-cluster-manager-argument
