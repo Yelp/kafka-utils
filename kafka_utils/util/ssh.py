@@ -22,6 +22,9 @@ import time
 from contextlib import closing
 from contextlib import contextmanager
 
+import os
+
+from paramiko import SSHConfig, ProxyCommand
 from paramiko.agent import AgentRequestHandler
 from paramiko.client import AutoAddPolicy
 from paramiko.client import SSHClient
@@ -91,6 +94,7 @@ class Connection:
 @contextmanager
 def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5):
     """Manages a SSH connection to the desired host.
+       Will leverage your ssh config at ~/.ssh/config if available
 
     :param host: the server to connect to
     :type host: str
@@ -111,11 +115,34 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
     with closing(SSHClient()) as client:
         client.set_missing_host_key_policy(AutoAddPolicy())
 
+        cfg = {
+            "hostname": host,
+            "timeout": max_timeout,
+        }
+
+        ssh_config = SSHConfig()
+        user_config_file = os.path.expanduser("~/.ssh/config")
+        if os.path.exists(user_config_file):
+            with open(user_config_file) as f:
+                ssh_config.parse(f)
+                host_config = ssh_config.lookup(host)
+                if "user" in host_config:
+                    cfg["username"] = host_config["user"]
+
+                if "proxycommand" in host_config:
+                    cfg["sock"] = ProxyCommand(host_config["proxycommand"])
+
+                if "identityfile" in host_config:
+                    cfg['key_filename'] = host_config['identityfile']
+
+                if "port" in host_config:
+                    cfg["port"] = int(host_config["port"])
+
         attempts = 0
         while attempts < max_attempts:
             try:
                 attempts += 1
-                client.connect(hostname=host, timeout=max_timeout)
+                client.connect(**cfg)
                 break
             except socket.error:
                 if attempts < max_attempts:
