@@ -1,3 +1,7 @@
+1.3.3 (September 26th, 2017)
+----------------------------
+* Refresh ssh connection after post_stop task (simplesteph)
+
 1.3.2 (September 13th, 2017)
 ----------------------------
 * Add ssh config support to kafka-rolling-restarat (stephane)
