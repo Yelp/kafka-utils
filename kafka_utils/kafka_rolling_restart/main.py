@@ -394,6 +394,8 @@ def execute_rolling_restart(
             print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
             stop_broker(host, connection, stop_command, verbose)
             execute_task(post_stop_task, host)
+        # we open a new SSH connection in case the hostname has a new IP
+        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2) as connection:
             print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
             start_broker(host, connection, start_command, verbose)
     # Wait before terminating the script
