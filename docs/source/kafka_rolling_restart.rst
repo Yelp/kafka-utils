@@ -79,7 +79,7 @@ of this is provided below:
                 )
 
            def run(self, host):
-                // Execute Commands on the host
+                # Execute Commands on the host
 
 Create a file named :code:`check_version.py` into a directory containing the
 :code:`__init__.py`. 
@@ -99,3 +99,4 @@ To use the custom task:
 
    $ kafka-rolling-restart --cluster-type <cluster-type> --cluster-name <cluster-name> --task tasks.check_version --task-args "--package-name 0.10.2.0"
 
+Note: Incase you get a module not found exception, remember to set the variable :code:`export PYTHONPATH=$(pwd)`
