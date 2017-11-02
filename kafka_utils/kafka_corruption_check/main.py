@@ -92,8 +92,8 @@ def parse_args():
     parser.add_argument(
         '--cluster-type',
         '-t',
-        required=True,
-        help='cluster type, e.g. "generic"',
+        default=None,
+        help='Type of cluster. If not specified and there is only 1 cluster type configured, it will use that one.',
     )
     parser.add_argument(
         '--cluster-name',

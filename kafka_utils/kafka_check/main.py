@@ -54,8 +54,7 @@ def parse_args():
         "--cluster-type",
         "-t",
         dest='cluster_type',
-        required=True,
-        help='Type of cluster',
+        help='Type of cluster. If not specified and there is only 1 cluster type configured, it will use that one.',
         default=None,
     )
     parser.add_argument(
