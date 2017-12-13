@@ -170,7 +170,7 @@ class OffsetGet(OffsetManagerBase):
             return get_consumer_offsets_metadata(
                 client, group, topics_dict, False, storage,
             )
-        except:
+        except Exception:
             print(
                 "Error: Encountered error with Kafka, please try again later.",
                 file=sys.stderr
