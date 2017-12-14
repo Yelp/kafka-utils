@@ -330,7 +330,7 @@ def wait_for_broker_shutdown(host, jolokia_port, jolokia_prefix, stop_check_inte
             print("Broker is stopped")
             return
         else:
-            print("Broker is in state {state}... ({i}/{limit}".format(state=broker_state, i=i, limit=max_checks))
+            print("Broker is in state {state}... ({i}/{limit})".format(state=broker_state, i=i, limit=max_checks))
         if i >= max_checks:
             raise WaitTimeoutException()
         time.sleep(stop_check_interval)
