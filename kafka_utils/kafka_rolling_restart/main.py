@@ -316,7 +316,7 @@ def read_broker_state(host, jolokia_port, jolokia_prefix):
         print("Broker {0} is down: {1}.".format(host, e), file=sys.stderr)
         broker_state = 0
     except KeyError:
-        print("Cannot find the key, Kafka is probably still starting up", file=sys.stderr)
+        print("Cannot find the key, Kafka is probably starting up or shutting down", file=sys.stderr)
         broker_state = 1
     return broker_state, broker_state_strings[broker_state]
 
