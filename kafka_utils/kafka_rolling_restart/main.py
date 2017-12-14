@@ -295,7 +295,8 @@ def read_broker_state(host, jolokia_port, jolokia_prefix):
                             2: "RecoveringFromUncleanShutdown",
                             3: "RunningAsBroker",
                             6: "PendingControlledShutdown",
-                            7: "BrokerShuttingDown"}
+                            7: "BrokerShuttingDown",
+                            -1: "Unavailable"}  # Added for when Jolokia is connecting, but not returning values
     broker_state = 0   # Assume not running unless we get a state
     session = FuturesSession()
     url = "http://{host}:{port}/{prefix}/read/{key}".format(
@@ -317,7 +318,7 @@ def read_broker_state(host, jolokia_port, jolokia_prefix):
         broker_state = 0
     except KeyError:
         print("Cannot find the key, Kafka is probably starting up or shutting down", file=sys.stderr)
-        broker_state = 1
+        broker_state = -1
     return broker_state, broker_state_strings[broker_state]
 
 
