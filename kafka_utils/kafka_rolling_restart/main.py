@@ -45,7 +45,7 @@ BROKER_STATE_KEY = "kafka.server:name=BrokerState,type=KafkaServer/Value"
 
 DEFAULT_CHECK_INTERVAL_SECS = 10
 DEFAULT_CHECK_COUNT = 12
-DEFAULT_STOP_CHECK_INTERVAL_SECS = 30
+DEFAULT_STOP_CHECK_INTERVAL_SECS = 10
 DEFAULT_STOP_CHECK_TIME_LIMIT = 600
 DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
@@ -326,6 +326,8 @@ def wait_for_broker_shutdown(host, jolokia_port, jolokia_prefix, stop_check_inte
     """Checks the broker state through JMX to wait for a clean shutdown."""
     max_checks = int(math.ceil(stop_check_time_limit / stop_check_interval))
     for i in itertools.count():
+        # Start with the sleep to hopefully avoid unavailable states from read_broker_state()
+        time.sleep(stop_check_interval)
         broker_state_int, broker_state = read_broker_state(host, jolokia_port, jolokia_prefix)
         if broker_state_int == 0:
             print("Broker is stopped")
@@ -334,7 +336,6 @@ def wait_for_broker_shutdown(host, jolokia_port, jolokia_prefix, stop_check_inte
             print("Broker is in state {state}... ({i}/{limit})".format(state=broker_state, i=i, limit=max_checks))
         if i >= max_checks:
             raise WaitTimeoutException()
-        time.sleep(stop_check_interval)
 
 
 def wait_for_stable_cluster(
