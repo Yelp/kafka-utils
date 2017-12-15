@@ -577,8 +577,8 @@ def run():
                 opts.stop_check_time_limit
             )
         except TaskFailedException:
-            print("ERROR: pre/post tasks failed, exiting")
+            print("ERROR: pre/post tasks failed, exiting: {e}".format(e=repr(e)))
             sys.exit(1)
         except WaitTimeoutException:
-            print("ERROR: cluster is still unhealthy, exiting")
+            print("ERROR: cluster is still unhealthy, exiting: {e}".format(e=repr(e)))
             sys.exit(1)
