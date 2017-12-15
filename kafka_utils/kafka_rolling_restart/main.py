@@ -41,9 +41,12 @@ from kafka_utils.util.zookeeper import ZK
 
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
+BROKER_STATE_KEY = "kafka.server:name=BrokerState,type=KafkaServer/Value"
 
 DEFAULT_CHECK_INTERVAL_SECS = 10
 DEFAULT_CHECK_COUNT = 12
+DEFAULT_STOP_CHECK_INTERVAL_SECS = 10
+DEFAULT_STOP_CHECK_TIME_LIMIT = 600
 DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
@@ -89,6 +92,20 @@ def parse_opts():
               'before restarting the next broker. Default: %(default)s'),
         type=int,
         default=DEFAULT_CHECK_COUNT,
+    )
+    parser.add_argument(
+        '--stop-check-interval',
+        help=('the interval between each broker shut down check, in seconds. '
+              'Default: %(default)s seconds'),
+        type=int,
+        default=DEFAULT_STOP_CHECK_INTERVAL_SECS,
+    )
+    parser.add_argument(
+        '--stop-check-time-limit',
+        help=('the maximum number of seconds to wait for a clean broker shutdown '
+              'before stopping the rolling restart. Default: %(default)s'),
+        type=int,
+        default=DEFAULT_STOP_CHECK_TIME_LIMIT,
     )
     parser.add_argument(
         '--unhealthy-time-limit',
@@ -270,6 +287,58 @@ def stop_broker(host, connection, stop_command, verbose):
         report_stderr(host, stderr)
 
 
+def read_broker_state(host, jolokia_port, jolokia_prefix):
+    """Reads the broker state from JMX"""
+    # From https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/server/BrokerStates.scala
+    broker_state_strings = {0: "NotRunning",
+                            1: "Starting",
+                            2: "RecoveringFromUncleanShutdown",
+                            3: "RunningAsBroker",
+                            6: "PendingControlledShutdown",
+                            7: "BrokerShuttingDown",
+                            -1: "Unavailable"}  # Added for when Jolokia is connecting, but not returning values
+    broker_state = 0   # Assume not running unless we get a state
+    session = FuturesSession()
+    url = "http://{host}:{port}/{prefix}/read/{key}".format(
+        host=host,
+        port=jolokia_port,
+        prefix=jolokia_prefix,
+        key=BROKER_STATE_KEY,
+    )
+    request = session.get(url)
+    try:
+        response = request.result()
+        if 400 <= response.status_code <= 599:
+            print("Got status code {0}. Exiting.".format(response.status_code))
+            sys.exit(1)
+        json = response.json()
+        broker_state = json['value']
+    except RequestException as e:
+        print("Broker {0} is down: {1}.".format(host, e), file=sys.stderr)
+        broker_state = 0
+    except KeyError:
+        print("Cannot find the JMX key, Kafka is probably starting up or shutting down", file=sys.stderr)
+        broker_state = -1
+    return broker_state, broker_state_strings[broker_state]
+
+
+def wait_for_broker_shutdown(host, jolokia_port, jolokia_prefix, stop_check_interval, stop_check_time_limit):
+    """Checks the broker state through JMX to wait for a clean shutdown."""
+    max_checks = int(math.ceil(stop_check_time_limit / stop_check_interval))
+    for i in itertools.count():
+        # Start with the sleep to hopefully avoid unavailable states from read_broker_state()
+        time.sleep(stop_check_interval)
+        broker_state_int, broker_state = read_broker_state(host, jolokia_port, jolokia_prefix)
+        if broker_state_int == 0:
+            print("Broker is stopped")
+            return
+        else:
+            print("Broker is in state {state}... ({i}/{limit})".format(state=broker_state, i=i, limit=max_checks))
+        if i >= max_checks:
+            raise WaitTimeoutException('Exceeded stop_check_time_limit while waiting for broker to shut down. '
+                                       'You will need to manually restart the broker at {host}'.format(host=host))
+
+
 def wait_for_stable_cluster(
     hosts,
     jolokia_port,
@@ -343,7 +412,9 @@ def execute_rolling_restart(
     pre_stop_task,
     post_stop_task,
     start_command,
-    stop_command
+    stop_command,
+    stop_check_interval,
+    stop_check_time_limit
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -352,6 +423,8 @@ def execute_rolling_restart(
     when all the brokers are answering and are reporting zero under replicated
     partitions.
 
+    :param stop_check_time_limit: max number of seconds to wait for clean broker shutdown before failing
+    :param stop_check_interval: number of seconds between each check for broker shutdown
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
     :param jolokia_port: HTTP port for Jolokia
@@ -393,6 +466,7 @@ def execute_rolling_restart(
             )
             print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
             stop_broker(host, connection, stop_command, verbose)
+            wait_for_broker_shutdown(host, jolokia_port, jolokia_prefix, stop_check_interval, stop_check_time_limit)
             execute_task(post_stop_task, host)
         # we open a new SSH connection in case the hostname has a new IP
         with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2) as connection:
@@ -498,11 +572,13 @@ def run():
                 pre_stop_tasks,
                 post_stop_tasks,
                 opts.start_command,
-                opts.stop_command
+                opts.stop_command,
+                opts.stop_check_interval,
+                opts.stop_check_time_limit
             )
         except TaskFailedException:
-            print("ERROR: pre/post tasks failed, exiting")
+            print("ERROR: pre/post tasks failed, exiting: {e}".format(e=repr(e)))
             sys.exit(1)
         except WaitTimeoutException:
-            print("ERROR: cluster is still unhealthy, exiting")
+            print("ERROR: cluster is still unhealthy, exiting: {e}".format(e=repr(e)))
             sys.exit(1)
