@@ -335,7 +335,8 @@ def wait_for_broker_shutdown(host, jolokia_port, jolokia_prefix, stop_check_inte
         else:
             print("Broker is in state {state}... ({i}/{limit})".format(state=broker_state, i=i, limit=max_checks))
         if i >= max_checks:
-            raise WaitTimeoutException()
+            raise WaitTimeoutException('Exceeded stop_check_time_limit while waiting for broker to shut down. '
+                                       'You will need to manually restart the broker at {host}'.format(host=host))
 
 
 def wait_for_stable_cluster(
@@ -422,6 +423,8 @@ def execute_rolling_restart(
     when all the brokers are answering and are reporting zero under replicated
     partitions.
 
+    :param stop_check_time_limit: max number of seconds to wait for clean broker shutdown before failing
+    :param stop_check_interval: number of seconds between each check for broker shutdown
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
     :param jolokia_port: HTTP port for Jolokia
