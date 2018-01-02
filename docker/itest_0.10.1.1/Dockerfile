@@ -35,7 +35,7 @@ ENV PATH="$PATH:$KAFKA_HOME/bin"
 
 # Install Python
 RUN apt-get update \
-  && add-apt-repository -y ppa:fkrull/deadsnakes \
+  && add-apt-repository -y ppa:deadsnakes/ppa \
   && apt-get update \
   && apt-get install -y \
     build-essential \
