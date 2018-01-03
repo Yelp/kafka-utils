@@ -155,7 +155,7 @@ class RenameGroup(OffsetManagerBase):
                     groupid=old_groupid,
                 )
                 zk.delete(old_base_path, recursive=True)
-            except:
+            except Exception:
                 print(
                     "Error: Unable to migrate all metadata in Zookeeper. "
                     "Please re-run the command.",

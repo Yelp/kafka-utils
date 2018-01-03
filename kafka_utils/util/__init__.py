@@ -28,10 +28,10 @@ def tuple_replace(tup, *pairs):
     :param pairs: Any number of (index, value) tuples where index is the index
         of the item to replace and value is the new value of the item.
     """
-    l = list(tup)
+    tuple_list = list(tup)
     for index, value in pairs:
-        l[index] = value
-    return tuple(l)
+        tuple_list[index] = value
+    return tuple(tuple_list)
 
 
 def tuple_alter(tup, *pairs):
@@ -42,10 +42,10 @@ def tuple_alter(tup, *pairs):
         of the item to alter and the new value is func(tup[index]).
     """
     # timeit says that this is faster than a similar
-    l = list(tup)
+    tuple_list = list(tup)
     for i, f in pairs:
-        l[i] = f(l[i])
-    return tuple(l)
+        tuple_list[i] = f(tuple_list[i])
+    return tuple(tuple_list)
 
 
 def tuple_remove(tup, *items):
@@ -55,10 +55,10 @@ def tuple_remove(tup, *items):
     :param items: Any number of items. The first instance of each item will
         be removed from the tuple.
     """
-    l = list(tup)
+    tuple_list = list(tup)
     for item in items:
-        l.remove(item)
-    return tuple(l)
+        tuple_list.remove(item)
+    return tuple(tuple_list)
 
 
 def positive_int(string):
