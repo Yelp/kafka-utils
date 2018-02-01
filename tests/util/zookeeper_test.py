@@ -14,11 +14,16 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+from collections import namedtuple
+
 import mock
 
 from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.serialization import dump_json
 from kafka_utils.util.zookeeper import ZK
+
+
+TestGetTopics = namedtuple('TestGetTopics', ['ctime'])
 
 
 @mock.patch(
@@ -253,3 +258,58 @@ class TestZK(object):
                     False
                 )
                 assert mock_client.return_value.create.call_args_list == [expected_create_call]
+
+    def test_get_topics(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.zk.get = mock.Mock(
+                return_value=(
+                    (
+                        b'{"version": "1", "partitions": {"0": [1, 0]}}',
+                        TestGetTopics(31000),
+                    )
+                )
+            )
+
+            zk._fetch_partition_state = mock.Mock(
+                return_value=(
+                    (
+                        b'{"version": "2"}',
+                        TestGetTopics(32000),
+                    )
+                )
+            )
+
+            actual_with_fetch_state = zk.get_topics("some_topic")
+            expected_with_fetch_state = {
+                'some_topic': {
+                    'ctime': 31.0,
+                    'partitions': {
+                        '0': {
+                            'replicas': [1, 0],
+                            'ctime': 32.0,
+                            'version': '2',
+                        },
+                    },
+                    'version': '1',
+                },
+            }
+            assert actual_with_fetch_state == expected_with_fetch_state
+
+            zk._fetch_partition_info = mock.Mock(
+                return_value=TestGetTopics(33000)
+            )
+
+            actual_without_fetch_state = zk.get_topics("some_topic", fetch_partition_state=False)
+            expected_without_fetch_state = {
+                'some_topic': {
+                    'ctime': 31.0,
+                    'partitions': {
+                        '0': {
+                            'replicas': [1, 0],
+                            'ctime': 33.0,
+                        },
+                    },
+                    'version': '1',
+                },
+            }
+            assert actual_without_fetch_state == expected_without_fetch_state

@@ -200,6 +200,7 @@ class ZK:
         Topic-data format with fetch_partition_state as True:-
         topic_data = {
             'version': 1,
+            'ctime': <timestamp>,
             'partitions': {
                 <p_id>:{
                     replicas: [<broker_id>, <broker_id>, ...],
@@ -208,6 +209,8 @@ class ZK:
                     leader_epoch: <val>,
                     version: 1,
                     leader: <broker-id>,
+                    ctime: <timestamp>,
+                }
             }
         }
         Note: By default we also fetch partition-state which results in
@@ -222,9 +225,10 @@ class ZK:
         topics_data = {}
         for topic_id in topic_ids:
             try:
-                topic_data = load_json(
-                    self.get("/brokers/topics/{id}".format(id=topic_id))[0],
-                )
+                topic_info = self.get("/brokers/topics/{id}".format(id=topic_id))
+                topic_data = load_json(topic_info[0])
+                topic_ctime = topic_info[1].ctime / 1000.0
+                topic_data['ctime'] = topic_ctime
             except NoNodeError:
                 _log.error(
                     "topic '{topic}' not found.".format(topic=topic_id),
@@ -236,7 +240,13 @@ class ZK:
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
-                    partitions_data[p_id] = self._fetch_partition_state(topic_id, p_id)
+                    partition_state = self._fetch_partition_state(topic_id, p_id)
+                    partitions_data[p_id] = load_json(partition_state[0])
+                    partitions_data[p_id]['ctime'] = partition_state[1].ctime / 1000.0
+                else:
+                    # Fetch partition-info from zookeeper
+                    partition_info = self._fetch_partition_info(topic_id, p_id)
+                    partitions_data[p_id]['ctime'] = partition_info.ctime / 1000.0
                 partitions_data[p_id]['replicas'] = replicas
             topic_data['partitions'] = partitions_data
             topics_data[topic_id] = topic_data
@@ -348,10 +358,21 @@ class ZK:
         """Fetch partition-state for given topic-partition."""
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
         try:
-            partition_json, _ = self.get(
+            partition_state = self.get(
                 state_path.format(topic_id=topic_id, p_id=partition_id),
             )
-            return load_json(partition_json)
+            return partition_state
+        except NoNodeError:
+            return {}  # The partition has no data
+
+    def _fetch_partition_info(self, topic_id, partition_id):
+        """Fetch partition info for given topic-partition."""
+        info_path = "/brokers/topics/{topic_id}/partitions/{p_id}"
+        try:
+            _, partition_info = self.get(
+                info_path.format(topic_id=topic_id, p_id=partition_id),
+            )
+            return partition_info
         except NoNodeError:
             return {}  # The partition has no data
 
