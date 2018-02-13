@@ -1,3 +1,12 @@
+1.4.1 (February 13th, 2018)
+----------------------------
+* Update CHANGELOG.rst for version 1.4.0
+
+1.4.0 (February 9th, 2018)
+----------------------------
+* Add fetching creation time of topic and partition from zookeeper
+* Fix build for kafka 0.10
+
 1.3.3 (September 26th, 2017)
 ----------------------------
 * Refresh ssh connection after post_stop task (simplesteph)
