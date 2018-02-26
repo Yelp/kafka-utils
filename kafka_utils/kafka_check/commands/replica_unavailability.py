@@ -34,17 +34,18 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
     def run_command(self):
         """replica_unavailability command, checks number of replicas not available
         for communication over all brokers in the Kafka cluster."""
-        replica_unavailability = get_topic_partition_with_error(
+        replica_unavailability, unavailable_brokers = get_topic_partition_with_error(
             self.cluster_config,
             REPLICA_NOT_AVAILABLE_ERROR,
+            get_unavailable_brokers=True,
         )
 
         errcode = status_code.OK if not replica_unavailability else status_code.CRITICAL
-        out = _prepare_output(replica_unavailability, self.args.verbose)
+        out = _prepare_output(replica_unavailability, unavailable_brokers, self.args.verbose)
         return errcode, out
 
 
-def _prepare_output(partitions, verbose):
+def _prepare_output(partitions, unavailable_brokers, verbose):
     """Returns dict with 'raw' and 'message' keys filled."""
     partitions_count = len(partitions)
     out = {}
@@ -55,8 +56,10 @@ def _prepare_output(partitions, verbose):
     if partitions_count == 0:
         out['message'] = 'All replicas available for communication.'
     else:
-        out['message'] = "{replica_unavailability} replicas unavailable for communication.".format(
+        out['message'] = "{replica_unavailability} replicas unavailable for communication. " \
+            "Unavailable Brokers: {unavailable_brokers}".format(
             replica_unavailability=partitions_count,
+            unavailable_brokers=', '.join([str(e) for e in unavailable_brokers]),
         )
         if verbose:
             lines = (
