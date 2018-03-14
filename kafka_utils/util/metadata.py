@@ -43,6 +43,14 @@ def get_topic_partition_metadata(hosts):
     return topic_partitions
 
 
+def get_unavailable_brokers(zk, partition_metadata, unavailable_brokers):
+    topic_data = zk.get_topics(partition_metadata.topic)
+    return unavailable_brokers.union(
+        set(topic_data[partition_metadata.topic]['partitions']
+            [str(partition_metadata.partition)]['replicas']) - set(partition_metadata.replicas)
+    )
+
+
 def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brokers=False):
     """Fetches the metadata from the cluster and returns the set of
     (topic, partition) tuples containing all the topic-partitions
@@ -53,15 +61,13 @@ def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brok
     affected_partitions = set()
     if fetch_unavailable_brokers:
         unavailable_brokers = set([])
-    for partitions in metadata.values():
-        for partition_metadata in partitions.values():
-            if int(partition_metadata.error) == error:
-                if fetch_unavailable_brokers:
-                    with ZK(cluster_config) as zk:
-                        topic_data = zk.get_topics(partition_metadata.topic)
-                        unavailable_brokers = unavailable_brokers.union(set(topic_data[partition_metadata.topic]['partitions']
-                                                                            [str(partition_metadata.partition)]['replicas']) - set(partition_metadata.replicas))
-                affected_partitions.add((partition_metadata.topic, partition_metadata.partition))
+    with ZK(cluster_config) as zk:
+        for partitions in metadata.values():
+            for partition_metadata in partitions.values():
+                if int(partition_metadata.error) == error:
+                    if fetch_unavailable_brokers:
+                        unavailable_brokers = get_unavailable_brokers(zk, partition_metadata, unavailable_brokers)
+                    affected_partitions.add((partition_metadata.topic, partition_metadata.partition))
 
     if fetch_unavailable_brokers:
         return affected_partitions, unavailable_brokers
