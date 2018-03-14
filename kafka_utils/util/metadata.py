@@ -43,12 +43,16 @@ def get_topic_partition_metadata(hosts):
     return topic_partitions
 
 
-def get_unavailable_brokers(zk, partition_metadata, unavailable_brokers):
+def get_unavailable_brokers(zk, partition_metadata):
+    """Returns the set of unavailable brokers from the difference of replica
+    set of given partition to the set of available replicas.
+    """
     topic_data = zk.get_topics(partition_metadata.topic)
-    return unavailable_brokers.union(
-        set(topic_data[partition_metadata.topic]['partitions']
-            [str(partition_metadata.partition)]['replicas']) - set(partition_metadata.replicas)
-    )
+    topic = partition_metadata.topic
+    partition = partition_metadata.partition
+    expected_replicas = set(topic_data[topic]['partitions'][str(partition)]['replicas'])
+    available_replicas = set(partition_metadata.replicas)
+    return expected_replicas - available_replicas
 
 
 def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brokers=False):
@@ -66,7 +70,7 @@ def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brok
             for partition_metadata in partitions.values():
                 if int(partition_metadata.error) == error:
                     if fetch_unavailable_brokers:
-                        unavailable_brokers = get_unavailable_brokers(zk, partition_metadata, unavailable_brokers)
+                        unavailable_brokers |= get_unavailable_brokers(zk, partition_metadata)
                     affected_partitions.add((partition_metadata.topic, partition_metadata.partition))
 
     if fetch_unavailable_brokers:
