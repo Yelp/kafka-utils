@@ -60,7 +60,7 @@ def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brok
     metadata = get_topic_partition_metadata(cluster_config.broker_list)
     affected_partitions = set()
     if fetch_unavailable_brokers:
-        unavailable_brokers = set([])
+        unavailable_brokers = set()
     with ZK(cluster_config) as zk:
         for partitions in metadata.values():
             for partition_metadata in partitions.values():
