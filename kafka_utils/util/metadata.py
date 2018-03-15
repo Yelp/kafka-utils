@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from kafka.structs import PartitionMetadata
 
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.zookeeper import ZK
 
 
 LEADER_NOT_AVAILABLE_ERROR = 5
@@ -42,16 +43,37 @@ def get_topic_partition_metadata(hosts):
     return topic_partitions
 
 
-def get_topic_partition_with_error(cluster_config, error):
+def get_unavailable_brokers(zk, partition_metadata):
+    """Returns the set of unavailable brokers from the difference of replica
+    set of given partition to the set of available replicas.
+    """
+    topic_data = zk.get_topics(partition_metadata.topic)
+    topic = partition_metadata.topic
+    partition = partition_metadata.partition
+    expected_replicas = set(topic_data[topic]['partitions'][str(partition)]['replicas'])
+    available_replicas = set(partition_metadata.replicas)
+    return expected_replicas - available_replicas
+
+
+def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brokers=False):
     """Fetches the metadata from the cluster and returns the set of
     (topic, partition) tuples containing all the topic-partitions
-    currently affected by the specified error"""
+    currently affected by the specified error. It also fetches unavailable-broker list
+    if required."""
 
     metadata = get_topic_partition_metadata(cluster_config.broker_list)
     affected_partitions = set()
-    for partitions in metadata.values():
-        for partition_metadata in partitions.values():
-            if int(partition_metadata.error) == error:
-                affected_partitions.add((partition_metadata.topic, partition_metadata.partition))
+    if fetch_unavailable_brokers:
+        unavailable_brokers = set()
+    with ZK(cluster_config) as zk:
+        for partitions in metadata.values():
+            for partition_metadata in partitions.values():
+                if int(partition_metadata.error) == error:
+                    if fetch_unavailable_brokers:
+                        unavailable_brokers |= get_unavailable_brokers(zk, partition_metadata)
+                    affected_partitions.add((partition_metadata.topic, partition_metadata.partition))
 
-    return affected_partitions
+    if fetch_unavailable_brokers:
+        return affected_partitions, unavailable_brokers
+    else:
+        return affected_partitions

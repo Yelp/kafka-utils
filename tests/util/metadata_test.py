@@ -117,7 +117,10 @@ class TestMetadata(object):
     def test_get_topic_partition_metadata_empty(self, mock_get_metadata):
         mock_get_metadata.return_value = {}
 
-        actual = get_topic_partition_with_error(self.cluster_config, 5)
+        with mock.patch(
+            'kafka_utils.util.metadata.ZK',
+        ):
+            actual = get_topic_partition_with_error(self.cluster_config, 5)
         expected = set([])
         assert actual == expected
         mock_get_metadata.asserd_called_wity('some_list')
@@ -125,20 +128,29 @@ class TestMetadata(object):
     def test_get_topic_partition_metadata_no_errors(self, mock_get_metadata):
         mock_get_metadata.return_value = METADATA_RESPONSE_ALL_FINE
 
-        actual = get_topic_partition_with_error(self.cluster_config, 5)
+        with mock.patch(
+            'kafka_utils.util.metadata.ZK',
+        ):
+            actual = get_topic_partition_with_error(self.cluster_config, 5)
         expected = set([])
         assert actual == expected
 
     def test_get_topic_partition_metadata_replica_not_available(self, mock_get_metadata):
         mock_get_metadata.return_value = METADATA_RESPONSE_WITH_ERRORS
 
-        actual = get_topic_partition_with_error(self.cluster_config, REPLICA_NOT_AVAILABLE_ERROR)
-        expected = set([('topic0', 0), ('topic1', 1)])
+        with mock.patch(
+            'kafka_utils.util.metadata.ZK',
+        ):
+            actual = get_topic_partition_with_error(self.cluster_config, REPLICA_NOT_AVAILABLE_ERROR)
+        expected = {('topic0', 0), ('topic1', 1)}
         assert actual == expected
 
     def test_get_topic_partition_metadata_leader_not_available(self, mock_get_metadata):
         mock_get_metadata.return_value = METADATA_RESPONSE_WITH_ERRORS
 
-        actual = get_topic_partition_with_error(self.cluster_config, LEADER_NOT_AVAILABLE_ERROR)
+        with mock.patch(
+            'kafka_utils.util.metadata.ZK',
+        ):
+            actual = get_topic_partition_with_error(self.cluster_config, LEADER_NOT_AVAILABLE_ERROR)
         expected = set([('topic0', 1)])
         assert actual == expected
