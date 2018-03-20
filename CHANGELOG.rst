@@ -1,3 +1,7 @@
+1.4.2 (March 20th, 2018)
+----------------------------
+* List unavailable-brokers in case of unavailable-replicas
+
 1.4.1 (February 13th, 2018)
 ----------------------------
 * Update CHANGELOG.rst for version 1.4.0
