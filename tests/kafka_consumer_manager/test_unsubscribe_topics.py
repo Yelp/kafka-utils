@@ -68,6 +68,7 @@ class TestUnsubscribeTopics(object):
     topics_partitions = {
         'topic1': [0, 1, 2],
         'topic2': [0, 1],
+        'topic3': [0, 1, 2, 3],
     }
 
     cluster_config = mock.Mock(zookeeper='some_ip')
@@ -79,15 +80,15 @@ class TestUnsubscribeTopics(object):
                 spec=UnsubscribeTopics.preprocess_args,
                 return_value=self.topics_partitions,
         ):
-            args = mock.Mock(storage='zookeeper')
+            args = mock.Mock(storage='zookeeper', topic=None, topics=None)
 
             UnsubscribeTopics.run(args, self.cluster_config)
 
             zk_obj = zk_unsubscriber.return_value
             kafka_obj = kafka_unsubscriber.return_value
 
-            assert zk_obj.unsubscribe_topic.call_count == 1
-            assert kafka_obj.unsubscribe_topic.call_count == 0
+            assert zk_obj.unsubscribe_topics.call_count == 1
+            assert kafka_obj.unsubscribe_topics.call_count == 0
 
     def test_run_unsubscribe_kafka(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
         with mock.patch.object(
@@ -96,24 +97,71 @@ class TestUnsubscribeTopics(object):
                 spec=UnsubscribeTopics.preprocess_args,
                 return_value=self.topics_partitions,
         ):
-            args = mock.Mock(storage='kafka')
+            args = mock.Mock(storage='kafka', topic=None, topics=None)
 
             UnsubscribeTopics.run(args, self.cluster_config)
 
             zk_obj = zk_unsubscriber.return_value
             kafka_obj = kafka_unsubscriber.return_value
 
-            assert zk_obj.unsubscribe_topic.call_count == 0
-            assert kafka_obj.unsubscribe_topic.call_count == 1
+            assert zk_obj.unsubscribe_topics.call_count == 0
+            assert kafka_obj.unsubscribe_topics.call_count == 1
+
+    def test_run_unsubscribe_both_topic_and_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
+        with mock.patch.object(
+                UnsubscribeTopics,
+                'preprocess_args',
+                spec=UnsubscribeTopics.preprocess_args,
+                return_value=self.topics_partitions,
+        ):
+            args = mock.Mock(topics=["foo", "bar", "baz"], topic="quax", partitions=None)
+
+            with pytest.raises(SystemExit):
+                UnsubscribeTopics.run(args, self.cluster_config)
+
+    def test_run_unsubscribe_both_partitions_and_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
+        with mock.patch.object(
+                UnsubscribeTopics,
+                'preprocess_args',
+                spec=UnsubscribeTopics.preprocess_args,
+                return_value=self.topics_partitions,
+        ):
+            args = mock.Mock(topics=["foo", "bar", "baz"], topic=None, partitions=[0, 1, 2])
+
+            with pytest.raises(SystemExit):
+                UnsubscribeTopics.run(args, self.cluster_config)
+
+    def test_run_unsubscribe_only_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
+        with mock.patch.object(
+                UnsubscribeTopics,
+                'preprocess_args',
+                spec=UnsubscribeTopics.preprocess_args,
+                return_value=self.topics_partitions,
+        ):
+            args = mock.Mock(topics=["topic1", "topic3"], topic=None, partitions=None)
+
+            UnsubscribeTopics.run(args, self.cluster_config)
+
+    def test_run_unsuscribe_missing_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
+        with mock.patch.object(
+                UnsubscribeTopics,
+                'preprocess_args',
+                spec=UnsubscribeTopics.preprocess_args,
+                return_value=self.topics_partitions,
+        ):
+            args = mock.Mock(topics=["topic2", "baz"], topic=None, partitions=None)
+
+            with pytest.raises(SystemExit):
+                UnsubscribeTopics.run(args, self.cluster_config)
 
     def test_unsubscribe_some_partitions_left(self, zk):
         zk_obj = zk.return_value
         zk_obj.get_my_subscribed_partitions.return_value = [3]
 
         unsubscriber = ZookeeperUnsubscriber(zk_obj)
-        unsubscriber.unsubscribe_topic(
+        unsubscriber.unsubscribe_topics(
             'some_group',
-            'topic1',
+            ['topic1'],
             [0, 1, 2],
             self.topics_partitions,
         )
@@ -136,9 +184,9 @@ class TestUnsubscribeTopics(object):
         zk_obj.get_my_subscribed_partitions.return_value = []
 
         unsubscriber = ZookeeperUnsubscriber(zk_obj)
-        unsubscriber.unsubscribe_topic(
+        unsubscriber.unsubscribe_topics(
             'some_group',
-            'topic1',
+            ['topic1'],
             [0, 1, 2],
             self.topics_partitions,
         )
@@ -161,9 +209,9 @@ class TestUnsubscribeTopics(object):
         zk_obj.get_my_subscribed_partitions.return_value = []
 
         unsubscriber = ZookeeperUnsubscriber(zk_obj)
-        unsubscriber.unsubscribe_topic(
+        unsubscriber.unsubscribe_topics(
             'some_group',
-            'topic1',
+            ['topic1'],
             None,
             self.topics_partitions,
         )
@@ -173,14 +221,54 @@ class TestUnsubscribeTopics(object):
             mock.call('some_group', 'topic1'),
         ]
 
+    def test_unsubscribe_some_topics(self, zk):
+        zk_obj = zk.return_value
+        zk_obj.get_my_subscribed_partitions.return_value = []
+
+        unsubscriber = ZookeeperUnsubscriber(zk_obj)
+        unsubscriber.unsubscribe_topics(
+            'some_group',
+            ['topic1', 'topic3'],
+            None,
+            self.topics_partitions,
+        )
+
+        assert zk_obj.delete_topic_partitions.call_count == 0
+        assert sorted(zk_obj.delete_topic.call_args_list) == sorted(
+            [
+                mock.call('some_group', 'topic1'),
+                mock.call('some_group', 'topic3'),
+            ],
+        )
+
+    def test_unsubscribe_some_topics_disregard_partitions(self, zk):
+        zk_obj = zk.return_value
+        zk_obj.get_my_subscribed_partitions.return_value = []
+
+        unsubscriber = ZookeeperUnsubscriber(zk_obj)
+        unsubscriber.unsubscribe_topics(
+            'some_group',
+            ['topic1', 'topic3'],
+            [0, 1],
+            self.topics_partitions,
+        )
+
+        assert zk_obj.delete_topic_partitions.call_count == 0
+        assert sorted(zk_obj.delete_topic.call_args_list) == sorted(
+            [
+                mock.call('some_group', 'topic1'),
+                mock.call('some_group', 'topic3'),
+            ],
+        )
+
     def test_unsubscribe_wipe_default_topics(self, zk):
         zk_obj = zk.return_value
         zk_obj.get_my_subscribed_partitions.return_value = []
 
         unsubscriber = ZookeeperUnsubscriber(zk_obj)
-        unsubscriber.unsubscribe_topic(
+        unsubscriber.unsubscribe_topics(
             'some_group',
-            None,
+            [],
             None,
             self.topics_partitions,
         )
@@ -190,6 +278,7 @@ class TestUnsubscribeTopics(object):
             [
                 mock.call('some_group', 'topic1'),
                 mock.call('some_group', 'topic2'),
+                mock.call('some_group', 'topic3'),
             ],
         )
 
@@ -198,9 +287,9 @@ class TestUnsubscribeTopics(object):
         zk_obj.delete_topic_partitions.side_effect = NoNodeError("Boom!")
 
         unsubscriber = ZookeeperUnsubscriber(zk_obj)
-        unsubscriber.unsubscribe_topic(
+        unsubscriber.unsubscribe_topics(
             'some_group',
-            'topic1',
+            ['topic1'],
             [0, 1, 2],
             self.topics_partitions,
         )
@@ -213,9 +302,9 @@ class TestUnsubscribeTopics(object):
 
         unsubscriber = ZookeeperUnsubscriber(zk_obj)
         with pytest.raises(ZookeeperError):
-            unsubscriber.unsubscribe_topic(
+            unsubscriber.unsubscribe_topics(
                 'some_group',
-                'topic1',
+                ['topic1'],
                 [0, 1, 2],
                 self.topics_partitions,
             )

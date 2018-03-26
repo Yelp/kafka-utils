@@ -48,15 +48,21 @@ class UnsubscribeTopics(OffsetWriter):
         )
         parser_unsubscribe_topics.add_argument(
             '--topic',
-            help="Topic whose metadata shall be deleted. If no topic is "
-            "specified, all topics that the consumer is subscribed to, shall "
-            "be deleted."
+            help="Topic whose metadata shall be deleted. If either --topic or"
+            "--topics are NOT specified, all topics that the consumer is"
+            "subscribed to, shall be deleted."
         )
         parser_unsubscribe_topics.add_argument(
             '--partitions', nargs='+', type=int,
             help="List of partitions whose metadata shall be deleted. If no "
             "partitions are specified, all partitions within the topic shall "
-            "be deleted."
+            "be deleted. Only works with --topic, NOT with --topics."
+        )
+        parser_unsubscribe_topics.add_argument(
+            '--topics', nargs='+',
+            help="Topics whose metadata shall be deleted. If either --topic or"
+            "--topics are NOT specified, all topics that the consumer is"
+            "subscribed to, shall be deleted."
         )
         parser_unsubscribe_topics.add_argument(
             '--storage',
@@ -72,6 +78,23 @@ class UnsubscribeTopics(OffsetWriter):
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
+        if args.topic and args.topics:
+            print(
+                "Error: Cannot specify --topic and --topics at the same time.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        if args.partitions and args.topics:
+            print(
+                "Error: Cannot use --partitions with --topics. Use --topic "
+                "instead.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        # if topic is not None topics_dict will contain only info about that
+        # topic, otherwise it will contain info about all topics for the group
         topics_dict = cls.preprocess_args(
             args.groupid,
             args.topic,
@@ -81,15 +104,25 @@ class UnsubscribeTopics(OffsetWriter):
             storage=args.storage,
         )
 
+        topics = args.topics if args.topics else ([args.topic] if args.topic else [])
+        for topic in topics:
+            if topic not in topics_dict:
+                print(
+                    "Error: Consumer {groupid} is not subscribed to topic:"
+                    " {topic}.".format(groupid=args.groupid, topic=topic),
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
         with ZK(cluster_config) as zk:
             if args.storage == 'zookeeper':
                 unsubscriber = ZookeeperUnsubscriber(zk)
             else:
                 unsubscriber = KafkaUnsubscriber(client)
 
-            unsubscriber.unsubscribe_topic(
+            unsubscriber.unsubscribe_topics(
                 args.groupid,
-                args.topic,
+                topics,
                 args.partitions,
                 topics_dict,
             )
@@ -100,20 +133,21 @@ class TopicUnsubscriber(object):
     topic partitions stored using different offset storage.
     """
 
-    def unsubscribe_topic(self, group, topic, partitions, topics_dict):
-        # If the topic and partitions are both specified,
+    def unsubscribe_topics(self, group, topics, partitions, topics_dict):
+        # If a single topic and partitions are both specified,
         # then unsubscribe the group from the individual partitions
 
-        # If only the topic is specified, the unsubscribe the group
-        # from all the partitions of the topic.
+        # If only the topics are specified, the unsubscribe the group
+        # from all the partitions of the topics.
 
         # If neither the topic nor partitions are specified, then
         # unsubscribe the group from all of the topics and partitions
         # that are found in the topics_dict that was preprocessed.
-        if topic and partitions:
-            self.unsubscribe_partitions(group, topic, partitions)
-        elif topic:
-            self.delete_topic(group, topic)
+        if topics and len(topics) == 1 and partitions:
+            self.unsubscribe_partitions(group, topics[0], partitions)
+        elif topics:
+            for topic in topics:
+                self.delete_topic(group, topic)
         else:
             for topic, partitions in six.iteritems(topics_dict):
                 self.delete_topic(group, topic)
