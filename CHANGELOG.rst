@@ -1,3 +1,7 @@
+1.5.0 (April 4th, 2018)
+----------------------------
+* Add --topics option to kafka_consumer_manager unsubscribe_topics
+
 1.4.2 (March 20th, 2018)
 ----------------------------
 * List unavailable-brokers in case of unavailable-replicas
