@@ -147,14 +147,22 @@ class OffsetManagerBase(object):
             try:
                 topics = zk.get_my_subscribed_topics(groupid)
             except NoNodeError:
-                if fail_on_error:
+                if groupid in zk.get_children("/consumers"):
                     print(
-                        "Error: Consumer Group ID {groupid} does not exist.".format(
+                        "Error: Offsets for Consumer Group ID {groupid} not found.".format(
                             groupid=groupid
                         ),
-                        file=sys.stderr
+                        file=sys.stderr,
                     )
-                    sys.exit(1)
+                else:
+                    if fail_on_error:
+                        print(
+                            "Error: Consumer Group ID {groupid} does not exist.".format(
+                                groupid=groupid
+                            ),
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
         return topics
 
 
