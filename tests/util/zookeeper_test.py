@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from collections import namedtuple
 
 import mock
+import pytest
+from kazoo.exceptions import NoNodeError
 
 from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.serialization import dump_json
@@ -189,6 +191,29 @@ class TestZK(object):
             actual = zk.get_topic_config("some_topic")
             expected = {"version": 1, "config": {"cleanup.policy": "compact"}}
             assert actual == expected
+
+    def test_get_topic_config_8(self, mock_client):
+        """
+        Test getting configuration for topics created in Kafa prior to 0.9.0.
+        """
+
+        with ZK(self.cluster_config) as zk:
+            zk.zk.get = mock.Mock(side_effect=NoNodeError())
+            zk.get_topics = mock.Mock(return_value={"some_topic": {}})
+            actual = zk.get_topic_config("some_topic")
+            expected = {"config": {}}
+            assert actual == expected
+
+    def test_get_nonexistent_topic_config(self, mock_client):
+        """
+        Test getting configuration for topics that don't exist.
+        """
+
+        with ZK(self.cluster_config) as zk:
+            zk.zk.get = mock.Mock(side_effect=NoNodeError())
+            zk.get_topics = mock.Mock(return_value={})
+            with pytest.raises(NoNodeError):
+                zk.get_topic_config("some_topic")
 
     def test_set_topic_config_kafka_10(self, mock_client):
         with mock.patch.object(

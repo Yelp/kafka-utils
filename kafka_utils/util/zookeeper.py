@@ -120,10 +120,20 @@ class ZK:
                 )[0]
             )
         except NoNodeError as e:
-            _log.error(
-                "topic {topic} not found.".format(topic=topic)
-            )
-            raise e
+
+            # Kafka version before 0.9.0 does not have "/config/topics/<topic_name>" path in ZK and
+            # if the topic exists, return default dict instead of raising an Exception.
+            # Ref: https://cwiki.apache.org/confluence/display/KAFKA/Kafka+data+structures+in+Zookeeper.
+
+            topics = self.get_topics(topic_name=topic, fetch_partition_state=False)
+            if len(topics) > 0:
+                _log.info("Configuration not available for topic {topic}.".format(topic=topic))
+                config_data = {"config": {}}
+            else:
+                _log.error(
+                    "topic {topic} not found.".format(topic=topic)
+                )
+                raise e
         return config_data
 
     def set_topic_config(self, topic, value, kafka_version=(0, 10, )):
