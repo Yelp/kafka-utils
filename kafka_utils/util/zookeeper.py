@@ -121,7 +121,7 @@ class ZK:
             )
         except NoNodeError as e:
 
-            # Kafka version before 0.9.0 does not have "/config/topics/<topic_name>" path in ZK and
+            # Kafka version before 0.8.1 does not have "/config/topics/<topic_name>" path in ZK and
             # if the topic exists, return default dict instead of raising an Exception.
             # Ref: https://cwiki.apache.org/confluence/display/KAFKA/Kafka+data+structures+in+Zookeeper.
 
