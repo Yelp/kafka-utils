@@ -1,3 +1,7 @@
+1.5.1 (May 11th, 2018)
+----------------------------
+* Improve handling of missing topic in getting topic-specific configuration
+
 1.5.0 (April 4th, 2018)
 ----------------------------
 * Add --topics option to kafka_consumer_manager unsubscribe_topics
