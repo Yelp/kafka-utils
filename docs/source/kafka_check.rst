@@ -48,7 +48,7 @@ In case of min isr violations:
 
 .. code-block:: bash
 
-   $ kafka-check --cluster-type=sample_type min_isr --default_min_isr 3
+   $ kafka-check --cluster-type=sample_type min_isr --default-min-isr 3
 
     isr=2 is lower than min_isr=3 for sample_topic:0
     CRITICAL: 1 partition(s) have the number of replicas in sync that is lower
