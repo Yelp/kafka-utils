@@ -45,8 +45,8 @@ class WatermarkGet(OffsetManagerBase):
             "provided, when exact topic name is considered"
         )
         parser_offset_get.add_argument(
-             "-r", "--regex", action="store_true", help="Match the topic "
-             "with regex, if not provided, topic will be considered as an exact input"
+            "-r", "--regex", action="store_true", help="Match the topic "
+            "with regex, if not provided, topic will be considered as an exact input"
         )
         parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
