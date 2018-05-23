@@ -63,6 +63,13 @@ DEFAULT_MOVEMENT_SIZE_SCORE_WEIGHT = 0.01
 DEFAULT_LEADER_CHANGE_SCORE_WEIGHT = 0.001
 
 
+def reverse_lookup(data):
+    """Construct an index reverse lookup map from an iterable."""
+    return {
+        datum: i for i, datum in enumerate(data)
+    }
+
+
 class GeneticBalancer(ClusterBalancer):
     """An implementation of cluster rebalancing that tries to achieve balance
     using a genetic algorithm.
@@ -75,6 +82,10 @@ class GeneticBalancer(ClusterBalancer):
     def __init__(self, cluster_topology, args):
         super(GeneticBalancer, self).__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
+        self.state = _State(
+            self.cluster_topology,
+            brokers=self.cluster_topology.active_brokers,
+        )
 
     def _set_arg_default(self, arg, value):
         if not hasattr(self.args, arg):
@@ -286,9 +297,13 @@ class GeneticBalancer(ClusterBalancer):
 
         active_brokers = self.cluster_topology.active_brokers
 
+        # Create state from the initial cluster topology.
+        self.state = _State(self.cluster_topology, brokers=active_brokers)
+
         # Add partition replicas to active brokers one-by-one.
-        for partition_name, count in six.iteritems(partitions):
+        for partition_name in sorted(six.iterkeys(partitions)):  # repeatability
             partition = self.cluster_topology.partitions[partition_name]
+            count = partitions[partition_name]
             try:
                 self.add_replica(partition_name, count)
             except InvalidReplicationFactorError:
@@ -331,9 +346,8 @@ class GeneticBalancer(ClusterBalancer):
                 )
             )
 
-        # Create state from current cluster topology.
-        state = _State(self.cluster_topology, brokers=active_brokers)
-        partition_index = state.partitions.index(partition)
+        state = self.state
+        partition_index = state.partition_indices[partition]
 
         for _ in range(count):
             # Find eligible replication-groups.
@@ -369,7 +383,11 @@ class GeneticBalancer(ClusterBalancer):
 
             # Update cluster topology with highest scoring state.
             state = sorted(new_states, key=self._score, reverse=True)[0]
-            self.cluster_topology.update_cluster_topology(state.assignment)
+            self.cluster_topology.update_cluster_topology(state.pending_assignment)
+
+            # Update the internal state to match.
+            self.state = state
+            self.state.clear_pending_assignment()
 
     def remove_replica(self, partition_name, osr_broker_ids, count=1):
         """Removing a replica is done by trying to remove a replica from every
@@ -632,11 +650,15 @@ class _State(object):
             key=lambda r: r.id
         ))
 
+        self.broker_indices = reverse_lookup(self.brokers)
+        self.topic_indices = reverse_lookup(self.topics)
+        self.partition_indices = reverse_lookup(self.partitions)
+
         # A tuple mapping a partition index to the tuple of replicas for that
         # partition.
         self.replicas = tuple(
             tuple(
-                self.brokers.index(broker)
+                self.broker_indices[broker]
                 for broker in partition.replicas
                 if broker in self.brokers
             )
@@ -645,7 +667,7 @@ class _State(object):
 
         # A tuple mapping a partition index to the partition's topic index.
         self.partition_topic = tuple(
-            self.topics.index(partition.topic)
+            self.topic_indices[partition.topic]
             for partition in self.partitions
         )
 
@@ -704,7 +726,7 @@ class _State(object):
             tuple(
                 sum(
                     1 for partition in topic.partitions
-                    if broker in partition.replicas and broker in self.brokers
+                    if broker in partition.replicas
                 )
                 for broker in self.brokers
             )
@@ -745,6 +767,10 @@ class _State(object):
             for rg in self.rgs
         )
 
+        # A tuple containing indices of partitions affect by changes made to
+        # this state
+        self.pending_partitions = tuple()
+
         # The total size and count of the partitions that have been moved to
         # reach this state.
         self.movement_size = 0
@@ -773,6 +799,8 @@ class _State(object):
                 (source_index, dest),
             )),
         )
+
+        new_state.pending_partitions = self.pending_partitions + (partition, )
 
         # Update the broker weights
         partition_weight = self.partition_weights[partition]
@@ -874,6 +902,8 @@ class _State(object):
             )),
         )
 
+        new_state.pending_partitions = self.pending_partitions + (partition, )
+
         # Update the leader count
         new_state.broker_leader_counts = tuple_alter(
             self.broker_leader_counts,
@@ -902,6 +932,8 @@ class _State(object):
             self.replicas,
             (partition, lambda replicas: replicas + (broker, )),
         )
+
+        new_state.pending_partitions = self.pending_partitions + (partition, )
 
         # Update the broker partition count
         new_state.broker_partition_counts = tuple_alter(
@@ -975,6 +1007,8 @@ class _State(object):
             (partition, lambda replicas: tuple_remove(replicas, broker)),
         )
 
+        new_state.pending_partitions = self.pending_partitions + (partition, )
+
         # Update the broker partition count
         new_state.broker_partition_counts = tuple_alter(
             self.broker_partition_counts,
@@ -1038,6 +1072,9 @@ class _State(object):
 
         return new_state
 
+    def clear_pending_assignment(self):
+        self.pending_partitions = tuple()
+
     @property
     def assignment(self):
         """Return the partition assignment that this state represents."""
@@ -1046,6 +1083,16 @@ class _State(object):
                 self.brokers[bid].id for bid in self.replicas[pid]
             ]
             for pid, partition in enumerate(self.partitions)
+        }
+
+    @property
+    def pending_assignment(self):
+        """Return the pending partition assignment that this state represents."""
+        return {
+            self.partitions[pid].name: [
+                self.brokers[bid].id for bid in self.replicas[pid]
+            ]
+            for pid in set(self.pending_partitions)
         }
 
     @property
