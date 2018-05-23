@@ -23,7 +23,7 @@ from kafka_utils.util.serialization import dump_json
 from kafka_utils.util.zookeeper import ZK
 
 
-TestGetTopics = namedtuple('TestGetTopics', ['ctime'])
+MockGetTopics = namedtuple('MockGetTopics', ['ctime'])
 
 
 @mock.patch(
@@ -265,7 +265,7 @@ class TestZK(object):
                 return_value=(
                     (
                         b'{"version": "1", "partitions": {"0": [1, 0]}}',
-                        TestGetTopics(31000),
+                        MockGetTopics(31000),
                     )
                 )
             )
@@ -274,7 +274,7 @@ class TestZK(object):
                 return_value=(
                     (
                         b'{"version": "2"}',
-                        TestGetTopics(32000),
+                        MockGetTopics(32000),
                     )
                 )
             )
@@ -296,7 +296,7 @@ class TestZK(object):
             assert actual_with_fetch_state == expected_with_fetch_state
 
             zk._fetch_partition_info = mock.Mock(
-                return_value=TestGetTopics(33000)
+                return_value=MockGetTopics(33000)
             )
 
             actual_without_fetch_state = zk.get_topics("some_topic", fetch_partition_state=False)
