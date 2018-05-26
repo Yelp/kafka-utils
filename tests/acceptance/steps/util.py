@@ -189,11 +189,13 @@ def set_consumer_group_offset(topic, group, offset, storage='kafka'):
     )
 
 
-def call_watermark_get(topic_name, storage=None):
+def call_watermark_get(topic_name, storage=None, regex=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--discovery-base-path', 'tests/acceptance/config',
            'get_topic_watermark', topic_name]
+    if regex:
+        cmd.extend(['-r'])
     return call_cmd(cmd)
 
 

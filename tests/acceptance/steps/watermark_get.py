@@ -31,3 +31,29 @@ def step_impl5(context):
     lowmark_pattern = 'Low Watermark: 0'
     assert highmark_pattern in context.output
     assert lowmark_pattern in context.output
+
+
+@when(u'we call the watermark_get command with -r')
+def step_impl6(context):
+    context.output = call_watermark_get('ab', regex=True)
+
+
+@when(u'we call the watermark_get command without -r')
+def step_impl7(context):
+    context.output = call_watermark_get('abc')
+
+
+@then(u'the correct topics will be shown')
+def step_impl8(context):
+    topic1 = context.topic[0]
+    topic2 = context.topic[1]
+    assert topic1 in context.output
+    assert topic2 in context.output
+
+
+@then(u'the correct topic will be shown')
+def step_impl9(context):
+    topic1 = context.topic[0]
+    topic2 = context.topic[1]
+    assert topic1 not in context.output
+    assert topic2 in context.output

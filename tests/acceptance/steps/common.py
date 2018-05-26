@@ -67,3 +67,10 @@ def step_impl5(context):
 @given(u'we have an existing kafka cluster')
 def step_impl6(context):
     pass
+
+
+@given(u'we have an existing kafka cluster with multiple topics')
+def step_impl7(context):
+    context.topic = []
+    context.topic.append(create_random_topic(1, 1, 'abcd'))
+    context.topic.append(create_random_topic(1, 1, 'abc'))
