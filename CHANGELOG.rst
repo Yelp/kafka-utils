@@ -1,3 +1,8 @@
+1.6.0 (May 29th, 2018)
+----------------------------
+* Set exactly topic matching as default for get_topic_watermark command
+* Add -r/--regex option for get_topic_watermark command for regex search
+
 1.5.1 (May 11th, 2018)
 ----------------------------
 * Improve handling of missing topic in getting topic-specific configuration
