@@ -120,11 +120,9 @@ def get_watermark_for_regex(
         kafka_client.load_metadata_for_topics()
 
     topics_to_be_considered = []
-    # '.*' is added in order to enable suffix matching
-    topic_regex = re.compile('.*' + topic_regex)
 
     for topic in kafka_client.topic_partitions:
-        if topic_regex.match(topic):
+        if re.search(topic_regex, topic):
             topics_to_be_considered.append(topic)
 
     watermarks = get_topics_watermarks(

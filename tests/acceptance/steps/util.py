@@ -195,7 +195,7 @@ def call_watermark_get(topic_name, storage=None, regex=False):
            '--discovery-base-path', 'tests/acceptance/config',
            'get_topic_watermark', topic_name]
     if regex:
-        cmd.extend(['-r'])
+        cmd.append('-r')
     return call_cmd(cmd)
 
 

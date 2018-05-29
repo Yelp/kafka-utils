@@ -35,7 +35,7 @@ def step_impl5(context):
 
 @when(u'we call the watermark_get command with -r')
 def step_impl6(context):
-    context.output = call_watermark_get('bc', regex=True)
+    context.output = call_watermark_get('.*bc.*', regex=True)
 
 
 @when(u'we call the watermark_get command without -r')
