@@ -101,8 +101,13 @@ class ZK:
 
         :rtype : dict of brokers
         """
-        broker_ids = self.get_children("/brokers/ids")
-
+        try:
+            broker_ids = self.get_children("/brokers/ids")
+        except NoNodeError:
+            _log.error(
+                "cluster is empty."
+            )
+            return {}
         # Return broker-ids only
         if names_only:
             return {int(b_id): None for b_id in broker_ids}
@@ -227,9 +232,16 @@ class ZK:
         accessing the zookeeper twice. If just partition-replica information is
         required fetch_partition_state should be set to False.
         """
-        topic_ids = [topic_name] if topic_name else self.get_children(
-            "/brokers/topics",
-        )
+        try:
+            topic_ids = [topic_name] if topic_name else self.get_children(
+                "/brokers/topics",
+            )
+        except NoNodeError:
+            _log.error(
+                "Cluster is empty."
+            )
+            return {}
+
         if names_only:
             return topic_ids
         topics_data = {}
