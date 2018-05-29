@@ -35,15 +35,15 @@ def step_impl5(context):
 
 @when(u'we call the watermark_get command with -r')
 def step_impl6(context):
-    context.output = call_watermark_get('ab', regex=True)
+    context.output = call_watermark_get('bc', regex=True)
 
 
 @when(u'we call the watermark_get command without -r')
 def step_impl7(context):
-    context.output = call_watermark_get('abc')
+    context.output = call_watermark_get('abcd')
 
 
-@then(u'the correct topics will be shown')
+@then(u'the correct two topics will be shown')
 def step_impl8(context):
     topic1 = context.topic[0]
     topic2 = context.topic[1]
@@ -51,7 +51,7 @@ def step_impl8(context):
     assert topic2 in context.output
 
 
-@then(u'the correct topic will be shown')
+@then(u'the correct single topic will be shown')
 def step_impl9(context):
     topic1 = context.topic[0]
     topic2 = context.topic[1]
