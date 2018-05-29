@@ -45,8 +45,8 @@ class WatermarkGet(OffsetManagerBase):
             "provided, when exact topic name is considered"
         )
         parser_offset_get.add_argument(
-            "-e", "--exact", action="store_true", help="Exactly match the "
-            "topic, if not provided, topic will be considered as a regex input"
+            "-r", "--regex", action="store_true", help="Match the topic "
+            "with regex, if not provided, topic will be considered as an exact input"
         )
         parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
@@ -61,17 +61,17 @@ class WatermarkGet(OffsetManagerBase):
         client.load_metadata_for_topics()
         watermarks = {}
 
-        if args.exact:
+        if args.regex:
             watermarks = cls.get_watermarks(
                 client,
                 args.topic,
-                exact=True,
+                exact=False,
             )
         else:
             watermarks = cls.get_watermarks(
                 client,
                 args.topic,
-                exact=False,
+                exact=True,
             )
 
         client.close()
