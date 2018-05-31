@@ -1,3 +1,8 @@
+1.6.1 (May 31st, 2018)
+----------------------------
+* Add NoNodeError to get_brokers & get_topics
+* Catch Exceptions for commands under empty cluster exception
+
 1.6.0 (May 29th, 2018)
 ----------------------------
 * Set exactly topic matching as default for get_topic_watermark command
