@@ -339,6 +339,8 @@ class TestZK(object):
             }
             assert actual_without_fetch_state == expected_without_fetch_state
 
+    def test_get_topics_empty_cluster(self, mock_client):
+        with ZK(self.cluster_config) as zk:
             zk.get_children = mock.Mock(side_effect=NoNodeError())
             actual_with_no_node_error = zk.get_topics()
             expected_with_no_node_error = {}
@@ -346,6 +348,29 @@ class TestZK(object):
             assert actual_with_no_node_error == expected_with_no_node_error
 
     def test_get_brokers(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.get_children = mock.Mock(
+                return_value=[1, 2, 3],
+            )
+            expected = {1: None, 2: None, 3: None}
+            actual = zk.get_brokers(names_only=True)
+            zk.get_children.assert_called_with("/brokers/ids")
+            assert actual == expected
+
+            zk.get_children = mock.Mock(
+                return_value=[1, 2, 3],
+            )
+            zk.get_broker_metadata = mock.Mock(
+                return_value='broker',
+            )
+            expected = {1: 'broker', 2: 'broker', 3: 'broker'}
+            actual = zk.get_brokers()
+            zk.get_children.assert_called_with("/brokers/ids")
+            calls = zk.get_broker_metadata.mock_calls
+            zk.get_broker_metadata.assert_has_calls(calls)
+            assert actual == expected
+
+    def test_get_brokers_empty_cluster(self, mock_client):
         with ZK(self.cluster_config) as zk:
             zk.get_children = mock.Mock(side_effect=NoNodeError())
             actual_with_no_node_error = zk.get_brokers()
