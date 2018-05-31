@@ -347,7 +347,7 @@ class TestZK(object):
             zk.get_children.assert_called_with("/brokers/topics")
             assert actual_with_no_node_error == expected_with_no_node_error
 
-    def test_get_brokers(self, mock_client):
+    def test_get_brokers_names_only(self, mock_client):
         with ZK(self.cluster_config) as zk:
             zk.get_children = mock.Mock(
                 return_value=[1, 2, 3],
@@ -357,6 +357,8 @@ class TestZK(object):
             zk.get_children.assert_called_with("/brokers/ids")
             assert actual == expected
 
+    def test_get_brokers_with_metadata(self, mock_client):
+        with ZK(self.cluster_config) as zk:
             zk.get_children = mock.Mock(
                 return_value=[1, 2, 3],
             )
