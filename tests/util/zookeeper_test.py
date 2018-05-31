@@ -338,3 +338,17 @@ class TestZK(object):
                 },
             }
             assert actual_without_fetch_state == expected_without_fetch_state
+
+            zk.get_children = mock.Mock(side_effect=NoNodeError())
+            actual_with_no_node_error = zk.get_topics()
+            expected_with_no_node_error = {}
+            zk.get_children.assert_called_with("/brokers/topics")
+            assert actual_with_no_node_error == expected_with_no_node_error
+
+    def test_get_brokers(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.get_children = mock.Mock(side_effect=NoNodeError())
+            actual_with_no_node_error = zk.get_brokers()
+            expected_with_no_node_error = {}
+            zk.get_children.assert_called_with("/brokers/ids")
+            assert actual_with_no_node_error == expected_with_no_node_error

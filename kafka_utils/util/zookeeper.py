@@ -104,7 +104,7 @@ class ZK:
         try:
             broker_ids = self.get_children("/brokers/ids")
         except NoNodeError:
-            _log.error(
+            _log.info(
                 "cluster is empty."
             )
             return {}
@@ -252,7 +252,7 @@ class ZK:
                 topic_ctime = topic_info[1].ctime / 1000.0
                 topic_data['ctime'] = topic_ctime
             except NoNodeError:
-                _log.error(
+                _log.info(
                     "topic '{topic}' not found.".format(topic=topic_id),
                 )
                 return {}
