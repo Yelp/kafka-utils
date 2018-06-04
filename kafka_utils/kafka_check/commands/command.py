@@ -49,6 +49,8 @@ class KafkaCheckCmd(object):
         self.cluster_config = cluster_config
         self.args = args
         with ZK(self.cluster_config) as self.zk:
+            broker_ids = get_broker_ids(self.zk)
+
             if args.controller_only and not is_controller(self.zk, args.broker_id):
                 terminate(
                     status_code.OK,
@@ -58,7 +60,15 @@ class KafkaCheckCmd(object):
                     ),
                     args.json,
                 )
-            if args.first_broker_only and not is_first_broker(self.zk, args.broker_id):
+            if args.first_broker_only and not broker_ids:
+                terminate(
+                    status_code.OK,
+                    prepare_terminate_message(
+                        'No brokers detected, nothing to check'
+                    ),
+                    args.json,
+                )
+            if args.first_broker_only and not is_first_broker(broker_ids, args.broker_id):
                 terminate(
                     status_code.OK,
                     prepare_terminate_message(
@@ -80,6 +90,11 @@ def is_controller(zk, broker_id):
     return broker_id == zk.get_json('/controller').get('brokerid')
 
 
-def is_first_broker(zk, broker_id):
+def get_broker_ids(zk):
+    """Returns a list of integers for broker ids"""
+    return zk.get_brokers().keys()
+
+
+def is_first_broker(broker_ids, broker_id):
     """Returns true if broker_id is the lowest broker id in the cluster, false otherwise."""
-    return broker_id == min(zk.get_brokers().keys())
+    return True if broker_ids and broker_id == min(broker_ids) else False
