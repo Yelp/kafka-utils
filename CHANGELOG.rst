@@ -1,3 +1,7 @@
+1.6.2 (June 5th, 2018)
+----------------------------
+* Fix offset_get and delete_group when no offsets folder under zk consumers node
+
 1.6.1 (May 31st, 2018)
 ----------------------------
 * Add NoNodeError to get_brokers & get_topics
