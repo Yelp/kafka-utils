@@ -2,7 +2,10 @@ version: '2'
 
 services:
   itest:
-    build: docker/itest_${KAFKA_VERSION}
+    build:
+      context: docker/itest
+      args:
+         - KAFKA_VERSION
     links:
       - kafka
       - zookeeper
@@ -11,7 +14,10 @@ services:
     command: echo "dummy command"
 
   kafka:
-    build: docker/kafka_${KAFKA_VERSION}
+    build:
+      context: docker/kafka
+      args:
+         - KAFKA_VERSION
     expose:
       - "9092"
     links:

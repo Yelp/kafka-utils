@@ -1,10 +1,7 @@
 FROM ubuntu:14.04
 MAINTAINER Team Distributed Systems <team-dist-sys@yelp.com>
 
-# We need to install Java and Kafka in order to use Kafka CLI. The Kafka server
-# will never run in this container; the Kafka server will run in the "kafka"
-# container.
-
+ARG KAFKA_VERSION
 # Install Java.
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV PATH="$PATH:$JAVA_HOME/bin"
@@ -25,7 +22,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     jq \
     coreutils
-ENV KAFKA_VERSION="0.10.1.1"
 ENV SCALA_VERSION="2.11"
 ENV KAFKA_HOME /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION}
 COPY download-kafka.sh /tmp/download-kafka.sh
@@ -33,29 +29,6 @@ RUN chmod 755 /tmp/download-kafka.sh
 RUN /tmp/download-kafka.sh && tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz -C /opt && rm /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
 ENV PATH="$PATH:$KAFKA_HOME/bin"
 
-# Install Python
-RUN apt-get update \
-  && add-apt-repository -y ppa:deadsnakes/ppa \
-  && apt-get update \
-  && apt-get install -y \
-    build-essential \
-    libffi-dev \
-    libssl-dev \
-    python2.7 \
-    python2.7-dev \
-    python3.4 \
-    python3.4-dev \
-    python3.5 \
-    python3.5-dev \
-    python3.6 \
-    python3.6-dev \
-    python-pip \
-    python-pkg-resources \
-    python-setuptools
+COPY config.properties /server.properties
 
-RUN pip install tox tox-travis
-
-COPY run_tests.sh /scripts/run_tests.sh
-RUN chmod 755 /scripts/run_tests.sh
-
-WORKDIR /work
+CMD echo "Kafka starting" && kafka-server-start.sh /server.properties
