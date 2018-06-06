@@ -158,7 +158,7 @@ def parse_args():
 
 
 def get_broker_list(cluster_config):
-    """Returns a dictionary of brokers in the form [(id: host)]
+    """Returns a list of brokers in the form [(id: host)]
 
     :param cluster_config: the configuration of the cluster
     :type cluster_config: kafka_utils.utils.config.ClusterConfig

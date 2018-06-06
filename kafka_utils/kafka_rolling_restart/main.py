@@ -74,8 +74,9 @@ def parse_opts():
         '--broker-ids',
         '-b',
         required=False,
-        type=str,
-        help='comma separated broker IDs to restart (optional, will restart all Kafka brokers in cluster if not specified)',
+        type=int,
+        nargs='+',
+        help='space separated broker IDs to restart (optional, will restart all Kafka brokers in cluster if not specified)',
     )
     parser.add_argument(
         '--discovery-base-path',
@@ -166,7 +167,7 @@ def parse_opts():
 
 
 def get_broker_list(cluster_config):
-    """Returns a dictionary of brokers in the form [(id: host)]
+    """Returns a list of brokers in the form [(id: host)]
 
     :param cluster_config: the configuration of the cluster
     :type cluster_config: map
@@ -178,18 +179,15 @@ def get_broker_list(cluster_config):
 
 def filter_broker_list(brokers, filter_by):
     """Returns sorted list, a subset of elements from brokers in the form [(id, host)].
-    Passing empty list for filter_by will return all brokers.
+    Passing empty list for filter_by will return empty list.
 
     :param brokers: list of brokers to filter, assumes the data is in so`rted order
     :type brokers: list of (id, host)
     :param filter_by: the list of ids of brokers to keep
     :type filter_by: list of integers
     """
-    if not filter_by:
-        return brokers
-    else:
-        filter_by_set = set(filter_by)
-        return [(id, host) for id, host in brokers if id in filter_by_set]
+    filter_by_set = set(filter_by)
+    return [(id, host) for id, host in brokers if id in filter_by_set]
 
 
 def generate_requests(hosts, jolokia_port, jolokia_prefix):
@@ -519,10 +517,9 @@ def run():
     )
     brokers = get_broker_list(cluster_config)
     if opts.broker_ids:
-        restart_broker_ids = map(int, opts.broker_ids.split(','))
-        if not validate_broker_ids_subset([id for id, host in brokers], restart_broker_ids):
+        if not validate_broker_ids_subset([id for id, host in brokers], opts.broker_ids):
             sys.exit(1)
-        brokers = filter_broker_list(brokers, restart_broker_ids)
+        brokers = filter_broker_list(brokers, opts.broker_ids)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
     pre_stop_tasks = []
