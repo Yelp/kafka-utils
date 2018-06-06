@@ -92,9 +92,12 @@ def is_controller(zk, broker_id):
 
 def get_broker_ids(zk):
     """Returns a list of integers for broker ids"""
-    return zk.get_brokers().keys()
+    return list(zk.get_brokers())
 
 
 def is_first_broker(broker_ids, broker_id):
     """Returns true if broker_id is the lowest broker id in the cluster, false otherwise."""
-    return True if broker_ids and broker_id == min(broker_ids) else False
+    if not broker_ids:
+        return False
+    else:
+        return broker_id == min(broker_ids)
