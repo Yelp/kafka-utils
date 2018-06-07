@@ -71,6 +71,14 @@ def parse_opts():
         help='cluster name, e.g. "uswest1-devc" (defaults to local cluster)',
     )
     parser.add_argument(
+        '--broker-ids',
+        '-b',
+        required=False,
+        type=int,
+        nargs='+',
+        help='space separated broker IDs to restart (optional, will restart all Kafka brokers in cluster if not specified)',
+    )
+    parser.add_argument(
         '--discovery-base-path',
         dest='discovery_base_path',
         type=str,
@@ -159,7 +167,7 @@ def parse_opts():
 
 
 def get_broker_list(cluster_config):
-    """Returns a dictionary of brokers in the form {id: host}
+    """Returns a list of brokers in the form [(id: host)]
 
     :param cluster_config: the configuration of the cluster
     :type cluster_config: map
@@ -167,6 +175,19 @@ def get_broker_list(cluster_config):
     with ZK(cluster_config) as zk:
         brokers = sorted(list(zk.get_brokers().items()), key=itemgetter(0))
         return [(id, data['host']) for id, data in brokers]
+
+
+def filter_broker_list(brokers, filter_by):
+    """Returns sorted list, a subset of elements from brokers in the form [(id, host)].
+    Passing empty list for filter_by will return empty list.
+
+    :param brokers: list of brokers to filter, assumes the data is in so`rted order
+    :type brokers: list of (id, host)
+    :param filter_by: the list of ids of brokers to keep
+    :type filter_by: list of integers
+    """
+    filter_by_set = set(filter_by)
+    return [(id, host) for id, host in brokers if id in filter_by_set]
 
 
 def generate_requests(hosts, jolokia_port, jolokia_prefix):
@@ -436,6 +457,25 @@ def validate_opts(opts, brokers_num):
     return False
 
 
+def validate_broker_ids_subset(broker_ids, subset_ids):
+    """Validate that user specified broker ids to restart exist in the broker ids retrieved
+    from cluster config.
+
+    :param broker_ids: all broker IDs in a cluster
+    :type broker_ids: list of integers
+    :param subset_ids: broker IDs specified by user
+    :type subset_ids: list of integers
+    :returns: bool
+    """
+    all_ids = set(broker_ids)
+    valid = True
+    for subset_id in subset_ids:
+        valid = valid and subset_id in all_ids
+        if subset_id not in all_ids:
+            print("Error: user specified broker id {0} does not exist in cluster.".format(subset_id))
+    return valid
+
+
 def get_task_class(tasks, task_args):
     """Reads in a list of tasks provided by the user,
     loads the appropiate task, and returns two lists,
@@ -476,6 +516,10 @@ def run():
         opts.discovery_base_path,
     )
     brokers = get_broker_list(cluster_config)
+    if opts.broker_ids:
+        if not validate_broker_ids_subset([id for id, host in brokers], opts.broker_ids):
+            sys.exit(1)
+        brokers = filter_broker_list(brokers, opts.broker_ids)
     if validate_opts(opts, len(brokers)):
         sys.exit(1)
     pre_stop_tasks = []
