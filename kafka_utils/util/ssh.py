@@ -16,15 +16,15 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
 import socket
 import sys
 import time
 from contextlib import closing
 from contextlib import contextmanager
 
-import os
-
-from paramiko import SSHConfig, ProxyCommand
+from paramiko import ProxyCommand
+from paramiko import SSHConfig
 from paramiko.agent import AgentRequestHandler
 from paramiko.client import AutoAddPolicy
 from paramiko.client import SSHClient
@@ -92,7 +92,7 @@ class Connection:
 
 
 @contextmanager
-def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5):
+def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5, ssh_password=None):
     """Manages a SSH connection to the desired host.
        Will leverage your ssh config at ~/.ssh/config if available
 
@@ -106,6 +106,8 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
     :type max_attempts: int
     :param max_timeout: the maximum timeout in seconds to sleep between attempts
     :type max_timeout: int
+    :param ssh_password: SSH password to use if needed
+    :type ssh_password: str
     :returns a SSH connection to the desired host
     :rtype: Connection
 
@@ -119,6 +121,8 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
             "hostname": host,
             "timeout": max_timeout,
         }
+        if ssh_password:
+            cfg['password'] = ssh_password
 
         ssh_config = SSHConfig()
         user_config_file = os.path.expanduser("~/.ssh/config")
