@@ -1,3 +1,8 @@
+1.6.3 (June 7th, 2018)
+----------------------------
+* kafka-check offline_partitions does not throw an exception for empty clusters anymore
+* Add --broker-ids option to kafka-rolling-restart
+
 1.6.2 (June 5th, 2018)
 ----------------------------
 * Fix offset_get and delete_group when no offsets folder under zk consumers node
