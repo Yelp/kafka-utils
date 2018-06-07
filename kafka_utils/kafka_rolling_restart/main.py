@@ -163,6 +163,11 @@ def parse_opts():
               'Default: %(default)s'),
         default=DEFAULT_STOP_COMMAND,
     )
+    parser.add_argument(
+        '--ssh-password',
+        type=str,
+        help=('SSH passowrd to use if needed'),
+    )
     return parser.parse_args()
 
 
@@ -364,7 +369,8 @@ def execute_rolling_restart(
     pre_stop_task,
     post_stop_task,
     start_command,
-    stop_command
+    stop_command,
+    ssh_password=None
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -399,10 +405,13 @@ def execute_rolling_restart(
     :type start_command: string
     :param stop_command: the stop command for kafka
     :type stop_command: string
+    :param ssh_password: The ssh password to use if needed
+    :type ssh_password: string
     """
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
-        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2) as connection:
+        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2,
+                 ssh_password=ssh_password) as connection:
             execute_task(pre_stop_task, host)
             wait_for_stable_cluster(
                 all_hosts,
@@ -416,7 +425,8 @@ def execute_rolling_restart(
             stop_broker(host, connection, stop_command, verbose)
             execute_task(post_stop_task, host)
         # we open a new SSH connection in case the hostname has a new IP
-        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2) as connection:
+        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2,
+                 ssh_password=ssh_password) as connection:
             print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
             start_broker(host, connection, start_command, verbose)
     # Wait before terminating the script
@@ -542,7 +552,8 @@ def run():
                 pre_stop_tasks,
                 post_stop_tasks,
                 opts.start_command,
-                opts.stop_command
+                opts.stop_command,
+                opts.ssh_password
             )
         except TaskFailedException:
             print("ERROR: pre/post tasks failed, exiting")
