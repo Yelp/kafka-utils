@@ -303,9 +303,9 @@ class GeneticBalancer(ClusterBalancer):
         # Add partition replicas to active brokers one-by-one.
         for partition_name in sorted(six.iterkeys(partitions)):  # repeatability
             partition = self.cluster_topology.partitions[partition_name]
-            count = partitions[partition_name]
+            replica_count = partitions[partition_name]
             try:
-                self.add_replica(partition_name, count)
+                self.add_replica(partition_name, replica_count)
             except InvalidReplicationFactorError:
                 raise BrokerDecommissionError(
                     "Not enough active brokers in the cluster. "
@@ -313,7 +313,7 @@ class GeneticBalancer(ClusterBalancer):
                     "but only {brokers} active brokers remain."
                     .format(
                         partition=partition_name,
-                        rf=partition.replication_factor + count,
+                        rf=partition.replication_factor + replica_count,
                         brokers=len(active_brokers)
                     )
                 )
@@ -346,8 +346,7 @@ class GeneticBalancer(ClusterBalancer):
                 )
             )
 
-        state = self.state
-        partition_index = state.partition_indices[partition]
+        partition_index = self.state.partition_indices[partition]
 
         for _ in range(count):
             # Find eligible replication-groups.
@@ -376,17 +375,16 @@ class GeneticBalancer(ClusterBalancer):
             for rg in under_replicated_rgs:
                 for broker in rg.active_brokers:
                     if broker not in partition.replicas:
-                        broker_index = state.brokers.index(broker)
+                        broker_index = self.state.brokers.index(broker)
                         new_states.append(
-                            state.add_replica(partition_index, broker_index)
+                            self.state.add_replica(partition_index, broker_index)
                         )
 
             # Update cluster topology with highest scoring state.
-            state = sorted(new_states, key=self._score, reverse=True)[0]
-            self.cluster_topology.update_cluster_topology(state.pending_assignment)
+            self.state = sorted(new_states, key=self._score, reverse=True)[0]
+            self.cluster_topology.update_cluster_topology(self.state.pending_assignment)
 
             # Update the internal state to match.
-            self.state = state
             self.state.clear_pending_assignment()
 
     def remove_replica(self, partition_name, osr_broker_ids, count=1):
