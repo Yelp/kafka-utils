@@ -13,7 +13,7 @@ clean:
 test:
 	tox -e py{27,34,35,36}-unittest
 
-acceptance: acceptance8 acceptance9 acceptance10
+acceptance: acceptance8 acceptance9 acceptance10 acceptance 11
 
 acceptance8:
 	tox -e py{27,34,35,36}-kafka8-dockeritest
@@ -23,6 +23,9 @@ acceptance9:
 
 acceptance10:
 	tox -e py{27,34,35,36}-kafka10-dockeritest
+
+acceptance11:
+	tox -e py{27,34,35,36}-kafka11-dockeritest
 
 coverage:
 	tox -e coverage
