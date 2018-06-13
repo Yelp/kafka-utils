@@ -410,6 +410,17 @@ class Test_State(object):
         """Test that the state assignment matches the default_assignment."""
         assert self.state.assignment == default_assignment
 
+    def test_empty_pending_assignment(self):
+        """Test that pending assignment is emptyy when no change occured."""
+        assert self.state.pending_assignment == {}
+
+    def test_pending_assignment(self):
+        new_state = self.state.add_replica(4, 4)
+
+        assert new_state.pending_assignment == {
+            (u'T2', 0): ['2', '4']
+        }
+
     def test_broker_partition_count_cv(self):
         """Test that broker_partition_count_cv returns the correct value for the
         default assignment.

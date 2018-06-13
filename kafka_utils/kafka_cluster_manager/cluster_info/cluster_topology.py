@@ -205,6 +205,11 @@ class ClusterTopology(object):
                     partition = self.partitions[partition_name]
                     old_replicas = [broker for broker in partition.replicas]
 
+                    # No change needed. Save ourself some CPU time.
+                    # Replica order matters as the first one is the leader.
+                    if new_replicas == old_replicas:
+                        continue
+
                     # Remove old partitions from broker
                     # This also updates partition replicas
                     for broker in old_replicas:
