@@ -1,3 +1,7 @@
+1.6.4 (June 13th, 2018)
+----------------------------
+* Improve performance of broker decommission process
+
 1.6.3 (June 7th, 2018)
 ----------------------------
 * kafka-check offline_partitions does not throw an exception for empty clusters anymore
