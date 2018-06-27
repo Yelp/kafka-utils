@@ -50,7 +50,7 @@ setup(
     ],
     install_requires=[
         "cryptography>=1.8.1,<2.0.0",
-        "kafka-python>=1.3.2,<1.3.4",
+        "kafka-python>=1.3.2,<1.5.0",
         "kazoo>=2.0,<3.0.0",
         "PyYAML<4.0.0",
         "requests-futures>0.9.0",
