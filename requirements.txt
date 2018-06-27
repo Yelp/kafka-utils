@@ -8,7 +8,7 @@ ecdsa==0.11
 enum34==1.1.6
 futures==3.0.1
 jsonschema==2.4.0
-kafka-python==1.4.2
+kafka-python==1.4.3
 kazoo==2.2
 ndg-httpsclient==0.3.3
 paramiko==1.16.0
