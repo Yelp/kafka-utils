@@ -139,7 +139,8 @@ class KafkaToolClient(SimpleClient):
             future = conn.send(request)
 
             while not future.is_done:
-                conn.recv()
+                for r, f in conn.recv():
+                    f.success(r)
 
             if future.failed():
                 failed_payloads(payloads)
