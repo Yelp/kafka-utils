@@ -1,3 +1,8 @@
+1.6.5 (July 16th, 2018)
+----------------------------
+* Add tox extension
+* Upgrade kafka-python version to 1.4.2
+
 1.6.4 (June 13th, 2018)
 ----------------------------
 * Improve performance of broker decommission process
