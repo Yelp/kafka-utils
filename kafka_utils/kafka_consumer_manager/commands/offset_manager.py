@@ -131,7 +131,15 @@ class OffsetManagerBase(object):
             groupid
     ):
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        return kafka_group_reader.read_group(groupid)
+        group_topics = kafka_group_reader.read_group(groupid)
+        if len(group_topics) == 0:
+            print(
+                "Error: Either Consumer Group {groupid} has never committed offsets, or the group does not exist.".format(
+                    groupid=groupid,
+                ),
+                file=sys.stderr,
+            )
+        return group_topics
 
     @classmethod
     def get_topics_for_group_from_zookeeper(
