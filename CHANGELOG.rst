@@ -1,3 +1,7 @@
+1.6.6 (August 14, 2018)
+----------------------------
+* Remove cryptography dependency
+
 1.6.5 (July 16th, 2018)
 ----------------------------
 * Add tox extension
