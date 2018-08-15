@@ -1,3 +1,7 @@
+1.6.7 (August 15, 2018)
+----------------------------
+* Bump setuptools version.
+
 1.6.6 (August 14, 2018)
 ----------------------------
 * Remove cryptography dependency
