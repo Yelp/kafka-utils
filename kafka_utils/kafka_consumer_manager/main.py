@@ -57,6 +57,27 @@ def parse_args():
         type=str,
         help='Path of the directory containing the <cluster_type>.yaml config',
     )
+    parser.add_argument(
+        '--verbose',
+        '-v',
+        dest='warn_verbose',
+        action='store_true',
+        help='Show WARNING level logging',
+    )
+    parser.add_argument(
+        '--vverbose',
+        '-vv',
+        dest='info_verbose',
+        action='store_true',
+        help='Show INFO level logging',
+    )
+    parser.add_argument(
+        '--vvverbose',
+        '-vvv',
+        dest='debug_verbose',
+        action='store_true',
+        help='Show DEBUG level logging',
+    )
     subparsers = parser.add_subparsers()
 
     OffsetGet.add_parser(subparsers)
@@ -78,6 +99,12 @@ def parse_args():
 def run():
     logging.basicConfig(level=logging.ERROR)
     args = parse_args()
+    if args.warn_verbose:
+        logging.getLogger().setLevel(logging.WARNING)
+    if args.info_verbose:
+        logging.getLogger().setLevel(logging.INFO)
+    if args.debug_verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
     try:
         conf = get_cluster_config(
             args.cluster_type,
