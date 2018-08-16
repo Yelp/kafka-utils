@@ -1,3 +1,7 @@
+1.6.8 (August 15, 2018)
+----------------------------
+* Add verbosity option for kafka-consumer-manager
+
 1.6.7 (August 15, 2018)
 ----------------------------
 * Bump setuptools version.
