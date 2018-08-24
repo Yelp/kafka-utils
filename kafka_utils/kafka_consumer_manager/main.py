@@ -30,6 +30,8 @@ from .commands.offset_restore import OffsetRestore
 from .commands.offset_rewind import OffsetRewind
 from .commands.offset_save import OffsetSave
 from .commands.offset_set import OffsetSet
+from .commands.offset_set_timestamp import OffsetSetTimestamp
+from .commands.offsets_for_timestamp import OffsetsForTimestamp
 from .commands.rename_group import RenameGroup
 from .commands.unsubscribe_topics import UnsubscribeTopics
 from .commands.watermark_get import WatermarkGet
@@ -93,6 +95,8 @@ def parse_args():
     DeleteGroup.add_parser(subparsers)
     RenameGroup.add_parser(subparsers)
     OffsetRestore.add_parser(subparsers)
+    OffsetsForTimestamp.add_parser(subparsers)
+    OffsetSetTimestamp.add_parser(subparsers)
     return parser.parse_args()
 
 

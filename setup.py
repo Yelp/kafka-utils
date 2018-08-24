@@ -52,6 +52,7 @@ setup(
         "kafka-python>=1.3.2,<1.5.0",
         "kazoo>=2.0,<3.0.0",
         "PyYAML<4.0.0",
+        "pytz>=2018.4",
         "requests-futures>0.9.0",
         "paramiko<2.0.0",
         "requests<3.0.0",
