@@ -370,15 +370,21 @@ class GeneticBalancer(ClusterBalancer):
                 if rg.count_replica(partition) < opt_replicas
             ] or non_full_rgs
 
-            # Add the replica to every eligible broker.
+            # Add the replica to every eligible broker, as follower and leader
             new_states = []
             for rg in under_replicated_rgs:
                 for broker in rg.active_brokers:
                     if broker not in partition.replicas:
                         broker_index = self.state.brokers.index(broker)
-                        new_states.append(
-                            self.state.add_replica(partition_index, broker_index)
+                        new_state = self.state.add_replica(
+                            partition_index,
+                            broker_index,
                         )
+                        new_state_leader = new_state.move_leadership(
+                            partition_index,
+                            broker_index,
+                        )
+                        new_states.extend([new_state, new_state_leader])
 
             # Update cluster topology with highest scoring state.
             self.state = sorted(new_states, key=self._score, reverse=True)[0]
