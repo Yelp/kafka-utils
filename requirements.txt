@@ -13,6 +13,7 @@ ndg-httpsclient==0.3.3
 paramiko==1.16.0
 pyOpenSSL==0.15.1
 pyasn1==0.1.7
+pytz==2018.4
 pycparser==2.10
 requests==2.7.0
 requests-futures==0.9.5

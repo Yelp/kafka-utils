@@ -6,13 +6,18 @@ from collections import namedtuple
 import mock
 import pytest
 from kafka.consumer.fetcher import ConsumerRecord
+from kafka.structs import OffsetAndMetadata
+from kafka.structs import OffsetAndTimestamp
 from kafka.structs import TopicPartition
 from six.moves import range
 
+from kafka_utils.kafka_consumer_manager.util import consumer_commit_for_times
+from kafka_utils.kafka_consumer_manager.util import consumer_partitions_for_topic
 from kafka_utils.kafka_consumer_manager.util import get_group_partition
 from kafka_utils.kafka_consumer_manager.util import get_offset_topic_partition_count
 from kafka_utils.kafka_consumer_manager.util import InvalidMessageException
 from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
+from kafka_utils.kafka_consumer_manager.util import topic_offsets_for_timestamp
 from kafka_utils.util.error import UnknownTopic
 from kafka_utils.util.offsets import PartitionOffsets
 
@@ -237,3 +242,69 @@ class TestKafkaGroupReader(object):
         assert result1 == 10
         assert result2 == 44
         assert result3 == 5
+
+
+class TestKafkaConsumerTimestamps(object):
+
+    @mock.patch("kafka.KafkaConsumer")
+    def test_topic_offsets_timestamp(self, mock_kconsumer):
+        timestamp = 123
+        topics = ["topic1", "topic2", "topic3"]
+        parts = [0, 1]
+        mock_kconsumer.partitions_for_topic.return_value = set(parts)
+        expected = {TopicPartition(topic, part): timestamp for topic in topics for part in parts}
+
+        topic_offsets_for_timestamp(mock_kconsumer, timestamp, topics)
+
+        mock_kconsumer.offsets_for_times.assert_called_once_with(expected)
+
+    @mock.patch("kafka.KafkaConsumer")
+    def test_commit_for_times(self, mock_kconsumer):
+        timestamp = 123
+        topics = ["topic1", "topic2", "topic3"]
+        parts = [0, 1]
+
+        partition_to_offset = {
+            TopicPartition(topic, part): OffsetAndTimestamp(42, timestamp)
+            for topic in topics for part in parts
+        }
+
+        expected = {
+            TopicPartition(topic, part): OffsetAndMetadata(42, metadata=None)
+            for topic in topics for part in parts
+        }
+
+        consumer_commit_for_times(mock_kconsumer, partition_to_offset)
+
+        mock_kconsumer.commit.assert_called_once_with(expected)
+
+    @mock.patch("kafka.KafkaConsumer")
+    def test_commit_for_times_atomic(self, mock_kconsumer):
+        partition_to_offset = {
+            TopicPartition("topic1", 0): None,
+            TopicPartition("topic2", 0): OffsetAndTimestamp(123, 123),
+        }
+
+        consumer_commit_for_times(mock_kconsumer, partition_to_offset, atomic=True)
+        assert mock_kconsumer.commit.call_count == 0
+
+    @mock.patch("kafka.KafkaConsumer")
+    def test_commit_for_times_none(self, mock_kconsumer):
+        partition_to_offset = {
+            TopicPartition("topic1", 0): None,
+            TopicPartition("topic2", 0): None,
+        }
+
+        consumer_commit_for_times(mock_kconsumer, partition_to_offset)
+        assert mock_kconsumer.commit.call_count == 0
+
+    @mock.patch("kafka.KafkaConsumer")
+    def test_consumer_partitions_for_topic(self, mock_kconsumer):
+        topic = "topic1"
+        partitions = set([0, 1, 2, 3, 4])
+        mock_kconsumer.partitions_for_topic.return_value = partitions
+        expected = [TopicPartition(topic, part) for part in partitions]
+
+        actual = consumer_partitions_for_topic(mock_kconsumer, topic)
+
+        assert set(actual) == set(expected)

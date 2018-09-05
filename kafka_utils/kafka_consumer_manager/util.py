@@ -22,6 +22,7 @@ from collections import defaultdict
 
 import six
 from kafka.consumer import KafkaConsumer
+from kafka.structs import OffsetAndMetadata
 from kafka.structs import TopicPartition
 from kafka.util import read_short_string
 from kafka.util import relative_unpack
@@ -158,6 +159,96 @@ def get_group_partition(group, partition_count):
             h = (31 * h + ord(c)) & 0xFFFFFFFF
         return ((h + 0x80000000) & 0xFFFFFFFF) - 0x80000000
     return abs(java_string_hashcode(group)) % partition_count
+
+
+def topic_offsets_for_timestamp(consumer, timestamp, topics):
+    """Given an initialized KafkaConsumer, timestamp, and list of topics,
+    looks up the offsets for the given topics by timestamp. The returned
+    offset for each partition is the earliest offset whose timestamp is greater than or
+    equal to the given timestamp in the corresponding partition.
+
+    Arguments:
+        consumer (KafkaConsumer): an initialized kafka-python consumer
+        timestamp (int): Unix epoch milliseconds. Unit should be milliseconds
+            since beginning of the epoch (midnight Jan 1, 1970 (UTC))
+        topics (list): List of topics whose offsets are to be fetched.
+    :returns:
+        ``{TopicPartition: OffsetAndTimestamp}``: mapping from partition
+        to the timestamp and offset of the first message with timestamp
+        greater than or equal to the target timestamp.
+        Returns ``{TopicPartition: None}`` for specific topic-partiitons if:
+          1. Timestamps are not supported in messages
+          2. No offsets in the partition after the given timestamp
+          3. No data in the topic-partition
+    :raises:
+        ValueError: If the target timestamp is negative
+        UnsupportedVersionError: If the broker does not support looking
+            up the offsets by timestamp.
+        KafkaTimeoutError: If fetch failed in request_timeout_ms
+    """
+    tp_timestamps = {}
+    for topic in topics:
+        topic_partitions = consumer_partitions_for_topic(consumer, topic)
+        for tp in topic_partitions:
+            tp_timestamps[tp] = timestamp
+    return consumer.offsets_for_times(tp_timestamps)
+
+
+def consumer_partitions_for_topic(consumer, topic):
+    """Returns a list of all TopicPartitions for a given topic.
+
+    Arguments:
+        consumer: an initialized KafkaConsumer
+        topic: a topic name to fetch TopicPartitions for
+
+    :returns:
+        list(TopicPartition): A list of TopicPartitions that belong to the given topic
+    """
+    topic_partitions = []
+    partitions = consumer.partitions_for_topic(topic)
+    if partitions is not None:
+        for partition in partitions:
+            topic_partitions.append(TopicPartition(topic, partition))
+    else:
+        logging.error(
+            "No partitions found for topic {}. Maybe it doesn't exist?".format(topic),
+        )
+    return topic_partitions
+
+
+def consumer_commit_for_times(consumer, partition_to_offset, atomic=False):
+    """Commits offsets to Kafka using the given KafkaConsumer and offsets, a mapping
+    of TopicPartition to Unix Epoch milliseconds timestamps.
+
+    Arguments:
+        consumer (KafkaConsumer): an initialized kafka-python consumer.
+        partitions_to_offset (dict TopicPartition: OffsetAndTimestamp): Map of TopicPartition to OffsetAndTimestamp. Return value of offsets_for_times.
+        atomic (bool): Flag to specify whether the commit should fail if offsets are not found for some
+            TopicPartition: timestamp pairs.
+    """
+    no_offsets = set()
+    for tp, offset in six.iteritems(partition_to_offset):
+        if offset is None:
+            logging.error(
+                "No offsets found for topic-partition {tp}. Either timestamps not supported"
+                " for the topic {tp}, or no offsets found after timestamp specified, or there is no"
+                " data in the topic-partition.".format(tp=tp),
+            )
+            no_offsets.add(tp)
+    if atomic and len(no_offsets) > 0:
+        logging.error(
+            "Commit aborted; offsets were not found for timestamps in"
+            " topics {}".format(",".join([str(tp) for tp in no_offsets])),
+        )
+        return
+
+    offsets_metadata = {
+        tp: OffsetAndMetadata(partition_to_offset[tp].offset, metadata=None)
+        for tp in six.iterkeys(partition_to_offset) if tp not in no_offsets
+    }
+
+    if len(offsets_metadata) != 0:
+        consumer.commit(offsets_metadata)
 
 
 class InvalidMessageException(Exception):

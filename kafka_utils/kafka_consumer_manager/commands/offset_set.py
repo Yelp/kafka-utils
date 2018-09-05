@@ -36,7 +36,8 @@ class OffsetSet(OffsetWriter):
         except ValueError:
             print(
                 "Error: Badly formatted input, please re-run command "
-                "with --help option.", file=sys.stderr
+                "with --help option.",
+                file=sys.stderr,
             )
             sys.exit(1)
 
