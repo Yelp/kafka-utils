@@ -1,3 +1,7 @@
+1.7.0 (September 6, 2018)
+----------------------------
+* Add new commands offset_set_timestamp and offsets_for_timestamp
+
 1.6.8 (August 15, 2018)
 ----------------------------
 * Add verbosity option for kafka-consumer-manager
