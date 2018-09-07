@@ -107,30 +107,6 @@ class TestUnsubscribeTopics(object):
             assert zk_obj.unsubscribe_topics.call_count == 0
             assert kafka_obj.unsubscribe_topics.call_count == 1
 
-    def test_run_unsubscribe_both_topic_and_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
-        with mock.patch.object(
-                UnsubscribeTopics,
-                'preprocess_args',
-                spec=UnsubscribeTopics.preprocess_args,
-                return_value=self.topics_partitions,
-        ):
-            args = mock.Mock(topics=["foo", "bar", "baz"], topic="quax", partitions=None)
-
-            with pytest.raises(SystemExit):
-                UnsubscribeTopics.run(args, self.cluster_config)
-
-    def test_run_unsubscribe_both_partitions_and_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
-        with mock.patch.object(
-                UnsubscribeTopics,
-                'preprocess_args',
-                spec=UnsubscribeTopics.preprocess_args,
-                return_value=self.topics_partitions,
-        ):
-            args = mock.Mock(topics=["foo", "bar", "baz"], topic=None, partitions=[0, 1, 2])
-
-            with pytest.raises(SystemExit):
-                UnsubscribeTopics.run(args, self.cluster_config)
-
     def test_run_unsubscribe_only_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
         with mock.patch.object(
                 UnsubscribeTopics,
@@ -141,18 +117,6 @@ class TestUnsubscribeTopics(object):
             args = mock.Mock(topics=["topic1", "topic3"], topic=None, partitions=None)
 
             UnsubscribeTopics.run(args, self.cluster_config)
-
-    def test_run_unsuscribe_missing_topics(self, client, zk, zk_unsubscriber, kafka_unsubscriber):
-        with mock.patch.object(
-                UnsubscribeTopics,
-                'preprocess_args',
-                spec=UnsubscribeTopics.preprocess_args,
-                return_value=self.topics_partitions,
-        ):
-            args = mock.Mock(topics=["topic2", "baz"], topic=None, partitions=None)
-
-            with pytest.raises(SystemExit):
-                UnsubscribeTopics.run(args, self.cluster_config)
 
     def test_unsubscribe_some_partitions_left(self, zk):
         zk_obj = zk.return_value

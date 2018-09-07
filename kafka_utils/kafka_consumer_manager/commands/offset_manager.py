@@ -50,11 +50,26 @@ class OffsetManagerBase(object):
         client,
         storage='kafka',
         fail_on_error=True,
-        quiet=False
+        quiet=False,
+        topics=None,
     ):
+        if topics and partitions:
+            print(
+                "Error: Cannot specify both a list of topics and list of partitions.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
         if (partitions and (not topic)):
             print(
                 "Error: Cannot specify partitions without topic name.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        if topic and topics:
+            print(
+                "Error: Cannot specify both a single topic (--topic) and a list of topics (--topics).",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -67,40 +82,25 @@ class OffsetManagerBase(object):
                     groupid=groupid,
                 ),
             )
-        topics = cls.get_topics_from_consumer_group_id(
+        subscribed_topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
             storage=storage,
             fail_on_error=fail_on_error,
         )
         topics_dict = {}
-        if topic:
-            if topic not in topics:
-                print(
-                    "Error: Consumer {groupid} is not subscribed to topic:"
-                    " {topic}.".format(
-                        groupid=groupid,
-                        topic=topic,
-                    ),
-                    file=sys.stderr,
-                )
-                if fail_on_error:
-                    sys.exit(1)
-                else:
-                    return {}
 
-            complete_partitions_list = client.get_partition_ids_for_topic(topic)
-            if partitions:
-                # If the user specified a topic and partition, just fetch those
-                # offsets.
-                if not set(partitions).issubset(complete_partitions_list):
+        # If the user provided a topic or topics, process them
+        if topic or topics:
+            if not topics:
+                topics = [topic]
+            for t in topics:
+                if t not in subscribed_topics:
                     print(
-                        "Error: Some partitions amongst {partitions} are not "
-                        "part of complete partition list {complete_list} for "
-                        "topic: {topic}.".format(
-                            partitions=', '.join(str(p) for p in partitions),
-                            complete_list=', '.join(str(p) for p in complete_partitions_list),
-                            topic=topic,
+                        "Error: Consumer {groupid} is not subscribed to topic:"
+                        " {topic}.".format(
+                            groupid=groupid,
+                            topic=t,
                         ),
                         file=sys.stderr,
                     )
@@ -108,12 +108,32 @@ class OffsetManagerBase(object):
                         sys.exit(1)
                     else:
                         return {}
-                topics_dict[topic] = partitions
-            else:
-                # If the user just gave us a topic, get offsets from all partitions.
-                topics_dict[topic] = complete_partitions_list
+
+                complete_partitions_list = client.get_partition_ids_for_topic(t)
+                if topic and partitions:
+                    # If the user specified a topic and partition, just fetch those
+                    # offsets.
+                    if not set(partitions).issubset(complete_partitions_list):
+                        print(
+                            "Error: Some partitions amongst {partitions} are not "
+                            "part of complete partition list {complete_list} for "
+                            "topic: {topic}.".format(
+                                partitions=', '.join(str(p) for p in partitions),
+                                complete_list=', '.join(str(p) for p in complete_partitions_list),
+                                topic=t,
+                            ),
+                            file=sys.stderr,
+                        )
+                        if fail_on_error:
+                            sys.exit(1)
+                        else:
+                            return {}
+                    topics_dict[t] = partitions
+                else:
+                    # If the user just gave us a topic, get offsets from all partitions.
+                    topics_dict[t] = complete_partitions_list
         else:
-            for topic in topics:
+            for topic in subscribed_topics:
                 # Get all the partitions for this topic
                 partitions = client.get_partition_ids_for_topic(topic)
                 topics_dict[topic] = partitions
@@ -187,6 +207,7 @@ class OffsetWriter(OffsetManagerBase):
         storage='kafka',
         fail_on_error=True,
         force=False,
+        topics=None,
     ):
         topics_dict = super(OffsetWriter, cls).preprocess_args(
             groupid,
@@ -196,6 +217,7 @@ class OffsetWriter(OffsetManagerBase):
             client,
             storage=storage,
             fail_on_error=(fail_on_error and not force),
+            topics=topics,
         )
 
         if not topics_dict and force:
