@@ -158,3 +158,93 @@ class TestOffsetManagerBase(object):
                 mock_kafka_client
             )
             assert mock_exit.called
+
+    def test_preprocess_args_topic_and_topics(self, mock_kafka_client):
+        args = mock.Mock(
+            groupid="some_group",
+            topic="topic1",
+            partitions=[0, 1, 2],
+            topics=["topic1", "topic2"],
+        )
+
+        with self.mock_get_topics(), mock.patch.object(
+            sys,
+            "exit",
+            autospec=True,
+        ) as mock_exit:
+            OffsetManagerBase.preprocess_args(
+                args.groupid,
+                args.topic,
+                args.partitions,
+                mock.Mock(),
+                mock_kafka_client,
+                topics=args.topics,
+            )
+            assert mock_exit.called
+
+    def test_preprocess_args_topics_and_partitions(self, mock_kafka_client):
+        args = mock.Mock(
+            groupid="some_group",
+            partitions=[0, 1, 2],
+            topics=["topic1", "topic2"],
+        )
+
+        with self.mock_get_topics(), mock.patch.object(
+            sys,
+            "exit",
+            autospec=True,
+        ) as mock_exit:
+            OffsetManagerBase.preprocess_args(
+                args.groupid,
+                args.topic,
+                args.partitions,
+                mock.Mock(),
+                mock_kafka_client,
+                topics=args.topics,
+            )
+            assert mock_exit.called
+
+    def test_preprocess_args_missing_topic(self, mock_kafka_client):
+        args = mock.Mock(
+            groupid="some_group",
+            topic=None,
+            partitions=None,
+            topics=["topic1", "memes"],
+        )
+
+        with self.mock_get_topics(), mock.patch.object(
+            sys,
+            "exit",
+            autospec=True,
+        ) as mock_exit:
+            OffsetManagerBase.preprocess_args(
+                args.groupid,
+                args.topic,
+                args.partitions,
+                mock.Mock(),
+                mock_kafka_client,
+                topics=args.topics,
+            )
+            assert mock_exit.called
+
+    def test_preprocess_args_topics(self, mock_kafka_client):
+        args = mock.Mock(
+            topic=None,
+            partitions=None,
+            groupid="some_group",
+            topics=["topic1", "topic2"],
+        )
+
+        expected_topics_dict = {"topic1": [0, 1, 2], "topic2": [0, 1, 2, 3]}
+
+        with self.mock_get_topics() as mock_get_topics:
+            topics_dict = OffsetManagerBase.preprocess_args(
+                args.groupid,
+                args.topic,
+                args.partitions,
+                mock.Mock(),
+                mock_kafka_client,
+                topics=args.topics,
+            )
+            assert mock_get_topics.called
+            assert topics_dict == expected_topics_dict

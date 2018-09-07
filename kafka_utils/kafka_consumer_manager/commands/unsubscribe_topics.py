@@ -78,21 +78,6 @@ class UnsubscribeTopics(OffsetWriter):
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
 
-        if args.topic and args.topics:
-            print(
-                "Error: Cannot specify --topic and --topics at the same time.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-        if args.partitions and args.topics:
-            print(
-                "Error: Cannot use --partitions with --topics. Use --topic "
-                "instead.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
         # if topic is not None topics_dict will contain only info about that
         # topic, otherwise it will contain info about all topics for the group
         topics_dict = cls.preprocess_args(
@@ -102,17 +87,10 @@ class UnsubscribeTopics(OffsetWriter):
             cluster_config,
             client,
             storage=args.storage,
+            topics=args.topics,
         )
 
         topics = args.topics if args.topics else ([args.topic] if args.topic else [])
-        for topic in topics:
-            if topic not in topics_dict:
-                print(
-                    "Error: Consumer {groupid} is not subscribed to topic:"
-                    " {topic}.".format(groupid=args.groupid, topic=topic),
-                    file=sys.stderr,
-                )
-                sys.exit(1)
 
         with ZK(cluster_config) as zk:
             if args.storage == 'zookeeper':
