@@ -40,13 +40,13 @@ from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
 
-UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
+UNDER_REPL_KEY = "kafka.server:type=ReplicaManager,name=UnderReplicatedPartitions?full=true"
 
 DEFAULT_CHECK_INTERVAL_SECS = 10
 DEFAULT_CHECK_COUNT = 12
 DEFAULT_TIME_LIMIT_SECS = 600
-DEFAULT_JOLOKIA_PORT = 8778
-DEFAULT_JOLOKIA_PREFIX = "jolokia/"
+DEFAULT_JMXPROXY_PORT = 9090
+DEFAULT_JMXPROXY_PREFIX = "localhost:9990/jmxproxy/"
 DEFAULT_STOP_COMMAND = "service kafka stop"
 DEFAULT_START_COMMAND = "service kafka start"
 
@@ -106,16 +106,16 @@ def parse_opts():
         default=DEFAULT_TIME_LIMIT_SECS,
     )
     parser.add_argument(
-        '--jolokia-port',
-        help='the jolokia port on the server. Default: %(default)s',
+        '--jmxproxy-port',
+        help='the jmxproxy port on the server. Default: %(default)s',
         type=int,
-        default=DEFAULT_JOLOKIA_PORT,
+        default=DEFAULT_JMXPROXY_PORT,
     )
     parser.add_argument(
-        '--jolokia-prefix',
-        help='the jolokia HTTP prefix. Default: %(default)s',
+        '--jmxproxy-prefix',
+        help='the jmxproxy HTTP prefix. Default: %(default)s',
         type=str,
-        default=DEFAULT_JOLOKIA_PREFIX,
+        default=DEFAULT_JMXPROXY_PREFIX,
     )
     parser.add_argument(
         '--no-confirm',
@@ -195,44 +195,44 @@ def filter_broker_list(brokers, filter_by):
     return [(id, host) for id, host in brokers if id in filter_by_set]
 
 
-def generate_requests(hosts, jolokia_port, jolokia_prefix):
+def generate_requests(hosts, jmxproxy_port, jmxproxy_prefix):
     """Return a generator of requests to fetch the under replicated
     partition number from the specified hosts.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param jmxproxy_port: HTTP port for JMXproxy
+    :type jmxproxy_port: integer
+    :param jmxproxy_prefix: HTTP prefix on the server for the JMXproxy queries
+    :type jmxproxy_prefix: string
     :returns: generator of requests
     """
     session = FuturesSession()
     for host in hosts:
-        url = "http://{host}:{port}/{prefix}/read/{key}".format(
+        url = "http://{host}:{port}/{prefix}/{key}".format(
             host=host,
-            port=jolokia_port,
-            prefix=jolokia_prefix,
+            port=jmxproxy_port,
+            prefix=jmxproxy_prefix,
             key=UNDER_REPL_KEY,
         )
         yield host, session.get(url)
 
 
-def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
+def read_cluster_status(hosts, jmxproxy_port, jmxproxy_prefix):
     """Read and return the number of under replicated partitions and
     missing brokers from the specified hosts.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param jmxproxy_port: HTTP port for JMXproxy
+    :type jmxproxy_port: integer
+    :param jmxproxy_prefix: HTTP prefix on the server for the JMXproxy queries
+    :type jmxproxy_prefix: string
     :returns: tuple of integers
     """
     under_replicated = 0
     missing_brokers = 0
-    for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix):
+    for host, request in generate_requests(hosts, jmxproxy_port, jmxproxy_prefix):
         try:
             response = request.result()
             if 400 <= response.status_code <= 599:
@@ -298,8 +298,8 @@ def stop_broker(host, connection, stop_command, verbose):
 
 def wait_for_stable_cluster(
     hosts,
-    jolokia_port,
-    jolokia_prefix,
+    jmxproxy_port,
+    jmxproxy_prefix,
     check_interval,
     check_count,
     unhealthy_time_limit,
@@ -309,10 +309,10 @@ def wait_for_stable_cluster(
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param jmxproxy_port: HTTP port for JMXproxy
+    :type jmxproxy_port: integer
+    :param jmxproxy_prefix: HTTP prefix on the server for the JMXproxy queries
+    :type jmxproxy_prefix: string
     :param check_interval: the number of seconds it will wait between each check
     :type check_interval: integer
     :param check_count: the number of times the check should be positive before
@@ -327,8 +327,8 @@ def wait_for_stable_cluster(
     for i in itertools.count():
         partitions, brokers = read_cluster_status(
             hosts,
-            jolokia_port,
-            jolokia_prefix,
+            jmxproxy_port,
+            jmxproxy_prefix,
         )
         if partitions or brokers:
             stable_counter = 0
@@ -359,8 +359,8 @@ def execute_task(tasks, host):
 
 def execute_rolling_restart(
     brokers,
-    jolokia_port,
-    jolokia_prefix,
+    jmxproxy_port,
+    jmxproxy_prefix,
     check_interval,
     check_count,
     unhealthy_time_limit,
@@ -373,7 +373,7 @@ def execute_rolling_restart(
     ssh_password=None
 ):
     """Execute the rolling restart on the specified brokers. It checks the
-    number of under replicated partitions on each broker, using Jolokia.
+    number of under replicated partitions on each broker, using JMXproxy.
 
     The check is performed at constant intervals, and a broker will be restarted
     when all the brokers are answering and are reporting zero under replicated
@@ -381,10 +381,10 @@ def execute_rolling_restart(
 
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param jmxproxy_port: HTTP port for JMXproxy
+    :type jmxproxy_port: integer
+    :param jmxproxy_prefix: HTTP prefix on the server for the JMXproxy queries
+    :type jmxproxy_prefix: string
     :param check_interval: the number of seconds it will wait between each check
     :type check_interval: integer
     :param check_count: the number of times the check should be positive before
@@ -415,8 +415,8 @@ def execute_rolling_restart(
             execute_task(pre_stop_task, host)
             wait_for_stable_cluster(
                 all_hosts,
-                jolokia_port,
-                jolokia_prefix,
+                jmxproxy_port,
+                jmxproxy_prefix,
                 check_interval,
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
@@ -432,8 +432,8 @@ def execute_rolling_restart(
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
-        jolokia_port,
-        jolokia_prefix,
+        jmxproxy_port,
+        jmxproxy_prefix,
         check_interval,
         check_count,
         unhealthy_time_limit,
@@ -542,8 +542,8 @@ def run():
         try:
             execute_rolling_restart(
                 brokers,
-                opts.jolokia_port,
-                opts.jolokia_prefix,
+                opts.jmxproxy_port,
+                opts.jmxproxy_prefix,
                 opts.check_interval,
                 opts.check_count,
                 opts.unhealthy_time_limit,

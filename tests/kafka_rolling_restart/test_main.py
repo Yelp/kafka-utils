@@ -30,7 +30,7 @@ def test_read_cluster_value_partitions(mock_get):
     request = mock_get.return_value
     request.result.return_value = response
 
-    p, b = main.read_cluster_status(["host1", "host2", "host3"], 80, "jolokia")
+    p, b = main.read_cluster_status(["host1", "host2", "host3"], 80, "jmxproxy")
 
     assert p == 3   # 3 missing partitions
     assert b == 0   # 0 missing brokers
@@ -44,7 +44,7 @@ def test_read_cluster_value_exit(mock_get):
     request.result.return_value = response
 
     with pytest.raises(SystemExit):
-        p, b = main.read_cluster_status(["host1"], 80, "jolokia")
+        p, b = main.read_cluster_status(["host1"], 80, "jmxproxy")
 
 
 @mock.patch.object(main.FuturesSession, 'get', autospec=True)
@@ -55,7 +55,7 @@ def test_read_cluster_value_no_key(mock_get):
     request = mock_get.return_value
     request.result.return_value = response
 
-    p, b = main.read_cluster_status(["host1"], 80, "jolokia")
+    p, b = main.read_cluster_status(["host1"], 80, "jmxproxy")
 
     assert p == 0   # 0 missing partitions
     assert b == 1   # 1 missing brokers
@@ -66,7 +66,7 @@ def test_read_cluster_value_server_down(mock_get):
     request = mock_get.return_value
     request.result.side_effect = RequestException
 
-    p, b = main.read_cluster_status(["host1"], 80, "jolokia")
+    p, b = main.read_cluster_status(["host1"], 80, "jmxproxy")
 
     assert p == 0   # 0 missing partitions
     assert b == 1   # 1 missing brokers

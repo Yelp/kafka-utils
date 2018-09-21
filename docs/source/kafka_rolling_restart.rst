@@ -14,7 +14,7 @@ answering to JMX requests, and that the total numer of under replicated
 partitions is zero. If both conditions are fulfilled, the cluster is considered
 healthy and the next broker will be restarted.
 
-The JMX metrics are accessed via `Jolokia <https://jolokia.org>`_, which must be
+The JMX metrics are accessed via `JMXproxy <https://github.com/mk23/jmxproxy>`_, which must be
 running on all brokers.
 
 .. note:: If a broker is not registered in Zookeeper when the tool is executed,
@@ -32,8 +32,8 @@ The parameters specific for kafka-rolling-restart are:
 * ``--unhealthy-time-limit LIMIT``: the maximum time in seconds that a
   cluster can be unhealthy for. If the limit is reached, the script will
   terminate with an error. Default 600.
-* ``--jolokia-port PORT``: The Jolokia port. Default 8778.
-* ``--jolokia-prefix PREFIX``: The Jolokia prefix. Default "jolokia/".
+* ``--jmxproxy-port PORT``: The JMXProxy port. Default 9090.
+* ``--jmxproxy-prefix PREFIX``: The JMXProxy prefix. Default "jmxproxy/localhost:9099/".
 * ``--no-confirm``: If specified, the script will not ask for confirmation.
 * ``--skip N``: Skip the first N servers. Useful to recover from a partial
   rolling restart. Default 0.
