@@ -1,3 +1,7 @@
+1.7.2 (October 3, 2018)
+----------------------------
+* Upgrade paramiko in kafka-utils (paramiko < 2.5.0)
+
 1.7.1 (September 7, 2018)
 ----------------------------
 * Fix bug in unsubscribe_topics command where all subscribed topics were being
