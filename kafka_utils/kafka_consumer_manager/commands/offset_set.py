@@ -19,8 +19,11 @@ from __future__ import unicode_literals
 import sys
 from collections import defaultdict
 
+import six
+
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
 
 
@@ -80,35 +83,7 @@ class OffsetSet(OffsetWriter):
         parser_offset_set.set_defaults(command=cls.run)
 
     @classmethod
-    def run(cls, args, cluster_config):
-        # Setup the Kafka client
-        client = KafkaToolClient(cluster_config.broker_list)
-        client.load_metadata_for_topics()
-
-        # Let's verify that the consumer does exist in Zookeeper
-        if not args.force:
-            cls.get_topics_from_consumer_group_id(
-                cluster_config,
-                args.groupid,
-                storage=args.storage,
-            )
-
-        try:
-            results = set_consumer_offsets(
-                client,
-                args.groupid,
-                cls.new_offsets_dict,
-                offset_storage=args.storage,
-            )
-        except TypeError:
-            print(
-                "Error: Badly formatted input, please re-run command "
-                "with --help option.", file=sys.stderr
-            )
-            raise
-
-        client.close()
-
+    def check_results(cls, results):
         if results:
             final_error_str = ("Error: Unable to commit consumer offsets for:\n")
             for result in results:
@@ -122,3 +97,94 @@ class OffsetSet(OffsetWriter):
                 final_error_str += error_str
             print(final_error_str, file=sys.stderr)
             sys.exit(1)
+
+    @classmethod
+    def merge_current_new_offsets_dict(cls, current_offsets, new_offsets):
+        merged_offsets = current_offsets.copy()
+        for topic in new_offsets.keys():
+            if topic not in merged_offsets:
+                merged_offsets[topic] = new_offsets[topic]
+            else:
+                merged_offsets[topic].update(new_offsets[topic])
+        return merged_offsets
+
+    @classmethod
+    def split_zero_nonzero_offsets_dict(cls, new_offsets_dict):
+        zero_offsets = defaultdict(dict)
+        nonzero_offsets = defaultdict(dict)
+        for topic, partitions in six.iteritems(new_offsets_dict):
+            for partition, offset in six.iteritems(partitions):
+                if offset == 0:
+                    zero_offsets[topic][partition] = offset
+                else:
+                    nonzero_offsets[topic][partition] = offset
+        return zero_offsets, nonzero_offsets
+
+    @classmethod
+    def run(cls, args, cluster_config):
+        # Setup the Kafka client
+        client = KafkaToolClient(cluster_config.broker_list)
+        client.load_metadata_for_topics()
+
+        # Let's verify that the consumer does exist
+        if not args.force:
+            cls.get_topics_from_consumer_group_id(
+                cluster_config,
+                args.groupid,
+                storage=args.storage,
+            )
+
+        # Split up new_offsets_dict into "zero" and "non-zero" offsets
+        # This is because any "zero" offset commit will unsubscribe the whole topic
+        zero_offsets, nonzero_offsets = cls.split_zero_nonzero_offsets_dict(cls.new_offsets_dict)
+
+        try:
+            # First save the current offsets, and then commit new zero offsets
+            if len(zero_offsets) > 0:
+                topics = cls.get_topics_from_consumer_group_id(
+                    cluster_config,
+                    args.groupid,
+                    args.storage,
+                    fail_on_error=False,
+                )
+                # We only care about saving offsets for topics we are committing zero offsets for
+                topics = [topic for topic in topics if topic in zero_offsets]
+
+                current_offsets = get_current_consumer_offsets(
+                    client,
+                    args.groupid,
+                    topics,
+                    args.storage,
+                )
+
+                results = set_consumer_offsets(
+                    client,
+                    args.groupid,
+                    zero_offsets,
+                    offset_storage=args.storage,
+                )
+                cls.check_results(results)
+
+                # Ensure that any offsets in current_offsets are overwritten by new offsets
+                current_offsets = cls.merge_current_new_offsets_dict(current_offsets, zero_offsets)
+                nonzero_offsets = cls.merge_current_new_offsets_dict(current_offsets, nonzero_offsets)
+                # Remove any zero offsets -- we already committed these
+                _, nonzero_offsets = cls.split_zero_nonzero_offsets_dict(nonzero_offsets)
+            # Commit the non-zero offsets
+            if len(nonzero_offsets) > 0:
+                results = set_consumer_offsets(
+                    client,
+                    args.groupid,
+                    nonzero_offsets,
+                    offset_storage=args.storage,
+                )
+                cls.check_results(results)
+
+        except TypeError:
+            print(
+                "Error: Badly formatted input, please re-run command "
+                "with --help option.", file=sys.stderr
+            )
+            raise
+
+        client.close()
