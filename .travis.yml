@@ -25,7 +25,7 @@ before_install:
 install:
 - pip install tox tox-travis
 script:
-- tox
+- tox -i https://pypi.python.org/simple
 deploy:
   provider: pypi
   user: yelplabs
