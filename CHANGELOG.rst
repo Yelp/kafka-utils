@@ -1,3 +1,8 @@
+1.7.3 (October 11, 2018)
+----------------------------
+* Fix bug in offset_get command that showed topics as unsubscribed if any
+  partition had an offset of 0 committed
+
 1.7.2 (October 3, 2018)
 ----------------------------
 * Upgrade paramiko in kafka-utils (paramiko < 2.5.0)
