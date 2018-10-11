@@ -104,7 +104,7 @@ class TestKafkaGroupReader(object):
 
         # Convert the defaultdict to a normal dict for comparison
         actual = {}
-        for group, topics in six.iteritems(kafka_group_reader.kafka_groups):
+        for group, topics in six.iteritems(kafka_group_reader._kafka_groups):
             actual[group] = {}
             for topic, partitions in six.iteritems(topics):
                 actual[group][topic] = {}
@@ -120,13 +120,13 @@ class TestKafkaGroupReader(object):
         message = mock.MagicMock(spec=ConsumerRecord)
         kafka_group_reader.process_consumer_offset_message(message)
 
-        assert kafka_group_reader.kafka_groups == dict()
+        assert kafka_group_reader._kafka_groups == dict()
 
     def test_process_consumer_offset_message_topic_get(self):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
 
-        assert kafka_group_reader.kafka_groups == {}
+        assert kafka_group_reader._kafka_groups == {}
 
         with mock.patch.object(
             kafka_group_reader,
@@ -140,14 +140,14 @@ class TestKafkaGroupReader(object):
             autospec=True
         ):
             kafka_group_reader.process_consumer_offset_message('test message')
-            assert kafka_group_reader.kafka_groups['test_group'] == {'test_topic': {0: 45}}
+            assert kafka_group_reader._kafka_groups['test_group'] == {'test_topic': {0: 45}}
 
     def test_process_consumer_offset_message_topic_pop_no_offset(self):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
 
-        kafka_group_reader.kafka_groups['test_group'] = {'test_topic': {0: 45}}
-        assert kafka_group_reader.kafka_groups['test_group'] == {'test_topic': {0: 45}}
+        kafka_group_reader._kafka_groups['test_group'] = {'test_topic': {0: 45}}
+        assert kafka_group_reader._kafka_groups['test_group'] == {'test_topic': {0: 45}}
 
         with mock.patch.object(
             kafka_group_reader,
@@ -161,7 +161,7 @@ class TestKafkaGroupReader(object):
             autospec=True
         ):
             kafka_group_reader.process_consumer_offset_message('test message')
-            assert kafka_group_reader.kafka_groups == {'test_group': {}}
+            assert kafka_group_reader._kafka_groups == {'test_group': {}}
 
     def test_read_groups(self):
         kafka_config = mock.Mock()
@@ -195,8 +195,8 @@ class TestKafkaGroupReader(object):
                     ])
                     mock_consumer.return_value.partitions_for_topic.return_value = [0, 1]
                     kafka_group_reader.read_groups()
-                    assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic": {0: 45}}
-                    assert kafka_group_reader.kafka_groups['test_group2'] == {"test_topic2": {0: 20}}
+                    assert kafka_group_reader._kafka_groups['test_group'] == {"test_topic": {0: 45}}
+                    assert kafka_group_reader._kafka_groups['test_group2'] == {"test_topic2": {0: 20}}
                     mock_consumer.return_value.assign.call_args_list == [
                         mock.call([
                             TopicPartition("__consumer_offsets", 0),
@@ -237,7 +237,7 @@ class TestKafkaGroupReader(object):
                 ):
                     mock_consumer.return_value.__iter__.return_value = iter([mock.Mock(partition=0, topic='test_topic', offset=45)])
                     kafka_group_reader.read_groups(partition=0)
-                    assert kafka_group_reader.kafka_groups['test_group'] == {"test_topic": {0: 45}}
+                    assert kafka_group_reader._kafka_groups['test_group'] == {"test_topic": {0: 45}}
                     mock_consumer.return_value.assign.assert_called_once_with(
                         [TopicPartition("__consumer_offsets", 0)]
                     )
@@ -245,7 +245,7 @@ class TestKafkaGroupReader(object):
     def test_remove_unsubscribed_topics(self):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
-        kafka_group_reader.kafka_groups = {
+        kafka_group_reader._kafka_groups = {
             'my_group1': {
                 'topic1': {0: 0, 1: 1},
                 'topic2': {0: 1},
@@ -268,7 +268,7 @@ class TestKafkaGroupReader(object):
 
         kafka_group_reader._remove_unsubscribed_topics()
 
-        assert kafka_group_reader.kafka_groups == expected
+        assert kafka_group_reader._kafka_groups == expected
 
     @mock.patch("kafka_utils.kafka_consumer_manager.util.get_topic_partition_metadata")
     def test_get_offset_topic_partition_count_raise(self, mock_get_metadata):
