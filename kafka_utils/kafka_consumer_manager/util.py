@@ -260,7 +260,7 @@ class KafkaGroupReader:
     def __init__(self, kafka_config):
         self.log = logging.getLogger(__name__)
         self.kafka_config = kafka_config
-        self.kafka_groups = defaultdict(set)
+        self._kafka_groups = defaultdict(lambda: defaultdict(dict))
         self.active_partitions = {}
         self._finished = False
 
@@ -317,11 +317,21 @@ class KafkaGroupReader:
                 self.remove_partition_from_consumer(message.partition)
             self.process_consumer_offset_message(message)
 
+        self._remove_unsubscribed_topics()
+
         return {
-            group: topics
-            for group, topics in self.kafka_groups.items()
+            group: topics.keys()
+            for group, topics in six.iteritems(self._kafka_groups)
             if topics
         }
+
+    def _remove_unsubscribed_topics(self):
+        for group, topics in list(six.iteritems(self._kafka_groups)):
+            for topic, partitions in list(six.iteritems(topics)):
+                # If offsets for all partitions are 0, consider the topic as unsubscribed
+                if not any(partitions.values()):
+                    del self._kafka_groups[group][topic]
+                    self.log.info("Removed group {group} topic {topic} from list of groups".format(group=group, topic=topic))
 
     def remove_partition_from_consumer(self, partition):
         deleted = self.active_partitions.pop(partition)
@@ -369,14 +379,19 @@ class KafkaGroupReader:
         except InvalidMessageException:
             return
 
-        if offset and (group not in self.kafka_groups or
-                       topic not in self.kafka_groups[group]):
-            self.kafka_groups[group].add(topic)
-            self.log.info("Added group %s topic %s to list of groups", group, topic)
-        elif not offset and group in self.kafka_groups and \
-                topic in self.kafka_groups[group]:  # No offset means topic deletion
-            self.kafka_groups[group].discard(topic)
-            self.log.info("Removed group %s topic %s from list of groups", group, topic)
+        if offset is not None:
+            self._kafka_groups[group][topic][partition] = offset
+            self.log.info(
+                "Updated group {group} topic {topic} and updated offset in list of groups".format(
+                    group=group,
+                    topic=topic,
+                ),
+            )
+        # TODO: check if we can ever find an offset commit message with message.value is None
+        elif offset is None and group in self._kafka_groups and \
+                topic in self._kafka_groups[group]:  # No offset means topic deletion
+            del self._kafka_groups[group][topic]
+            self.log.info("Removed group {group} topic {topic} from list of groups".format(group=group, topic=topic))
 
     def get_current_watermarks(self, partitions=None):
         client = KafkaToolClient(self.kafka_config.broker_list)
