@@ -54,7 +54,7 @@ setup(
         "PyYAML",
         "pytz>=2018.4",
         "requests-futures>0.9.0",
-        "paramiko",
+        "paramiko>=1.8.0",
         "requests",
         "retrying",
         "six>=1.10.0",
