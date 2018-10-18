@@ -7,7 +7,6 @@ Feature: kafka_consumer_manager offset_advance
       when we call the offset_advance command with a groupid and topic with zk storage
       then the committed offsets will match the latest message offsets
 
-  @kafka_offset_storage
   Scenario: Calling the offset_advance command with default storage
      Given we have an existing kafka cluster with a topic
      Given we have initialized kafka offsets storage

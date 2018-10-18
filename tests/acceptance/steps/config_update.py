@@ -53,16 +53,6 @@ def step_impl3(context):
     time.sleep(2)  # sleeping for 2 seconds to ensure config is actually picked up
 
 
-@when(u'we change the topic config in zk to 10000 bytes for kafka 9')
-def step_impl4(context):
-    cluster_config = get_cluster_config()
-    with ZK(cluster_config) as zk:
-        current_config = zk.get_topic_config(context.topic)
-        current_config['config']['max.message.bytes'] = '1000'
-        zk.set_topic_config(context.topic, value=current_config, kafka_version=(0, 9, 2))
-    time.sleep(2)  # sleeping for 2 seconds to ensure config is actually picked up
-
-
 @then(u'we produce to a kafka topic it should succeed')
 def step_impl5(context):
     try:
