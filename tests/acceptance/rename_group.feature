@@ -7,7 +7,6 @@ Feature: kafka_consumer_manager rename_group subcommand
       when we call the rename_group command
       then the committed offsets in the new group will match the expected values
 	
-  @kafka_offset_storage 
   Scenario: Calling the rename_group command with kafka storage
      Given we have an existing kafka cluster with a topic
      Given we have initialized kafka offsets storage		
