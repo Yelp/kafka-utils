@@ -40,11 +40,6 @@ class DeleteGroup(OffsetWriter):
             'groupid',
             help="Consumer Group IDs whose metadata shall be deleted."
         )
-        parser_delete_group.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets.",
-            default='kafka',
-        )
         parser_delete_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -59,12 +54,8 @@ class DeleteGroup(OffsetWriter):
             None,
             cluster_config,
             client,
-            storage=args.storage,
         )
-        if args.storage == 'zookeeper':
-            cls.delete_group_zk(cluster_config, args.groupid)
-        else:
-            cls.delete_group_kafka(client, args.groupid, topics_dict)
+        cls.delete_group_kafka(client, args.groupid, topics_dict)
 
     @classmethod
     def delete_group_zk(cls, cluster_config, group):
@@ -74,9 +65,4 @@ class DeleteGroup(OffsetWriter):
     @classmethod
     def delete_group_kafka(cls, client, group, topics):
         new_offsets = nullify_offsets(topics)
-        set_consumer_offsets(
-            client,
-            group,
-            new_offsets,
-            offset_storage='kafka',
-        )
+        set_consumer_offsets(client, group, new_offsets)

@@ -50,11 +50,6 @@ class OffsetRestore(OffsetManagerBase):
             type=str,
             help="Json file containing offset information",
         )
-        parser_offset_restore.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets.",
-            default='kafka'
-        )
         parser_offset_restore.set_defaults(command=cls.run)
 
     @classmethod
@@ -149,17 +144,16 @@ class OffsetRestore(OffsetManagerBase):
         with closing(KafkaToolClient(cluster_config.broker_list)) as client:
             client.load_metadata_for_topics()
 
-            cls.restore_offsets(client, parsed_consumer_offsets, args.storage)
+            cls.restore_offsets(client, parsed_consumer_offsets)
 
     @classmethod
-    def restore_offsets(cls, client, parsed_consumer_offsets, storage):
+    def restore_offsets(cls, client, parsed_consumer_offsets):
         """Fetch current offsets from kafka, validate them against given
         consumer-offsets data and commit the new offsets.
 
         :param client: Kafka-client
         :param parsed_consumer_offsets: Parsed consumer offset data from json file
         :type parsed_consumer_offsets: dict(group: dict(topic: partition-offsets))
-        :param storage: String describing where to store the committed offsets.
         """
         # Fetch current offsets
         try:
@@ -180,7 +174,6 @@ class OffsetRestore(OffsetManagerBase):
             client,
             consumer_group,
             topic_partitions,
-            offset_storage=storage,
         )
         # Build new offsets
         new_offsets = cls.build_new_offsets(
@@ -192,10 +185,5 @@ class OffsetRestore(OffsetManagerBase):
 
         # Commit offsets
         consumer_group = parsed_consumer_offsets['groupid']
-        set_consumer_offsets(
-            client,
-            consumer_group,
-            new_offsets,
-            offset_storage=storage,
-        )
+        set_consumer_offsets(client, consumer_group, new_offsets)
         print("Restored to new offsets {offsets}".format(offsets=dict(new_offsets)))

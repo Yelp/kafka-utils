@@ -35,11 +35,6 @@ class InvalidConfigurationError(ConfigurationError):
     pass
 
 
-class InvalidOffsetStorageError(KafkaToolError):
-    """Unknown source of offsets."""
-    pass
-
-
 class UnknownTopic(KafkaToolError):
     """Topic does not exist in kafka."""
     pass

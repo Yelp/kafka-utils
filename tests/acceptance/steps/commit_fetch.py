@@ -20,14 +20,14 @@ from steps.util import create_random_group_id
 from steps.util import get_cluster_config
 
 from kafka_utils.util.client import KafkaToolClient
-from kafka_utils.util.monitoring import get_current_offsets
+from kafka_utils.util.monitoring import get_current_consumer_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
 
 
 TEST_OFFSET = 56
 
 
-def commit_offsets(offsets, group, storage):
+def commit_offsets(offsets, group):
     # Setup the Kafka client
     config = get_cluster_config()
     client = KafkaToolClient(config.broker_list)
@@ -35,16 +35,15 @@ def commit_offsets(offsets, group, storage):
         client,
         group,
         offsets,
-        offset_storage=storage,
     )
     client.close()
 
 
-def fetch_offsets(group, topics, storage):
+def fetch_offsets(group, topics):
     # Setup the Kafka client
     config = get_cluster_config()
     client = KafkaToolClient(config.broker_list)
-    offsets = get_current_offsets(client, group, topics, False, storage)
+    offsets = get_current_consumer_offsets(client, group, topics, False)
     client.close()
     return offsets
 
@@ -53,27 +52,13 @@ def fetch_offsets(group, topics, storage):
 def step_impl4(context):
     context.offsets = {context.topic: {0: TEST_OFFSET}}
     context.group = create_random_group_id()
-    commit_offsets(context.offsets, context.group, 'kafka')
+    commit_offsets(context.offsets, context.group)
 
 
-@when(u'we fetch offsets for the group with the dual option')
-def step_impl4_2(context):
-    topics = list(context.offsets.keys())
-    context.fetched_offsets = fetch_offsets(
-        context.group,
-        topics,
-        'dual'
-    )
-
-
-@when(u'we fetch offsets for the group with the kafka option')
+@when(u'we fetch offsets for the group')
 def step_impl4_3(context):
     topics = list(context.offsets.keys())
-    context.fetched_offsets = fetch_offsets(
-        context.group,
-        topics,
-        'kafka'
-    )
+    context.fetched_offsets = fetch_offsets(context.group, topics)
 
 
 @then(u'the fetched offsets will match the committed offsets')

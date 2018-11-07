@@ -25,7 +25,6 @@ from kafka.structs import OffsetCommitResponsePayload
 from kafka.structs import OffsetFetchResponsePayload
 from kafka.structs import OffsetResponsePayload
 
-from kafka_utils.util.error import InvalidOffsetStorageError
 from kafka_utils.util.offsets import _nullify_partition_offsets
 from kafka_utils.util.offsets import _verify_commit_offsets_requests
 from kafka_utils.util.offsets import advance_consumer_offsets
@@ -101,35 +100,7 @@ class MyKafkaToolClient(object):
     def set_offset_request_error(self):
         self.offset_request_error = True
 
-    def send_offset_commit_request(
-        self,
-        group,
-        payloads=None,
-        fail_on_error=True,
-        callback=None
-    ):
-        return self._send_offset_commit_request(
-            group,
-            payloads,
-            fail_on_error,
-            callback,
-        )
-
     def send_offset_commit_request_kafka(
-        self,
-        group,
-        payloads=None,
-        fail_on_error=True,
-        callback=None
-    ):
-        return self._send_offset_commit_request(
-            group,
-            payloads,
-            fail_on_error,
-            callback,
-        )
-
-    def _send_offset_commit_request(
         self,
         group,
         payloads=None,
@@ -167,35 +138,7 @@ class MyKafkaToolClient(object):
     def get_partition_ids_for_topic(self, topic):
         return self.topics[topic]
 
-    def send_offset_fetch_request(
-        self,
-        group,
-        payloads,
-        fail_on_error,
-        callback,
-    ):
-        return self._send_offset_fetch_request_either(
-            group,
-            payloads,
-            fail_on_error,
-            callback,
-        )
-
     def send_offset_fetch_request_kafka(
-        self,
-        group,
-        payloads,
-        fail_on_error,
-        callback
-    ):
-        return self._send_offset_fetch_request_either(
-            group,
-            payloads,
-            fail_on_error,
-            callback,
-        )
-
-    def _send_offset_fetch_request_either(
         self,
         group,
         payloads,
@@ -267,14 +210,6 @@ class TestOffsetsBase(object):
 
 class TestOffsets(TestOffsetsBase):
 
-    def test_get_current_consumer_offsets_invalid_arguments(self, kafka_client_mock):
-        with pytest.raises(TypeError):
-            get_current_consumer_offsets(
-                kafka_client_mock,
-                "this won't even be consulted",
-                "this should be a list or dict",
-            )
-
     def test_get_current_consumer_offsets_unknown_topic(self, kafka_client_mock):
         with pytest.raises(UnknownTopic):
             get_current_consumer_offsets(
@@ -336,21 +271,6 @@ class TestOffsets(TestOffsetsBase):
         )
         assert actual == {'topic1': {0: 30, 1: 20, 2: 10}}
 
-    def test_get_current_consumer_offsets_from_zookeeper(
-        self,
-        topics,
-        kafka_client_mock
-    ):
-        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
-        get_current_consumer_offsets(
-            kafka_client_mock,
-            self.group,
-            topics,
-            offset_storage='zookeeper',
-        )
-        assert kafka_client_mock.send_offset_fetch_request.call_count == 1
-        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 0
-
     def test_get_current_consumer_offsets_from_kafka(
         self,
         topics,
@@ -361,26 +281,8 @@ class TestOffsets(TestOffsetsBase):
             kafka_client_mock,
             self.group,
             topics,
-            offset_storage='kafka',
         )
-        assert kafka_client_mock.send_offset_fetch_request.call_count == 0
-        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 1
-
-    def test_get_current_consumer_offsets_invalid_storage(
-        self,
-        topics,
-        kafka_client_mock
-    ):
-        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
-        with pytest.raises(InvalidOffsetStorageError):
-            get_current_consumer_offsets(
-                kafka_client_mock,
-                self.group,
-                topics,
-                offset_storage='random_string',
-            )
-        assert kafka_client_mock.send_offset_fetch_request.call_count == 0
-        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 0
+        assert kafka_client_mock.send_offset_fetch_request.call_count == 1
 
     def test_get_topics_watermarks_invalid_arguments(self, kafka_client_mock):
         with pytest.raises(TypeError):
@@ -734,33 +636,6 @@ class TestOffsets(TestOffsetsBase):
             assert any(actual == expected for actual in status)
         assert kafka_client_mock.group_offsets == self.group_offsets
 
-    def test_set_consumer_offsets_zookeeper(
-        self,
-        topics,
-        kafka_client_mock
-    ):
-        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
-        new_offsets = {
-            'topic1': {
-                0: 100,
-                1: 200,
-            },
-            'topic2': {
-                0: 150,
-                1: 300,
-            },
-        }
-
-        set_consumer_offsets(
-            kafka_client_mock,
-            "group",
-            new_offsets,
-            raise_on_error=True,
-            offset_storage='zookeeper',
-        )
-        assert kafka_client_mock.send_offset_commit_request.call_count == 1
-        assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 0
-
     def test_set_consumer_offsets_kafka(
         self,
         topics,
@@ -783,38 +658,8 @@ class TestOffsets(TestOffsetsBase):
             "group",
             new_offsets,
             raise_on_error=True,
-            offset_storage='kafka',
         )
-        assert kafka_client_mock.send_offset_commit_request.call_count == 0
         assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 1
-
-    def test_set_consumer_offsets_invalid_storage(
-        self,
-        topics,
-        kafka_client_mock
-    ):
-        kafka_client_mock = mock.Mock(wraps=kafka_client_mock)
-        new_offsets = {
-            'topic1': {
-                0: 100,
-                1: 200,
-            },
-            'topic2': {
-                0: 150,
-                1: 300,
-            },
-        }
-
-        with pytest.raises(InvalidOffsetStorageError):
-            set_consumer_offsets(
-                kafka_client_mock,
-                "group",
-                new_offsets,
-                raise_on_error=True,
-                offset_storage='randon_string',
-            )
-        assert kafka_client_mock.send_offset_commit_request.call_count == 0
-        assert kafka_client_mock.send_offset_commit_request_kafka.call_count == 0
 
     def test_nullify_partition_offsets(self):
         partition_offsets = {

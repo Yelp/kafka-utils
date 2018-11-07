@@ -23,39 +23,33 @@ from steps.util import call_offset_get
 NEW_GROUP = 'new_group'
 
 
-def call_rename_group(old_group, new_group, storage='zookeeper'):
+def call_rename_group(old_group, new_group):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'rename_group',
            old_group,
-           new_group,
-           '--storage', storage]
+           new_group]
     return call_cmd(cmd)
 
 
 @when(u'we call the rename_group command')
-def step_impl1(context):
-    call_rename_group(context.group, NEW_GROUP)
-
-
-@when(u'we call the rename_group command with kafka storage')
 def step_impl2(context):
-    call_rename_group(context.group, NEW_GROUP, 'kafka')
+    call_rename_group(context.group, NEW_GROUP)
 
 
 @then(u'the committed offsets in the new group will match the expected values')
 def step_impl3(context):
-    new_group = call_offset_get(NEW_GROUP, 'zookeeper', True)
-    old_group = call_offset_get(context.group, 'zookeeper', True)
+    new_group = call_offset_get(NEW_GROUP, True)
+    old_group = call_offset_get(context.group, True)
     assert "does not exist" in old_group
     assert context.topic in new_group
 
 
 @then(u'the group named has been changed')
 def step_impl4(context):
-    new_groups = call_offset_get(NEW_GROUP, 'kafka')
-    old_group = call_offset_get(context.group, 'kafka')
+    new_groups = call_offset_get(NEW_GROUP)
+    old_group = call_offset_get(context.group)
     assert "Offset Distance" in new_groups
     assert "Offset Distance" not in old_group

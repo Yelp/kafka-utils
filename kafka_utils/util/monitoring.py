@@ -22,7 +22,6 @@ import six
 from kafka.common import GroupCoordinatorNotAvailableError
 from kafka.common import KafkaUnavailableError
 
-from kafka_utils.util.error import InvalidOffsetStorageError
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import get_topics_watermarks
 
@@ -48,7 +47,6 @@ def get_consumer_offsets_metadata(
     group,
     topics,
     raise_on_error=True,
-    offset_storage='kafka',
 ):
     """This method:
         * refreshes metadata for the kafka client
@@ -60,11 +58,7 @@ def get_consumer_offsets_metadata(
     :param topics: list of topics
     :param raise_on_error: if False the method ignores missing topics and
       missing partitions. It still may fail on the request send.
-    :param offset_storage: String, one of {zookeeper, kafka, dual}.
     :returns: dict <topic>: [ConsumerPartitionOffsets]
-    :raises:
-      :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
-      offset_storage choice.
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -74,8 +68,8 @@ def get_consumer_offsets_metadata(
     except KafkaUnavailableError:
         kafka_client.load_metadata_for_topics()
 
-    group_offsets = get_current_offsets(
-        kafka_client, group, topics, raise_on_error, offset_storage
+    group_offsets = get_current_consumer_offsets(
+        kafka_client, group, topics, raise_on_error
     )
 
     watermarks = get_topics_watermarks(
@@ -107,9 +101,6 @@ def get_watermark_for_regex(
     :param kafka_client: KafkaToolClient instance
     :param topic: the topic regex
     :returns: dict <topic>: [ConsumerPartitionOffsets]
-    :raises:
-      :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
-      offset_storage choice.
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -142,9 +133,6 @@ def get_watermark_for_topic(
     :param kafka_client: KafkaToolClient instance
     :param topic: the topic
     :returns: dict <topic>: [ConsumerPartitionOffsets]
-    :raises:
-      :py:class:`kafka_utils.util.error.InvalidOffsetStorageError: upon unknown
-      offset_storage choice.
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -158,49 +146,6 @@ def get_watermark_for_topic(
         kafka_client, [topic]
     )
     return watermarks
-
-
-def get_current_offsets(
-        kafka_client,
-        group,
-        topics,
-        raise_on_error,
-        offset_storage,
-):
-    """Get the current consumer offsets from either Zookeeper or Kafka
-    or the combination of both.
-    """
-    if offset_storage in ['zookeeper', 'kafka']:
-        return get_current_consumer_offsets(
-            kafka_client, group, topics, raise_on_error, offset_storage
-        )
-    elif offset_storage == 'dual':
-        return _get_current_offsets_dual(
-            kafka_client, group, topics, raise_on_error,
-        )
-    else:
-        raise InvalidOffsetStorageError(offset_storage)
-
-
-def _get_current_offsets_dual(
-    kafka_client,
-    group,
-    topics,
-    raise_on_error,
-):
-    """Get current consumer offsets from Zookeeper and from Kafka
-    and return the higher partition offsets from the responses.
-    """
-    zk_offsets = get_current_consumer_offsets(
-        kafka_client, group, topics, False, 'zookeeper',
-    )
-    try:
-        kafka_offsets = get_current_consumer_offsets(
-            kafka_client, group, topics, False, 'kafka',
-        )
-    except GroupCoordinatorNotAvailableError:
-        kafka_offsets = {}
-    return merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
 
 
 def merge_offsets_metadata(topics, *offsets_responses):

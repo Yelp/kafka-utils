@@ -20,7 +20,6 @@ from behave import when
 from six.moves import range
 from steps.util import call_cmd
 from steps.util import create_consumer_group
-from steps.util import create_consumer_group_with_kafka_storage
 from steps.util import create_random_group_id
 from steps.util import create_random_topic
 from steps.util import produce_example_msg
@@ -38,39 +37,18 @@ def step_impl1(context):
         create_consumer_group(topic, group)
 
 
-@given('we have a set of existing consumer groups with default storage')
-def step_impl2(context):
-    topic = create_random_topic(1, 1)
-    produce_example_msg(topic)
-    context.groups = []
-    for _ in range(3):
-        group = create_random_group_id()
-        context.groups.append(group)
-        create_consumer_group_with_kafka_storage(
-            topic,
-            group,
-        )
-
-
-def call_list_groups(storage=None):
+def call_list_groups():
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'list_groups']
-    if storage:
-        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@when('we call the list_groups command with default storage')
+@when('we call the list_groups command')
 def step_impl3(context):
     context.output = call_list_groups()
-
-
-@when('we call the list_groups command with zookeeper storage')
-def step_impl4(context):
-    context.output = call_list_groups('zookeeper')
 
 
 @then('the groups will be listed')

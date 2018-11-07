@@ -19,7 +19,6 @@ from behave import then
 from behave import when
 from steps.util import call_cmd
 from steps.util import create_consumer_group
-from steps.util import create_consumer_group_with_kafka_storage
 from steps.util import create_random_topic
 from steps.util import produce_example_msg
 
@@ -32,39 +31,22 @@ def step_impl1(context):
     for topic in test_topics:
         create_random_topic(1, 1, topic_name=topic)
         produce_example_msg(topic)
-
         create_consumer_group(topic, test_group)
 
 
-@given('we have a set of existing topics and a consumer group with default storage')
-def step_impl2(context):
-    for topic in test_topics:
-        create_random_topic(1, 1, topic_name=topic)
-        produce_example_msg(topic)
-
-        create_consumer_group_with_kafka_storage(topic, test_group)
-
-
-def call_list_topics(groupid, storage=None):
+def call_list_topics(groupid):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'list_topics',
            groupid]
-    if storage:
-        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@when('we call the list_topics command with default storage')
+@when('we call the list_topics command')
 def step_impl3(context):
     context.output = call_list_topics('group1')
-
-
-@when('we call the list_topics command with zookeeper storage')
-def step_impl4(context):
-    context.output = call_list_topics('group1', 'zookeeper')
 
 
 @then('the topics will be listed')

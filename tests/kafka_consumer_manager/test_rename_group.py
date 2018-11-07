@@ -64,12 +64,10 @@ class TestRenameGroup(object):
                        'rename_group.set_consumer_offsets',
                        autospec=True) as mock_set_consumer_offsets:
             cluster_config = mock.Mock(zookeeper='some_ip')
-            args = mock.Mock(source_groupid='old_group', dest_groupid='new_group', storage='kafka')
+            args = mock.Mock(source_groupid='old_group', dest_groupid='new_group')
             RenameGroup.run(args, cluster_config)
             assert mock_set_consumer_offsets.call_count == 2
             assert mock_get_current_consumer_offsets.call_count == 1
-            assert mock_set_consumer_offsets.call_args[1] == {'offset_storage': 'kafka'}
-            assert mock_get_current_consumer_offsets.call_args[1] == {'offset_storage': 'kafka'}
 
     def test_run(self, mock_client):
         topics_partitions = {

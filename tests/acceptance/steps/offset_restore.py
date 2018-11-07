@@ -24,7 +24,8 @@ from behave import when
 from steps.util import call_cmd
 from steps.util import get_cluster_config
 
-from kafka_utils.util.zookeeper import ZK
+from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
 
 
 RESTORED_OFFSET = 55
@@ -52,15 +53,13 @@ def create_restore_file(group, topic, offset):
     return f
 
 
-def call_offset_restore(offsets_file, storage=None):
+def call_offset_restore(offsets_file):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_restore',
            offsets_file]
-    if storage:
-        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
@@ -75,20 +74,18 @@ def step_impl2(context):
     assert os.path.isfile(context.offsets_file.name)
 
 
-@when(u'we call the offset_restore command with the offsets file with zookeeper storage')
-def step_impl3(context):
-    call_offset_restore(context.offsets_file.name, storage='zookeeper')
-
-
-@when(u'we call the offset_restore command with the offsets file and kafka storage')
+@when(u'we call the offset_restore command with the offsets file')
 def step_impl3_2(context):
     call_offset_restore(context.offsets_file.name)
 
 
 @then(u'the committed offsets will match the offsets file')
 def step_impl4(context):
-    cluster_config = get_cluster_config()
-    with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(context.group)
-    assert offsets[context.topic]["0"] == RESTORED_OFFSET
-    context.offsets_file.close()
+    config = get_cluster_config()
+    context.client = KafkaToolClient(config.broker_list)
+    offsets = get_current_consumer_offsets(
+        context.client,
+        context.group,
+        [context.topic],
+    )
+    assert offsets[context.topic][0] == RESTORED_OFFSET
