@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from behave import given
 from behave import when
 from steps.util import create_consumer_group
-from steps.util import create_consumer_group_with_kafka_storage
 from steps.util import create_random_group_id
 from steps.util import create_random_topic
 from steps.util import initialize_kafka_offsets_topic
@@ -32,10 +31,10 @@ def step_impl1(context):
     context.topic = create_random_topic(1, 1)
 
 
-@given(u'we have a kafka consumer group with storage option kafka')
+@given(u'we have a kafka consumer group')
 def step_impl2(context):
     context.group = create_random_group_id()
-    context.client = create_consumer_group_with_kafka_storage(
+    context.client = create_consumer_group(
         context.topic,
         context.group,
     )

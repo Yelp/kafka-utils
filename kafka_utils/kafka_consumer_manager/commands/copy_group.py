@@ -59,11 +59,6 @@ class CopyGroup(OffsetManagerBase):
             "specified, offsets from all partitions of the topic shall "
             "be copied.",
         )
-        parser_copy_group.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing the storage type",
-            default='kafka',
-        )
         parser_copy_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -83,39 +78,19 @@ class CopyGroup(OffsetManagerBase):
             args.partitions,
             cluster_config,
             client,
-            storage=args.storage,
         )
 
-        if args.storage == 'kafka':
-            cls.copy_group_kafka(
-                client,
-                source_topics,
-                args.source_groupid,
-                args.dest_groupid,
-            )
-        else:
-            cls.copy_group_zk(
-                client,
-                source_topics,
-                args.source_groupid,
-                args.dest_groupid,
-                cluster_config,
-            )
+        cls.copy_group_kafka(
+            client,
+            source_topics,
+            args.source_groupid,
+            args.dest_groupid,
+        )
 
     @classmethod
     def copy_group_kafka(cls, client, topics, source_group, destination_group):
-        copied_offsets = get_current_consumer_offsets(
-            client,
-            source_group,
-            topics,
-            offset_storage='kafka',
-        )
-        set_consumer_offsets(
-            client,
-            destination_group,
-            copied_offsets,
-            offset_storage='kafka',
-        )
+        copied_offsets = get_current_consumer_offsets(client, source_group, topics)
+        set_consumer_offsets(client, destination_group, copied_offsets)
 
     @classmethod
     def copy_group_zk(cls, client, topics, source_group, destination_group, cluster_config):

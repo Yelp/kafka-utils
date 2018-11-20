@@ -15,10 +15,6 @@ the following functionalities:
 * **Manipulating topics**: For a given consumer-group and cluster, listing and
   unsubscribing topics.
 
-* **Offset storage choice**: Supports Kafka 0.8.2 and 0.9.0, using offsets
-  stored in either Zookeeper or Kafka. Version 0 and 2 of the Kafka Protocol
-  are supported for committing offsets.
-
 Subcommands
 ===========
 
@@ -49,9 +45,6 @@ the cluster.
    	 group1
    	 group2
    	 group3
-
-If :code:`list_groups` is called with the :code:`--storage` option, then the groups will
-only be fetched from Zookeeper or Kafka.
 
 
 Listing topics
@@ -91,10 +84,6 @@ The offsets for all topics in the consumer group will be shown by default.
 A single topic can be specified using the :code:`--topic` option. If a topic is
 specified, then a list of partitions can also be specified using the
 :code:`--partitions` option.
-
-By default, the offsets will be fetched from both Zookeeper and Kafka's
-internal offset storage. A specific offset storage location can be speficied
-using the :code:`--storage` option.
 
 
 Manipulating consumer offsets

@@ -21,28 +21,13 @@ from steps.util import load_json
 
 
 @when(u'we call the offset_get command')
-def step_impl4(context):
-    context.output = call_offset_get(context.group)
-
-
-@when(u'we call the offset_get command with the dual storage option')
 def step_impl4_2(context):
-    context.output = call_offset_get(context.group, storage='dual')
-
-
-@when(u'we call the offset_get command with kafka storage')
-def step_impl4_3(context):
     context.output = call_offset_get(context.group)
 
 
-@when(u'we call the offset_get command with zookeeper storage')
-def step_impl4_4(context):
-    context.output = call_offset_get(context.group, storage='zookeeper')
-
-
-@when(u'we call the offset_get command with the json option with zookeeper storage')
+@when(u'we call the offset_get command with the json option')
 def step_impl4_5(context):
-    context.output = call_offset_get(context.group, storage='zookeeper', json=True)
+    context.output = call_offset_get(context.group, json=True)
 
 
 @then(u'the correct offset will be shown')

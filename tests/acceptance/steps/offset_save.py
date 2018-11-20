@@ -26,7 +26,7 @@ def create_saved_file():
     return tempfile.NamedTemporaryFile()
 
 
-def call_offset_save(groupid, offsets_file, storage=None):
+def call_offset_save(groupid, offsets_file):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -34,18 +34,10 @@ def call_offset_save(groupid, offsets_file, storage=None):
            'offset_save',
            groupid,
            offsets_file]
-    if storage:
-        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@when(u'we call the offset_save command with an offsets file and zookeeper storage')
-def step_impl2(context):
-    context.offsets_file = create_saved_file()
-    call_offset_save(context.group, context.offsets_file.name, storage="zookeeper")
-
-
-@when(u'we call the offset_save command with an offsets file and default storage')
+@when(u'we call the offset_save command with an offsets file')
 def step_impl2_2(context):
     context.offsets_file = create_saved_file()
     call_offset_save(context.group, context.offsets_file.name)

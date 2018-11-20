@@ -66,11 +66,6 @@ class OffsetSet(OffsetWriter):
             "new offset.",
         )
         parser_offset_set.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets.",
-            default='kafka',
-        )
-        parser_offset_set.add_argument(
             '--force',
             action='store_true',
             help="Force the offset of the group to be committed even if "
@@ -90,7 +85,6 @@ class OffsetSet(OffsetWriter):
             cls.get_topics_from_consumer_group_id(
                 cluster_config,
                 args.groupid,
-                storage=args.storage,
             )
 
         try:
@@ -98,7 +92,6 @@ class OffsetSet(OffsetWriter):
                 client,
                 args.groupid,
                 cls.new_offsets_dict,
-                offset_storage=args.storage,
             )
         except TypeError:
             print(

@@ -54,11 +54,6 @@ class OffsetAdvance(OffsetWriter):
             "be advanced."
         )
         parser_offset_advance.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets.",
-            default='kafka',
-        )
-        parser_offset_advance.add_argument(
             '--force',
             action='store_true',
             help="Force the offset of the group to be committed even if "
@@ -78,7 +73,6 @@ class OffsetAdvance(OffsetWriter):
             args.partitions,
             cluster_config,
             client,
-            storage=args.storage,
             force=args.force,
         )
         try:
@@ -86,7 +80,6 @@ class OffsetAdvance(OffsetWriter):
                 client,
                 args.groupid,
                 topics_dict,
-                offset_storage=args.storage,
             )
         except TypeError:
             print(
