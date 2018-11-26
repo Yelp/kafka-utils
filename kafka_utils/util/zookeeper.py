@@ -507,7 +507,7 @@ class ZK:
         plan_json = dump_json(plan)
         base_plan = self.get_cluster_plan()
         if not validate_plan(plan, base_plan, allow_rf_change=allow_rf_change):
-            _log.error('Given plan is invalid. ABORTING reassignment...')
+            _log.error('Given plan is invalid. Aborting new reassignment plan ... {plan}'.format(plan=plan))
             return False
         # Send proposed-plan to zookeeper
         try:
@@ -520,6 +520,7 @@ class ZK:
             return True
         except NodeExistsError:
             _log.warning('Previous plan in progress. Exiting..')
+            _log.warning('Aborting new reassignment plan... {plan}'.format(plan=plan))
             in_progress_plan = load_json(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
@@ -533,7 +534,7 @@ class ZK:
                 .format(count=len(in_progress_partitions)),
             )
             _log.warning(
-                '{partitions}. ABORTING reassignment...'.format(
+                '{partitions}. In Progress reassignment plan...'.format(
                     partitions=', '.join(in_progress_partitions),
                 ),
             )
