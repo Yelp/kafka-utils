@@ -1,3 +1,7 @@
+1.7.4 (Novemeber 26, 2018)
+----------------------------
+* Add change to display generated reassignment plan even on failure of validation
+
 1.7.3 (October 11, 2018)
 ----------------------------
 * Fix bug in offset_get command that showed topics as unsubscribed if any
