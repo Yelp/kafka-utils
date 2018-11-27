@@ -49,7 +49,7 @@ setup(
         "scripts/kafka-corruption-check",
     ],
     install_requires=[
-        "kafka-python>=1.3.2,<1.5.0",
+        "kafka-python>=1.3.2,<1.4.4",
         "kazoo>=2.0,<3.0.0",
         "PyYAML<4.0.0",
         "pytz>=2018.4",
