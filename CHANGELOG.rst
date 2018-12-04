@@ -1,3 +1,7 @@
+1.7.5 (December 3, 2018)
+----------------------------
+* Fix imports, pytest version and build failure due to flake8
+
 1.7.4 (Novemeber 26, 2018)
 ----------------------------
 * Add change to display generated reassignment plan even on failure of validation
