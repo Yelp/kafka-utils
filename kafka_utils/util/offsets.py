@@ -19,8 +19,8 @@ from collections import namedtuple
 
 import six
 from kafka.common import UnknownTopicOrPartitionError
-from kafka.structs import BrokerResponseError
-from kafka.structs import check_error
+from kafka.errors import BrokerResponseError
+from kafka.errors import check_error
 from kafka.structs import OffsetCommitRequestPayload
 from kafka.structs import OffsetFetchRequestPayload
 from kafka.structs import OffsetFetchResponsePayload
