@@ -19,7 +19,6 @@ import re
 from collections import namedtuple
 
 import six
-from kafka.common import GroupCoordinatorNotAvailableError
 from kafka.common import KafkaUnavailableError
 
 from kafka_utils.util.offsets import get_current_consumer_offsets

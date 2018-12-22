@@ -18,17 +18,11 @@ from __future__ import unicode_literals
 
 import sys
 
-from kazoo.exceptions import NoNodeError
-
 from .offset_manager import OffsetManagerBase
-from kafka_utils.kafka_consumer_manager.util import create_offsets
-from kafka_utils.kafka_consumer_manager.util import fetch_offsets
-from kafka_utils.kafka_consumer_manager.util import preprocess_topics
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import nullify_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 class RenameGroup(OffsetManagerBase):

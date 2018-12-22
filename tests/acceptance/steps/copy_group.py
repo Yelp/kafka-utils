@@ -17,10 +17,8 @@ from __future__ import absolute_import
 from behave import then
 from behave import when
 from steps.util import call_cmd
-from steps.util import get_cluster_config
 
 from kafka_utils.util.offsets import get_current_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 NEW_GROUP = 'new_group'
@@ -55,13 +53,3 @@ def step_impl4(context):
         [context.topic],
     )
     assert old_group_offsets == new_group_offsets
-
-
-@then(u'the committed offsets in the new group will match the old group')
-def step_impl5(context):
-    cluster_config = get_cluster_config()
-    with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(context.group)
-        new_offsets = zk.get_group_offsets(NEW_GROUP)
-    assert context.topic in offsets
-    assert new_offsets == offsets

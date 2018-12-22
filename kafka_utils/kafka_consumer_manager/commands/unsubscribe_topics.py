@@ -15,10 +15,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import sys
-
 import six
-from kazoo.exceptions import NoNodeError
 
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
@@ -85,7 +82,7 @@ class UnsubscribeTopics(OffsetWriter):
 
         topics = args.topics if args.topics else ([args.topic] if args.topic else [])
 
-        with ZK(cluster_config) as zk:
+        with ZK(cluster_config):
             unsubscriber = KafkaUnsubscriber(client)
             unsubscriber.unsubscribe_topics(
                 args.groupid,

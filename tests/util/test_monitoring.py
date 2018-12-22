@@ -140,32 +140,6 @@ class TestMonitoring(TestOffsetsBase):
         result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
         assert result == expected
 
-    def test_merge_offsets_metadata_zk_only(self):
-        zk_offsets = {
-            'topic1': {0: 6},
-        }
-        kafka_offsets = {}
-        expected = {
-            'topic1': {0: 6},
-        }
-
-        topics = ['topic1']
-        result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
-        assert result == expected
-
-    def test_merge_offsets_metadata(self):
-        zk_offsets = {}
-        kafka_offsets = {
-            'topic1': {0: 5},
-        }
-        expected = {
-            'topic1': {0: 5},
-        }
-
-        topics = ['topic1']
-        result = merge_offsets_metadata(topics, zk_offsets, kafka_offsets)
-        assert result == expected
-
     def test_merge_partition_offsets(self):
         partition_offsets = [
             {0: 6},
@@ -196,7 +170,7 @@ class TestMonitoring(TestOffsetsBase):
             )
 
             assert mock_get_kafka.call_count == 1
-            assert not self._has_no_partitions(actual)
+            assert self._has_no_partitions(actual)
 
     def test_offsets_kafka_error(self, kafka_client_mock):
         with mock.patch.object(
@@ -205,14 +179,14 @@ class TestMonitoring(TestOffsetsBase):
             side_effect=GroupCoordinatorNotAvailableError('Boom!'),
             autospec=True,
         ) as mock_get_kafka:
-            actual = get_consumer_offsets_metadata(
-                kafka_client_mock,
-                self.group,
-                self.topics,
-            )
+            with pytest.raises(GroupCoordinatorNotAvailableError):
+                get_consumer_offsets_metadata(
+                    kafka_client_mock,
+                    self.group,
+                    self.topics,
+                )
 
             assert mock_get_kafka.call_count == 1
-            assert self._has_no_partitions(actual)
 
     def test_get_watermark_for_topic(self, kafka_client_mock):
         with mock.patch(

@@ -282,7 +282,7 @@ class TestOffsets(TestOffsetsBase):
             self.group,
             topics,
         )
-        assert kafka_client_mock.send_offset_fetch_request.call_count == 1
+        assert kafka_client_mock.send_offset_fetch_request_kafka.call_count == 1
 
     def test_get_topics_watermarks_invalid_arguments(self, kafka_client_mock):
         with pytest.raises(TypeError):

@@ -16,8 +16,6 @@ from __future__ import absolute_import
 
 import mock
 import pytest
-from kazoo.exceptions import NoNodeError
-from kazoo.exceptions import ZookeeperError
 
 from kafka_utils.kafka_consumer_manager.commands. \
     unsubscribe_topics import KafkaUnsubscriber
