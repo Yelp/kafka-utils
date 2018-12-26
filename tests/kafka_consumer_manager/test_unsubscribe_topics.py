@@ -35,15 +35,6 @@ class TestUnsubscribeTopics(object):
             yield mock_client
 
     @pytest.yield_fixture
-    def zk(self):
-        with mock.patch(
-            'kafka_utils.kafka_consumer_manager.'
-            'commands.unsubscribe_topics.ZK',
-            autospec=True
-        ) as mock_zk:
-            yield mock_zk
-
-    @pytest.yield_fixture
     def kafka_unsubscriber(self):
         with mock.patch(
             'kafka_utils.kafka_consumer_manager.'
@@ -60,7 +51,7 @@ class TestUnsubscribeTopics(object):
 
     cluster_config = mock.Mock(zookeeper='some_ip')
 
-    def test_run_unsubscribe_kafka(self, client, zk, kafka_unsubscriber):
+    def test_run_unsubscribe_kafka(self, client, kafka_unsubscriber):
         with mock.patch.object(
             UnsubscribeTopics,
             'preprocess_args',
@@ -75,7 +66,7 @@ class TestUnsubscribeTopics(object):
 
             assert kafka_obj.unsubscribe_topics.call_count == 1
 
-    def test_run_unsubscribe_only_topics(self, client, zk, kafka_unsubscriber):
+    def test_run_unsubscribe_only_topics(self, client, kafka_unsubscriber):
         with mock.patch.object(
             UnsubscribeTopics,
             'preprocess_args',

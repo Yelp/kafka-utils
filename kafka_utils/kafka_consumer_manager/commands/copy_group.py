@@ -18,16 +18,10 @@ from __future__ import unicode_literals
 
 import sys
 
-from kazoo.exceptions import NoNodeError
-
 from .offset_manager import OffsetManagerBase
-from kafka_utils.kafka_consumer_manager.util import create_offsets
-from kafka_utils.kafka_consumer_manager.util import fetch_offsets
-from kafka_utils.kafka_consumer_manager.util import preprocess_topics
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 class CopyGroup(OffsetManagerBase):
@@ -91,27 +85,3 @@ class CopyGroup(OffsetManagerBase):
     def copy_group_kafka(cls, client, topics, source_group, destination_group):
         copied_offsets = get_current_consumer_offsets(client, source_group, topics)
         set_consumer_offsets(client, destination_group, copied_offsets)
-
-    @classmethod
-    def copy_group_zk(cls, client, topics, source_group, destination_group, cluster_config):
-        with ZK(cluster_config) as zk:
-            try:
-                topics_dest_group = zk.get_children(
-                    "/consumers/{groupid}/offsets".format(
-                        groupid=destination_group,
-                    )
-                )
-            except NoNodeError:
-                # Consumer Group ID doesn't exist.
-                pass
-            else:
-                preprocess_topics(
-                    source_group,
-                    topics,
-                    destination_group,
-                    topics_dest_group,
-                )
-
-            # Fetch offsets
-            source_offsets = fetch_offsets(zk, source_group, topics)
-            create_offsets(zk, destination_group, source_offsets)

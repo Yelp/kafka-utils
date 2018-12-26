@@ -40,13 +40,8 @@ class TestCopyGroup(object):
         ) as mock_process_args, mock.patch(
             "kafka_utils.kafka_consumer_manager.util.prompt_user_input",
             autospec=True,
-        ) as mock_user_confirm, mock.patch(
-            "kafka_utils.kafka_consumer_manager."
-            "commands.copy_group.ZK",
-            autospec=True
-        ) as mock_ZK:
-            mock_ZK.return_value.__enter__.return_value = mock_ZK
-            yield mock_process_args, mock_user_confirm, mock_ZK
+        ) as mock_user_confirm:
+            yield mock_process_args, mock_user_confirm
 
     def test_run_with_kafka(self, mock_client):
         topics_partitions = {
@@ -55,7 +50,7 @@ class TestCopyGroup(object):
         }
         with self.mock_kafka_info(
             topics_partitions
-        ) as (mock_process_args, mock_user_confirm, mock_ZK),\
+        ) as (mock_process_args, mock_user_confirm),\
             mock.patch('kafka_utils.kafka_consumer_manager.commands.'
                        'copy_group.get_current_consumer_offsets',
                        autospec=True) as mock_get_current_consumer_offsets,\
@@ -72,7 +67,7 @@ class TestCopyGroup(object):
         topics_partitions = {}
         with self.mock_kafka_info(
             topics_partitions
-        ) as (mock_process_args, mock_user_confirm, mock_ZK):
+        ) as (mock_process_args, mock_user_confirm):
             with pytest.raises(SystemExit) as ex:
                 cluster_config = mock.Mock(zookeeper='some_ip')
                 args = mock.Mock(

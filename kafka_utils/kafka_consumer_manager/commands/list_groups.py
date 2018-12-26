@@ -15,13 +15,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import sys
-
-from kazoo.exceptions import NoNodeError
-
 from .offset_manager import OffsetManagerBase
 from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
-from kafka_utils.util.zookeeper import ZK
 
 
 class ListGroups(OffsetManagerBase):
@@ -34,18 +29,6 @@ class ListGroups(OffsetManagerBase):
             add_help=False,
         )
         parser_list_groups.set_defaults(command=cls.run)
-
-    @classmethod
-    def get_zookeeper_groups(cls, cluster_config):
-        '''Get the group_id of groups committed into Zookeeper.'''
-        with ZK(cluster_config) as zk:
-            try:
-                return zk.get_children("/consumers")
-            except NoNodeError:
-                print(
-                    "Error: No consumers node found in zookeeper",
-                    file=sys.stderr,
-                )
 
     @classmethod
     def get_kafka_groups(cls, cluster_config):

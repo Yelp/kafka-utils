@@ -19,7 +19,6 @@ from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import nullify_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 class DeleteGroup(OffsetWriter):
@@ -56,11 +55,6 @@ class DeleteGroup(OffsetWriter):
             client,
         )
         cls.delete_group_kafka(client, args.groupid, topics_dict)
-
-    @classmethod
-    def delete_group_zk(cls, cluster_config, group):
-        with ZK(cluster_config) as zk:
-            zk.delete_group(group)
 
     @classmethod
     def delete_group_kafka(cls, client, group, topics):

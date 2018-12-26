@@ -22,7 +22,6 @@ from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import nullify_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 class UnsubscribeTopics(OffsetWriter):
@@ -82,14 +81,13 @@ class UnsubscribeTopics(OffsetWriter):
 
         topics = args.topics if args.topics else ([args.topic] if args.topic else [])
 
-        with ZK(cluster_config):
-            unsubscriber = KafkaUnsubscriber(client)
-            unsubscriber.unsubscribe_topics(
-                args.groupid,
-                topics,
-                args.partitions,
-                topics_dict,
-            )
+        unsubscriber = KafkaUnsubscriber(client)
+        unsubscriber.unsubscribe_topics(
+            args.groupid,
+            topics,
+            args.partitions,
+            topics_dict,
+        )
 
 
 class TopicUnsubscriber(object):

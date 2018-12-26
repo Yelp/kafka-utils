@@ -15,10 +15,8 @@
 from __future__ import absolute_import
 
 import contextlib
-import sys
 
 import mock
-from kazoo.exceptions import NoNodeError
 
 from kafka_utils.kafka_consumer_manager. \
     commands.list_groups import ListGroups
@@ -30,45 +28,13 @@ class TestListGroups(object):
     def mock_kafka_info(self):
         with mock.patch(
             "kafka_utils.kafka_consumer_manager."
-            "commands.list_groups.ZK",
-            autospec=True
-        ) as mock_ZK, mock.patch(
-            "kafka_utils.kafka_consumer_manager."
             "commands.list_groups.KafkaGroupReader",
             autospec=True
         ) as mock_kafka_reader:
-            mock_ZK.return_value.__enter__.return_value = mock_ZK
-            yield mock_ZK, mock_kafka_reader
-
-    def test_get_zookeeper_groups(self):
-        with self.mock_kafka_info() as (mock_ZK, _):
-            expected_groups = ['group1', 'group2', 'group3']
-
-            obj = mock_ZK.return_value.__enter__.return_value
-            obj.get_children.return_value = expected_groups
-
-            cluster_config = mock.Mock(zookeeper='some_ip', type='some_cluster_type')
-            cluster_config.configure_mock(name='some_cluster_name')
-
-            assert ListGroups.get_zookeeper_groups(cluster_config) == expected_groups
-            assert obj.get_children.call_count == 1
-
-    @mock.patch("kafka_utils.kafka_consumer_manager.commands.list_groups.print", create=True)
-    def test_get_zookeeper_groups_error(self, mock_print):
-        with self.mock_kafka_info() as (mock_ZK, _):
-            obj = mock_ZK.return_value.__enter__.return_value
-            obj.__exit__.return_value = False
-            cluster_config = mock.Mock(zookeeper='some_ip')
-            obj.get_children.side_effect = NoNodeError("Boom!")
-
-            ListGroups.get_zookeeper_groups(cluster_config)
-            mock_print.assert_any_call(
-                "Error: No consumers node found in zookeeper",
-                file=sys.stderr,
-            )
+            yield mock_kafka_reader
 
     def test_get_kafka_groups(self):
-        with self.mock_kafka_info() as (_, mock_kafka_reader):
+        with self.mock_kafka_info() as (mock_kafka_reader):
             expected_groups = {
                 'group_name': ['topic1', 'topic2'],
                 'group2': ['topic3', 'topic4']
