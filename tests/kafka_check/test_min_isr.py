@@ -17,9 +17,9 @@ from __future__ import absolute_import
 import mock
 from kafka.common import PartitionMetadata
 
-from kafka_utils.kafka_check.commands.min_isr import _get_min_isr
 from kafka_utils.kafka_check.commands.min_isr import _prepare_output
 from kafka_utils.kafka_check.commands.min_isr import _process_metadata_response
+from kafka_utils.kafka_check.commands.min_isr import get_min_isr
 
 
 TOPICS_STATE = {
@@ -66,7 +66,7 @@ def test_get_min_isr_empty():
     attrs = {'get_topic_config.return_value': TOPIC_CONFIG_WITHOUT_MIN_ISR}
     zk_mock = mock.MagicMock(**attrs)
 
-    min_isr = _get_min_isr(zk_mock, 'topic_0')
+    min_isr = get_min_isr(zk_mock, 'topic_0')
 
     zk_mock.get_topic_config.assert_called_once_with('topic_0')
     assert min_isr is None
@@ -80,7 +80,7 @@ def test_get_min_isr():
     attrs = {'get_topic_config.return_value': TOPIC_CONFIG_WITH_MIN_ISR}
     zk_mock = mock.MagicMock(**attrs)
 
-    min_isr = _get_min_isr(zk_mock, 'topic_0')
+    min_isr = get_min_isr(zk_mock, 'topic_0')
 
     zk_mock.get_topic_config.assert_called_once_with('topic_0')
     assert min_isr == 3
@@ -97,7 +97,7 @@ def test_process_metadata_response_empty():
 
 
 @mock.patch(
-    'kafka_utils.kafka_check.commands.min_isr._get_min_isr',
+    'kafka_utils.kafka_check.commands.min_isr.get_min_isr',
     return_value=1,
     autospec=True,
 )
@@ -112,7 +112,7 @@ def test_run_command_all_ok(min_isr_mock):
 
 
 @mock.patch(
-    'kafka_utils.kafka_check.commands.min_isr._get_min_isr',
+    'kafka_utils.kafka_check.commands.min_isr.get_min_isr',
     return_value=None,
     autospec=True,
 )
@@ -127,7 +127,7 @@ def test_run_command_all_ok_without_min_isr_in_zk(min_isr_mock):
 
 
 @mock.patch(
-    'kafka_utils.kafka_check.commands.min_isr._get_min_isr',
+    'kafka_utils.kafka_check.commands.min_isr.get_min_isr',
     return_value=None,
     autospec=True,
 )
@@ -142,7 +142,7 @@ def test_run_command_with_default_min_isr(min_isr_mock):
 
 
 @mock.patch(
-    'kafka_utils.kafka_check.commands.min_isr._get_min_isr',
+    'kafka_utils.kafka_check.commands.min_isr.get_min_isr',
     return_value=None,
     autospec=True,
 )
@@ -163,7 +163,7 @@ def test_run_command_with_fail_with_default_min_isr(min_isr_mock):
 
 
 @mock.patch(
-    'kafka_utils.kafka_check.commands.min_isr._get_min_isr',
+    'kafka_utils.kafka_check.commands.min_isr.get_min_isr',
     return_value=3,
     autospec=True,
 )
