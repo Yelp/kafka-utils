@@ -1,3 +1,7 @@
+1.8.0 (January 3, 2019)
+----------------------------
+* Implement kafka-check replication_factor command
+
 1.7.5 (December 3, 2018)
 ----------------------------
 * Fix imports, pytest version and build failure due to flake8
