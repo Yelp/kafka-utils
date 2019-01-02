@@ -56,7 +56,7 @@ class MinIsrCmd(KafkaCheckCmd):
         return errcode, out
 
 
-def _get_min_isr(zk, topic):
+def get_min_isr(zk, topic):
     """Return the min-isr for topic, or None if not specified"""
     ISR_CONF_NAME = 'min.insync.replicas'
     try:
@@ -73,7 +73,7 @@ def _process_metadata_response(topics, zk, default_min_isr):
     """Returns not in sync partitions."""
     not_in_sync_partitions = []
     for topic_name, partitions in topics.items():
-        min_isr = _get_min_isr(zk, topic_name) or default_min_isr
+        min_isr = get_min_isr(zk, topic_name) or default_min_isr
         if min_isr is None:
             continue
         for metadata in partitions.values():
