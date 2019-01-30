@@ -1,3 +1,7 @@
+2.0.0 (January 29, 2019)
+----------------------------
+* Deprecate zookeeper offset storage in kafka-consumer-manager
+
 1.8.0 (January 3, 2019)
 ----------------------------
 * Implement kafka-check replication_factor command
