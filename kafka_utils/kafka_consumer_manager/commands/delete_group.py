@@ -19,7 +19,6 @@ from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import nullify_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 class DeleteGroup(OffsetWriter):
@@ -40,11 +39,6 @@ class DeleteGroup(OffsetWriter):
             'groupid',
             help="Consumer Group IDs whose metadata shall be deleted."
         )
-        parser_delete_group.add_argument(
-            '--storage', choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets.",
-            default='kafka',
-        )
         parser_delete_group.set_defaults(command=cls.run)
 
     @classmethod
@@ -59,24 +53,10 @@ class DeleteGroup(OffsetWriter):
             None,
             cluster_config,
             client,
-            storage=args.storage,
         )
-        if args.storage == 'zookeeper':
-            cls.delete_group_zk(cluster_config, args.groupid)
-        else:
-            cls.delete_group_kafka(client, args.groupid, topics_dict)
-
-    @classmethod
-    def delete_group_zk(cls, cluster_config, group):
-        with ZK(cluster_config) as zk:
-            zk.delete_group(group)
+        cls.delete_group_kafka(client, args.groupid, topics_dict)
 
     @classmethod
     def delete_group_kafka(cls, client, group, topics):
         new_offsets = nullify_offsets(topics)
-        set_consumer_offsets(
-            client,
-            group,
-            new_offsets,
-            offset_storage='kafka',
-        )
+        set_consumer_offsets(client, group, new_offsets)

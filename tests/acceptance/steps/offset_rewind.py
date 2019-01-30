@@ -20,7 +20,8 @@ from steps.util import call_cmd
 from steps.util import get_cluster_config
 from steps.util import set_consumer_group_offset
 
-from kafka_utils.util.zookeeper import ZK
+from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.offsets import get_current_consumer_offsets
 
 
 def offsets_data(topic, offset):
@@ -31,7 +32,7 @@ def offsets_data(topic, offset):
     )
 
 
-def call_offset_rewind(groupid, topic, storage=None, force=False):
+def call_offset_rewind(groupid, topic, force=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -39,16 +40,9 @@ def call_offset_rewind(groupid, topic, storage=None, force=False):
            'offset_rewind',
            groupid,
            '--topic', topic]
-    if storage:
-        cmd.extend(['--storage', storage])
     if force:
         cmd.extend(['--force'])
     return call_cmd(cmd)
-
-
-@when(u'we call the offset_rewind command with a groupid and topic with zk storage')
-def step_impl1(context):
-    call_offset_rewind(context.group, context.topic, storage='zookeeper')
 
 
 @when(u'we set the offsets to a high number to emulate consumption')
@@ -67,21 +61,24 @@ def step_impl3(context):
 
 @when(u'we call the offset_rewind command with a new groupid and the force option')
 def step_impl4(context):
-    context.group = 'offset_advance_created_group'
+    context.group = 'offset_rewind_created_group'
     call_offset_rewind(
         context.group,
         topic=context.topic,
-        storage='zookeeper',
         force=True,
     )
 
 
 @then(u'the committed offsets will match the earliest message offsets')
 def step_impl5(context):
-    cluster_config = get_cluster_config()
-    with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(context.group)
-    assert offsets[context.topic]["0"] == 0
+    config = get_cluster_config()
+    context.client = KafkaToolClient(config.broker_list)
+    offsets = get_current_consumer_offsets(
+        context.client,
+        context.group,
+        [context.topic],
+    )
+    assert offsets[context.topic][0] == 0
 
 
 @then(u'consumer_group wont exist since it is rewind to low_offset 0')

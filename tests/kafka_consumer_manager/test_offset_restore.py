@@ -53,33 +53,6 @@ class TestOffsetRestore(object):
             side_effect = self.topics_partitions
         return mock_kafka_client
 
-    def test_restore_offsets_zk(self, mock_kafka_client):
-        with mock.patch(
-            "kafka_utils.kafka_consumer_manager."
-            "commands.offset_restore.set_consumer_offsets",
-            return_value=[],
-            autospec=True,
-        ) as mock_set_offsets, mock.patch.object(
-            OffsetRestore,
-            "parse_consumer_offsets",
-            spec=OffsetRestore.parse_consumer_offsets,
-            return_value=self.parsed_consumer_offsets,
-        ), mock.patch(
-            "kafka_utils.kafka_consumer_manager."
-            "commands.offset_restore.get_consumer_offsets_metadata",
-            return_value=self.consumer_offsets_metadata,
-            autospec=True,
-        ):
-            OffsetRestore.restore_offsets(
-                mock_kafka_client,
-                self.parsed_consumer_offsets,
-                'zookeeper',
-            )
-
-            ordered_args, _ = mock_set_offsets.call_args
-            assert ordered_args[1] == 'group1'
-            assert ordered_args[2] == self.new_consumer_offsets
-
     def test_build_new_offsets(self, mock_kafka_client):
         new_offsets = OffsetRestore.build_new_offsets(
             mock_kafka_client,

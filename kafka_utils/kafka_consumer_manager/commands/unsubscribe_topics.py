@@ -15,17 +15,13 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import sys
-
 import six
-from kazoo.exceptions import NoNodeError
 
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import nullify_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 class UnsubscribeTopics(OffsetWriter):
@@ -64,12 +60,6 @@ class UnsubscribeTopics(OffsetWriter):
             "--topics are NOT specified, all topics that the consumer is"
             "subscribed to, shall be deleted."
         )
-        parser_unsubscribe_topics.add_argument(
-            '--storage',
-            choices=['zookeeper', 'kafka'],
-            help="String describing where to store the committed offsets.",
-            default='kafka',
-        )
         parser_unsubscribe_topics.set_defaults(command=cls.run)
 
     @classmethod
@@ -86,30 +76,22 @@ class UnsubscribeTopics(OffsetWriter):
             args.partitions,
             cluster_config,
             client,
-            storage=args.storage,
             topics=args.topics,
         )
 
         topics = args.topics if args.topics else ([args.topic] if args.topic else [])
 
-        with ZK(cluster_config) as zk:
-            if args.storage == 'zookeeper':
-                unsubscriber = ZookeeperUnsubscriber(zk)
-            else:
-                unsubscriber = KafkaUnsubscriber(client)
-
-            unsubscriber.unsubscribe_topics(
-                args.groupid,
-                topics,
-                args.partitions,
-                topics_dict,
-            )
+        unsubscriber = KafkaUnsubscriber(client)
+        unsubscriber.unsubscribe_topics(
+            args.groupid,
+            topics,
+            args.partitions,
+            topics_dict,
+        )
 
 
 class TopicUnsubscriber(object):
-    """Base class used to unsubscribe consumer groups from
-    topic partitions stored using different offset storage.
-    """
+    """Base class used to unsubscribe consumer groups from topic partitions."""
 
     def unsubscribe_topics(self, group, topics, partitions, topics_dict):
         # If a single topic and partitions are both specified,
@@ -137,36 +119,8 @@ class TopicUnsubscriber(object):
         raise NotImplementedError()
 
 
-class ZookeeperUnsubscriber(TopicUnsubscriber):
-    """Class used to unsubscribe consumer groups using
-    offset storage in Zookeeper.
-    """
-
-    def __init__(self, zk):
-        self.zk = zk
-
-    def unsubscribe_partitions(self, group, topic, partitions):
-        try:
-            self.zk.delete_topic_partitions(group, topic, partitions)
-        except NoNodeError:
-            print(
-                "WARNING: No node found for topic {}, partition {}".format(
-                    topic,
-                    partitions,
-                ),
-                file=sys.stderr,
-            )
-        if not self.zk.get_my_subscribed_partitions(group, topic):
-            self.zk.delete_topic(group, topic)
-
-    def delete_topic(self, group, topic):
-        self.zk.delete_topic(group, topic)
-
-
 class KafkaUnsubscriber(TopicUnsubscriber):
-    """Class used to unsubscribe consumer groups using
-    offset storage in Kafka.
-    """
+    """Class used to unsubscribe consumer groups."""
 
     def __init__(self, client):
         self.client = client
@@ -182,7 +136,6 @@ class KafkaUnsubscriber(TopicUnsubscriber):
             self.client,
             group,
             nullify_offsets(offsets),
-            offset_storage='kafka',
         )
 
     def delete_topic(self, group, topic):
@@ -190,11 +143,9 @@ class KafkaUnsubscriber(TopicUnsubscriber):
             self.client,
             group,
             [topic],
-            offset_storage='kafka',
         )
         set_consumer_offsets(
             self.client,
             group,
             nullify_offsets(offsets),
-            offset_storage='kafka',
         )

@@ -16,7 +16,6 @@ from __future__ import absolute_import
 
 import mock
 import pytest
-from kazoo.exceptions import ZookeeperError
 
 from kafka_utils.kafka_consumer_manager.commands. \
     delete_group import DeleteGroup
@@ -34,59 +33,10 @@ class TestDeleteGroup(object):
             yield mock_client
 
     @pytest.yield_fixture
-    def zk(self):
-        with mock.patch(
-                'kafka_utils.kafka_consumer_manager.'
-                'commands.delete_group.ZK',
-                autospec=True
-        ) as mock_zk:
-            mock_zk.return_value.__enter__.return_value = mock_zk.return_value
-            yield mock_zk
-
-    @pytest.yield_fixture
     def offsets(self):
         yield {'topic1': {0: 100}}
 
-    def test_run_wipe_delete_group(self, client, zk, offsets):
-        with mock.patch.object(
-                DeleteGroup,
-                'preprocess_args',
-                spec=DeleteGroup.preprocess_args,
-                return_value=offsets,
-        ):
-            args = mock.Mock(
-                groupid="some_group",
-                storage="zookeeper",
-            )
-            cluster_config = mock.Mock(zookeeper='some_ip')
-
-            DeleteGroup.run(args, cluster_config)
-
-            obj = zk.return_value
-            assert obj.delete_group.call_args_list == [
-                mock.call(args.groupid),
-            ]
-
-    def test_run_wipe_delete_group_error(self, client, zk, offsets):
-        with mock.patch.object(
-                DeleteGroup,
-                'preprocess_args',
-                spec=DeleteGroup.preprocess_args,
-                return_value=offsets,
-        ):
-            obj = zk.return_value.__enter__.return_value
-            obj.__exit__.return_value = False
-            obj.delete_group.side_effect = ZookeeperError("Boom!")
-            args = mock.Mock(
-                groupid="some_group",
-                storage="zookeeper",
-            )
-            cluster_config = mock.Mock(zookeeper='some_ip')
-
-            with pytest.raises(ZookeeperError):
-                DeleteGroup.run(args, cluster_config)
-
-    def test_delete_topic_kafka_storage(self, client, offsets):
+    def test_delete_topic(self, client, offsets):
         new_offsets = {'topic1': {0: 0}}
 
         with mock.patch(
@@ -102,6 +52,5 @@ class TestDeleteGroup(object):
                     client,
                     'some_group',
                     new_offsets,
-                    offset_storage='kafka',
                 ),
             ]

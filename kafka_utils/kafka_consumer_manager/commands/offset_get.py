@@ -69,11 +69,6 @@ class OffsetGet(OffsetManagerBase):
             default="all"
         )
         parser_offset_get.add_argument(
-            '--storage', choices=['zookeeper', 'kafka', 'dual'],
-            help="String describing where to fetch the committed offsets.",
-            default='dual'
-        )
-        parser_offset_get.add_argument(
             "-j", "--json", action="store_true",
             help="Export data in json format."
         )
@@ -101,14 +96,12 @@ class OffsetGet(OffsetManagerBase):
             cluster_config=cluster_config,
             client=client,
             quiet=args.json,
-            storage=args.storage,
         )
 
         consumer_offsets_metadata = cls.get_offsets(
             client,
             args.groupid,
             topics_dict,
-            args.storage,
         )
         client.close()
 
@@ -165,10 +158,10 @@ class OffsetGet(OffsetManagerBase):
         return OrderedDict(sorted_offsets)
 
     @classmethod
-    def get_offsets(cls, client, group, topics_dict, storage):
+    def get_offsets(cls, client, group, topics_dict):
         try:
             return get_consumer_offsets_metadata(
-                client, group, topics_dict, False, storage,
+                client, group, topics_dict, False,
             )
         except Exception:
             print(

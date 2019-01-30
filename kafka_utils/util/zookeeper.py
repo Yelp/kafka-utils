@@ -467,26 +467,6 @@ class ZK:
         _log.debug("ZK: Deleting node " + path)
         return self.zk.delete(path, recursive=recursive)
 
-    def delete_topic_partitions(self, groupid, topic, partitions):
-        """Delete the specified partitions within the topic that the consumer
-        is subscribed to.
-
-        :param: groupid: The consumer group ID for the consumer.
-        :param: topic: Kafka topic.
-        :param: partitions: List of partitions within the topic to be deleted.
-        :raises:
-          NoNodeError: if the consumer is not subscribed to the topic
-
-          ZookeeperError: if there is an error with Zookeeper
-        """
-        for partition in partitions:
-            path = "/consumers/{groupid}/offsets/{topic}/{partition}".format(
-                groupid=groupid,
-                topic=topic,
-                partition=partition
-            )
-            self.delete(path)
-
     def delete_topic(self, groupid, topic):
         path = "/consumers/{groupid}/offsets/{topic}".format(
             groupid=groupid,

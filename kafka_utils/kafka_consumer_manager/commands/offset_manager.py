@@ -33,11 +33,7 @@ class OffsetManagerBase(object):
         cls,
         cluster_config,
         groupid,
-        storage='kafka',
-        fail_on_error=True,
     ):
-        if storage == 'zookeeper':
-            return cls.get_topics_for_group_from_zookeeper(cluster_config, groupid, fail_on_error)
         return cls.get_topics_for_group_from_kafka(cluster_config, groupid)
 
     @classmethod
@@ -48,7 +44,6 @@ class OffsetManagerBase(object):
         partitions,
         cluster_config,
         client,
-        storage='kafka',
         fail_on_error=True,
         quiet=False,
         topics=None,
@@ -85,8 +80,6 @@ class OffsetManagerBase(object):
         subscribed_topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
-            storage=storage,
-            fail_on_error=fail_on_error,
         )
         topics_dict = {}
 
@@ -146,9 +139,9 @@ class OffsetManagerBase(object):
 
     @classmethod
     def get_topics_for_group_from_kafka(
-            cls,
-            cluster_config,
-            groupid
+        cls,
+        cluster_config,
+        groupid,
     ):
         kafka_group_reader = KafkaGroupReader(cluster_config)
         group_topics = kafka_group_reader.read_group(groupid)
@@ -204,7 +197,6 @@ class OffsetWriter(OffsetManagerBase):
         partitions,
         cluster_config,
         client,
-        storage='kafka',
         fail_on_error=True,
         force=False,
         topics=None,
@@ -215,7 +207,6 @@ class OffsetWriter(OffsetManagerBase):
             partitions,
             cluster_config,
             client,
-            storage=storage,
             fail_on_error=(fail_on_error and not force),
             topics=topics,
         )

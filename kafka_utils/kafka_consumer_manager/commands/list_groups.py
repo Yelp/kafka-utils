@@ -15,13 +15,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import sys
-
-from kazoo.exceptions import NoNodeError
-
 from .offset_manager import OffsetManagerBase
 from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
-from kafka_utils.util.zookeeper import ZK
 
 
 class ListGroups(OffsetManagerBase):
@@ -33,25 +28,7 @@ class ListGroups(OffsetManagerBase):
             description="List consumer groups.",
             add_help=False,
         )
-        parser_list_groups.add_argument(
-            '--storage',
-            choices=['zookeeper', 'kafka', 'dual'],
-            help="String describing where to fetch the committed offsets.",
-            default='kafka'
-        )
         parser_list_groups.set_defaults(command=cls.run)
-
-    @classmethod
-    def get_zookeeper_groups(cls, cluster_config):
-        '''Get the group_id of groups committed into Zookeeper.'''
-        with ZK(cluster_config) as zk:
-            try:
-                return zk.get_children("/consumers")
-            except NoNodeError:
-                print(
-                    "Error: No consumers node found in zookeeper",
-                    file=sys.stderr,
-                )
 
     @classmethod
     def get_kafka_groups(cls, cluster_config):
@@ -76,15 +53,8 @@ class ListGroups(OffsetManagerBase):
     @classmethod
     def run(cls, args, cluster_config):
         groups = set()
-
-        if args.storage in ('dual', 'zookeeper'):
-            zk_groups = cls.get_zookeeper_groups(cluster_config)
-            if zk_groups:
-                groups.update(zk_groups)
-
-        if args.storage in ('dual', 'kafka'):
-            kafka_groups = cls.get_kafka_groups(cluster_config)
-            if kafka_groups:
-                groups.update(kafka_groups)
+        kafka_groups = cls.get_kafka_groups(cluster_config)
+        if kafka_groups:
+            groups.update(kafka_groups)
 
         cls.print_groups(groups, cluster_config)

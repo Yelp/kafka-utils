@@ -17,16 +17,14 @@ from __future__ import absolute_import
 from behave import then
 from behave import when
 from steps.util import call_cmd
-from steps.util import get_cluster_config
 
 from kafka_utils.util.offsets import get_current_consumer_offsets
-from kafka_utils.util.zookeeper import ZK
 
 
 NEW_GROUP = 'new_group'
 
 
-def call_copy_group(old_group, new_group, storage=None):
+def call_copy_group(old_group, new_group):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
@@ -34,17 +32,10 @@ def call_copy_group(old_group, new_group, storage=None):
            'copy_group',
            old_group,
            new_group]
-    if storage:
-        cmd.extend(['--storage', storage])
     return call_cmd(cmd)
 
 
-@when(u'we call the copy_group command with a new groupid with zookeeper storage')
-def step_impl2(context):
-    call_copy_group(context.group, NEW_GROUP, 'zookeeper')
-
-
-@when(u'we call the copy_group command with a new groupid with default storage')
+@when(u'we call the copy_group command with a new groupid')
 def step_impl3(context):
     call_copy_group(context.group, NEW_GROUP)
 
@@ -55,22 +46,10 @@ def step_impl4(context):
         context.client,
         context.group,
         [context.topic],
-        offset_storage='kafka',
     )
     new_group_offsets = get_current_consumer_offsets(
         context.client,
         NEW_GROUP,
         [context.topic],
-        offset_storage='kafka',
     )
     assert old_group_offsets == new_group_offsets
-
-
-@then(u'the committed offsets in the new group will match the old group')
-def step_impl5(context):
-    cluster_config = get_cluster_config()
-    with ZK(cluster_config) as zk:
-        offsets = zk.get_group_offsets(context.group)
-        new_offsets = zk.get_group_offsets(NEW_GROUP)
-    assert context.topic in offsets
-    assert new_offsets == offsets

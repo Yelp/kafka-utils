@@ -67,11 +67,6 @@ class OffsetSave(OffsetManagerBase):
             type=str,
             help="Export data in json format in the given file.",
         )
-        parser_offset_save.add_argument(
-            '--storage', choices=['zookeeper', 'kafka', 'dual'],
-            help="String describing where to fetch the committed offsets.",
-            default='dual'
-        )
         parser_offset_save.set_defaults(command=cls.run)
 
     @classmethod
@@ -86,14 +81,12 @@ class OffsetSave(OffsetManagerBase):
             partitions=args.partitions,
             cluster_config=cluster_config,
             client=client,
-            storage=args.storage,
         )
         try:
             consumer_offsets_metadata = get_consumer_offsets_metadata(
                 client,
                 args.groupid,
                 topics_dict,
-                offset_storage=args.storage,
             )
         except KafkaUnavailableError:
             print(

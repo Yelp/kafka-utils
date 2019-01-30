@@ -119,34 +119,6 @@ class TestZK(object):
             ]
             assert mock_client.return_value.delete.call_args_list == call_list
 
-    def test_delete_topic_partitions(self, mock_client):
-        with mock.patch.object(
-            ZK,
-            'delete',
-            autospec=True
-        ) as mock_delete:
-            with ZK(self.cluster_config) as zk:
-                zk.delete_topic_partitions(
-                    'some_group',
-                    'some_topic',
-                    [0, 1, 2]
-                )
-                call_list = [
-                    mock.call(
-                        zk,
-                        '/consumers/some_group/offsets/some_topic/0'
-                    ),
-                    mock.call(
-                        zk,
-                        '/consumers/some_group/offsets/some_topic/1'
-                    ),
-                    mock.call(
-                        zk,
-                        '/consumers/some_group/offsets/some_topic/2'
-                    ),
-                ]
-                assert mock_delete.call_args_list == call_list
-
     def test_delete_topic(self, _):
         with mock.patch.object(
             ZK,

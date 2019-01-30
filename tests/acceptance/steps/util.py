@@ -26,7 +26,6 @@ from six.moves import range
 
 from kafka_utils.util import config
 from kafka_utils.util.client import KafkaToolClient
-from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import set_consumer_offsets
 
 
@@ -150,46 +149,22 @@ def create_consumer_group(topic, group_name, num_messages=1):
         client,
         group_name,
         {topic: {0: num_messages}},
-        offset_storage='zookeeper',
         raise_on_error=True,
     )
     return client
 
 
-def create_consumer_group_with_kafka_storage(topic, group_name):
-    client = KafkaToolClient(KAFKA_URL)
-    set_consumer_offsets(
-        client,
-        group_name,
-        {topic: {0: 1}},
-        offset_storage='kafka',
-        raise_on_error=True,
-    )
-    return client
-
-
-def get_consumer_offset(topics, group, storage='zookeeper'):
-    client = KafkaToolClient(KAFKA_URL)
-    return get_current_consumer_offsets(
-        client,
-        group,
-        topics,
-        storage
-    )
-
-
-def set_consumer_group_offset(topic, group, offset, storage='kafka'):
+def set_consumer_group_offset(topic, group, offset):
     client = KafkaToolClient(KAFKA_URL)
     set_consumer_offsets(
         client,
         group,
         {topic: {0: offset}},
-        offset_storage=storage,
         raise_on_error=True,
     )
 
 
-def call_watermark_get(topic_name, storage=None, regex=False):
+def call_watermark_get(topic_name, regex=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--discovery-base-path', 'tests/acceptance/config',
@@ -199,15 +174,13 @@ def call_watermark_get(topic_name, storage=None, regex=False):
     return call_cmd(cmd)
 
 
-def call_offset_get(group, storage=None, json=False):
+def call_offset_get(group, json=False):
     cmd = ['kafka-consumer-manager',
            '--cluster-type', 'test',
            '--cluster-name', 'test_cluster',
            '--discovery-base-path', 'tests/acceptance/config',
            'offset_get',
            group]
-    if storage:
-        cmd.extend(['--storage', storage])
     if json:
         cmd.extend(['--json'])
     return call_cmd(cmd)
@@ -223,7 +196,6 @@ def initialize_kafka_offsets_topic():
         kafka,
         create_random_group_id(),
         {topic: {0: 1}},
-        offset_storage='kafka',
         raise_on_error=True,
     )
     time.sleep(20)
