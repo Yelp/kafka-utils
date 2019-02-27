@@ -20,32 +20,16 @@ import itertools
 import math
 import sys
 import time
+from operator import itemgetter
 
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
 
 from .error import WaitTimeoutException
-from kafka_utils.util.ssh import report_stderr
-from kafka_utils.util.ssh import report_stdout
+from kafka_utils.util.zookeeper import ZK
 
 
 UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
-
-
-def start_broker(host, connection, start_command, verbose):
-    """Execute the start"""
-    _, stdout, stderr = connection.sudo_command(start_command)
-    if verbose:
-        report_stdout(host, stdout)
-        report_stderr(host, stderr)
-
-
-def stop_broker(host, connection, stop_command, verbose):
-    """Execute the stop"""
-    _, stdout, stderr = connection.sudo_command(stop_command)
-    if verbose:
-        report_stdout(host, stdout)
-        report_stderr(host, stderr)
 
 
 def wait_for_stable_cluster(
@@ -162,3 +146,27 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
             print("Cannot find the key, Kafka is probably still starting up", file=sys.stderr)
             missing_brokers += 1
     return under_replicated, missing_brokers
+
+
+def get_broker_list(cluster_config):
+    """Returns a list of brokers in the form [(id: host)]
+
+    :param cluster_config: the configuration of the cluster
+    :type cluster_config: map
+    """
+    with ZK(cluster_config) as zk:
+        brokers = sorted(list(zk.get_brokers().items()), key=itemgetter(0))
+        return [(id, data['host']) for id, data in brokers]
+
+
+def filter_broker_list(brokers, filter_by):
+    """Returns sorted list, a subset of elements from brokers in the form [(id, host)].
+    Passing empty list for filter_by will return empty list.
+
+    :param brokers: list of brokers to filter, assumes the data is in so`rted order
+    :type brokers: list of (id, host)
+    :param filter_by: the list of ids of brokers to keep
+    :type filter_by: list of integers
+    """
+    filter_by_set = set(filter_by)
+    return [(id, host) for id, host in brokers if id in filter_by_set]

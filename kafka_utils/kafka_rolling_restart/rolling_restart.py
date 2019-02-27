@@ -17,10 +17,26 @@ from __future__ import division
 from __future__ import print_function
 
 from .util import execute_task
-from .util import start_broker
-from .util import stop_broker
 from .util import wait_for_stable_cluster
+from kafka_utils.util.ssh import report_stderr
+from kafka_utils.util.ssh import report_stdout
 from kafka_utils.util.ssh import ssh
+
+
+def start_broker(host, connection, start_command, verbose):
+    """Execute the start"""
+    _, stdout, stderr = connection.sudo_command(start_command)
+    if verbose:
+        report_stdout(host, stdout)
+        report_stderr(host, stderr)
+
+
+def stop_broker(host, connection, stop_command, verbose):
+    """Execute the stop"""
+    _, stdout, stderr = connection.sudo_command(stop_command)
+    if verbose:
+        report_stdout(host, stdout)
+        report_stderr(host, stderr)
 
 
 def execute_rolling_restart(

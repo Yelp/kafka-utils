@@ -19,18 +19,19 @@ from __future__ import print_function
 import argparse
 import logging
 import sys
-from operator import itemgetter
 
 from six.moves import input
 from six.moves import zip
 
+from .error import WaitTimeoutException
 from .rolling_restart import execute_rolling_restart
 from .task import PostStopTask
 from .task import PreStopTask
 from .task import TaskFailedException
+from .util import filter_broker_list
+from .util import get_broker_list
 from kafka_utils.util import config
 from kafka_utils.util.utils import dynamic_import
-from kafka_utils.util.zookeeper import ZK
 
 
 DEFAULT_CHECK_INTERVAL_SECS = 10
@@ -40,10 +41,6 @@ DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
 DEFAULT_STOP_COMMAND = "service kafka stop"
 DEFAULT_START_COMMAND = "service kafka start"
-
-
-class WaitTimeoutException(Exception):
-    pass
 
 
 def parse_opts():
@@ -160,30 +157,6 @@ def parse_opts():
         help=('SSH passowrd to use if needed'),
     )
     return parser.parse_args()
-
-
-def get_broker_list(cluster_config):
-    """Returns a list of brokers in the form [(id: host)]
-
-    :param cluster_config: the configuration of the cluster
-    :type cluster_config: map
-    """
-    with ZK(cluster_config) as zk:
-        brokers = sorted(list(zk.get_brokers().items()), key=itemgetter(0))
-        return [(id, data['host']) for id, data in brokers]
-
-
-def filter_broker_list(brokers, filter_by):
-    """Returns sorted list, a subset of elements from brokers in the form [(id, host)].
-    Passing empty list for filter_by will return empty list.
-
-    :param brokers: list of brokers to filter, assumes the data is in so`rted order
-    :type brokers: list of (id, host)
-    :param filter_by: the list of ids of brokers to keep
-    :type filter_by: list of integers
-    """
-    filter_by_set = set(filter_by)
-    return [(id, host) for id, host in brokers if id in filter_by_set]
 
 
 def print_brokers(cluster_config, brokers):
