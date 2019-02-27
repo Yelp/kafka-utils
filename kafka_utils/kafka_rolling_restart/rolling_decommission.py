@@ -18,28 +18,15 @@ from __future__ import print_function
 
 from .util import execute_task
 from .util import wait_for_stable_cluster
-from kafka_utils.util.ssh import report_stderr
-from kafka_utils.util.ssh import report_stdout
 from kafka_utils.util.ssh import ssh
 
 
-def start_broker(host, connection, start_command, verbose):
-    """Execute the start"""
-    _, stdout, stderr = connection.sudo_command(start_command)
-    if verbose:
-        report_stdout(host, stdout)
-        report_stderr(host, stderr)
-
-
-def stop_broker(host, connection, stop_command, verbose):
+def decommission_broker(host, connection, stop_command, verbose):
     """Execute the stop"""
-    _, stdout, stderr = connection.sudo_command(stop_command)
-    if verbose:
-        report_stdout(host, stdout)
-        report_stderr(host, stderr)
+    pass
 
 
-def execute_rolling_restart(
+def execute_rolling_decommission(
     brokers,
     jolokia_port,
     jolokia_prefix,
@@ -54,14 +41,14 @@ def execute_rolling_restart(
     stop_command,
     ssh_password=None
 ):
-    """Execute the rolling restart on the specified brokers. It checks the
+    """Execute the rolling decommission on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
 
-    The check is performed at constant intervals, and a broker will be restarted
+    The check is performed at constant intervals, and a broker will be decommissioned
     when all the brokers are answering and are reporting zero under replicated
     partitions.
 
-    :param brokers: the brokers that will be restarted
+    :param brokers: the brokers that will be decommissioned
     :type brokers: map of broker ids and host names
     :param jolokia_port: HTTP port for Jolokia
     :type jolokia_port: integer
@@ -70,7 +57,7 @@ def execute_rolling_restart(
     :param check_interval: the number of seconds it will wait between each check
     :type check_interval: integer
     :param check_count: the number of times the check should be positive before
-    restarting the next broker
+    decommissioning the next broker
     :type check_count: integer
     :param unhealthy_time_limit: the maximum number of seconds it will wait for
     the cluster to become stable before exiting with error
@@ -104,13 +91,8 @@ def execute_rolling_restart(
                 unhealthy_time_limit,
             )
             print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            stop_broker(host, connection, stop_command, verbose)
+            decommission_broker(host, connection, stop_command, verbose)
             execute_task(post_stop_task, host)
-        # we open a new SSH connection in case the hostname has a new IP
-        with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2,
-                 ssh_password=ssh_password) as connection:
-            print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
-            start_broker(host, connection, start_command, verbose)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
@@ -123,15 +105,15 @@ def execute_rolling_restart(
 
 
 def add_subparser(subparsers):
-    parser_rolling_restart = subparsers.add_parser(
-        "rolling_restart",
-        description="Restart each broker in the Kafka cluster.",
+    parser_rolling_decommission = subparsers.add_parser(
+        "rolling_decommission",
+        description="Decommission each broker in the Kafka cluster.",
         add_help=False,
     )
-    parser_rolling_restart.add_argument(
+    parser_rolling_decommission.add_argument(
         "-h",
         "--help",
         action="help",
-        help="This subcommand executes a rolling restart on the cluster.",
+        help="This subcommand executes a rolling decommission on the cluster.",
     )
-    parser_rolling_restart.set_defaults(command=execute_rolling_restart)
+    parser_rolling_decommission.set_defaults(command=execute_rolling_decommission)

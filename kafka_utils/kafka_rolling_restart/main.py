@@ -24,7 +24,6 @@ from six.moves import input
 from six.moves import zip
 
 from .error import WaitTimeoutException
-from .rolling_restart import execute_rolling_restart
 from .task import PostStopTask
 from .task import PreStopTask
 from .task import TaskFailedException
@@ -287,9 +286,9 @@ def run():
         pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
     print_brokers(cluster_config, brokers[opts.skip:])
     if opts.no_confirm or ask_confirmation():
-        print("Execute restart")
+        print("Execute rolling command")
         try:
-            execute_rolling_restart(
+            opts.command(
                 brokers,
                 opts.jolokia_port,
                 opts.jolokia_prefix,
