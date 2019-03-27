@@ -93,7 +93,7 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         # and max_leader_changes
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
-            cluster_topology.assignment,
+            cluster_topology,
             self.args.max_partition_movements,
             self.args.max_leader_changes,
         )

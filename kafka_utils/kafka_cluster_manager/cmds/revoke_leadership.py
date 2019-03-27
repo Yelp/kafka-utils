@@ -75,7 +75,7 @@ class RevokeLeadershipCmd(ClusterManagerCmd):
         # Reduce the proposed assignment based on max_leader_changes
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
-            cluster_topology.assignment,
+            cluster_topology,
             0,  # Number of partition movements
             self.args.max_leader_changes,
         )

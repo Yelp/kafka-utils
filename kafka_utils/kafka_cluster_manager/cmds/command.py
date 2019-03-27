@@ -28,6 +28,9 @@ from kafka_utils.util.validation import assignment_to_plan
 from kafka_utils.util.zookeeper import ZK
 
 
+DEFAULT_MAX_MOVEMENT_SIZE = float('inf')
+
+
 class ClusterManagerCmd(object):
     """Interface used by all kafka_cluster_manager commands
     The attributes cluster_config, args and zk are initialized on run().
@@ -157,9 +160,10 @@ class ClusterManagerCmd(object):
     def get_reduced_assignment(
         self,
         original_assignment,
-        new_assignment,
+        cluster_topology,
         max_partition_movements,
         max_leader_only_changes,
+        max_movement_size=DEFAULT_MAX_MOVEMENT_SIZE,
     ):
         """Reduce the assignment based on the total actions.
 
@@ -170,15 +174,18 @@ class ClusterManagerCmd(object):
 
         Argument(s):
         original_assignment:    Current assignment of cluster in zookeeper
-        new_assignment:         New proposed-assignment of cluster
+        cluster_topology:       Cluster topology containing the new proposed-assignment of cluster
         max_partition_movements:Maximum number of partition-movements in
                                 final set of actions
         max_leader_only_changes:Maximum number of actions with leader only changes
+        max_movement_size:      Maximum size, in bytes, to move in final set of actions
         :return:
         :reduced_assignment:    Final reduced assignment
         """
+        new_assignment = cluster_topology.assignment
         if (not original_assignment or not new_assignment or
-                max_partition_movements < 0 or max_leader_only_changes < 0):
+                max_partition_movements < 0 or max_leader_only_changes < 0 or
+                max_movement_size < 0):
             return {}
 
         # The replica set stays the same for leaders only changes
@@ -204,10 +211,13 @@ class ClusterManagerCmd(object):
             "Total number of actions before reduction: %s.",
             len(partition_change_count) + len(leaders_changes),
         )
-        # Extract reduced plan maximizing uniqueness of topics
+        # Extract reduced plan maximizing uniqueness of topics and ensuring we do not
+        # go over the max_movement_size
         reduced_actions = self._extract_actions_unique_topics(
             partition_change_count,
             max_partition_movements,
+            cluster_topology,
+            max_movement_size,
         )
         reduced_partition_changes = [
             (t_p, new_assignment[t_p]) for t_p in reduced_actions
@@ -227,7 +237,7 @@ class ClusterManagerCmd(object):
         }
         return reduced_assignment
 
-    def _extract_actions_unique_topics(self, movement_counts, max_movements):
+    def _extract_actions_unique_topics(self, movement_counts, max_movements, cluster_topology, max_movement_size):
         """Extract actions limiting to given max value such that
            the resultant has the minimum possible number of duplicate topics.
 
@@ -238,6 +248,8 @@ class ClusterManagerCmd(object):
               are reached.
            :param movement_counts: list of tuple ((topic, partition), movement count)
            :param max_movements: max number of movements to extract
+           :param cluster_topology: cluster topology containing the new proposed assignment for the cluster
+           :param max_movement_size: maximum size of data to move at a time in extracted actions
            :return: list of tuple (topic, partitions) to include in the reduced plan
         """
         # Group actions by topic
@@ -248,12 +260,14 @@ class ClusterManagerCmd(object):
         # Create reduced assignment minimizing duplication of topics
         extracted_actions = []
         curr_movements = 0
+        curr_size = 0
         action_available = True
-        while curr_movements < max_movements and action_available:
+        while curr_movements < max_movements and curr_size < max_movement_size and action_available:
             action_available = False
             for topic, actions in six.iteritems(topic_actions):
                 for action in actions:
-                    if curr_movements + action[1] > max_movements:
+                    action_size = cluster_topology.partitions[action[0]].size
+                    if curr_movements + action[1] > max_movements or curr_size + action_size > max_movement_size:
                         # Remove action since it won't be possible to use it
                         actions.remove(action)
                     else:
@@ -261,6 +275,7 @@ class ClusterManagerCmd(object):
                         action_available = True
                         extracted_actions.append(action[0])
                         curr_movements += action[1]
+                        curr_size += action_size
                         actions.remove(action)
                         break
         return extracted_actions

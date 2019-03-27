@@ -127,15 +127,13 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                     changes_per_partition,
                 )
 
-        assignment = ct.assignment
-
         # Each replica addition/removal for each partition counts for one
         # partition movement
         partition_movement_count = len(topic.partitions) * changes_per_partition
 
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
-            assignment,
+            ct,
             max_partition_movements=partition_movement_count,
             max_leader_only_changes=0,
         )
