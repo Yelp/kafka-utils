@@ -18,8 +18,6 @@ from __future__ import print_function
 import logging
 import sys
 
-import six
-
 from .command import ClusterManagerCmd
 from .command import DEFAULT_MAX_MOVEMENT_SIZE
 from kafka_utils.util import positive_float
@@ -77,21 +75,27 @@ class DecommissionCmd(ClusterManagerCmd):
                  ' depend on  the selected PartitionMeasurer implementation.'
                  ' DEFAULT: No limit.'
                  ' RECOMMENDATION: Should be at least the maximum partition-size'
-                 ' on the cluster, ideally a little larger.',
+                 ' on the brokers to decommission, ideally a little larger.',
         )
         subparser.add_argument(
             '--auto-max-movement-size',
             action='store_true',
             help='Set max-movement-size to the size of the largest partition'
-                 ' in the cluster.',
+                 ' in the set of brokers to be decommissioned.',
         )
         return subparser
 
     def run_command(self, cluster_topology, cluster_balancer):
+        # Obtain the largest partition in the set of partitions we will move
+        partitions_to_move = set()
+        for broker in self.args.broker_ids:
+            partitions_to_move.update(cluster_topology.brokers[broker].partitions)
+
         largest_size = max(
             partition.size
-            for partition in six.itervalues(cluster_topology.partitions)
+            for partition in partitions_to_move
         )
+
         if self.args.auto_max_movement_size:
             self.args.max_movement_size = largest_size
             self.log.info(
@@ -102,14 +106,16 @@ class DecommissionCmd(ClusterManagerCmd):
             )
 
         if self.args.max_movement_size < largest_size:
-            self.log.warning(
+            self.log.error(
                 'Max partition movement size is only {max_movement_size},'
-                ' but largest partition in the cluster is size {largest_size}.'
-                ' The decommission may not make progress.'.format(
+                ' but largest partition to move in set of brokers to decommission'
+                ' is size {largest_size}.'
+                ' The decommission will not make progress.'.format(
                     max_movement_size=self.args.max_movement_size,
                     largest_size=largest_size,
                 )
             )
+            sys.exit(1)
 
         base_assignment = cluster_topology.assignment
 
