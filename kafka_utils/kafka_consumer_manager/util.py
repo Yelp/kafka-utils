@@ -280,6 +280,10 @@ class KafkaGroupReader:
             max_partition_fetch_bytes=10 * 1024 * 1024,  # 10MB
         )
 
+        # Fetch metadata as partitions_for_topic only returns locally cached metadata
+        # See https://github.com/dpkp/kafka-python/issues/1742
+        self.consumer.topics()
+
         if partition is not None:
             self.active_partitions = {
                 partition: TopicPartition(CONSUMER_OFFSET_TOPIC, partition),
