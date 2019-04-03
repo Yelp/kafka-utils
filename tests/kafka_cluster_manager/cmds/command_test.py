@@ -22,6 +22,8 @@ from pytest import raises
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
+    import ClusterTopology
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
     import UniformPartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
@@ -52,17 +54,44 @@ def new_assignment():
 
 
 @fixture
+def cluster_topology(new_assignment):
+    """ This topology contains the new_assignment
+    """
+    brokers = {0: None, 1: None, 2: None, 3: None}
+    pm = UniformPartitionMeasurer({}, brokers, new_assignment, {})
+    return ClusterTopology(new_assignment, brokers, pm)
+
+
+@fixture
+def empty_cluster_topology():
+    """ This topology contains an empty assignment
+    """
+    brokers = {0: None, 1: None, 2: None, 3: None}
+    pm = UniformPartitionMeasurer({}, brokers, {}, {})
+    return ClusterTopology({}, brokers, pm)
+
+
+@fixture
+def orig_cluster_topology(orig_assignment):
+    """ This topology contains the original assignment
+    """
+    brokers = {0: None, 1: None, 2: None, 3: None}
+    pm = UniformPartitionMeasurer({}, brokers, orig_assignment, {})
+    return ClusterTopology(orig_assignment, brokers, pm)
+
+
+@fixture
 def cmd():
     return ClusterManagerCmd()
 
 
 class TestClusterManagerCmd(object):
 
-    def test_reduced_proposed_plan_no_change(self, cmd, orig_assignment):
+    def test_reduced_proposed_plan_no_change(self, cmd, orig_assignment, orig_cluster_topology):
         # Provide same assignment
         proposed_assignment = cmd.get_reduced_assignment(
             original_assignment=orig_assignment,
-            new_assignment=orig_assignment,
+            cluster_topology=orig_cluster_topology,
             max_partition_movements=1,
             max_leader_only_changes=1,
         )
@@ -70,7 +99,7 @@ class TestClusterManagerCmd(object):
         # Verify no proposed plan
         assert proposed_assignment == {}
 
-    def test_extract_actions_unique_topics_limited_actions(self, cmd):
+    def test_extract_actions_unique_topics_limited_actions(self, cmd, cluster_topology):
         movements_count = [
             ((u'T0', 0), 1),
             ((u'T0', 1), 1),
@@ -80,6 +109,8 @@ class TestClusterManagerCmd(object):
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
             3,
+            cluster_topology,
+            float('inf'),
         )
 
         assert len(red_actions) == 3
@@ -87,7 +118,23 @@ class TestClusterManagerCmd(object):
         topics = [action[0] for action in red_actions]
         assert set(topics) == set([u'T0', u'T1', u'T2'])
 
-    def test_extract_actions_partition_movement_no_action(self, cmd):
+    def test_extract_actions_unique_topics_limited_actions_size(self, cmd, cluster_topology):
+        movements_count = [
+            ((u'T0', 0), 1),
+            ((u'T0', 1), 1),
+            ((u'T1', 0), 1),
+            ((u'T2', 0), 1),
+        ]
+        red_actions = cmd._extract_actions_unique_topics(
+            movements_count,
+            3,
+            cluster_topology,
+            1,
+        )
+
+        assert len(red_actions) == 1
+
+    def test_extract_actions_partition_movement_no_action(self, cmd, cluster_topology):
         # In case max-allowed partition-movements is less than replication-factor
         # there is a possibility it will never converge
         movements_count = [
@@ -99,13 +146,15 @@ class TestClusterManagerCmd(object):
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
             1,
+            cluster_topology,
+            float('inf'),
         )
 
         # All actions have minimum of 2 movements
         # so reduced proposed-plan is empty
         assert red_actions == []
 
-    def test_extract_actions_partition_movements_all(self, cmd):
+    def test_extract_actions_partition_movements_all(self, cmd, cluster_topology):
         movements_count = [
             ((u'T0', 0), 2),
             ((u'T0', 1), 1),
@@ -115,6 +164,8 @@ class TestClusterManagerCmd(object):
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
             10,
+            cluster_topology,
+            float('inf'),
         )
 
         # Total movements as in proposed-plan is 6 (2+1+2+1)
@@ -126,7 +177,7 @@ class TestClusterManagerCmd(object):
             for t_p in ((u'T0', 0), (u'T0', 1), (u'T1', 0), (u'T2', 0))
         )
 
-    def test_extract_actions_no_movements(self, cmd):
+    def test_extract_actions_no_movements(self, cmd, cluster_topology):
         movements_count = [
             ((u'T0', 0), 2),
             ((u'T0', 1), 1),
@@ -136,11 +187,13 @@ class TestClusterManagerCmd(object):
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
             0,
+            cluster_topology,
+            float('inf'),
         )
 
         assert red_actions == []
 
-    def test_extract_actions_unique_topics_some_actions(self, cmd):
+    def test_extract_actions_unique_topics_some_actions(self, cmd, cluster_topology):
         # Complex case
         # Total proposed-movements: 2*4 + 1 = 9
         # Max allowed movements: 5
@@ -157,6 +210,8 @@ class TestClusterManagerCmd(object):
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
             5,
+            cluster_topology,
+            float('inf'),
         )
 
         assert len(red_actions) == 3
@@ -168,12 +223,12 @@ class TestClusterManagerCmd(object):
         self,
         cmd,
         orig_assignment,
-        new_assignment,
+        cluster_topology,
     ):
         # Provide less than max_changes parameter
         proposed_assignment = cmd.get_reduced_assignment(
             orig_assignment,
-            new_assignment,
+            cluster_topology,
             max_partition_movements=0,
             max_leader_only_changes=0,
         )
@@ -185,23 +240,24 @@ class TestClusterManagerCmd(object):
         self,
         cmd,
         orig_assignment,
-        new_assignment,
+        cluster_topology,
     ):
         proposed_assignment = cmd.get_reduced_assignment(
             orig_assignment,
-            new_assignment,
+            cluster_topology,
             max_partition_movements=-1,
             max_leader_only_changes=-1,
+            max_movement_size=-1,
         )
 
         # Verify no proposed plan
         assert proposed_assignment == {}
 
-    def test_reduced_proposed_plan_empty_new_assignment(self, cmd, orig_assignment):
+    def test_reduced_proposed_plan_empty_new_assignment(self, cmd, orig_assignment, empty_cluster_topology):
         # Provide empty assignment
         proposed_assignment = cmd.get_reduced_assignment(
             orig_assignment,
-            new_assignment={},
+            empty_cluster_topology,
             max_partition_movements=1,
             max_leader_only_changes=1,
         )
@@ -209,10 +265,10 @@ class TestClusterManagerCmd(object):
         # Verify no proposed plan
         assert proposed_assignment == {}
 
-    def test_reduced_proposed_plan_empty_original_assignment(self, cmd, new_assignment):
+    def test_reduced_proposed_plan_empty_original_assignment(self, cmd, cluster_topology):
         proposed_assignment = cmd.get_reduced_assignment(
             original_assignment={},
-            new_assignment=new_assignment,
+            cluster_topology=cluster_topology,
             max_partition_movements=1,
             max_leader_only_changes=1,
         )
@@ -224,11 +280,11 @@ class TestClusterManagerCmd(object):
         self,
         cmd,
         orig_assignment,
-        new_assignment,
+        cluster_topology,
     ):
         result = cmd.get_reduced_assignment(
             orig_assignment,
-            new_assignment,
+            cluster_topology,
             max_partition_movements=2,
             max_leader_only_changes=0,
         )
@@ -245,11 +301,11 @@ class TestClusterManagerCmd(object):
         self,
         cmd,
         orig_assignment,
-        new_assignment,
+        cluster_topology,
     ):
         result = cmd.get_reduced_assignment(
             orig_assignment,
-            new_assignment,
+            cluster_topology,
             max_partition_movements=0,
             max_leader_only_changes=2,
         )
@@ -266,11 +322,11 @@ class TestClusterManagerCmd(object):
         self,
         cmd,
         orig_assignment,
-        new_assignment,
+        cluster_topology,
     ):
         result = cmd.get_reduced_assignment(
             orig_assignment,
-            new_assignment,
+            cluster_topology,
             max_partition_movements=2,
             max_leader_only_changes=2,
         )
@@ -280,6 +336,23 @@ class TestClusterManagerCmd(object):
         # T1 no changes for 0
         assert (u'T1', 0) not in result and (u'T1', 1) in result
         assert (u'T0', 0) in result and (u'T0', 1) in result
+
+    def test_reduced_proposed_plan_max_movement_size(
+        self,
+        cmd,
+        orig_assignment,
+        cluster_topology,
+    ):
+        result = cmd.get_reduced_assignment(
+            orig_assignment,
+            cluster_topology,
+            max_partition_movements=2,
+            max_leader_only_changes=2,
+            max_movement_size=1,
+        )
+
+        # 2 leader changes + only 1 partition movement = 3
+        assert len(result) == 3
 
     @mock.patch('kafka_utils.kafka_cluster_manager.cmds.command.ZK')
     def test_runs_command_with_preconditions(self, mock_zk, cmd):
