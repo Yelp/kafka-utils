@@ -1,3 +1,9 @@
+2.1.0 (April 3, 2019)
+----------------------------
+* Add new --max-movement-size and --auto-max-movement-size in kafka-cluster-manager decommission
+* Upgrade dependency requirements to newer versions
+* Fix bug with KafkaGroupReader acceptance test
+
 2.0.0 (January 29, 2019)
 ----------------------------
 * Deprecate zookeeper offset storage in kafka-consumer-manager
