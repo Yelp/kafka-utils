@@ -19,7 +19,6 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
-from .command import DEFAULT_MAX_MOVEMENT_SIZE
 from kafka_utils.util import positive_float
 from kafka_utils.util import positive_int
 from kafka_utils.util.validation import assignment_to_plan
@@ -68,7 +67,7 @@ class DecommissionCmd(ClusterManagerCmd):
         subparser.add_argument(
             '--max-movement-size',
             type=positive_float,
-            default=DEFAULT_MAX_MOVEMENT_SIZE,
+            default=None,
             help='Maximum total size of the partitions moved in the final set'
                  ' of actions. Since each PartitionMeasurer implementation'
                  ' defines its own notion of size, the size unit to use will'
@@ -105,7 +104,7 @@ class DecommissionCmd(ClusterManagerCmd):
                 )
             )
 
-        if self.args.max_movement_size < largest_size:
+        if self.args.max_movement_size and self.args.max_movement_size < largest_size:
             self.log.error(
                 'Max partition movement size is only {max_movement_size},'
                 ' but largest partition to move in set of brokers to decommission'
