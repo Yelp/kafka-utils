@@ -607,13 +607,17 @@ class GeneticBalancer(ClusterBalancer):
             max_score += self.args.broker_leader_count_score_weight
 
         if self.args.max_movement_size is not None and score_movement:
+            # Avoid potential divide-by-zero error
+            max_movement = max(self.args.max_movement_size, 1)
             score += self.args.movement_size_score_weight * \
-                (1 - state.movement_size / self.args.max_movement_size)
+                (1 - state.movement_size / max_movement)
             max_score += self.args.movement_size_score_weight
 
         if self.args.max_leader_changes is not None and score_movement:
+            # Avoid potential divide-by-zero error
+            max_leader = max(self.args.max_leader_changes, 1)
             score += self.args.leader_change_score_weight * \
-                (1 - state.leader_movement_count / self.args.max_leader_changes)
+                (1 - state.leader_movement_count / max_leader)
             max_score += self.args.leader_change_score_weight
 
         return score / max_score
