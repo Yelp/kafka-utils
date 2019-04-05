@@ -262,7 +262,7 @@ class ClusterManagerCmd(object):
         curr_movements = 0
         curr_size = 0
         action_available = True
-        while curr_movements < max_movements and curr_size < max_movement_size and action_available:
+        while curr_movements < max_movements and curr_size <= max_movement_size and action_available:
             action_available = False
             for topic, actions in six.iteritems(topic_actions):
                 for action in actions:
