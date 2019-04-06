@@ -93,9 +93,9 @@ class DecommissionCmd(ClusterManagerCmd):
         return subparser
 
     def run_command(self, cluster_topology, cluster_balancer):
-        if self.args.force_progress and not self.args.max_movement_size:
+        if self.args.force_progress and self.args.max_movement_size is None:
             self.log.error(
-                '--force-progress must be used with --max-movement-size only',
+                '--force-progress must be used with --max-movement-size',
             )
             sys.exit(1)
         # Obtain the largest partition in the set of partitions we will move
