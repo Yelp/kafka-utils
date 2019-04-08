@@ -268,7 +268,7 @@ class TestClusterManagerCmd(object):
             force_progress=True,
         )
 
-        # Verify proposed plan -- largest size in the cluster is 1, so expect 1
+        # Verify proposed plan -- smallest size in the cluster is 1, so expect 1
         assert len(proposed_assignment) == 1
 
     def test_reduced_proposed_plan_empty_new_assignment(self, cmd, orig_assignment, empty_cluster_topology):

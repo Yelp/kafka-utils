@@ -108,6 +108,11 @@ class DecommissionCmd(ClusterManagerCmd):
             for partition in partitions_to_move
         )
 
+        smallest_size = min(
+            partition.size
+            for partition in partitions_to_move
+        )
+
         if self.args.auto_max_movement_size:
             self.args.max_movement_size = largest_size
             self.log.info(
@@ -121,10 +126,10 @@ class DecommissionCmd(ClusterManagerCmd):
             if not self.args.force_progress:
                 self.log.error(
                     'Max partition movement size is only {max_movement_size},'
-                    ' but largest partition to move in set of brokers to decommission'
-                    ' is size {largest_size}.'
-                    ' The decommission will not make progress.'.format(
+                    ' but remaining partitions to move range from {smallest_size} to'
+                    ' {largest_size}. The decommission will not make progress'.format(
                         max_movement_size=self.args.max_movement_size,
+                        smallest_size=smallest_size,
                         largest_size=largest_size,
                     )
                 )
@@ -132,9 +137,10 @@ class DecommissionCmd(ClusterManagerCmd):
             else:
                 self.log.warning(
                     'Max partition movement size is only {max_movement_size},'
-                    ' but largest partition to move in set of brokers to decommission'
-                    ' is size {largest_size}. Progress may be slower than expected.'.format(
+                    ' but remaining partitions to move range from {smallest_size} to'
+                    ' {largest_size}. The decommission may be slower than expected'.format(
                         max_movement_size=self.args.max_movement_size,
+                        smallest_size=smallest_size,
                         largest_size=largest_size,
                     )
                 )
