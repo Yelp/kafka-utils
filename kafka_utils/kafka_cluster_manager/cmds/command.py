@@ -224,15 +224,15 @@ class ClusterManagerCmd(object):
 
         # Ensure progress is made if force_progress=True
         if len(reduced_actions) == 0 and force_progress:
-            largest_size = max([cluster_topology.partitions[t_p[0]].size for t_p in partition_change_count])
+            smallest_size = min([cluster_topology.partitions[t_p[0]].size for t_p in partition_change_count])
             self.log.warning(
-                '--max-movement-size={max_movement_size} is too small, using largest size'
-                ' in set of partitions to move, {largest_size} instead to force progress'.format(
+                '--max-movement-size={max_movement_size} is too small, using smallest size'
+                ' in set of partitions to move, {smallest_size} instead to force progress'.format(
                     max_movement_size=max_movement_size,
-                    largest_size=largest_size,
+                    smallest_size=smallest_size,
                 )
             )
-            max_movement_size = largest_size
+            max_movement_size = smallest_size
             reduced_actions = self._extract_actions_unique_topics(
                 partition_change_count,
                 max_partition_movements,
