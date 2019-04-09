@@ -25,6 +25,8 @@ from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
+    import PartitionMeasurer
+from kafka_utils.kafka_cluster_manager.cluster_info.partition_measurer \
     import UniformPartitionMeasurer
 from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
 
@@ -80,6 +82,27 @@ def orig_cluster_topology(orig_assignment):
     return ClusterTopology(orig_assignment, brokers, pm)
 
 
+class ZeroSizePartitionMeasurer(PartitionMeasurer):
+    """An implementation of PartitionMeasurer that provides zero size
+    for all partitions.
+    """
+
+    def get_weight(self, _):
+        return 1.0
+
+    def get_size(self, _):
+        return 0
+
+
+@fixture
+def zero_size_cluster_topology(orig_assignment):
+    """ This topology sets all of the partition sizes to be 0
+    """
+    brokers = {0: None, 1: None, 2: None, 3: None}
+    pm = ZeroSizePartitionMeasurer({}, brokers, orig_assignment, {})
+    return ClusterTopology(orig_assignment, brokers, pm)
+
+
 @fixture
 def cmd():
     return ClusterManagerCmd()
@@ -132,6 +155,31 @@ class TestClusterManagerCmd(object):
             1,
         )
 
+        assert len(red_actions) == 1
+
+    def test_extract_actions_unique_topics_partition_size_zero(self, cmd, zero_size_cluster_topology):
+        # If we have max_movement_size 0, we should still be able to move 0-size partitions
+        movements_count = [
+            ((u'T0', 0), 1),
+            ((u'T0', 1), 1),
+            ((u'T1', 0), 1),
+            ((u'T2', 0), 1),
+        ]
+        red_actions = cmd._extract_actions_unique_topics(
+            movements_count,
+            100,
+            zero_size_cluster_topology,
+            0,
+        )
+
+        assert len(red_actions) == 4
+
+        red_actions = cmd._extract_actions_unique_topics(
+            movements_count,
+            1,
+            zero_size_cluster_topology,
+            0,
+        )
         assert len(red_actions) == 1
 
     def test_extract_actions_partition_movement_no_action(self, cmd, cluster_topology):
