@@ -1,3 +1,9 @@
+2.2.0 (April 8, 2019)
+----------------------------
+* Add new --force-progress flag in kafka-cluster-manager decommission
+* Fix bug with moving 0-size partitions in decommission
+* Fix bug with genetic balancer using size in decommission when --max-movement-size not specified
+
 2.1.0 (April 3, 2019)
 ----------------------------
 * Add new --max-movement-size and --auto-max-movement-size in kafka-cluster-manager decommission
