@@ -19,7 +19,6 @@ import logging
 import sys
 
 from .command import ClusterManagerCmd
-from .command import DEFAULT_MAX_MOVEMENT_SIZE
 from kafka_utils.util import positive_float
 from kafka_utils.util import positive_int
 from kafka_utils.util.validation import assignment_to_plan
@@ -65,10 +64,12 @@ class DecommissionCmd(ClusterManagerCmd):
             help='Maximum number of actions with leader-only changes.'
                  ' DEFAULT: %(default)s',
         )
-        subparser.add_argument(
+
+        movement_size_group = subparser.add_mutually_exclusive_group()
+        movement_size_group.add_argument(
             '--max-movement-size',
             type=positive_float,
-            default=DEFAULT_MAX_MOVEMENT_SIZE,
+            default=None,
             help='Maximum total size of the partitions moved in the final set'
                  ' of actions. Since each PartitionMeasurer implementation'
                  ' defines its own notion of size, the size unit to use will'
@@ -77,21 +78,37 @@ class DecommissionCmd(ClusterManagerCmd):
                  ' RECOMMENDATION: Should be at least the maximum partition-size'
                  ' on the brokers to decommission, ideally a little larger.',
         )
-        subparser.add_argument(
+        movement_size_group.add_argument(
             '--auto-max-movement-size',
             action='store_true',
             help='Set max-movement-size to the size of the largest partition'
                  ' in the set of brokers to be decommissioned.',
         )
+        subparser.add_argument(
+            '--force-progress',
+            action='store_true',
+            help='If set, ensures that at minimum one partition is moved regardless'
+                 ' of --max-movement-size set.',
+        )
         return subparser
 
     def run_command(self, cluster_topology, cluster_balancer):
+        if self.args.force_progress and self.args.max_movement_size is None:
+            self.log.error(
+                '--force-progress must be used with --max-movement-size',
+            )
+            sys.exit(1)
         # Obtain the largest partition in the set of partitions we will move
         partitions_to_move = set()
         for broker in self.args.broker_ids:
             partitions_to_move.update(cluster_topology.brokers[broker].partitions)
 
         largest_size = max(
+            partition.size
+            for partition in partitions_to_move
+        )
+
+        smallest_size = min(
             partition.size
             for partition in partitions_to_move
         )
@@ -105,17 +122,28 @@ class DecommissionCmd(ClusterManagerCmd):
                 )
             )
 
-        if self.args.max_movement_size < largest_size:
-            self.log.error(
-                'Max partition movement size is only {max_movement_size},'
-                ' but largest partition to move in set of brokers to decommission'
-                ' is size {largest_size}.'
-                ' The decommission will not make progress.'.format(
-                    max_movement_size=self.args.max_movement_size,
-                    largest_size=largest_size,
+        if self.args.max_movement_size and self.args.max_movement_size < largest_size:
+            if not self.args.force_progress:
+                self.log.error(
+                    'Max partition movement size is only {max_movement_size},'
+                    ' but remaining partitions to move range from {smallest_size} to'
+                    ' {largest_size}. The decommission will not make progress'.format(
+                        max_movement_size=self.args.max_movement_size,
+                        smallest_size=smallest_size,
+                        largest_size=largest_size,
+                    )
                 )
-            )
-            sys.exit(1)
+                sys.exit(1)
+            else:
+                self.log.warning(
+                    'Max partition movement size is only {max_movement_size},'
+                    ' but remaining partitions to move range from {smallest_size} to'
+                    ' {largest_size}. The decommission may be slower than expected'.format(
+                        max_movement_size=self.args.max_movement_size,
+                        smallest_size=smallest_size,
+                        largest_size=largest_size,
+                    )
+                )
 
         base_assignment = cluster_topology.assignment
 
@@ -139,7 +167,8 @@ class DecommissionCmd(ClusterManagerCmd):
             cluster_topology,
             self.args.max_partition_movements,
             self.args.max_leader_changes,
-            self.args.max_movement_size,
+            max_movement_size=self.args.max_movement_size,
+            force_progress=self.args.force_progress,
         )
         if reduced_assignment:
             self.process_assignment(reduced_assignment)

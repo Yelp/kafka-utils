@@ -301,6 +301,24 @@ class TestClusterManagerCmd(object):
         # Verify no proposed plan
         assert proposed_assignment == {}
 
+    def test_reduced_proposed_plan_force_progress(
+        self,
+        cmd,
+        orig_assignment,
+        cluster_topology,
+    ):
+        proposed_assignment = cmd.get_reduced_assignment(
+            orig_assignment,
+            cluster_topology,
+            max_partition_movements=2,
+            max_leader_only_changes=0,
+            max_movement_size=0,
+            force_progress=True,
+        )
+
+        # Verify proposed plan -- smallest size in the cluster is 1, so expect 1
+        assert len(proposed_assignment) == 1
+
     def test_reduced_proposed_plan_empty_new_assignment(self, cmd, orig_assignment, empty_cluster_topology):
         # Provide empty assignment
         proposed_assignment = cmd.get_reduced_assignment(

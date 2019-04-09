@@ -164,6 +164,7 @@ class ClusterManagerCmd(object):
         max_partition_movements,
         max_leader_only_changes,
         max_movement_size=DEFAULT_MAX_MOVEMENT_SIZE,
+        force_progress=False,
     ):
         """Reduce the assignment based on the total actions.
 
@@ -179,6 +180,7 @@ class ClusterManagerCmd(object):
                                 final set of actions
         max_leader_only_changes:Maximum number of actions with leader only changes
         max_movement_size:      Maximum size, in bytes, to move in final set of actions
+        force_progress:         Whether to force progress if max_movement_size is too small
         :return:
         :reduced_assignment:    Final reduced assignment
         """
@@ -219,6 +221,25 @@ class ClusterManagerCmd(object):
             cluster_topology,
             max_movement_size,
         )
+
+        # Ensure progress is made if force_progress=True
+        if len(reduced_actions) == 0 and force_progress:
+            smallest_size = min([cluster_topology.partitions[t_p[0]].size for t_p in partition_change_count])
+            self.log.warning(
+                '--max-movement-size={max_movement_size} is too small, using smallest size'
+                ' in set of partitions to move, {smallest_size} instead to force progress'.format(
+                    max_movement_size=max_movement_size,
+                    smallest_size=smallest_size,
+                )
+            )
+            max_movement_size = smallest_size
+            reduced_actions = self._extract_actions_unique_topics(
+                partition_change_count,
+                max_partition_movements,
+                cluster_topology,
+                max_movement_size,
+            )
+
         reduced_partition_changes = [
             (t_p, new_assignment[t_p]) for t_p in reduced_actions
         ]
