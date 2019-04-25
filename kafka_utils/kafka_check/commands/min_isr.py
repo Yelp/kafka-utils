@@ -14,6 +14,8 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import itertools
+
 from kazoo.exceptions import NoNodeError
 
 from kafka_utils.kafka_check import status_code
@@ -52,7 +54,7 @@ class MinIsrCmd(KafkaCheckCmd):
         )
 
         errcode = status_code.OK if not not_in_sync else status_code.CRITICAL
-        out = _prepare_output(not_in_sync, self.args.verbose)
+        out = _prepare_output(not_in_sync, self.args.verbose, self.args.head)
         return errcode, out
 
 
@@ -89,13 +91,15 @@ def _process_metadata_response(topics, zk, default_min_isr):
     return not_in_sync_partitions
 
 
-def _prepare_output(partitions, verbose):
+def _prepare_output(partitions, verbose, head_limit):
     """Returns dict with 'raw' and 'message' keys filled."""
     out = {}
     partitions_count = len(partitions)
     out['raw'] = {
         'not_enough_replicas_count': partitions_count,
     }
+    if head_limit != -1:
+        partitions = list(itertools.islice(partitions, head_limit))
 
     if partitions_count == 0:
         out['message'] = 'All replicas in sync.'
@@ -104,7 +108,6 @@ def _prepare_output(partitions, verbose):
             "{0} partition(s) have the number of replicas in "
             "sync that is lower than the specified min ISR."
         ).format(partitions_count)
-
         if verbose:
             lines = (
                 "isr={isr} is lower than min_isr={min_isr} for {topic}:{partition}"
@@ -116,7 +119,9 @@ def _prepare_output(partitions, verbose):
                 )
                 for p in partitions
             )
-            out['verbose'] = "Partitions:\n" + "\n".join(lines)
+            title = "Top {0} partitions:\n".format(head_limit) + "\n".join(lines) if head_limit != -1 else "Partitions:\n"
+
+            out['verbose'] = title + "\n".join(lines)
     if verbose:
         out['raw']['partitions'] = partitions
 

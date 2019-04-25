@@ -110,6 +110,12 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        '--head',
+        help='Show N head lines of the output',
+        type=int,
+        default=-1,
+    )
 
     subparsers = parser.add_subparsers()
     MinIsrCmd().add_subparser(subparsers)
@@ -120,14 +126,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def run():
-    """Verify command-line arguments and run commands"""
-    args = parse_args()
-    logging.basicConfig(level=logging.WARN)
-
-    # to prevent flooding for sensu-check.
-    logging.getLogger('kafka').setLevel(logging.CRITICAL)
-
+def validate_args(args):
     if args.controller_only and args.first_broker_only:
         terminate(
             status_code.WARNING,
@@ -154,13 +153,30 @@ def run():
                     args.json,
                 )
 
+    if args.head and not args.verbose:
+        terminate(
+            status_code.WARNING,
+            prepare_terminate_message("--head option works only as addition --verbose"),
+            args.json,
+        )
+
+
+def run():
+    """Verify command-line arguments and run commands"""
+    args = parse_args()
+    validate_args(args)
+
+    logging.basicConfig(level=logging.WARN)
+    # to prevent flooding for sensu-check.
+    logging.getLogger('kafka').setLevel(logging.CRITICAL)
+
     try:
         cluster_config = config.get_cluster_config(
             args.cluster_type,
             args.cluster_name,
             args.discovery_base_path,
         )
-        code, msg = args.command(cluster_config, args)
+        err_code, msg = args.command(cluster_config, args)
     except ConfigurationError as e:
         terminate(
             status_code.CRITICAL,
@@ -168,4 +184,4 @@ def run():
             args.json,
         )
 
-    terminate(code, msg, args.json)
+    terminate(err_code, msg, args.json)

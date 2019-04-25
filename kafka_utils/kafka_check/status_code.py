@@ -37,18 +37,18 @@ def prepare_terminate_message(string):
     }
 
 
-def terminate(signal, msg, json):
+def terminate(err_code, msg, json):
     if json:
         output = {
-            'status': STATUS_STRING[signal],
+            'status': STATUS_STRING[err_code],
             'data': msg['raw'],
         }
         print_json(output)
     else:
         print('{status}: {msg}'.format(
-            status=STATUS_STRING[signal],
+            status=STATUS_STRING[err_code],
             msg=msg['message'],
         ))
         if 'verbose' in msg:
             print(msg['verbose'])
-    sys.exit(signal)
+    sys.exit(err_code)

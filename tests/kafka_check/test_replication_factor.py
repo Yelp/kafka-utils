@@ -158,7 +158,7 @@ def test_prepare_output_ok_no_verbose():
             'topics_with_wrong_replication_factor_count': 0,
         }
     }
-    assert _prepare_output([], False) == expected
+    assert _prepare_output([], False, -1) == expected
 
 
 def test_prepare_output_ok_verbose():
@@ -169,7 +169,7 @@ def test_prepare_output_ok_verbose():
             'topics': [],
         }
     }
-    assert _prepare_output([], True) == expected
+    assert _prepare_output([], True, -1) == expected
 
 
 def test_prepare_output_critical_no_verbose():
@@ -179,7 +179,7 @@ def test_prepare_output_critical_no_verbose():
             'topics_with_wrong_replication_factor_count': 2,
         }
     }
-    assert _prepare_output(TOPICS_WITH_WRONG_RP, False) == expected
+    assert _prepare_output(TOPICS_WITH_WRONG_RP, False, -1) == expected
 
 
 def test_prepare_output_critical_verbose():
@@ -206,4 +206,25 @@ def test_prepare_output_critical_verbose():
             ],
         }
     }
-    assert _prepare_output(TOPICS_WITH_WRONG_RP, True) == expected
+    assert _prepare_output(TOPICS_WITH_WRONG_RP, True, -1) == expected
+
+
+def test_prepare_output_critical_verbose_with_head_limit():
+    expected = {
+        'message': '2 topic(s) have replication factor lower than specified min ISR + 1.',
+        'verbose': (
+            "Top 1 topics:\n"
+            "replication_factor=3 is lower than min_isr=3 + 1 for topic_0"
+        ),
+        'raw': {
+            'topics_with_wrong_replication_factor_count': 2,
+            'topics': [
+                {
+                    'min_isr': 3,
+                    'topic': 'topic_0',
+                    'replication_factor': 3,
+                },
+            ],
+        }
+    }
+    assert _prepare_output(TOPICS_WITH_WRONG_RP, True, 1) == expected
