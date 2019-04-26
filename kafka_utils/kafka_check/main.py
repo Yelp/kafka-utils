@@ -153,10 +153,10 @@ def validate_args(args):
                     args.json,
                 )
 
-    if args.head and not args.verbose:
+    if args.head != -1 and not args.verbose:
         terminate(
             status_code.WARNING,
-            prepare_terminate_message("--head option works only as addition --verbose"),
+            prepare_terminate_message("--head option works only as addition to --verbose option"),
             args.json,
         )
 
