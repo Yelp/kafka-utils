@@ -1,3 +1,9 @@
+2.2.1 (April 26, 2019)
+----------------------------
+* Use openjdk instead of oracle-java8 in acceptance tests
+* Migrate to ubuntu 16.04 in acceptance tests
+* Update team name and email
+
 2.2.0 (April 8, 2019)
 ----------------------------
 * Add new --force-progress flag in kafka-cluster-manager decommission
