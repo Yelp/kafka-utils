@@ -1,5 +1,5 @@
-FROM ubuntu:14.04
-MAINTAINER Team Distributed Systems <team-dist-sys@yelp.com>
+FROM ubuntu:16.04
+MAINTAINER Team Data Streams Core <data-streams-core@yelp.com>
 
 ARG KAFKA_VERSION
 # We need to install Java and Kafka in order to use Kafka CLI. The Kafka server
@@ -7,17 +7,10 @@ ARG KAFKA_VERSION
 # container.
 
 # Install Java.
-ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
-ENV PATH="$PATH:$JAVA_HOME/bin"
 RUN apt-get update && \
-    apt-get install software-properties-common -y
-RUN \
-  echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
-  add-apt-repository -y ppa:webupd8team/java && \
-  apt-get update && \
-  apt-get install -y oracle-java8-installer && \
-  rm -rf /var/lib/apt/lists/* && \
-  rm -rf /var/cache/oracle-jdk8-installer
+    apt-get install -y \
+    software-properties-common \
+    openjdk-8-jdk
 
 # Install Kafka.
 RUN apt-get update && apt-get install -y \
@@ -26,6 +19,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     jq \
     coreutils
+
+ENV JAVA_HOME "/usr/lib/jvm/java-8-openjdk-amd64/"
+ENV PATH "$JAVA_HOME/bin:$PATH"
 ENV SCALA_VERSION="2.11"
 ENV KAFKA_HOME /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION}
 COPY download-kafka.sh /tmp/download-kafka.sh

@@ -32,8 +32,8 @@ with open(
 setup(
     name="kafka-utils",
     version=__version__,
-    author="Distributed Systems Team",
-    author_email="team-dist-sys@yelp.com",
+    author="Team Data Streams Core",
+    author_email="data-streams-core@yelp.com",
     description="Kafka management utils",
     packages=find_packages(exclude=["scripts*", "tests*"]),
     url="https://github.com/Yelp/kafka-utils",
