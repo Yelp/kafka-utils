@@ -1,3 +1,7 @@
+2.2.2 (April 30, 2019)
+----------------------------
+* Relax requirements for PyYAML and pytz
+
 2.2.1 (April 26, 2019)
 ----------------------------
 * Use openjdk instead of oracle-java8 in acceptance tests
