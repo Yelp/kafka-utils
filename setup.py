@@ -51,8 +51,8 @@ setup(
     install_requires=[
         "kafka-python>=1.3.2,<1.5.0",
         "kazoo>=2.0,<3.0.0",
-        "PyYAML<4.0.0",
-        "pytz>=2018.4",
+        "PyYAML>3.10",
+        "pytz>=2016.4",
         "requests-futures>0.9.0",
         "paramiko<2.5.0",
         "requests<3.0.0",
