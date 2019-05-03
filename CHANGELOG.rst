@@ -1,3 +1,7 @@
+2.2.3 (May 03, 2019)
+----------------------------
+* Fix bug with --max-movement-size default value causing stuck decommissions
+
 2.2.2 (April 30, 2019)
 ----------------------------
 * Relax requirements for PyYAML and pytz
