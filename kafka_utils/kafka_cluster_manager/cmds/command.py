@@ -27,7 +27,6 @@ from kafka_utils.kafka_cluster_manager. \
 from kafka_utils.util.validation import assignment_to_plan
 from kafka_utils.util.zookeeper import ZK
 
-
 DEFAULT_MAX_MOVEMENT_SIZE = float('inf')
 
 
