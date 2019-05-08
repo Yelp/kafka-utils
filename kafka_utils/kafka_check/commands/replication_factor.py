@@ -14,6 +14,8 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import itertools
+
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.kafka_check.commands.min_isr import get_min_isr
@@ -51,7 +53,7 @@ class ReplicationFactorCmd(KafkaCheckCmd):
         )
 
         errcode = status_code.OK if not topics_with_wrong_rf else status_code.CRITICAL
-        out = _prepare_output(topics_with_wrong_rf, self.args.verbose)
+        out = _prepare_output(topics_with_wrong_rf, self.args.verbose, self.args.head)
         return errcode, out
 
 
@@ -75,13 +77,15 @@ def _find_topics_with_wrong_rp(topics, zk, default_min_isr):
     return topics_with_wrong_rf
 
 
-def _prepare_output(topics_with_wrong_rf, verbose):
+def _prepare_output(topics_with_wrong_rf, verbose, head_limit):
     """Returns dict with 'raw' and 'message' keys filled."""
     out = {}
     topics_count = len(topics_with_wrong_rf)
     out['raw'] = {
         'topics_with_wrong_replication_factor_count': topics_count,
     }
+    if head_limit != -1:
+        topics_with_wrong_rf = list(itertools.islice(topics_with_wrong_rf, head_limit))
 
     if topics_count == 0:
         out['message'] = 'All topics have proper replication factor.'
@@ -100,7 +104,13 @@ def _prepare_output(topics_with_wrong_rf, verbose):
                 )
                 for topic in topics_with_wrong_rf
             )
-            out['verbose'] = "Topics:\n" + "\n".join(lines)
+            if head_limit != -1:
+                title = "Top {0} topics:\n".format(head_limit)
+            else:
+                title = "Topics:\n"
+
+            out['verbose'] = title + "\n".join(lines)
+
     if verbose:
         out['raw']['topics'] = topics_with_wrong_rf
 

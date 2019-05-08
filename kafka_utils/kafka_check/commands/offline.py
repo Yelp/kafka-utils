@@ -14,6 +14,7 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import itertools
 import sys
 
 from kafka_utils.kafka_check import status_code
@@ -42,17 +43,20 @@ class OfflineCmd(KafkaCheckCmd):
         )
 
         errcode = status_code.OK if not offline else status_code.CRITICAL
-        out = _prepare_output(offline, self.args.verbose)
+        out = _prepare_output(offline, self.args.verbose, self.args.head)
         return errcode, out
 
 
-def _prepare_output(partitions, verbose):
+def _prepare_output(partitions, verbose, head_limit):
     """Returns dict with 'raw' and 'message' keys filled."""
     out = {}
     partitions_count = len(partitions)
     out['raw'] = {
         'offline_count': partitions_count,
     }
+
+    if head_limit != -1:
+        partitions = list(itertools.islice(partitions, head_limit))
 
     if partitions_count == 0:
         out['message'] = 'No offline partitions.'
@@ -63,7 +67,8 @@ def _prepare_output(partitions, verbose):
                 '{}:{}'.format(topic, partition)
                 for (topic, partition) in partitions
             )
-            out['verbose'] = "Partitions:\n" + "\n".join(lines)
+            title = "Top {0} partitions:\n".format(head_limit) if head_limit != -1 else "Partitions:\n"
+            out['verbose'] = title + "\n".join(lines)
         else:
             cmdline = sys.argv[:]
             cmdline.insert(1, '-v')

@@ -14,6 +14,8 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import itertools
+
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.util.metadata import get_topic_partition_with_error
@@ -46,17 +48,20 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
             replica_unavailability = result
 
         errcode = status_code.OK if not replica_unavailability else status_code.CRITICAL
-        out = _prepare_output(replica_unavailability, unavailable_brokers, self.args.verbose)
+        out = _prepare_output(replica_unavailability, unavailable_brokers, self.args.verbose, self.args.head)
         return errcode, out
 
 
-def _prepare_output(partitions, unavailable_brokers, verbose):
+def _prepare_output(partitions, unavailable_brokers, verbose, head_limit):
     """Returns dict with 'raw' and 'message' keys filled."""
     partitions_count = len(partitions)
     out = {}
     out['raw'] = {
         'replica_unavailability_count': partitions_count,
     }
+
+    if head_limit != -1:
+        partitions = list(itertools.islice(partitions, head_limit))
 
     if partitions_count == 0:
         out['message'] = 'All replicas available for communication.'
@@ -71,7 +76,12 @@ def _prepare_output(partitions, unavailable_brokers, verbose):
                 '{}:{}'.format(topic, partition)
                 for (topic, partition) in partitions
             )
-            out['verbose'] = "Partitions:\n" + "\n".join(lines)
+            if head_limit != -1:
+                title = "Top {0} partitions:\n".format(head_limit)
+            else:
+                title = "Partitions:\n"
+
+            out['verbose'] = title + "\n".join(lines)
 
     if verbose:
         out['raw']['partitions'] = [

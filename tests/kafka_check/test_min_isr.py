@@ -187,7 +187,7 @@ def test_prepare_output_ok_no_verbose():
             'not_enough_replicas_count': 0,
         }
     }
-    assert _prepare_output([], False) == origin
+    assert _prepare_output([], False, -1) == origin
 
 
 def test_prepare_output_ok_verbose():
@@ -198,7 +198,7 @@ def test_prepare_output_ok_verbose():
             'partitions': [],
         }
     }
-    assert _prepare_output([], True) == origin
+    assert _prepare_output([], True, -1) == origin
 
 
 def test_prepare_output_critical_no_verbose():
@@ -211,7 +211,7 @@ def test_prepare_output_critical_no_verbose():
             'not_enough_replicas_count': 2,
         }
     }
-    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, False) == origin
+    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, False, -1) == origin
 
 
 def test_prepare_output_critical_verbose():
@@ -243,4 +243,29 @@ def test_prepare_output_critical_verbose():
             ],
         }
     }
-    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, True) == origin
+    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, True, -1) == origin
+
+
+def test_prepare_output_critical_verbose_with_head():
+    origin = {
+        'message': (
+            "2 partition(s) have the number of replicas in "
+            "sync that is lower than the specified min ISR."
+        ),
+        'verbose': (
+            "Top 1 partitions:\n"
+            "isr=1 is lower than min_isr=3 for topic_0:0"
+        ),
+        'raw': {
+            'not_enough_replicas_count': 2,
+            'partitions': [
+                {
+                    'isr': 1,
+                    'min_isr': 3,
+                    'partition': 0,
+                    'topic': 'topic_0'
+                }
+            ],
+        }
+    }
+    assert _prepare_output(NOT_IN_SYNC_PARTITIONS, True, 1) == origin
