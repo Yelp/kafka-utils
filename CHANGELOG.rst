@@ -1,3 +1,7 @@
+2.3.0 (May 08, 2019)
+----------------------------
+* Implement --head option for kafka-check command
+
 2.2.3 (May 03, 2019)
 ----------------------------
 * Fix bug with --max-movement-size default value causing stuck decommissions
