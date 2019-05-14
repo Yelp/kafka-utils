@@ -26,7 +26,6 @@ from kafka_utils.util.serialization import dump_json
 from kafka_utils.util.serialization import load_json
 from kafka_utils.util.validation import validate_plan
 
-
 ADMIN_PATH = "/admin"
 REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
@@ -200,6 +199,15 @@ class ZK:
         names_only=False,
         fetch_partition_state=True,
     ):
+        topic_names = [topic_name] if topic_name else None
+        return self.get_multiple_topics(topic_names, names_only, fetch_partition_state)
+
+    def get_multiple_topics(
+        self,
+        topic_names=None,
+        names_only=False,
+        fetch_partition_state=True,
+    ):
         """Get information on all the available topics.
 
         Topic-data format with fetch_partition_state as False :-
@@ -233,9 +241,8 @@ class ZK:
         required fetch_partition_state should be set to False.
         """
         try:
-            topic_ids = [topic_name] if topic_name else self.get_children(
-                "/brokers/topics",
-            )
+            if not topic_names:
+                topic_names = self.get_children("/brokers/topics")
         except NoNodeError:
             _log.error(
                 "Cluster is empty."
@@ -243,9 +250,9 @@ class ZK:
             return {}
 
         if names_only:
-            return topic_ids
+            return topic_names
         topics_data = {}
-        for topic_id in topic_ids:
+        for topic_id in topic_names:
             try:
                 topic_info = self.get("/brokers/topics/{id}".format(id=topic_id))
                 topic_data = load_json(topic_info[0])
@@ -423,9 +430,9 @@ class ZK:
         )
         return self.get_children(path)
 
-    def get_cluster_assignment(self):
+    def get_cluster_assignment(self, topic_names=None):
         """Fetch the cluster layout in form of assignment from zookeeper"""
-        plan = self.get_cluster_plan()
+        plan = self.get_cluster_plan(topic_names)
         assignment = {}
         for elem in plan['partitions']:
             assignment[
@@ -485,7 +492,10 @@ class ZK:
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
         plan_json = dump_json(plan)
-        base_plan = self.get_cluster_plan()
+        topic_names_from_proposed_plan = set()
+        for partition in plan['partitions']:
+            topic_names_from_proposed_plan.add(partition['topic'])
+        base_plan = self.get_cluster_plan(topic_names=list(topic_names_from_proposed_plan))
         if not validate_plan(plan, base_plan, allow_rf_change=allow_rf_change):
             _log.error('Given plan is invalid. Aborting new reassignment plan ... {plan}'.format(plan=plan))
             return False
@@ -526,11 +536,11 @@ class ZK:
             )
             return False
 
-    def get_cluster_plan(self):
+    def get_cluster_plan(self, topic_names=None):
         """Fetch cluster plan from zookeeper."""
 
         _log.info('Fetching current cluster-topology from Zookeeper...')
-        cluster_layout = self.get_topics(fetch_partition_state=False)
+        cluster_layout = self.get_multiple_topics(topic_names, fetch_partition_state=False)
         # Re-format cluster-layout
         partitions = [
             {
