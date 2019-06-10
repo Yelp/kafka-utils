@@ -19,6 +19,7 @@ import logging
 import sys
 from collections import defaultdict
 
+import humanfriendly
 import six
 from six.moves import input
 
@@ -227,8 +228,8 @@ class ClusterManagerCmd(object):
             self.log.warning(
                 '--max-movement-size={max_movement_size} is too small, using smallest size'
                 ' in set of partitions to move, {smallest_size} instead to force progress'.format(
-                    max_movement_size=max_movement_size,
-                    smallest_size=smallest_size,
+                    max_movement_size=humanfriendly.format_size(max_movement_size),
+                    smallest_size=humanfriendly.format_size(smallest_size),
                 )
             )
             max_movement_size = smallest_size

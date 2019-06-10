@@ -6,6 +6,7 @@ cffi==1.12.2
 ecdsa==0.13
 enum34==1.1.6
 futures==3.2.0
+humanfriendly==4.8
 jsonschema==3.0.1
 kafka-python==1.4.4
 kazoo==2.6.1
