@@ -49,6 +49,7 @@ setup(
         "scripts/kafka-corruption-check",
     ],
     install_requires=[
+        "humanfriendly>=4.8",
         "kafka-python>=1.3.2,<1.5.0",
         "kazoo>=2.0,<3.0.0",
         "PyYAML>3.10",

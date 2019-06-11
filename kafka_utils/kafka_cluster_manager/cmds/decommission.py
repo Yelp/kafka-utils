@@ -18,6 +18,8 @@ from __future__ import print_function
 import logging
 import sys
 
+import humanfriendly
+
 from .command import ClusterManagerCmd
 from .command import DEFAULT_MAX_MOVEMENT_SIZE
 from kafka_utils.util import positive_float
@@ -118,8 +120,9 @@ class DecommissionCmd(ClusterManagerCmd):
         if self.args.auto_max_movement_size:
             self.args.max_movement_size = largest_size
             self.log.info(
-                'Auto-max-movement-size: using {max_movement_size} as'
+                'Auto-max-movement-size: using {human_max_movement_size} ({max_movement_size}) as'
                 ' max-movement-size.'.format(
+                    human_max_movement_size=humanfriendly.format_size(self.args.max_movement_size),
                     max_movement_size=self.args.max_movement_size,
                 )
             )
@@ -130,9 +133,9 @@ class DecommissionCmd(ClusterManagerCmd):
                     'Max partition movement size is only {max_movement_size},'
                     ' but remaining partitions to move range from {smallest_size} to'
                     ' {largest_size}. The decommission will not make progress'.format(
-                        max_movement_size=self.args.max_movement_size,
-                        smallest_size=smallest_size,
-                        largest_size=largest_size,
+                        max_movement_size=humanfriendly.format_size(self.args.max_movement_size),
+                        smallest_size=humanfriendly.format_size(smallest_size),
+                        largest_size=humanfriendly.format_size(largest_size),
                     )
                 )
                 sys.exit(1)
@@ -141,9 +144,9 @@ class DecommissionCmd(ClusterManagerCmd):
                     'Max partition movement size is only {max_movement_size},'
                     ' but remaining partitions to move range from {smallest_size} to'
                     ' {largest_size}. The decommission may be slower than expected'.format(
-                        max_movement_size=self.args.max_movement_size,
-                        smallest_size=smallest_size,
-                        largest_size=largest_size,
+                        max_movement_size=humanfriendly.format_size(self.args.max_movement_size),
+                        smallest_size=humanfriendly.format_size(smallest_size),
+                        largest_size=humanfriendly.format_size(largest_size),
                     )
                 )
 
