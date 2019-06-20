@@ -155,8 +155,7 @@ class ZK:
             updated with. This would be of the form key=value.
             Example 'cleanup.policy=compact'
         :kafka_version :tuple kafka version the brokers are running on.
-            Defaults to (0, 10, x). Kafka version 9 and kafka 10
-            support this feature.
+            Defaults to (0, 10, x). Versions above Kafka 0.9 support this feature.
         """
         return self._set_entity_config("brokers", broker_id, value, kafka_version)
 
@@ -200,8 +199,7 @@ class ZK:
             updated with. This would be of the form key=value.
             Example 'cleanup.policy=compact'
         :kafka_version :tuple kafka version the brokers are running on.
-            Defaults to (0, 10, x). Kafka version 9 and kafka 10
-            support this feature.
+            Defaults to (0, 10, x). Versions above Kafka 0.9 support this feature.
         """
         assert entity_type in ("brokers", "topics"), "Supported entities are brokers and topics"
 
