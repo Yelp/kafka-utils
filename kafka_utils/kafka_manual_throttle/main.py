@@ -20,6 +20,9 @@ import argparse
 import logging
 import sys
 
+import humanfriendly
+import six
+
 from kafka_utils.util import config
 from kafka_utils.util.zookeeper import ZK
 
@@ -67,6 +70,11 @@ def parse_opts():
         action='store_true',
     )
     parser.add_argument(
+        '--read-only',
+        help='if set, only reads throttles and exits',
+        action='store_true',
+    )
+    parser.add_argument(
         '-v',
         '--verbose',
         help='print verbose execution information. Default: %(default)s',
@@ -75,7 +83,7 @@ def parse_opts():
     return parser.parse_args()
 
 
-def validate_opts(opts, brokers_num):
+def validate_opts(opts):
     """
     Basic option validation.
 
@@ -84,6 +92,9 @@ def validate_opts(opts, brokers_num):
     :opts : the command line options
     :returns : bool
     """
+    if opts.read_only:
+        return True
+
     if opts.clear:
         if opts.leader_throttle is not None:
             print("Error: --clear cannot be used with --leader-throttle")
@@ -99,6 +110,61 @@ def validate_opts(opts, brokers_num):
             print("Error: --follower-throttle must be >= 0")
             return False
     return True
+
+
+def human_throttle(throttle):
+    if throttle is None:
+        return "N/A"
+
+    return humanfriendly.format_size(int(throttle), binary=True)
+
+
+def print_throttles(zk, brokers):
+    """
+    Print the current replication throttles.
+
+    Throttles are written in B/s, and as a human readable format.
+
+    :zk : a ZK client
+    :brokers : a collection of broker ids
+    """
+
+    print("Reading current replication throttles.")
+
+    broker_throttles = read_throttles(zk, brokers)
+
+    for broker_id, (leader_throttle, follower_throttle) in six.iteritems(broker_throttles):
+        print(
+            "\tBroker ID: {broker_id} - Leader: {leader_throttle} ({leader_human}) - Follower: {follower_throttle} ({follower_human})".format(
+                broker_id=broker_id,
+                leader_throttle=leader_throttle,
+                follower_throttle=follower_throttle,
+                leader_human=human_throttle(leader_throttle),
+                follower_human=human_throttle(follower_throttle),
+            )
+        )
+
+
+def read_throttles(zk, brokers):
+    """
+    Read leader/follower replication throttles for the given brokers
+
+    :zk : a ZK client
+    :brokers : a collection of broker ids
+    :returns : a mapping of broker id -> (leader throttle, follower throttle) pairs.
+                    throttles are in B/s, None if no value is configured
+    """
+    throttles = {}
+
+    for broker_id in brokers:
+        config = zk.get_broker_config(broker_id)
+
+        leader_throttle = config.get(LEADER_THROTTLE_RATE_CONFIGURATION)
+        follower_throttle = config.get(FOLLOWER_THROTTLE_RATE_CONFIGURATION)
+
+        throttles[broker_id] = ((leader_throttle, follower_throttle))
+
+    return throttles
 
 
 def apply_throttles(zk, brokers, leader_throttle, follower_throttle):
@@ -171,10 +237,15 @@ def run():
         opts.discovery_base_path,
     )
 
-    print("Applying throttles")
-
     with ZK(cluster_config) as zk:
         brokers = zk.get_brokers(names_only=True)
+
+        print_throttles(zk, brokers)
+
+        if opts.read_only:
+            return
+
+        print("Applying new replication throttles")
 
         if not opts.clear:
             apply_throttles(
@@ -182,10 +253,12 @@ def run():
                 brokers,
                 opts.leader_throttle,
                 opts.follower_throttle,
-                opts.verbose,
             )
         else:
-            clear_throttles(zk, brokers, opts.verbose)
+            clear_throttles(zk, brokers)
 
-    print("Throttles applied.")
-    print("NOTE: Do not forget to --clear throttles once the reassignment plan completes.")
+        print("New replication throttles applied.")
+        print_throttles(zk, brokers)
+
+    if not opts.clear:
+        print("NOTE: Do not forget to --clear throttles once the reassignment plan completes.")
