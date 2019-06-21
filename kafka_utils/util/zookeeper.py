@@ -117,28 +117,11 @@ class ZK:
 
         :rtype : dict of configuration
         """
-        try:
-            config_data = load_json(
-                self.get(
-                    "/config/topics/{topic}".format(topic=topic)
-                )[0]
-            )
-        except NoNodeError as e:
-
-            # Kafka version before 0.8.1 does not have "/config/topics/<topic_name>" path in ZK and
-            # if the topic exists, return default dict instead of raising an Exception.
-            # Ref: https://cwiki.apache.org/confluence/display/KAFKA/Kafka+data+structures+in+Zookeeper.
-
-            topics = self.get_topics(topic_name=topic, fetch_partition_state=False)
-            if len(topics) > 0:
-                _log.info("Configuration not available for topic {topic}.".format(topic=topic))
-                config_data = {"config": {}}
-            else:
-                _log.error(
-                    "topic {topic} not found.".format(topic=topic)
-                )
-                raise e
-        return config_data
+        return self._get_entity_config(
+            "topics",
+            topic,
+            lambda topic: len(self.get_topics(topic_name=topic, fetch_partition_state=False)) > 0,
+        )
 
     def set_topic_config(self, topic, value, kafka_version=(0, 10, )):
         """Set configuration information for specified topic.
@@ -151,34 +134,104 @@ class ZK:
             Defaults to (0, 10, x). Kafka version 9 and kafka 10
             support this feature.
         """
+        self._set_entity_config("topics", topic, value, kafka_version)
+
+    def get_broker_config(self, broker_id):
+        """Get configuration information for specified broker.
+
+        :rtype : dict of configuration
+        """
+        return self._get_entity_config(
+            "brokers",
+            broker_id,
+            lambda broker_id: broker_id in self.get_brokers(names_only=True)
+        )
+
+    def set_broker_config(self, broker_id, value, kafka_version=(0, 10, )):
+        """Set configuration information for specified broker.
+
+        :broker_id : broker whose configuration needs to be changed
+        :value :  config value with which the topic needs to be
+            updated with. This would be of the form key=value.
+            Example 'cleanup.policy=compact'
+        :kafka_version :tuple kafka version the brokers are running on.
+            Defaults to (0, 10, x). Versions above Kafka 0.9 support this feature.
+        """
+        return self._set_entity_config("brokers", broker_id, value, kafka_version)
+
+    def _get_entity_config(self, entity_type, entity_name, entity_exists):
+        """Get configuration information for specified broker.
+
+        :entity_type : "brokers" or "topics"
+        :entity_name : broker id or topic name
+        :entity_exists : fn(entity_name) -> bool to determine whether an entity
+                            exists. used to determine whether to throw an exception
+                            when a configuration cannot be found for the given entity_name
+        :rtype : dict of configuration
+        """
+        assert entity_type in ("brokers", "topics"), "Supported entities are brokers and topics"
+
+        try:
+            config_data = load_json(
+                self.get(
+                    "/config/{entity_type}/{entity_name}".format(entity_type=entity_type, entity_name=entity_name)
+                )[0]
+            )
+        except NoNodeError as e:
+            if entity_exists(entity_name):
+                _log.info("Configuration not available for {entity_type} {entity_name}.".format(
+                    entity_type=entity_type,
+                    entity_name=entity_name,
+                ))
+                config_data = {"config": {}}
+            else:
+                _log.error("{entity_type} {entity_name} not found".format(entity_type=entity_type, entity_name=entity_name))
+                raise e
+
+        return config_data
+
+    def _set_entity_config(self, entity_type, entity_name, value, kafka_version=(0, 10, )):
+        """Set configuration information for specified entity.
+
+        :entity_type : "brokers" or "topics"
+        :entity_name : broker id or topic name
+        :value :  config value with which the entity needs to be
+            updated with. This would be of the form key=value.
+            Example 'cleanup.policy=compact'
+        :kafka_version :tuple kafka version the brokers are running on.
+            Defaults to (0, 10, x). Versions above Kafka 0.9 support this feature.
+        """
+        assert entity_type in ("brokers", "topics"), "Supported entities are brokers and topics"
+
         config_data = dump_json(value)
 
         try:
             # Change value
             return_value = self.set(
-                "/config/topics/{topic}".format(topic=topic),
-                config_data
+                "/config/{entity_type}/{entity_name}".format(entity_type=entity_type, entity_name=entity_name),
+                config_data,
             )
+
             # Create change
-            version = kafka_version[1]
+            assert kafka_version >= (0, 9, ), "Feature supported with kafka 0.9 and above"
 
-            # this feature is supported in kafka 9 and kafka 10
-            assert version in (9, 10), "Feature supported with kafka 9 and kafka 10"
-
-            if version == 9:
+            if kafka_version < (0, 10, ):
                 # https://github.com/apache/kafka/blob/0.9.0.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L334
                 change_node = dump_json({
                     "version": 1,
-                    "entity_type": "topics",
-                    "entity_name": topic
+                    "entity_type": entity_type,
+                    "entity_name": entity_name,
                 })
-            else:  # kafka 10
+            else:  # kafka 0.10+
                 # https://github.com/apache/kafka/blob/0.10.2.1/
                 #     core/src/main/scala/kafka/admin/AdminUtils.scala#L574
                 change_node = dump_json({
                     "version": 2,
-                    "entity_path": "topics/" + topic,
+                    "entity_path": "{entity_type}/{entity_name}".format(
+                        entity_type=entity_type,
+                        entity_name=entity_name
+                    )
                 })
 
             self.create(
@@ -188,7 +241,7 @@ class ZK:
             )
         except NoNodeError as e:
             _log.error(
-                "topic {topic} not found.".format(topic=topic)
+                "{entity_type}: {entity_name} not found.".format(entity_type=entity_type, entity_name=entity_name)
             )
             raise e
         return return_value

@@ -256,6 +256,49 @@ class TestZK(object):
                 )
                 assert mock_client.return_value.create.call_args_list == [expected_create_call]
 
+    def test_get_broker_config(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.zk.get = mock.Mock(
+                return_value=(
+                    b'{"version": 1, "config": {"leader.replication.throttled.rate": "42"}}',
+                    "Random node info that doesn't matter"
+                )
+            )
+            actual = zk.get_broker_config(0)
+            expected = {"version": 1, "config": {"leader.replication.throttled.rate": "42"}}
+            assert actual == expected
+
+    def test_set_broker_config_kafka_10(self, mock_client):
+        with mock.patch.object(
+            ZK,
+            'set',
+            autospec=True
+        ) as mock_set:
+            with ZK(self.cluster_config) as zk:
+                config = {"version": 1, "config": {"leader.replication.throttled.rate": "42"}}
+                config_change = {"entity_path": "brokers/0", "version": 2}
+
+                zk.set_broker_config(0, config)
+
+                serialized_config = dump_json(config)
+                serialized_config_change = dump_json(config_change)
+
+                mock_set.assert_called_once_with(
+                    zk,
+                    '/config/brokers/0',
+                    serialized_config,
+                )
+
+                expected_create_call = mock.call(
+                    '/config/changes/config_change_',
+                    serialized_config_change,
+                    None,
+                    False,
+                    True,
+                    False
+                )
+                assert mock_client.return_value.create.call_args_list == [expected_create_call]
+
     def test_get_topics(self, mock_client):
         with ZK(self.cluster_config) as zk:
             zk.zk.get = mock.Mock(
