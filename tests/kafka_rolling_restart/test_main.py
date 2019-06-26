@@ -30,7 +30,7 @@ def test_read_cluster_value_partitions(mock_get):
     request = mock_get.return_value
     request.result.return_value = response
 
-    p, b = main.read_cluster_status(["host1", "host2", "host3"], 80, "jolokia")
+    p, b = main.read_cluster_status(["host1", "host2", "host3"], 80, "jolokia", None, None)
 
     assert p == 3   # 3 missing partitions
     assert b == 0   # 0 missing brokers
@@ -44,7 +44,7 @@ def test_read_cluster_value_exit(mock_get):
     request.result.return_value = response
 
     with pytest.raises(SystemExit):
-        p, b = main.read_cluster_status(["host1"], 80, "jolokia")
+        p, b = main.read_cluster_status(["host1"], 80, "jolokia", None, None)
 
 
 @mock.patch.object(main.FuturesSession, 'get', autospec=True)
@@ -55,7 +55,7 @@ def test_read_cluster_value_no_key(mock_get):
     request = mock_get.return_value
     request.result.return_value = response
 
-    p, b = main.read_cluster_status(["host1"], 80, "jolokia")
+    p, b = main.read_cluster_status(["host1"], 80, "jolokia", None, None)
 
     assert p == 0   # 0 missing partitions
     assert b == 1   # 1 missing brokers
@@ -66,7 +66,7 @@ def test_read_cluster_value_server_down(mock_get):
     request = mock_get.return_value
     request.result.side_effect = RequestException
 
-    p, b = main.read_cluster_status(["host1"], 80, "jolokia")
+    p, b = main.read_cluster_status(["host1"], 80, "jolokia", None, None)
 
     assert p == 0   # 0 missing partitions
     assert b == 1   # 1 missing brokers
@@ -87,7 +87,7 @@ def read_cluster_state_values(first_part, repeat):
 )
 @mock.patch('time.sleep', autospec=True)
 def test_wait_for_stable_cluster_success(mock_sleep, mock_read):
-    main.wait_for_stable_cluster([], 1, "", 5, 3, 100)
+    main.wait_for_stable_cluster([], 1, "", None, None, 5, 3, 100)
 
     assert mock_read.call_count == 6
     assert mock_sleep.mock_calls == [mock.call(5)] * 5
@@ -102,7 +102,7 @@ def test_wait_for_stable_cluster_success(mock_sleep, mock_read):
 @mock.patch('time.sleep', autospec=True)
 def test_wait_for_stable_cluster_timeout(mock_sleep, mock_read):
     with pytest.raises(main.WaitTimeoutException):
-        main.wait_for_stable_cluster([], 1, "", 5, 3, 100)
+        main.wait_for_stable_cluster([], 1, "", None, None, 5, 3, 100)
 
     assert mock_read.call_count == 21
     assert mock_sleep.mock_calls == [mock.call(5)] * 20
