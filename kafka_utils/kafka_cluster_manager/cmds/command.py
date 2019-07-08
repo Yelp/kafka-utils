@@ -286,10 +286,11 @@ class ClusterManagerCmd(object):
         while curr_movements < max_movements and curr_size <= max_movement_size and action_available:
             action_available = False
             for topic, actions in six.iteritems(topic_actions):
-                for action in actions:
+                # Iterate through a copy of actions so we can remove elements in the original list
+                for action in actions[:]:
                     action_size = cluster_topology.partitions[action[0]].size
                     if curr_movements + action[1] > max_movements or curr_size + action_size > max_movement_size:
-                        # Remove action since it won't be possible to use it
+                        # Remove this action from pool of actions since we can't use it
                         actions.remove(action)
                     else:
                         # Append (topic, partition) to the list of movements
@@ -297,6 +298,7 @@ class ClusterManagerCmd(object):
                         extracted_actions.append(action[0])
                         curr_movements += action[1]
                         curr_size += action_size
+                        # Remove this action from pool of actions since we have used it
                         actions.remove(action)
                         break
         return extracted_actions
