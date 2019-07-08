@@ -55,6 +55,18 @@ def new_assignment():
     ])
 
 
+# Replica changes for (T0, 0) and (T0, 1)
+@fixture
+def two_partition_same_topic_assignment():
+    return OrderedDict([
+        ((u'T1', 1), [2, 1]),
+        ((u'T0', 1), [0, 2]),
+        ((u'T0', 0), [2, 1]),
+        ((u'T1', 0), [0, 1]),
+        ((u'T2', 0), [3, 1]),
+    ])
+
+
 @fixture
 def cluster_topology(new_assignment):
     """ This topology contains the new_assignment
@@ -80,6 +92,27 @@ def orig_cluster_topology(orig_assignment):
     brokers = {0: None, 1: None, 2: None, 3: None}
     pm = UniformPartitionMeasurer({}, brokers, orig_assignment, {})
     return ClusterTopology(orig_assignment, brokers, pm)
+
+
+class MixedSizePartitionMeasurer(PartitionMeasurer):
+    """An implementation of PartitionMeasurer that provides 2-size for
+    partition 0 and 1-size for partition 1
+    """
+
+    def get_weight(self, _):
+        return 1
+
+    def get_size(self, partition_name):
+        if partition_name[1] == 0:
+            return 2
+        return 1
+
+
+@fixture
+def two_partition_same_topic_topology(two_partition_same_topic_assignment):
+    brokers = {0: None, 1: None, 2: None, 3: None}
+    pm = MixedSizePartitionMeasurer({}, brokers, two_partition_same_topic_assignment, {})
+    return ClusterTopology(two_partition_same_topic_assignment, brokers, pm)
 
 
 class ZeroSizePartitionMeasurer(PartitionMeasurer):
@@ -306,10 +339,24 @@ class TestClusterManagerCmd(object):
         cmd,
         orig_assignment,
         cluster_topology,
+        two_partition_same_topic_topology,
     ):
         proposed_assignment = cmd.get_reduced_assignment(
             orig_assignment,
             cluster_topology,
+            max_partition_movements=2,
+            max_leader_only_changes=0,
+            max_movement_size=0,
+            force_progress=True,
+        )
+
+        # Verify proposed plan -- smallest size in the cluster is 1, so expect 1
+        assert len(proposed_assignment) == 1
+
+        # Ensure we are properly iterating through all actions for a given topic
+        proposed_assignment = cmd.get_reduced_assignment(
+            orig_assignment,
+            two_partition_same_topic_topology,
             max_partition_movements=2,
             max_leader_only_changes=0,
             max_movement_size=0,
