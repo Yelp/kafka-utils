@@ -1,3 +1,7 @@
+2.3.1 (July 08, 2019)
+----------------------------
+* Fix iteration bug in _extract_actions_unique_topics with --max-movement-size
+
 2.3.0 (May 08, 2019)
 ----------------------------
 * Implement --head option for kafka-check command
