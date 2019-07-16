@@ -1,3 +1,7 @@
+3.0.0 (July 16, 2019)
+----------------------------
+* Remove support for python3.4
+
 2.3.1 (July 08, 2019)
 ----------------------------
 * Fix iteration bug in _extract_actions_unique_topics with --max-movement-size
