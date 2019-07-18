@@ -37,7 +37,10 @@ def test_apply_throttles(mock_zk):
 
     assert mock_zk.set_broker_config.call_count == len(brokers)
 
-    expected_config = {"leader.replication.throttled.rate": "42", "follower.replication.throttled.rate": "24"}
+    expected_config = {
+        "config": {"leader.replication.throttled.rate": "42", "follower.replication.throttled.rate": "24"},
+    }
+
     expected_set_calls = [
         mock.call(0, expected_config),
         mock.call(1, expected_config),
@@ -48,14 +51,14 @@ def test_apply_throttles(mock_zk):
 
 
 def test_clear_throttles(mock_zk):
-    mock_zk.get_broker_config.return_value = {"leader.replication.throttled.rate": "42", "follower.replication.throttled.rate": "24"}
+    mock_zk.get_broker_config.return_value = {"config": {"leader.replication.throttled.rate": "42", "follower.replication.throttled.rate": "24"}}
 
     brokers = [0, 1, 2]
     main.clear_throttles(mock_zk, brokers)
 
     assert mock_zk.set_broker_config.call_count == len(brokers)
 
-    expected_config = {}
+    expected_config = {"config": {}}
     expected_set_calls = [
         mock.call(0, expected_config),
         mock.call(1, expected_config),
@@ -85,11 +88,11 @@ def test_clear_throttles(mock_zk):
     ]
 )
 def test_write_throttle(mock_zk, current_config, leader, follower, expected_config):
-    mock_zk.get_broker_config.return_value = current_config
+    mock_zk.get_broker_config.return_value = {"config": current_config}
 
     main.write_throttle(mock_zk, BROKER_ID, leader, follower)
 
     assert mock_zk.set_broker_config.call_count == 1
 
-    expected_set_call = mock.call(BROKER_ID, expected_config)
+    expected_set_call = mock.call(BROKER_ID, {"config": expected_config})
     assert mock_zk.set_broker_config.call_args_list == [expected_set_call]
