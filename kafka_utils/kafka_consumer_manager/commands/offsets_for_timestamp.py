@@ -83,7 +83,7 @@ class OffsetsForTimestamp(OffsetManagerBase):
 
     @classmethod
     def print_offsets(cls, partition_to_offset, orig_timestamp):
-        milliseconds_thresold = 999999999999
+        milliseconds_thresold = 999999999999  # this value corrresponds to the year 2001. we are assuming no timestamp can be older than that so any value must be greater than this.
         if orig_timestamp < milliseconds_thresold:
             date = datetime.fromtimestamp(
                 orig_timestamp / 1000.0,
