@@ -157,7 +157,7 @@ def read_throttles(zk, brokers):
     throttles = {}
 
     for broker_id in brokers:
-        config = zk.get_broker_config(broker_id)
+        config = zk.get_broker_config(broker_id).get('config', {})
 
         leader_throttle = config.get(LEADER_THROTTLE_RATE_CONFIGURATION)
         follower_throttle = config.get(FOLLOWER_THROTTLE_RATE_CONFIGURATION)
@@ -206,7 +206,7 @@ def write_throttle(zk, broker_id, leader_throttle, follower_throttle):
     :leader_throttle : new leader replication throttle (in B/s) or None
     :follower_throttle : new follower replication throttle (in B/s) or None
     """
-    config = zk.get_broker_config(broker_id)
+    config = zk.get_broker_config(broker_id).get('config', {})
 
     if leader_throttle is not None:
         config[LEADER_THROTTLE_RATE_CONFIGURATION] = leader_throttle
@@ -218,7 +218,7 @@ def write_throttle(zk, broker_id, leader_throttle, follower_throttle):
     else:
         config.pop(FOLLOWER_THROTTLE_RATE_CONFIGURATION, None)
 
-    zk.set_broker_config(broker_id, config)
+    zk.set_broker_config(broker_id, {'config': config})
 
 
 def run():
