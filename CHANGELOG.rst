@@ -1,3 +1,7 @@
+3.0.1 (July 19, 2019)
+----------------------------
+* Fix configuration writing in kafka-manual-throttle
+
 3.0.0 (July 16, 2019)
 ----------------------------
 * Remove support for python3.4
