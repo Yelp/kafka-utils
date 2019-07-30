@@ -83,6 +83,19 @@ class OffsetsForTimestamp(OffsetManagerBase):
 
     @classmethod
     def print_offsets(cls, partition_to_offset, orig_timestamp):
+        milliseconds_thresold = 999999999999  # this value corrresponds to the year 2001. we are assuming no timestamp can be older than that so any value must be greater than this.
+        if orig_timestamp < milliseconds_thresold:
+            date = datetime.fromtimestamp(
+                orig_timestamp / 1000.0,
+                tz=pytz.timezone("US/Pacific"),
+            ).strftime("%Y-%m-%d %H:%M:%S %Z")
+            print(
+                "WARNING: Supplied timestamp {timestamp} corresponds to {datetime}, "
+                "remember that timestamp parameter needs to be in milliseconds.".format(
+                    timestamp=orig_timestamp,
+                    datetime=date
+                )
+            )
         topics = {}
         for tp, offset_timestamp in six.iteritems(partition_to_offset):
             if tp.topic not in topics:
