@@ -362,20 +362,26 @@ class KafkaGroupReader:
     def parse_consumer_offset_message(self, message):
         key = message.key
         ((key_schema,), cur) = relative_unpack(b'>h', key, 0)
-        if key_schema not in [0, 1]:
+        if key_schema not in [0, 1, 2]:
             raise InvalidMessageException()   # This is not an offset commit message
         (group, cur) = read_short_string(key, cur)
-        (topic, cur) = read_short_string(key, cur)
-        ((partition,), cur) = relative_unpack(b'>l', key, cur)
-        if message.value:
-            value = message.value
-            ((value_schema,), cur) = relative_unpack(b'>h', value, 0)
-            if value_schema not in [0, 1]:
-                raise InvalidMessageException()  # Unrecognized message value
-            ((offset,), cur) = relative_unpack(b'>q', value, cur)
+        if key_schema == 2:
+            topic = message.topic
+            partition = message.partition
+            offset = message.offset
         else:
-            offset = None  # Offset was deleted
-        return group.decode(), topic.decode(), partition, offset
+            (encoded_topic, cur) = read_short_string(key, cur)
+            topic = encoded_topic.decode()
+            ((partition,), cur) = relative_unpack(b'>l', key, cur)
+            if message.value:
+                value = message.value
+                ((value_schema,), cur) = relative_unpack(b'>h', value, 0)
+                if value_schema not in [0, 1]:
+                    raise InvalidMessageException()  # Unrecognized message value
+                ((offset,), cur) = relative_unpack(b'>q', value, cur)
+            else:
+                offset = None  # Offset was deleted
+        return group.decode(), topic, partition, offset
 
     def process_consumer_offset_message(self, message):
         try:
