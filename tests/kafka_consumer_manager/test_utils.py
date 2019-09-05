@@ -41,18 +41,6 @@ class TestKafkaGroupReader(object):
         struct.pack('>q', 123),  # Offset 123
     ])
 
-    key_wrong = b''.join([
-        struct.pack('>h', 2),  # Schema: group message
-        struct.pack('>h6s', 6, b'group1'),  # Group name
-        struct.pack('>h6s', 6, b'topic1'),  # Topic name
-        struct.pack('>l', 15),  # Partition
-    ])
-
-    value_wrong = b''.join([
-        struct.pack('>h', 3),  # Schema: invalid
-        struct.pack('>q', 123),  # Offset 123
-    ])
-
     def test_parse_consumer_offset_message_correct(self):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
