@@ -1,3 +1,7 @@
+3.0.3 (September 18, 2019)
+----------------------------
+* Fix git tag
+
 3.0.2 (September 18, 2019)
 ----------------------------
 * Relax pytz pinned version in setup.py
