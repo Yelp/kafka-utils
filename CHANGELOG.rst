@@ -1,3 +1,7 @@
+3.0.2 (September 18, 2019)
+----------------------------
+* Relax pytz pinned version in setup.py
+
 3.0.1 (July 19, 2019)
 ----------------------------
 * Fix configuration writing in kafka-manual-throttle
