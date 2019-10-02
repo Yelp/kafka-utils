@@ -144,13 +144,22 @@ class OffsetManagerBase(object):
         groupid,
     ):
         kafka_group_reader = KafkaGroupReader(cluster_config)
-        group_topics = kafka_group_reader.read_group(groupid)
-        if len(group_topics) == 0:
+        try:
+            group_topics = kafka_group_reader.read_group(groupid)
+        except KeyError:
             print(
-                "Error: Either Consumer Group {groupid} has never committed offsets, or the group does not exist.".format(
+                "Error: Consumer Group {groupid} does not exist.".format(
                     groupid=groupid,
                 ),
                 file=sys.stderr,
+            )
+            group_topics = []
+        if len(group_topics) == 0:
+            print(
+                "Info: It's the first time Consumer Group {groupid} is committing offsets.".format(
+                    groupid=groupid,
+                ),
+                file=sys.stdout,
             )
         return group_topics
 
