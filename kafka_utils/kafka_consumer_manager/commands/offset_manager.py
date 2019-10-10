@@ -148,7 +148,7 @@ class OffsetManagerBase(object):
             group_topics = kafka_group_reader.read_group(groupid)
         except KeyError:
             print(
-                "Error: Consumer Group {groupid} does not exist.".format(
+                "Warning: Consumer Group {groupid} does not exist.".format(
                     groupid=groupid,
                 ),
                 file=sys.stderr,
