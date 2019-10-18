@@ -39,8 +39,6 @@ RUN apt-get update \
     libssl-dev \
     python2.7 \
     python2.7-dev \
-    python3.5 \
-    python3.5-dev \
     python3.6 \
     python3.6-dev \
     python-pip \
