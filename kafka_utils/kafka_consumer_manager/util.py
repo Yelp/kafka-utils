@@ -267,7 +267,7 @@ class KafkaGroupReader:
     def read_group(self, group_id):
         partition_count = get_offset_topic_partition_count(self.kafka_config)
         partition = get_group_partition(group_id, partition_count)
-        return self.read_groups(partition).get(group_id, [])
+        return self.read_groups(partition)[group_id]
 
     def read_groups(self, partition=None):
         self.consumer = KafkaConsumer(
