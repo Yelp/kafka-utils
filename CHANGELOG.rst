@@ -1,3 +1,8 @@
+3.1.0 (November 5, 2019)
+----------------------------
+* Use v1.4.7 of kafka-python to take advantage of performance upgrades
+* Fix Travis build by unpinning Docker version
+
 3.0.3 (September 18, 2019)
 ----------------------------
 * Fix git tag
