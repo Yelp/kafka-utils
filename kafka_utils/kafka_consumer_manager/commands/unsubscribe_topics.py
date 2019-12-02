@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import six
+from kafka.errors import UnknownMemberIdError
 
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
@@ -107,7 +108,17 @@ class TopicUnsubscriber(object):
             self.unsubscribe_partitions(group, topics[0], partitions)
         elif topics:
             for topic in topics:
-                self.delete_topic(group, topic)
+                try:
+                    self.delete_topic(group, topic)
+                except UnknownMemberIdError:
+                    print(
+                        "Unable to unsubscribe group '{group_name}' from topic '{topic_name}'. \
+                            You must ensure none of the consumers with this consumer group id are running before \
+                            trying to unsubscribe a consumer group with offsets stored in Kafka. Try stopping all \
+                            of your consumers.".format(group_name=group, topic_name=topic),
+                    )
+                    raise
+
         else:
             for topic, partitions in six.iteritems(topics_dict):
                 self.delete_topic(group, topic)
