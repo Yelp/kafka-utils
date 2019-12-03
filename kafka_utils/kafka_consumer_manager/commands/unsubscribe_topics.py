@@ -15,6 +15,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import sys
+
 import six
 from kafka.errors import UnknownMemberIdError
 
@@ -112,10 +114,11 @@ class TopicUnsubscriber(object):
                     self.delete_topic(group, topic)
                 except UnknownMemberIdError:
                     print(
-                        "Unable to unsubscribe group '{group_name}' from topic '{topic_name}'. \
-                            You must ensure none of the consumers with this consumer group id are running before \
-                            trying to unsubscribe a consumer group with offsets stored in Kafka. Try stopping all \
-                            of your consumers.".format(group_name=group, topic_name=topic),
+                        "Error: Unable to unsubscribe group '{group_name}' from topic '{topic_name}'. \
+                            Please ensure all consumers in this consumer group are stopped before \
+                            trying to unsubscribe a consumer group with offsets stored in \
+                            Kafka.".format(group_name=group, topic_name=topic),
+                        file=sys.stderr,
                     )
                     raise
 
