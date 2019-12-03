@@ -14,6 +14,8 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+from collections import defaultdict
+
 from kafka.structs import PartitionMetadata
 
 from kafka_utils.util.client import KafkaToolClient
@@ -30,16 +32,21 @@ def get_topic_partition_metadata(hosts):
     kafka-python 1.3+ doesn't include partition metadata information in
     topic_partitions so we extract it from metadata ourselves.
     """
+    topic_partitions = defaultdict(dict)
+
     kafka_client = KafkaToolClient(hosts, timeout=10)
-    kafka_client.load_metadata_for_topics()
-    topic_partitions = kafka_client.topic_partitions
     resp = kafka_client.send_metadata_request()
 
     for _, topic, partitions in resp.topics:
         for partition_error, partition, leader, replicas, isr in partitions:
-            if topic_partitions.get(topic, {}).get(partition) is not None:
-                topic_partitions[topic][partition] = PartitionMetadata(topic, partition, leader,
-                                                                       replicas, isr, partition_error)
+            topic_partitions[topic][partition] = PartitionMetadata(
+                topic,
+                partition,
+                leader,
+                replicas,
+                isr,
+                partition_error,
+            )
     return topic_partitions
 
 
