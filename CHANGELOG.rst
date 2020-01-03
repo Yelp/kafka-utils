@@ -1,3 +1,7 @@
+3.2.0 (January 3, 2020)
+----------------------------
+* Add --active-controller-for-last flag to kafka-rolling-restart
+
 3.1.0 (November 5, 2019)
 ----------------------------
 * Use v1.4.7 of kafka-python to take advantage of performance upgrades
