@@ -130,6 +130,11 @@ def parse_opts():
         default=0,
     )
     parser.add_argument(
+        '--active-controller-for-last',
+        help=('leave the active controller for last. Default: %(default)s'),
+        action='store_true'
+    )
+    parser.add_argument(
         '-v',
         '--verbose',
         help='print verbose execution information. Default: %(default)s',
@@ -171,14 +176,25 @@ def parse_opts():
     return parser.parse_args()
 
 
-def get_broker_list(cluster_config):
-    """Returns a list of brokers in the form [(id: host)]
+def get_broker_list(cluster_config, active_controller_for_last=False):
+    """Returns a dictionary of brokers in the form {id: host}
 
     :param cluster_config: the configuration of the cluster
     :type cluster_config: map
+    :param active_controller_for_last: end with active controller
+    :type active_controller_for_last: bool
     """
     with ZK(cluster_config) as zk:
-        brokers = sorted(list(zk.get_brokers().items()), key=itemgetter(0))
+        brokers_dict = zk.get_brokers()
+        if active_controller_for_last:
+            active_controller_id = zk.get_json('/controller').get('brokerid')
+            active_controller = brokers_dict.pop(active_controller_id, None)
+            if active_controller is None:
+                print("ERROR: Unable to retrieve the active controller information")
+                sys.exit(1)
+        brokers = sorted(list(brokers_dict.items()), key=itemgetter(0))
+        if active_controller_for_last:
+            brokers.append((active_controller_id, active_controller))
         return [(id, data['host']) for id, data in brokers]
 
 
@@ -525,7 +541,7 @@ def run():
         opts.cluster_name,
         opts.discovery_base_path,
     )
-    brokers = get_broker_list(cluster_config)
+    brokers = get_broker_list(cluster_config, opts.active_controller_for_last)
     if opts.broker_ids:
         if not validate_broker_ids_subset([id for id, host in brokers], opts.broker_ids):
             sys.exit(1)

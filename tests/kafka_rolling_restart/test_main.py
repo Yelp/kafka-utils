@@ -20,6 +20,8 @@ import requests
 from requests.exceptions import RequestException
 
 from kafka_utils.kafka_rolling_restart import main
+from kafka_utils.util.config import ClusterConfig
+from kafka_utils.util.zookeeper import ZK
 
 
 @mock.patch.object(main.FuturesSession, 'get', autospec=True)
@@ -106,3 +108,76 @@ def test_wait_for_stable_cluster_timeout(mock_sleep, mock_read):
 
     assert mock_read.call_count == 21
     assert mock_sleep.mock_calls == [mock.call(5)] * 20
+
+
+cluster_config = ClusterConfig(
+    type='mytype',
+    name='some_cluster',
+    broker_list='some_list',
+    zookeeper='some_ip'
+)
+
+
+@mock.patch(
+    'kafka_utils.util.zookeeper.KazooClient',
+    autospec=True
+)
+@mock.patch.object(
+    ZK,
+    'get_brokers',
+    side_effect=[{2: {'host': 'broker2'},
+                  3: {'host': 'broker3'},
+                  1: {'host': 'broker1'}}],
+    autospec=True
+)
+def test_get_broker_list1(mock_client, mock_get_broker):
+    p = main.get_broker_list(cluster_config, active_controller_for_last=False)
+    assert p == [(1, 'broker1'), (2, 'broker2'), (3, 'broker3')]
+
+
+@mock.patch(
+    'kafka_utils.util.zookeeper.KazooClient',
+    autospec=True
+)
+@mock.patch.object(
+    ZK,
+    'get_brokers',
+    side_effect=[{2: {'host': 'broker2'},
+                  3: {'host': 'broker3'},
+                  1: {'host': 'broker1'}}],
+    autospec=True
+)
+@mock.patch.object(
+    ZK,
+    'get_json',
+    side_effect=[{}],
+    autospec=True
+)
+def test_get_broker_list2(mock_client, mock_get_broker, mock_get_json):
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        main.get_broker_list(cluster_config, active_controller_for_last=True)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 1
+
+
+@mock.patch(
+    'kafka_utils.util.zookeeper.KazooClient',
+    autospec=True
+)
+@mock.patch.object(
+    ZK,
+    'get_brokers',
+    side_effect=[{2: {'host': 'broker2'},
+                  3: {'host': 'broker3'},
+                  1: {'host': 'broker1'}}],
+    autospec=True
+)
+@mock.patch.object(
+    ZK,
+    'get_json',
+    side_effect=[{'brokerid': 2}],
+    autospec=True
+)
+def test_get_broker_list3(mock_client, mock_get_broker, mock_get_json):
+    p = main.get_broker_list(cluster_config, active_controller_for_last=True)
+    assert p == [(1, 'broker1'), (3, 'broker3'), (2, 'broker2')]
