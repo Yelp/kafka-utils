@@ -34,6 +34,8 @@ The parameters specific for kafka-rolling-restart are:
   terminate with an error. Default 600.
 * ``--jolokia-port PORT``: The Jolokia port. Default 8778.
 * ``--jolokia-prefix PREFIX``: The Jolokia prefix. Default "jolokia/".
+* ``--jolokia-user USERNAME``: Jolokia username. Default "None".
+* ``--jolokia-password PASSWORD``: Jolokia password. Default "None".
 * ``--no-confirm``: If specified, the script will not ask for confirmation.
 * ``--skip N``: Skip the first N servers. Useful to recover from a partial
   rolling restart. Default 0.

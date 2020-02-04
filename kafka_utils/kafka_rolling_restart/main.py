@@ -47,6 +47,8 @@ DEFAULT_CHECK_COUNT = 12
 DEFAULT_TIME_LIMIT_SECS = 600
 DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
+DEFAULT_JOLOKIA_USER = None
+DEFAULT_JOLOKIA_PASSWORD = None
 DEFAULT_STOP_COMMAND = "service kafka stop"
 DEFAULT_START_COMMAND = "service kafka start"
 
@@ -116,6 +118,18 @@ def parse_opts():
         help='the jolokia HTTP prefix. Default: %(default)s',
         type=str,
         default=DEFAULT_JOLOKIA_PREFIX,
+    )
+    parser.add_argument(
+        '--jolokia-user',
+        help='the jolokia username. Default: %(default)s',
+        type=str,
+        default=DEFAULT_JOLOKIA_USER,
+    )
+    parser.add_argument(
+        '--jolokia-password',
+        help='the jolokia password. Default: %(default)s',
+        type=str,
+        default=DEFAULT_JOLOKIA_PASSWORD,
     )
     parser.add_argument(
         '--no-confirm',
@@ -211,7 +225,7 @@ def filter_broker_list(brokers, filter_by):
     return [(id, host) for id, host in brokers if id in filter_by_set]
 
 
-def generate_requests(hosts, jolokia_port, jolokia_prefix):
+def generate_requests(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia_password):
     """Return a generator of requests to fetch the under replicated
     partition number from the specified hosts.
 
@@ -221,9 +235,15 @@ def generate_requests(hosts, jolokia_port, jolokia_prefix):
     :type jolokia_port: integer
     :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
     :type jolokia_prefix: string
+    :param jolokia_user: Username for Jolokia, if needed
+    :type jolokia_user: string
+    :param jolokia_password: Password for Jolokia, if needed
+    :type jolokia_password: string
     :returns: generator of requests
     """
     session = FuturesSession()
+    if jolokia_user and jolokia_password:
+        session.auth = (jolokia_user, jolokia_password)
     for host in hosts:
         url = "http://{host}:{port}/{prefix}/read/{key}".format(
             host=host,
@@ -234,7 +254,7 @@ def generate_requests(hosts, jolokia_port, jolokia_prefix):
         yield host, session.get(url)
 
 
-def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
+def read_cluster_status(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia_password):
     """Read and return the number of under replicated partitions and
     missing brokers from the specified hosts.
 
@@ -245,12 +265,19 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix):
     :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
     :type jolokia_prefix: string
     :returns: tuple of integers
+    :param jolokia_user: Username for Jolokia, if needed
+    :type jolokia_user: string
+    :param jolokia_password: Password for Jolokia, if needed
+    :type jolokia_password: string
     """
     under_replicated = 0
     missing_brokers = 0
-    for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix):
+    for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia_password):
         try:
             response = request.result()
+            if response.status_code == 401:
+                print("Jolokia Authentication Failed. Exiting.")
+                sys.exit(1)
             if 400 <= response.status_code <= 599:
                 print("Got status code {0}. Exiting.".format(response.status_code))
                 sys.exit(1)
@@ -316,6 +343,8 @@ def wait_for_stable_cluster(
     hosts,
     jolokia_port,
     jolokia_prefix,
+    jolokia_user,
+    jolokia_password,
     check_interval,
     check_count,
     unhealthy_time_limit,
@@ -329,6 +358,10 @@ def wait_for_stable_cluster(
     :type jolokia_port: integer
     :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
     :type jolokia_prefix: string
+    :param jolokia_user: Username for Jolokia, if needed
+    :type jolokia_user: string
+    :param jolokia_password: Password for Jolokia, if needed
+    :type jolokia_password: string
     :param check_interval: the number of seconds it will wait between each check
     :type check_interval: integer
     :param check_count: the number of times the check should be positive before
@@ -345,6 +378,8 @@ def wait_for_stable_cluster(
             hosts,
             jolokia_port,
             jolokia_prefix,
+            jolokia_user,
+            jolokia_password
         )
         if partitions or brokers:
             stable_counter = 0
@@ -377,6 +412,8 @@ def execute_rolling_restart(
     brokers,
     jolokia_port,
     jolokia_prefix,
+    jolokia_user,
+    jolokia_password,
     check_interval,
     check_count,
     unhealthy_time_limit,
@@ -401,6 +438,10 @@ def execute_rolling_restart(
     :type jolokia_port: integer
     :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
     :type jolokia_prefix: string
+    :param jolokia_user: Username for Jolokia, if needed
+    :type jolokia_user: string
+    :param jolokia_password: Password for Jolokia, if needed
+    :type jolokia_password: string
     :param check_interval: the number of seconds it will wait between each check
     :type check_interval: integer
     :param check_count: the number of times the check should be positive before
@@ -433,6 +474,8 @@ def execute_rolling_restart(
                 all_hosts,
                 jolokia_port,
                 jolokia_prefix,
+                jolokia_user,
+                jolokia_password,
                 check_interval,
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
@@ -450,6 +493,8 @@ def execute_rolling_restart(
         all_hosts,
         jolokia_port,
         jolokia_prefix,
+        jolokia_user,
+        jolokia_password,
         check_interval,
         check_count,
         unhealthy_time_limit,
@@ -560,6 +605,8 @@ def run():
                 brokers,
                 opts.jolokia_port,
                 opts.jolokia_prefix,
+                opts.jolokia_user,
+                opts.jolokia_password,
                 opts.check_interval,
                 opts.check_count,
                 opts.unhealthy_time_limit,
