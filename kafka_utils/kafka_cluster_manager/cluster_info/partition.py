@@ -118,6 +118,10 @@ class Partition(object):
 
     def replace(self, source, dest):
         """Replace source broker with destination broker in replica set if found."""
+        if dest is None:
+            # Remove source if it's there
+            self.replicas.remove(source)
+            return
         for i, broker in enumerate(self.replicas):
             if broker == source:
                 self.replicas[i] = dest
