@@ -1,3 +1,8 @@
+3.3.0 (February 26, 2020)
+----------------------------
+* Allow for removing brokers in kafka-cluster-manager replace command
+* Support consumer offset message value schema v3 (thanks mborst!)
+
 3.2.0 (January 3, 2020)
 ----------------------------
 * Add --active-controller-for-last flag to kafka-rolling-restart
