@@ -29,34 +29,30 @@ class TestKafkaGroupReader(object):
 
     groups = ['^test\..*', '^my_test$', '^my_test2$']
 
-    key_ok = b''.join([
+    key_v0_ok = b''.join([
         struct.pack('>h', 0),  # Schema: offset commit
         struct.pack('>h6s', 6, b'group1'),  # Group name
         struct.pack('>h6s', 6, b'topic1'),  # Topic name
         struct.pack('>l', 15),  # Partition
     ])
 
-    value_ok = b''.join([
+    value_v0_ok = b''.join([
         struct.pack('>h', 0),  # Schema: version 0
         struct.pack('>q', 123),  # Offset 123
     ])
 
-    key_wrong = b''.join([
-        struct.pack('>h', 2),  # Schema: group message
-        struct.pack('>h6s', 6, b'group1'),  # Group name
-        struct.pack('>h6s', 6, b'topic1'),  # Topic name
-        struct.pack('>l', 15),  # Partition
+    value_v3_ok = b''.join([
+        struct.pack('>h', 3),
+        struct.pack('>q', 1230552),
+        struct.pack('!l', -1),
+        struct.pack('>h', 0),
+        struct.pack('>q', 1567674248094),
     ])
 
-    value_wrong = b''.join([
-        struct.pack('>h', 3),  # Schema: invalid
-        struct.pack('>q', 123),  # Offset 123
-    ])
-
-    def test_parse_consumer_offset_message_correct(self):
+    def test_parse_consumer_offset_message_correct_v0(self):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
-        message = Message(0, '__consumer_offsets', self.key_ok, self.value_ok)
+        message = Message(0, '__consumer_offsets', self.key_v0_ok, self.value_v0_ok)
         group, topic, partition, offset = kafka_group_reader.parse_consumer_offset_message(message)
 
         assert group == 'group1'
@@ -64,10 +60,21 @@ class TestKafkaGroupReader(object):
         assert partition == 15
         assert offset == 123
 
+    def test_parse_consumer_offset_message_correct_v3(self):
+        kafka_config = mock.Mock()
+        kafka_group_reader = KafkaGroupReader(kafka_config)
+        message = Message(0, '__consumer_offsets', self.key_v0_ok, self.value_v3_ok)
+        group, topic, partition, offset = kafka_group_reader.parse_consumer_offset_message(message)
+
+        assert group == 'group1'
+        assert topic == 'topic1'
+        assert partition == 15
+        assert offset == 1230552
+
     def test_parse_consumer_offset_message_no_value(self):
         kafka_config = mock.Mock()
         kafka_group_reader = KafkaGroupReader(kafka_config)
-        message = Message(0, '__consumer_offsets', self.key_ok, None)
+        message = Message(0, '__consumer_offsets', self.key_v0_ok, None)
         group, topic, partition, offset = kafka_group_reader.parse_consumer_offset_message(message)
 
         assert group == 'group1'

@@ -370,7 +370,7 @@ class KafkaGroupReader:
         if message.value:
             value = message.value
             ((value_schema,), cur) = relative_unpack(b'>h', value, 0)
-            if value_schema not in [0, 1]:
+            if value_schema not in [0, 1, 3]:
                 raise InvalidMessageException()  # Unrecognized message value
             ((offset,), cur) = relative_unpack(b'>q', value, cur)
         else:
