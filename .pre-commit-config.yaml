@@ -8,7 +8,7 @@
     -   id: autopep8-wrapper
         args: [--ignore=E501, --in-place]
     -   id: flake8
-        args: [--ignore=E501]
+        args: ["--ignore=W504,E501"]
 
 -   repo: https://github.com/asottile/reorder_python_imports.git
     sha: f3dfe379d2ea341c6cf54d926d4585b35dea9251

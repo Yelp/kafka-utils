@@ -52,6 +52,7 @@ def validate_plan(
     base_plan=None,
     is_partition_subset=True,
     allow_rf_change=False,
+    allow_rf_mismatch=False,
 ):
     """Verify that the new plan is valid for execution.
 
@@ -62,20 +63,20 @@ def validate_plan(
     - Replication-factor for each partition remains unchanged
     - No duplicate broker-ids in each replicas
     """
-    if not _validate_plan(new_plan):
+    if not _validate_plan(new_plan, allow_rf_mismatch=allow_rf_mismatch):
         _log.error('Invalid proposed-plan.')
         return False
 
     # Validate given plan in reference to base-plan
     if base_plan:
-        if not _validate_plan(base_plan):
+        if not _validate_plan(base_plan, allow_rf_mismatch=allow_rf_mismatch):
             _log.error('Invalid assignment from cluster.')
             return False
         if not _validate_plan_base(
             new_plan,
             base_plan,
             is_partition_subset,
-            allow_rf_change
+            allow_rf_change,
         ):
             return False
     # Plan validation successful
@@ -244,7 +245,7 @@ def _validate_format(plan):
     return True
 
 
-def _validate_plan(plan):
+def _validate_plan(plan, allow_rf_mismatch=False):
     """Validate if given plan is valid based on kafka-cluster-assignment protocols.
 
     Validate following parameters:
@@ -292,18 +293,19 @@ def _validate_plan(plan):
             )
             return False
 
-    # Verify same replication-factor for every topic
-    topic_replication_factor = {}
-    for partition_info in plan['partitions']:
-        topic = partition_info['topic']
-        replication_factor = len(partition_info['replicas'])
-        if topic in list(topic_replication_factor.keys()):
-            if topic_replication_factor[topic] != replication_factor:
-                _log.error(
-                    'Mismatch in replication-factor of partitions for topic '
-                    '{topic}'.format(topic=topic),
-                )
-                return False
-        else:
-            topic_replication_factor[topic] = replication_factor
+    # Verify same replication-factor for partitions in the same topic
+    if not allow_rf_mismatch:
+        topic_replication_factor = {}
+        for partition_info in plan['partitions']:
+            topic = partition_info['topic']
+            replication_factor = len(partition_info['replicas'])
+            if topic in list(topic_replication_factor.keys()):
+                if topic_replication_factor[topic] != replication_factor:
+                    _log.error(
+                        'Mismatch in replication-factor of partitions for topic '
+                        '{topic}'.format(topic=topic),
+                    )
+                    return False
+            else:
+                topic_replication_factor[topic] = replication_factor
     return True

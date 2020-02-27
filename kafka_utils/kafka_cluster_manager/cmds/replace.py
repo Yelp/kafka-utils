@@ -18,6 +18,8 @@ from __future__ import print_function
 import logging
 import sys
 
+import six
+
 from .command import ClusterManagerCmd
 from kafka_utils.util import positive_int
 from kafka_utils.util.validation import assignment_to_plan
@@ -50,8 +52,8 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         subparser.add_argument(
             '--dest-broker',
             type=int,
-            required=True,
-            help='Broker id of destination broker.',
+            default=None,
+            help='Broker id of destination broker. If empty, will shrink the replica set of topics',
         )
         subparser.add_argument(
             '--max-partition-movements',
@@ -68,12 +70,46 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
             help='Maximum number of actions with leader-only changes.'
                  ' DEFAULT: %(default)s',
         )
+        subparser.add_argument(
+            '--rf-change',
+            action='store_true',
+            default=False,
+            help='This will allow the replication factor to change (if removing a broker)'
+        )
+        subparser.add_argument(
+            '--rf-mismatch',
+            action='store_true',
+            default=False,
+            help='This will allow the replication factor to mismatch for partitions of a same topic (if removing a broker)'
+        )
+        subparser.add_argument(
+            '--topic-partition-filter',
+            type=str,
+            help='Path to file containing a colon separated list of topic partitions to work on.'
+                 ' This is useful if you only want to operate on a limited set of topic partitions'
+                 ' Observe that kafka-check outputs colon separated lists, after ommitting the first $n'
+                 ' lines e.g. kafka-check offline | tail -n+$N',
+        )
         return subparser
+
+    def get_topic_filter(self):
+        filter_set = set()
+        with open(self.args.topic_partition_filter, 'r') as f:
+            for line in f:
+                tokens = line.split(':')
+                if len(tokens) != 2:
+                    self.log.error("Invalid topic partition filter line: %s", line)
+                    sys.exit(1)
+                t_p = (tokens[0].strip(), int(tokens[1].strip()))
+                filter_set.add(t_p)
+        return filter_set
 
     def run_command(self, cluster_topology, cluster_balancer):
         if self.args.source_broker == self.args.dest_broker:
             print("Error: Destination broker is same as source broker.")
             sys.exit()
+        if self.args.dest_broker is None:
+            self.log.warning('This will shrink the replica set of topics.')
 
         base_assignment = cluster_topology.assignment
         cluster_topology.replace_broker(self.args.source_broker, self.args.dest_broker)
@@ -81,6 +117,8 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         if not validate_plan(
             assignment_to_plan(cluster_topology.assignment),
             assignment_to_plan(base_assignment),
+            allow_rf_change=self.args.rf_change,
+            allow_rf_mismatch=self.args.rf_mismatch,
         ):
             self.log.error('Invalid assignment %s.', cluster_topology.assignment)
             print(
@@ -88,6 +126,16 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
                 file=sys.stderr,
             )
             sys.exit(1)
+
+        # Reduce the proposed assignment based on the topic_partition_filter, if provided
+        if self.args.topic_partition_filter:
+            self.log.info("Using provided filter list")
+            filter_set = self.get_topic_filter()
+            filtered_assignment = {}
+            for t_p, replica in six.iteritems(base_assignment):
+                if t_p in filter_set:
+                    filtered_assignment[t_p] = replica
+            base_assignment = filtered_assignment
 
         # Reduce the proposed assignment based on max_partition_movements
         # and max_leader_changes
@@ -98,7 +146,7 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
             self.args.max_leader_changes,
         )
         if reduced_assignment:
-            self.process_assignment(reduced_assignment)
+            self.process_assignment(reduced_assignment, allow_rf_change=self.args.rf_change)
         else:
             self.log.info("Broker already replaced. No more replicas in source broker.")
             print("Broker already replaced. No more replicas in source broker.")
