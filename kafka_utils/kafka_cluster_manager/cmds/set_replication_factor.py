@@ -43,6 +43,13 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             required=True,
         )
         subparser.add_argument(
+            '--rf-mismatch',
+            action='store_true',
+            default=False,
+            help='This will allow the command to run even if the cluster topology contains mismatches'
+                 ' i.e. if there are partitions for the same topic that have different replication_factors',
+        )
+        subparser.add_argument(
             'replication_factor',
             help='The new replication factor for the topic.',
             type=positive_nonzero_int,
@@ -60,14 +67,6 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             )
             sys.exit(1)
 
-        if topic.replication_factor == self.args.replication_factor:
-            self.log.info(
-                "Topic {topic} already has replication factor {rf}. "
-                "No action to perform."
-                .format(topic=topic.id, rf=self.args.replication_factor),
-            )
-            return
-
         if self.args.replication_factor > len(ct.brokers):
             self.log.error(
                 "Replication factor {rf} is greater than the total number of "
@@ -81,37 +80,46 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
 
         base_assignment = ct.assignment
 
-        changes_per_partition = abs(
-            self.args.replication_factor - topic.replication_factor
-        )
+        # Fetch topic_data once
+        topic_data = self.zk.get_topics(topic.id)[topic.id]
+        partition_movement_count = 0
 
-        if topic.replication_factor < self.args.replication_factor:
-            self.log.info(
-                "Increasing topic {topic} replication factor from {old_rf} to "
-                "{new_rf}."
-                .format(
-                    topic=topic.id,
-                    old_rf=topic.replication_factor,
-                    new_rf=self.args.replication_factor,
-                ),
+        for partition in topic.partitions:
+            # Get the replication factor of that partition
+            partition_rf = len(partition.replicas)
+            changes_for_partition = abs(
+                self.args.replication_factor - partition_rf
             )
-            for partition in topic.partitions:
+
+            if partition_rf == self.args.replication_factor:
+                continue
+
+            if partition_rf < self.args.replication_factor:
+                self.log.info(
+                    "Increasing topic partition {topic}:{partition} replication factor from {old_rf} to "
+                    "{new_rf}."
+                    .format(
+                        topic=topic.id,
+                        partition=partition.partition_id,
+                        old_rf=partition_rf,
+                        new_rf=self.args.replication_factor,
+                    ),
+                )
                 cluster_balancer.add_replica(
                     partition.name,
-                    changes_per_partition,
+                    changes_for_partition,
                 )
-        else:
-            self.log.info(
-                "Decreasing topic {topic} replication factor from {old_rf} to "
-                "{new_rf}."
-                .format(
-                    topic=topic.id,
-                    old_rf=topic.replication_factor,
-                    new_rf=self.args.replication_factor,
-                ),
-            )
-            topic_data = self.zk.get_topics(topic.id)[topic.id]
-            for partition in topic.partitions:
+            else:
+                self.log.info(
+                    "Decreasing topic partition {topic}:{partition} replication factor from {old_rf} to "
+                    "{new_rf}."
+                    .format(
+                        topic=topic.id,
+                        partition=partition.partition_id,
+                        old_rf=partition_rf,
+                        new_rf=self.args.replication_factor,
+                    ),
+                )
                 partition_data = topic_data['partitions'][str(partition.partition_id)]
                 isr = partition_data['isr']
                 osr_broker_ids = [b.id for b in partition.replicas if b.id not in isr]
@@ -124,12 +132,11 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
                 cluster_balancer.remove_replica(
                     partition.name,
                     osr_broker_ids,
-                    changes_per_partition,
+                    changes_for_partition,
                 )
-
-        # Each replica addition/removal for each partition counts for one
-        # partition movement
-        partition_movement_count = len(topic.partitions) * changes_per_partition
+            # Each replica addition/removal for each partition counts for one
+            # partition movement
+            partition_movement_count += changes_for_partition
 
         reduced_assignment = self.get_reduced_assignment(
             base_assignment,
@@ -137,4 +144,4 @@ class SetReplicationFactorCmd(ClusterManagerCmd):
             max_partition_movements=partition_movement_count,
             max_leader_only_changes=0,
         )
-        self.process_assignment(reduced_assignment, allow_rf_change=True)
+        self.process_assignment(reduced_assignment, allow_rf_change=True, allow_rf_mismatch=self.args.rf_mismatch)

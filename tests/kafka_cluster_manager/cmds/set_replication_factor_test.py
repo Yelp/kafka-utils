@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from argparse import Namespace
 
 import mock
+import pytest
 
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
     import PartitionCountBalancer
@@ -24,9 +25,23 @@ from kafka_utils.kafka_cluster_manager.cmds.set_replication_factor \
     import SetReplicationFactorCmd
 
 
+@pytest.fixture(scope='module')
+def mock_zk():
+    zk = mock.Mock()
+    zk.get_topics.side_effect = (lambda topic_id: {
+        topic_id: {
+            'partitions': {
+                '0': {'isr': ['0', '1']},
+                '1': {'isr': ['1', '2']},
+            },
+        },
+    })
+    return zk
+
+
 class TestSetReplicationFactorCmd(object):
 
-    def test_run_command_add_replica(self, create_cluster_topology):
+    def test_run_command_add_replica(self, create_cluster_topology, mock_zk):
         assignment = {
             (u'T0', 0): ['0', '1'],
             (u'T0', 1): ['1', '2'],
@@ -43,6 +58,8 @@ class TestSetReplicationFactorCmd(object):
             cmd.args = mock.Mock(spec=Namespace)
             cmd.args.topic = u'T0'
             cmd.args.replication_factor = 5
+            cmd.args.rf_mismatch = False
+            cmd.zk = mock_zk
             ct = create_cluster_topology(assignment, brokers)
             cb = PartitionCountBalancer(ct, cmd.args)
             cmd.run_command(ct, cb)
@@ -57,7 +74,7 @@ class TestSetReplicationFactorCmd(object):
 
             assert kwargs['allow_rf_change']
 
-    def test_run_command_remove_replica(self, create_cluster_topology):
+    def test_run_command_remove_replica(self, create_cluster_topology, mock_zk):
         assignment = {
             (u'T0', 0): ['0', '1', '2', '3', '4'],
             (u'T0', 1): ['0', '1', '2', '3', '4'],
@@ -74,15 +91,42 @@ class TestSetReplicationFactorCmd(object):
             cmd.args = mock.Mock(spec=Namespace)
             cmd.args.topic = u'T0'
             cmd.args.replication_factor = 2
-            cmd.zk = mock.Mock()
-            cmd.zk.get_topics.side_effect = (lambda topic_id: {
-                topic_id: {
-                    'partitions': {
-                        '0': {'isr': ['0', '1']},
-                        '1': {'isr': ['1', '2']},
-                    },
-                },
-            })
+            cmd.args.rf_mismatch = False
+            cmd.zk = mock_zk
+
+            ct = create_cluster_topology(assignment, brokers)
+            cb = PartitionCountBalancer(ct, cmd.args)
+            cmd.run_command(ct, cb)
+
+            assert cmd.process_assignment.call_count == 1
+            args, kwargs = cmd.process_assignment.call_args_list[0]
+
+            assignment = args[0]
+            assert len(assignment) == 2
+            assert set(assignment[(u'T0', 0)]) == set(['0', '1'])
+            assert set(assignment[(u'T0', 1)]) == set(['1', '2'])
+
+            assert kwargs['allow_rf_change']
+
+    def test_rf_mismatch(self, create_cluster_topology, mock_zk):
+        assignment = {
+            (u'T0', 0): ['0', '1', '2', '3', '4'],
+            (u'T0', 1): ['0', '1', '2', '3'],
+        }
+        brokers = {
+            '0': {'host': 'host2'},
+            '1': {'host': 'host2'},
+            '2': {'host': 'host3'},
+            '3': {'host': 'host4'},
+            '4': {'host': 'host5'},
+        }
+        with mock.patch.object(SetReplicationFactorCmd, 'process_assignment'):
+            cmd = SetReplicationFactorCmd()
+            cmd.args = mock.Mock(spec=Namespace)
+            cmd.args.topic = u'T0'
+            cmd.args.replication_factor = 2
+            cmd.args.rf_mismatch = True
+            cmd.zk = mock_zk
 
             ct = create_cluster_topology(assignment, brokers)
             cb = PartitionCountBalancer(ct, cmd.args)

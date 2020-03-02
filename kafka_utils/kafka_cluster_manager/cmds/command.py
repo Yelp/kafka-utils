@@ -104,10 +104,10 @@ class ClusterManagerCmd(object):
     def add_subparser(self, subparsers):
         self.build_subparser(subparsers).set_defaults(command=self.run)
 
-    def execute_plan(self, plan, allow_rf_change=False):
+    def execute_plan(self, plan, allow_rf_change=False, allow_rf_mismatch=False):
         """Save proposed-plan and execute the same if requested."""
         if self.should_execute():
-            result = self.zk.execute_plan(plan, allow_rf_change=allow_rf_change)
+            result = self.zk.execute_plan(plan, allow_rf_change=allow_rf_change, allow_rf_mismatch=allow_rf_mismatch)
             if not result:
                 self.log.error('Plan execution unsuccessful.')
                 sys.exit(1)
@@ -139,7 +139,7 @@ class ClusterManagerCmd(object):
         else:
             return False
 
-    def process_assignment(self, assignment, allow_rf_change=False):
+    def process_assignment(self, assignment, allow_rf_change=False, allow_rf_mismatch=False):
         plan = assignment_to_plan(assignment)
         if self.args.proposed_plan_file:
             self.log.info(
@@ -155,7 +155,7 @@ class ClusterManagerCmd(object):
             'Proposed-plan actions count: %s',
             len(plan['partitions']),
         )
-        self.execute_plan(plan, allow_rf_change=allow_rf_change)
+        self.execute_plan(plan, allow_rf_change=allow_rf_change, allow_rf_mismatch=allow_rf_mismatch)
 
     def get_reduced_assignment(
         self,
