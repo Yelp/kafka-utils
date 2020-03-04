@@ -92,18 +92,6 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         )
         return subparser
 
-    def get_topic_filter(self):
-        filter_set = set()
-        with open(self.args.topic_partition_filter, 'r') as f:
-            for line in f:
-                tokens = line.split(':')
-                if len(tokens) != 2:
-                    self.log.error("Invalid topic partition filter line: %s", line)
-                    sys.exit(1)
-                t_p = (tokens[0].strip(), int(tokens[1].strip()))
-                filter_set.add(t_p)
-        return filter_set
-
     def run_command(self, cluster_topology, cluster_balancer):
         if self.args.source_broker == self.args.dest_broker:
             print("Error: Destination broker is same as source broker.")

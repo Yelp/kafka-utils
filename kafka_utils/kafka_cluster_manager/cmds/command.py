@@ -317,3 +317,19 @@ class ClusterManagerCmd(object):
         """Dump proposed json plan to given output file for future usage."""
         with open(proposed_plan_file, 'w') as output:
             json.dump(proposed_layout, output)
+
+    # For use in commands that accept topic filters, e.g. replace-broker and preferred-replica-election
+    def get_topic_filter(self):
+        if self.args.topic_partition_filter is None:
+            self.log.error('Need to specify topic partition filter file')
+            sys.exit(1)
+        filter_set = set()
+        with open(self.args.topic_partition_filter, 'r') as f:
+            for line in f:
+                tokens = line.split(':')
+                if len(tokens) != 2:
+                    self.log.error("Invalid topic partition filter line: %s", line)
+                    sys.exit(1)
+                t_p = (tokens[0].strip(), int(tokens[1].strip()))
+                filter_set.add(t_p)
+        return filter_set
