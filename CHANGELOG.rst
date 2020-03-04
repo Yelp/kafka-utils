@@ -1,3 +1,9 @@
+3.4.0 (March 4, 2020)
+----------------------------
+* Allow set_replication_factor command to work with topics that have mismatched replication
+  factors in their partitions
+* Add new preferred replica election command to generate json files for kafka-preferred-replica-election
+
 3.3.0 (February 26, 2020)
 ----------------------------
 * Allow for removing brokers in kafka-cluster-manager replace command
