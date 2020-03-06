@@ -50,7 +50,7 @@ setup(
     ],
     install_requires=[
         "humanfriendly>=4.8",
-        "kafka-python>=1.3.2,<1.5.0",
+        "kafka-python>=2.0.1,<3.0.0",
         "kazoo>=2.0,<3.0.0",
         "PyYAML>3.10",
         "pytz>=2014.1",
