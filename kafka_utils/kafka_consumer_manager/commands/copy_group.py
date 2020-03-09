@@ -72,6 +72,7 @@ class CopyGroup(OffsetManagerBase):
             args.partitions,
             cluster_config,
             client,
+            use_admin_client=args.use_admin_client,
         )
 
         cls.copy_group_kafka(

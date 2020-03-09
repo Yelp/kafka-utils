@@ -21,6 +21,7 @@ import sys
 from collections import defaultdict
 
 import six
+from kafka.admin import KafkaAdminClient
 from kafka.consumer import KafkaConsumer
 from kafka.structs import OffsetAndMetadata
 from kafka.structs import TopicPartition
@@ -255,6 +256,44 @@ class InvalidMessageException(Exception):
     pass
 
 
+class KafkaAdminGroupReader:
+
+    def __init__(self, kafka_config):
+        self.log = logging.getLogger(__name__)
+        self.admin_client = KafkaAdminClient(
+            bootstrap_servers=kafka_config.broker_list,
+        )
+
+    def read_group(self, groupid):
+        topics = set()
+        group_offsets = self.admin_client.list_consumer_group_offsets(groupid)
+        for tp in six.iterkeys(group_offsets):
+            topics.add(tp.topic)
+
+        return list(topics)
+
+    def read_groups(self, groupids=None, list_only=False):
+        if groupids is None:
+            groupids = self._list_groups()
+
+        if list_only:
+            return {groupid: [] for groupid in groupids}
+
+        groups = {}
+        for groupid in groupids:
+            topics = self.read_group(groupid)
+            groups[groupid] = topics
+
+        return groups
+
+    def _list_groups(self):
+        groups_and_protocol_types = self.admin_client.list_consumer_groups()
+        return [
+            gpt[0]
+            for gpt in groups_and_protocol_types
+        ]
+
+
 class KafkaGroupReader:
 
     def __init__(self, kafka_config):
@@ -269,7 +308,7 @@ class KafkaGroupReader:
         partition = get_group_partition(group_id, partition_count)
         return self.read_groups(partition)[group_id]
 
-    def read_groups(self, partition=None):
+    def read_groups(self, partition=None, list_only=False):
         self.consumer = KafkaConsumer(
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
@@ -412,3 +451,10 @@ class KafkaGroupReader:
 
     def finished(self):
         return self._finished
+
+
+def get_kafka_group_reader(cluster_config, use_admin_client=False):
+    if use_admin_client:
+        return KafkaAdminGroupReader(cluster_config)
+    else:
+        return KafkaGroupReader(cluster_config)

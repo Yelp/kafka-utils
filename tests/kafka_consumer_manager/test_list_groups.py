@@ -28,7 +28,7 @@ class TestListGroups(object):
     def mock_kafka_info(self):
         with mock.patch(
             "kafka_utils.kafka_consumer_manager."
-            "commands.list_groups.KafkaGroupReader",
+            "commands.list_groups.get_kafka_group_reader",
             autospec=True
         ) as mock_kafka_reader:
             yield mock_kafka_reader

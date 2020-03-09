@@ -21,7 +21,7 @@ import sys
 import six
 from kazoo.exceptions import NoNodeError
 
-from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
+from kafka_utils.kafka_consumer_manager.util import get_kafka_group_reader
 from kafka_utils.kafka_consumer_manager.util import prompt_user_input
 from kafka_utils.util.zookeeper import ZK
 
@@ -33,8 +33,11 @@ class OffsetManagerBase(object):
         cls,
         cluster_config,
         groupid,
+        use_admin_client=False,
     ):
-        return cls.get_topics_for_group_from_kafka(cluster_config, groupid)
+        return cls.get_topics_for_group_from_kafka(
+            cluster_config, groupid, use_admin_client,
+        )
 
     @classmethod
     def preprocess_args(
@@ -47,6 +50,7 @@ class OffsetManagerBase(object):
         fail_on_error=True,
         quiet=False,
         topics=None,
+        use_admin_client=False,
     ):
         if topics and partitions:
             print(
@@ -80,6 +84,7 @@ class OffsetManagerBase(object):
         subscribed_topics = cls.get_topics_from_consumer_group_id(
             cluster_config,
             groupid,
+            use_admin_client,
         )
         topics_dict = {}
 
@@ -142,8 +147,11 @@ class OffsetManagerBase(object):
         cls,
         cluster_config,
         groupid,
+        use_admin_client=False,
     ):
-        kafka_group_reader = KafkaGroupReader(cluster_config)
+        kafka_group_reader = get_kafka_group_reader(
+            cluster_config, use_admin_client,
+        )
         try:
             group_topics = kafka_group_reader.read_group(groupid)
         except KeyError:

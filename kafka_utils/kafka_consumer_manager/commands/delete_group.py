@@ -53,6 +53,7 @@ class DeleteGroup(OffsetWriter):
             None,
             cluster_config,
             client,
+            use_admin_client=args.use_admin_client,
         )
         cls.delete_group_kafka(client, args.groupid, topics_dict)
 
