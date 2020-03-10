@@ -96,6 +96,7 @@ class OffsetGet(OffsetManagerBase):
             cluster_config=cluster_config,
             client=client,
             quiet=args.json,
+            use_admin_client=args.use_admin_client,
         )
 
         consumer_offsets_metadata = cls.get_offsets(

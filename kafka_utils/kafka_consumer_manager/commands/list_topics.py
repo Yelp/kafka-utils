@@ -55,6 +55,7 @@ class ListTopics(OffsetManagerBase):
             cluster_config=cluster_config,
             client=client,
             fail_on_error=False,
+            use_admin_client=args.use_admin_client,
         )
         if not topics_dict:
             print("Consumer Group ID: {group} does not exist.".format(

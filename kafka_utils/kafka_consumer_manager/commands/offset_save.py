@@ -81,6 +81,7 @@ class OffsetSave(OffsetManagerBase):
             partitions=args.partitions,
             cluster_config=cluster_config,
             client=client,
+            use_admin_client=args.use_admin_client,
         )
         try:
             consumer_offsets_metadata = get_consumer_offsets_metadata(

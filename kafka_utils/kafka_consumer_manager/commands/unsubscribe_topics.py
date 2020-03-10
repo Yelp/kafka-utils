@@ -80,6 +80,7 @@ class UnsubscribeTopics(OffsetWriter):
             cluster_config,
             client,
             topics=args.topics,
+            use_admin_client=args.use_admin_client,
         )
 
         topics = args.topics if args.topics else ([args.topic] if args.topic else [])

@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 from .offset_manager import OffsetManagerBase
-from kafka_utils.kafka_consumer_manager.util import KafkaGroupReader
+from kafka_utils.kafka_consumer_manager.util import get_kafka_group_reader
 
 
 class ListGroups(OffsetManagerBase):
@@ -31,10 +31,11 @@ class ListGroups(OffsetManagerBase):
         parser_list_groups.set_defaults(command=cls.run)
 
     @classmethod
-    def get_kafka_groups(cls, cluster_config):
+    def get_kafka_groups(cls, cluster_config, use_admin_client=False):
         '''Get the group_id of groups committed into Kafka.'''
-        kafka_group_reader = KafkaGroupReader(cluster_config)
-        return list(kafka_group_reader.read_groups().keys())
+        kafka_group_reader = get_kafka_group_reader(cluster_config, use_admin_client)
+        groups_and_topics = kafka_group_reader.read_groups(list_only=True)
+        return list(groups_and_topics.keys())
 
     @classmethod
     def print_groups(cls, groups, cluster_config):
@@ -53,7 +54,10 @@ class ListGroups(OffsetManagerBase):
     @classmethod
     def run(cls, args, cluster_config):
         groups = set()
-        kafka_groups = cls.get_kafka_groups(cluster_config)
+        kafka_groups = cls.get_kafka_groups(
+            cluster_config,
+            args.use_admin_client,
+        )
         if kafka_groups:
             groups.update(kafka_groups)
 

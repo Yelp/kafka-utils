@@ -74,6 +74,7 @@ class OffsetAdvance(OffsetWriter):
             cluster_config,
             client,
             force=args.force,
+            use_admin_client=args.use_admin_client,
         )
         try:
             advance_consumer_offsets(

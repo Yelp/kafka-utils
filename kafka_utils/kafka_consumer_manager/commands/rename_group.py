@@ -67,6 +67,7 @@ class RenameGroup(OffsetManagerBase):
             partitions=None,
             cluster_config=cluster_config,
             client=client,
+            use_admin_client=args.use_admin_client,
         )
         cls.rename_group(
             client,

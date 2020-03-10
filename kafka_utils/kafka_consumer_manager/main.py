@@ -80,6 +80,11 @@ def parse_args():
         action='store_true',
         help='Show DEBUG level logging',
     )
+    parser.add_argument(
+        "--use-admin-client", action="store_true",
+        help="Use the Kafka AdminClient interface to fetch consumer "
+        "group offsets for quicker performance."
+    )
     subparsers = parser.add_subparsers()
 
     OffsetGet.add_parser(subparsers)
