@@ -1,3 +1,7 @@
+3.5.0 (March 10, 2020)
+----------------------------
+* Add --use-admin-client option to kafka-consumer-manager commands increased faster performance.
+
 3.4.0 (March 4, 2020)
 ----------------------------
 * Allow set_replication_factor command to work with topics that have mismatched replication
