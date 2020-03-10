@@ -217,6 +217,7 @@ class OffsetWriter(OffsetManagerBase):
         fail_on_error=True,
         force=False,
         topics=None,
+        use_admin_client=False,
     ):
         topics_dict = super(OffsetWriter, cls).preprocess_args(
             groupid,
@@ -226,6 +227,7 @@ class OffsetWriter(OffsetManagerBase):
             client,
             fail_on_error=(fail_on_error and not force),
             topics=topics,
+            use_admin_client=use_admin_client,
         )
 
         if not topics_dict and force:
