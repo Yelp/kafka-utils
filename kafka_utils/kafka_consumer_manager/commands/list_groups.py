@@ -55,7 +55,8 @@ class ListGroups(OffsetManagerBase):
     def run(cls, args, cluster_config):
         groups = set()
         kafka_groups = cls.get_kafka_groups(
-            cluster_config, args.use_admin_client,
+            cluster_config,
+            args.use_admin_client,
         )
         if kafka_groups:
             groups.update(kafka_groups)

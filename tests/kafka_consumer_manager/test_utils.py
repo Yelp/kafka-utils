@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import contextlib
 import struct
 from collections import namedtuple
 
@@ -30,7 +29,7 @@ Message = namedtuple("Message", ["partition", "offset", "key", "value"])
 
 class TestKafkaAdminGroupReader(object):
 
-    @contextlib.contextmanager
+    @pytest.fixture
     def mock_admin_client(self):
         with mock.patch(
             "kafka_utils.kafka_consumer_manager."
@@ -39,72 +38,68 @@ class TestKafkaAdminGroupReader(object):
         ) as mock_admin_client:
             yield mock_admin_client
 
-    def test_read_group(self):
-        with self.mock_admin_client():
-            reader = KafkaAdminGroupReader(mock.MagicMock())
+    def test_read_group(self, mock_admin_client):
+        reader = KafkaAdminGroupReader(mock.MagicMock())
 
-            reader.admin_client.list_consumer_group_offsets.return_value = {
-                TopicPartition("t1", 0): OffsetAndMetadata(42, ""),
-                TopicPartition("t1", 1): OffsetAndMetadata(42, ""),
-                TopicPartition("t2", 1): OffsetAndMetadata(42, ""),
-            }
+        reader.admin_client.list_consumer_group_offsets.return_value = {
+            TopicPartition("t1", 0): OffsetAndMetadata(42, ""),
+            TopicPartition("t1", 1): OffsetAndMetadata(42, ""),
+            TopicPartition("t2", 1): OffsetAndMetadata(42, ""),
+        }
 
-            topics = reader.read_group("group")
-            assert set(topics) == {"t1", "t2"}
+        topics = reader.read_group("group")
+        assert set(topics) == {"t1", "t2"}
 
-    def test_read_groups(self):
-        with self.mock_admin_client():
-            reader = KafkaAdminGroupReader(mock.MagicMock())
+    def test_read_groups(self, mock_admin_client):
+        reader = KafkaAdminGroupReader(mock.MagicMock())
 
-            with mock.patch.object(
-                reader,
-                "_list_groups",
-                autospec=True,
-                return_value=["group1", "group2"],
-            ), mock.patch.object(
-                reader,
-                "read_group",
-                autospec=True,
-            ) as mock_read_group:
-                mock_read_group.side_effect = lambda group: {
-                    "group1": ["t1"],
-                    "group2": ["t2", "t3"],
-                }[group]
+        with mock.patch.object(
+            reader,
+            "_list_groups",
+            autospec=True,
+            return_value=["group1", "group2"],
+        ), mock.patch.object(
+            reader,
+            "read_group",
+            autospec=True,
+        ) as mock_read_group:
+            mock_read_group.side_effect = lambda group: {
+                "group1": ["t1"],
+                "group2": ["t2", "t3"],
+            }[group]
 
-                groups = reader.read_groups(list_only=False)
-                assert set(groups.keys()) == {"group1", "group2"}
-                assert groups["group1"] == ["t1"]
-                assert set(groups["group2"]) == {"t2", "t3"}
+            groups = reader.read_groups(list_only=False)
+            assert set(groups.keys()) == {"group1", "group2"}
+            assert groups["group1"] == ["t1"]
+            assert set(groups["group2"]) == {"t2", "t3"}
 
-    def test_read_groups_list_only(self):
-        with self.mock_admin_client():
-            reader = KafkaAdminGroupReader(mock.MagicMock())
+    def test_read_groups_list_only(self, mock_admin_client):
+        reader = KafkaAdminGroupReader(mock.MagicMock())
 
-            with mock.patch.object(
-                reader,
-                "_list_groups",
-                autospec=True,
-                return_value=["group1", "group2"],
-            ), mock.patch.object(
-                reader,
-                "read_group",
-                autospec=True,
-            ) as mock_read_group:
-                reader.read_groups(list_only=True)
-                assert mock_read_group.call_count == 0
+        with mock.patch.object(
+            reader,
+            "_list_groups",
+            autospec=True,
+            return_value=["group1", "group2"],
+        ), mock.patch.object(
+            reader,
+            "read_group",
+            autospec=True,
+        ) as mock_read_group:
+            reader.read_groups(list_only=True)
+            assert mock_read_group.call_count == 0
 
-    def test_list_groups(self):
-        with self.mock_admin_client():
-            reader = KafkaAdminGroupReader(mock.MagicMock())
+    def test_list_groups(self, mock_admin_client):
+        reader = KafkaAdminGroupReader(mock.MagicMock())
 
-            # https://github.com/dpkp/kafka-python/blob/1.4.7/kafka/admin/client.py#L1009
-            reader.admin_client.list_consumer_groups.return_value = [
-                ("group1", "consumer"),
-                ("group2", ""),
-            ]
+        # https://github.com/dpkp/kafka-python/blob/1.4.7/kafka/admin/client.py#L1009
+        reader.admin_client.list_consumer_groups.return_value = [
+            ("group1", "consumer"),
+            ("group2", ""),
+        ]
 
-            groups = reader._list_groups()
-            assert groups == ["group1", "group2"]
+        groups = reader._list_groups()
+        assert groups == ["group1", "group2"]
 
 
 class TestKafkaGroupReader(object):
@@ -451,7 +446,7 @@ class TestKafkaConsumerTimestamps(object):
 
 class TestGetKafkaGroupReader(object):
 
-    @contextlib.contextmanager
+    @pytest.fixture
     def mock_admin_group_reader(self):
         with mock.patch(
             "kafka_utils.kafka_consumer_manager."
@@ -460,7 +455,7 @@ class TestGetKafkaGroupReader(object):
         ):
             yield
 
-    @contextlib.contextmanager
+    @pytest.fixture
     def mock_group_reader(self):
         with mock.patch(
             "kafka_utils.kafka_consumer_manager."
@@ -469,10 +464,9 @@ class TestGetKafkaGroupReader(object):
         ):
             yield
 
-    def test_get_kafka_group_reader(self):
-        with self.mock_admin_group_reader(), self.mock_group_reader():
-            admin = get_kafka_group_reader(mock.Mock(), use_admin_client=True)
-            assert isinstance(admin, KafkaAdminGroupReader)
+    def test_get_kafka_group_reader(self, mock_admin_group_reader, mock_group_reader):
+        admin = get_kafka_group_reader(mock.Mock(), use_admin_client=True)
+        assert isinstance(admin, KafkaAdminGroupReader)
 
-            default = get_kafka_group_reader(mock.Mock(), use_admin_client=False)
-            assert isinstance(default, KafkaGroupReader)
+        default = get_kafka_group_reader(mock.Mock(), use_admin_client=False)
+        assert isinstance(default, KafkaGroupReader)
