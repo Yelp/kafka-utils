@@ -394,3 +394,76 @@ class TestZK(object):
             expected_with_no_node_error = {}
             zk.get_children.assert_called_with("/brokers/ids")
             assert actual_with_no_node_error == expected_with_no_node_error
+
+    def test_get_brokers_with_metadata_for_ssl(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.get_children = mock.Mock(
+                return_value=[1],
+            )
+
+            zk.get = mock.Mock(
+                return_value=("""
+                {
+                    "endpoints":[
+                        "SSL://broker:9093"
+                    ],
+                    "host":null
+                }
+                """, None)
+            )
+            expected = {1: {'host': 'broker'}}
+            actual = zk.get_brokers()
+            assert actual[1]['host'] == expected[1]['host']
+
+            zk.get = mock.Mock(
+                return_value=("""
+                {
+                    "endpoints":[
+                        "INTERNAL://broker:9093",
+                        "EXTERNAL://broker:9093"
+                    ],
+                    "host":null
+                }
+                """, None)
+            )
+            expected = {1: {'host': 'broker'}}
+            actual = zk.get_brokers()
+            assert actual[1]['host'] == expected[1]['host']
+
+    def test_get_brokers_with_metadata_for_sasl(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.get_children = mock.Mock(
+                return_value=[1],
+            )
+
+            zk.get = mock.Mock(
+                return_value=("""
+                {
+                    "endpoints":[
+                        "PLAINTEXTSASL://broker:9093"
+                    ],
+                    "host":null
+                }
+                """, None)
+            )
+            expected = {1: {'host': 'broker'}}
+            actual = zk.get_brokers()
+            assert actual[1]['host'] == expected[1]['host']
+
+    def test_get_brokers_with_metadata_for_plaintext(self, mock_client):
+        with ZK(self.cluster_config) as zk:
+            zk.get_children = mock.Mock(
+                return_value=[1],
+            )
+
+            zk.get = mock.Mock(
+                return_value=("""
+                {
+                    "endpoints":[],
+                    "host":"broker"
+                }
+                """, None)
+            )
+            expected = {1: {'host': 'broker'}}
+            actual = zk.get_brokers()
+            assert actual[1]['host'] == expected[1]['host']
