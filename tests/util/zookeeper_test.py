@@ -402,29 +402,14 @@ class TestZK(object):
             )
 
             zk.get = mock.Mock(
-                return_value=("""
-                {
-                    "endpoints":[
-                        "SSL://broker:9093"
-                    ],
-                    "host":null
-                }
-                """, None)
+                return_value=(b'{"endpoints":["SSL://broker:9093"],"host":null}', None)
             )
             expected = {1: {'host': 'broker'}}
             actual = zk.get_brokers()
             assert actual[1]['host'] == expected[1]['host']
 
             zk.get = mock.Mock(
-                return_value=("""
-                {
-                    "endpoints":[
-                        "INTERNAL://broker:9093",
-                        "EXTERNAL://broker:9093"
-                    ],
-                    "host":null
-                }
-                """, None)
+                return_value=(b'{"endpoints":["INTERNAL://broker:9093","EXTERNAL://broker:9093"],"host":null}', None)
             )
             expected = {1: {'host': 'broker'}}
             actual = zk.get_brokers()
@@ -437,14 +422,7 @@ class TestZK(object):
             )
 
             zk.get = mock.Mock(
-                return_value=("""
-                {
-                    "endpoints":[
-                        "PLAINTEXTSASL://broker:9093"
-                    ],
-                    "host":null
-                }
-                """, None)
+                return_value=(b'{"endpoints":["PLAINTEXTSASL://broker:9093"],"host":null}', None)
             )
             expected = {1: {'host': 'broker'}}
             actual = zk.get_brokers()
@@ -457,12 +435,7 @@ class TestZK(object):
             )
 
             zk.get = mock.Mock(
-                return_value=("""
-                {
-                    "endpoints":[],
-                    "host":"broker"
-                }
-                """, None)
+                return_value=(b'{"endpoints":[],"host":"broker"}', None)
             )
             expected = {1: {'host': 'broker'}}
             actual = zk.get_brokers()
