@@ -1,3 +1,7 @@
+3.6.0 (April 2, 2020)
+----------------------------
+* Allow kafka-rolling-restart script to be executed in clusters with SSL or SASL enabled (thanks dinegri!)
+
 3.5.0 (March 10, 2020)
 ----------------------------
 * Add --use-admin-client option to kafka-consumer-manager commands increased faster performance.
