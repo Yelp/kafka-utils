@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import logging
 
 import six
+import re
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
@@ -85,15 +86,19 @@ class ZK:
 
     def get_broker_metadata(self, broker_id):
         try:
-            broker_json, _ = self.get(
+            broker_json = load_json(self.get(
                 "/brokers/ids/{b_id}".format(b_id=broker_id)
-            )
+            )[0])
+            if (broker_json['host'] is None):
+                pattern = '(?:[SSL|INTERNAL|PLAINTEXTSASL].*://)?(?P<host>[^:/ ]+).?(?P<port>[0-9]*).*'
+                result = re.search(pattern, broker_json['endpoints'][0])
+                broker_json['host'] = result.group('host')
         except NoNodeError:
             _log.error(
                 "broker '{b_id}' not found.".format(b_id=broker_id),
             )
             raise
-        return load_json(broker_json)
+        return broker_json
 
     def get_brokers(self, names_only=False):
         """Get information on all the available brokers.
