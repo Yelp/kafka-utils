@@ -24,6 +24,7 @@ from kafka_utils.util import positive_nonzero_int
 from kafka_utils.util import tuple_alter
 from kafka_utils.util import tuple_remove
 from kafka_utils.util import tuple_replace
+from kafka_utils.util.utils import child_class
 
 
 def test_tuple_alter():
@@ -92,3 +93,17 @@ def test_positive_float_not_float():
 def test_positive_float_negative_float():
     with pytest.raises(ArgumentTypeError):
         positive_float('-1.45')
+
+
+def test_child_class():
+    class A(object):
+        pass
+
+    class B(A):
+        pass
+
+    class C(B):
+        pass
+
+    assert child_class([A, B, C], A) == C
+    assert child_class([A, B], A) == B
