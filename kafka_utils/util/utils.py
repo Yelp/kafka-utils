@@ -34,9 +34,50 @@ def get_module(module_full_name):
         return importlib.import_module(module_full_name)
 
 
+def child_class(class_types, base_class):
+    """
+    Find the child-most class of `base_class`.
+
+    Examples:
+        class A:
+            pass
+
+        class B(A):
+            pass
+
+        class C(B):
+            pass
+
+        child_class([A, B, C], A) = C
+    """
+    subclasses = set()
+    for class_type in class_types:
+        if class_type is base_class:
+            continue
+        if issubclass(class_type, base_class):
+            subclasses.add(class_type)
+
+    if len(subclasses) == 0:
+        return None
+    elif len(subclasses) == 1:
+        return subclasses.pop()
+    else:
+        # If more than one class is a subclass of `base_class`
+        # It is possible that one or more classes are subclasses of another
+        # class (see example above).
+        # Recursively find the child-most class. Break ties by returning any
+        # child-most class.
+        for c in subclasses:
+            child = child_class(subclasses, c)
+            if child is not None:
+                return child
+        return subclasses.pop()
+
+
 def dynamic_import(module_full_name, base_class):
     module = get_module(module_full_name)
-    for _, class_type in inspect.getmembers(module, inspect.isclass):
-        if (issubclass(class_type, base_class) and
-                class_type is not base_class):
-            return class_type
+    class_types = [
+        class_type
+        for _, class_type in inspect.getmembers(module, inspect.isclass)
+    ]
+    return child_class(class_types, base_class)
