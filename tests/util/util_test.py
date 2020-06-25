@@ -105,5 +105,9 @@ def test_child_class():
     class C(B):
         pass
 
+    class D(A):
+        pass
+
     assert child_class([A, B, C], A) == C
     assert child_class([A, B], A) == B
+    assert child_class([A, B, D], A) in {B, D}

@@ -65,11 +65,13 @@ def child_class(class_types, base_class):
         # If more than one class is a subclass of `base_class`
         # It is possible that one or more classes are subclasses of another
         # class (see example above).
-        # Recursively find the child-most class.
+        # Recursively find the child-most class. Break ties by returning any
+        # child-most class.
         for c in subclasses:
             child = child_class(subclasses, c)
             if child is not None:
                 return child
+        return subclasses.pop()
 
 
 def dynamic_import(module_full_name, base_class):
