@@ -1,3 +1,7 @@
+3.7.0 (June 25, 2020)
+----------------------------
+* Allow dynamic_import to find the child-most class
+
 3.6.0 (April 2, 2020)
 ----------------------------
 * Allow kafka-rolling-restart script to be executed in clusters with SSL or SASL enabled (thanks dinegri!)
