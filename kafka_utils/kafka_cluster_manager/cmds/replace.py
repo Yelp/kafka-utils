@@ -134,7 +134,7 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
             self.args.max_leader_changes,
         )
         if reduced_assignment:
-            self.process_assignment(reduced_assignment, allow_rf_change=self.args.rf_change)
+            self.process_assignment(reduced_assignment, allow_rf_change=self.args.rf_change, allow_rf_mismatch=self.args.rf_mismatch)
         else:
             self.log.info("Broker already replaced. No more replicas in source broker.")
             print("Broker already replaced. No more replicas in source broker.")
