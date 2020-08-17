@@ -1,3 +1,7 @@
+3.7.1 (August 17, 2020)
+----------------------------
+* Fix missing rf_mismatch arg in process_assignment call
+
 3.7.0 (June 25, 2020)
 ----------------------------
 * Allow dynamic_import to find the child-most class
