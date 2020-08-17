@@ -66,6 +66,5 @@ def step_impl5(context):
 @then(u'CRITICAL min_isr will be printed')
 def step_impl6(context):
     error_msg = ("CRITICAL: 1 partition(s) have the number of "
-                 "replicas in sync that is lower than the specified min ISR.\n").format(
-        topic=context.topic)
+                 "replicas in sync that is lower than the specified min ISR.\n")
     assert context.min_isr_out == error_msg, context.min_isr_out

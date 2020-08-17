@@ -190,10 +190,7 @@ def _validate_format(plan):
 
     # Empty partitions
     if not plan['partitions']:
-        _log.error(
-            '"partitions" list found empty"'
-            .format(version=plan['partitions']),
-        )
+        _log.error('"partitions" list found empty"')
         return False
 
     # Invalid partitions type
