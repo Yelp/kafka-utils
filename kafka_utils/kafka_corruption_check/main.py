@@ -41,18 +41,18 @@ INVALID_MESSAGE_REGEX = re.compile(".* isvalid: false")
 INVALID_BYTES_REGEX = re.compile(".*invalid bytes")
 
 
-def chunks(l, n):
-    """Yield successive n-sized chunks from l.
+def chunks(input, n):
+    """Yield successive n-sized chunks from input.
 
-    :param l: the list
-    :type l: list
+    :param input: the provided list
+    :type input: list
     :param n: the size of the chunk
     :type n: int
     :returns: a sequence of n-sized chunks of the input list
     :rtype: generator
     """
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+    for i in range(0, len(input), n):
+        yield input[i:i + n]
 
 
 def ssh_client(host):
