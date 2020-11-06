@@ -1,3 +1,7 @@
+3.8.0 (November 6, 2020)
+----------------------------
+* Change the default directory to read kafka_discovery files from /etc/kafka_discovery to /nail/srv/configs/kafka_discovery_configs
+
 3.7.1 (August 17, 2020)
 ----------------------------
 * Fix missing rf_mismatch arg in process_assignment call
