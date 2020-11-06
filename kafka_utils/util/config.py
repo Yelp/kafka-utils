@@ -28,7 +28,7 @@ from kafka_utils.util.error import InvalidConfigurationError
 from kafka_utils.util.error import MissingConfigurationError
 
 
-DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/etc/kafka_discovery'
+DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/nail/srv/configs/kafka_discovery_configs'
 HOME_OVERRIDE = '.kafka_discovery'
 
 
