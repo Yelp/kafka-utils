@@ -1,3 +1,4 @@
+cryptography==3.0
 flake8
 importlib-metadata==0.23
 ipdb==0.10.3
