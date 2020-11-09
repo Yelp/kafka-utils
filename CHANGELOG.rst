@@ -1,3 +1,7 @@
+3.8.1 (November 9, 2020)
+----------------------------
+* Pin version of cryptography to 3.0
+
 3.8.0 (November 6, 2020)
 ----------------------------
 * Change the default directory to read kafka_discovery files from /etc/kafka_discovery to /nail/srv/configs/kafka_discovery_configs
