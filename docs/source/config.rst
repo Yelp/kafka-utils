@@ -5,7 +5,8 @@ Kafka-Utils reads the cluster configuration needed to access Kafka clusters from
 Each cluster is identified by *type* and *name*.
 Multiple clusters of the same type should be listed in the same `type.yaml` file.
 The yaml files are read from :code:`$KAFKA_DISCOVERY_DIR`, :code:`$HOME/.kafka_discovery` and :code:`/nail/srv/configs/kafka_discovery_configs`,
-the former overrides the latter.
+the former overrides the latter. If the :code:`/nail/srv/configs/kafka_discovery_configs` directory does not exist then the :code:`/etc/kafka_discovery` directory is used instead.
+
 
 Sample configuration for :code:`sample_type` cluster at :code:`/nail/srv/configs/kafka_discovery_configs/sample_type.yaml`
 
@@ -31,4 +32,4 @@ For example the kafka-cluster-manager command:
     $ kafka-cluster-manager --cluster-type sample_type stats
 
 will pick up default cluster `cluster-1` from the local_config at /nail/srv/configs/kafka_discovery_configs/sample_type.yaml to display
-statistics of default kafka-configuration.
+statistics of default kafka-configuration. If the /nail/srv/configs/kafka_discovery_configs directory does not exist then the /etc/kafka_discovery directory is used instead.
