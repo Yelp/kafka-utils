@@ -1,3 +1,7 @@
+3.8.2 (November 9, 2020)
+----------------------------
+* Conditionally choose between /nail/srv/configs/kafka_discovery_configs and /etc/kafka_discovery for default directory to read Kafka discovery files depending on if the former exists
+
 3.8.1 (November 9, 2020)
 ----------------------------
 * Pin version of cryptography to 3.0
