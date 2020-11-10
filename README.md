@@ -10,6 +10,7 @@ Kafka-Utils runs on python2.7 and python3.
 Kafka-Utils reads cluster configuration needed to access Kafka clusters from yaml files. Each cluster is identified by *type* and *name*.
 Multiple clusters of the same type should be listed in the same `type.yaml` file.
 The yaml files are read from `$KAFKA_DISCOVERY_DIR`, `$HOME/.kafka_discovery` and `/nail/srv/configs/kafka_discovery_configs`, the former overrides the latter.
+If the `/nail/srv/configs/kafka_discovery_configs` directory does not exist then the `/etc/kafka_discovery` directory is used instead.
 
 
 Sample configuration for `sample_type` cluster at `/nail/srv/configs/kafka_discovery_configs/sample_type.yaml`

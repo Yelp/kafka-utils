@@ -32,6 +32,11 @@ DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/nail/srv/configs/kafka_discovery_configs'
 HOME_OVERRIDE = '.kafka_discovery'
 
 
+# Use /etc/kafka_discovery if /nail/srv/configs/kafka_discovery does not exist
+if not os.path.isdir(DEFAULT_KAFKA_TOPOLOGY_BASE_PATH):
+    DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/etc/kafka_discovery'
+
+
 class ClusterConfig(
     namedtuple(
         'ClusterConfig',
