@@ -43,7 +43,7 @@ def parse_args():
         type=str,
         help='Path of the directory containing the <cluster_type>.yaml config.'
         ' Default try: '
-        '$KAFKA_DISCOVERY_DIR, $HOME/.kafka_discovery, /nail/srv/configs/kafka_discovery_configs, /etc/kafka_discovery',
+        '$KAFKA_DISCOVERY_DIR, $HOME/.kafka_discovery, /etc/kafka_discovery',
     )
 
     return parser.parse_args()

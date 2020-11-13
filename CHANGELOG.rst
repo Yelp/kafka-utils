@@ -1,3 +1,7 @@
+3.9.0 (November 13, 2020)
+----------------------------
+* Change the default Kafka discovery config directory back to /etc/kafka_discovery
+
 3.8.2 (November 9, 2020)
 ----------------------------
 * Conditionally choose between /nail/srv/configs/kafka_discovery_configs and /etc/kafka_discovery for default directory to read Kafka discovery files depending on if the former exists
