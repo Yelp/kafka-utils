@@ -37,8 +37,6 @@ RUN apt-get update \
     build-essential \
     libffi-dev \
     libssl-dev \
-    python2.7 \
-    python2.7-dev \
     python3.6 \
     python3.6-dev \
     python-pip \

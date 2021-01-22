@@ -18,15 +18,15 @@ clean:
 	make -C docs clean
 
 test:
-	tox -e py{27,36}-unittest
+	tox -e py36-unittest
 
 acceptance: acceptance10 acceptance11
 
 acceptance10:
-	tox -e py{27,36}-kafka10-dockeritest
+	tox -e py36-kafka10-dockeritest
 
 acceptance11:
-	tox -e py{27,36}-kafka11-dockeritest
+	tox -e py36-kafka11-dockeritest
 
 coverage:
 	tox -e coverage
