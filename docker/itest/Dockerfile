@@ -46,7 +46,7 @@ RUN apt-get update \
     python-setuptools
 
 RUN pip install -U pip
-RUN pip install tox tox-travis more-itertools==4.2.0
+RUN pip install tox more-itertools==4.2.0
 
 COPY run_tests.sh /scripts/run_tests.sh
 RUN chmod 755 /scripts/run_tests.sh

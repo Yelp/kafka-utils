@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/Yelp/kafka-utils.svg?branch=master)](https://travis-ci.org/Yelp/kafka-utils)
+
+[![Build Status](https://github.com/Yelp/kafka-utils/workflows/kafka-utils-ci/badge.svg?branch=master)](https://github.com/Yelp/kafka-utils)
 
 # Kafka-Utils
 
