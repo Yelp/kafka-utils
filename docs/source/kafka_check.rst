@@ -12,10 +12,12 @@ with cron. Kafka-check provides two simple coordination mechanisms to make
 sure that the check only runs on a single broker per cluster.
 
 Coordination strategies:
+
 * First broker only: the script will only run on the broker with lowest broker id.
 * Controller only: the script will only run on the controller of the cluster.
 
 Coordination parameters:
+
 * :code:`--broker-id`: the id of the broker where the script is running.
 Set it to -1 if automatic broker ids are used.
 * :code:`--data-path DATA_PATH`: Path to the Kafka data folder, used in case of
