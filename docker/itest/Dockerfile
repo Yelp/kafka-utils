@@ -39,6 +39,7 @@ RUN apt-get install -y \
     python2.7-dev \
     python3.6 \
     python3.6-dev \
+    python3-distutils \
     python-pip \
     python-pkg-resources \
     python-setuptools
