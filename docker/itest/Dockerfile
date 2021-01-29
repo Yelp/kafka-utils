@@ -1,5 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 MAINTAINER Team Data Streams Core <data-streams-core@yelp.com>
+ENV DEBIAN_FRONTEND noninteractive
 
 ARG KAFKA_VERSION
 # We need to install Java and Kafka in order to use Kafka CLI. The Kafka server
@@ -13,7 +14,7 @@ RUN apt-get update && \
     openjdk-8-jdk
 
 # Install Kafka.
-RUN apt-get update && apt-get install -y \
+RUN apt-get install -y \
     unzip \
     wget \
     curl \
@@ -30,10 +31,7 @@ RUN /tmp/download-kafka.sh && tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSIO
 ENV PATH="$PATH:$KAFKA_HOME/bin"
 
 # Install Python
-RUN apt-get update \
-  && add-apt-repository -y ppa:deadsnakes/ppa \
-  && apt-get update \
-  && apt-get install -y \
+RUN apt-get install -y \
     build-essential \
     libffi-dev \
     libssl-dev \
@@ -41,12 +39,12 @@ RUN apt-get update \
     python2.7-dev \
     python3.6 \
     python3.6-dev \
+    python3-distutils \
     python-pip \
     python-pkg-resources \
     python-setuptools
 
-RUN pip install -U pip
-RUN pip install tox more-itertools==4.2.0
+RUN pip install tox
 
 COPY run_tests.sh /scripts/run_tests.sh
 RUN chmod 755 /scripts/run_tests.sh
