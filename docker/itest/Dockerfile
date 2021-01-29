@@ -1,5 +1,6 @@
 FROM ubuntu:18.04
 MAINTAINER Team Data Streams Core <data-streams-core@yelp.com>
+ENV DEBIAN_FRONTEND noninteractive
 
 ARG KAFKA_VERSION
 # We need to install Java and Kafka in order to use Kafka CLI. The Kafka server
@@ -13,7 +14,7 @@ RUN apt-get update && \
     openjdk-8-jdk
 
 # Install Kafka.
-RUN apt-get update && apt-get install -y \
+RUN apt-get install -y \
     unzip \
     wget \
     curl \
