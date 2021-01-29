@@ -30,10 +30,7 @@ RUN /tmp/download-kafka.sh && tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSIO
 ENV PATH="$PATH:$KAFKA_HOME/bin"
 
 # Install Python
-RUN apt-get update \
-  && add-apt-repository -y ppa:deadsnakes/ppa \
-  && apt-get update \
-  && apt-get install -y \
+RUN apt-get install -y \
     build-essential \
     libffi-dev \
     libssl-dev \
