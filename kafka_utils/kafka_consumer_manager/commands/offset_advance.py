@@ -94,7 +94,7 @@ class OffsetAdvance(OffsetWriter):
             print(
                 "Unable to unsubscribe group '{group_name}' from topic '{topic_name}'. \
                     You must ensure none of the consumers with this consumer group id are running before \
-                    trying to unsubscribe a consumer group with offsets stored in Kafka. Try stopping all \
+                    trying to advance the offsets stored in Kafka for this consumer group. Try stopping all \
                     of your consumers.".format(group_name=args.groupid, topic_name=args.topic),
             )
             raise
