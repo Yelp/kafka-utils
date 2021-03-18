@@ -18,6 +18,8 @@ from __future__ import unicode_literals
 
 import sys
 
+from kafka.errors import UnknownMemberIdError
+
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import advance_consumer_offsets
@@ -86,6 +88,14 @@ class OffsetAdvance(OffsetWriter):
             print(
                 "Error: Badly formatted input, please re-run command ",
                 "with --help option.", file=sys.stderr
+            )
+            raise
+        except UnknownMemberIdError:
+            print(
+                "Unable to unsubscribe group '{group_name}' from topic '{topic_name}'. \
+                    You must ensure none of the consumers with this consumer group id are running before \
+                    trying to unsubscribe a consumer group with offsets stored in Kafka. Try stopping all \
+                    of your consumers.".format(group_name=args.groupid, topic_name=args.topic),
             )
             raise
 
