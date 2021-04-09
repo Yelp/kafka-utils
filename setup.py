@@ -47,6 +47,7 @@ setup(
         "scripts/kafka-utils",
         "scripts/kafka-check",
         "scripts/kafka-corruption-check",
+        "scripts/kafka-manual-throttle",
     ],
     install_requires=[
         "humanfriendly>=4.8",
