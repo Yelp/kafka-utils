@@ -39,6 +39,7 @@ from kafka_utils.kafka_cluster_manager.cmds.decommission import DecommissionCmd
 from kafka_utils.kafka_cluster_manager.cmds.preferred_replica_election import PreferredReplicaElectionCmd
 from kafka_utils.kafka_cluster_manager.cmds.rebalance import RebalanceCmd
 from kafka_utils.kafka_cluster_manager.cmds.replace import ReplaceBrokerCmd
+from kafka_utils.kafka_cluster_manager.cmds.replication_factor_mismatch_topics import ReplicationFactorMismatchTopicsCmd
 from kafka_utils.kafka_cluster_manager.cmds.revoke_leadership import RevokeLeadershipCmd
 from kafka_utils.kafka_cluster_manager.cmds.set_replication_factor import SetReplicationFactorCmd
 from kafka_utils.kafka_cluster_manager.cmds.stats import StatsCmd
@@ -172,6 +173,7 @@ def parse_args():
     ReplaceBrokerCmd().add_subparser(subparsers)
     SetReplicationFactorCmd().add_subparser(subparsers)
     PreferredReplicaElectionCmd().add_subparser(subparsers)
+    ReplicationFactorMismatchTopicsCmd().add_subparser(subparsers)
 
     return parser.parse_args()
 
