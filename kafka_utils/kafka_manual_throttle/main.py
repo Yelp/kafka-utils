@@ -116,7 +116,7 @@ def human_throttle(throttle):
     if throttle is None:
         return "N/A"
 
-    return humanfriendly.format_size(int(throttle), binary=True)
+    return humanfriendly.format_size(int(throttle), binary=True) + "/s"
 
 
 def print_throttles(zk, brokers):
