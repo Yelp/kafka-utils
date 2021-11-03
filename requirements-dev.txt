@@ -2,7 +2,7 @@ cryptography==3.0
 flake8
 importlib-metadata==0.23
 ipdb==0.13
-ipython==4.2.0
+ipython==5.1.0
 ipython-genutils==0.1.0
 mock
 pre-commit==0.8.0
