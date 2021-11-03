@@ -1,3 +1,4 @@
+PyYAML<4,>=3.10 # pre-commit 0.8.0 doesnt support PyYAML>=6.0 and docker-compose 1.7.0 requires PyYAML<4,>=3.10
 cryptography==3.0
 flake8
 importlib-metadata==0.23
