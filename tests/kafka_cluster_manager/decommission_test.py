@@ -18,6 +18,8 @@ def command_instance():
     cmd.args.force_progress = False
     cmd.args.broker_ids = []
     cmd.args.auto_max_movement_size = True
+    cmd.args.max_partition_movements = 10
+    cmd.args.max_leader_changes = 10
     return cmd
 
 
