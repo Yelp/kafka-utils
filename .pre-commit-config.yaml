@@ -1,5 +1,6 @@
+repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    sha: 29bf11d13689a0a9a895c41eb3591c7e942d377d
+    rev: v2.2.3
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
@@ -11,7 +12,7 @@
         args: ["--ignore=W504,E501"]
 
 -   repo: https://github.com/asottile/reorder_python_imports.git
-    sha: f3dfe379d2ea341c6cf54d926d4585b35dea9251
+    rev: v1.9.0
     hooks:
     -   id: reorder-python-imports
         files: .*\.py$
