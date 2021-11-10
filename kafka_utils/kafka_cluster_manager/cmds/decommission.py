@@ -108,13 +108,11 @@ class DecommissionCmd(ClusterManagerCmd):
             partitions_to_move.update(cluster_topology.brokers[broker].partitions)
 
         largest_size = max(
-            partition.size
-            for partition in partitions_to_move
+            [partition.size for partition in partitions_to_move] or (1, )
         )
 
         smallest_size = min(
-            partition.size
-            for partition in partitions_to_move
+            [partition.size for partition in partitions_to_move] or (0, )
         )
 
         if self.args.auto_max_movement_size:
