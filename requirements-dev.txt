@@ -2,7 +2,7 @@ cryptography==3.0
 flake8
 importlib-metadata==0.23
 mock
-pre-commit==0.8.0
+pre-commit==1.14.4
 pytest==3.9.3
 setuptools==40.0.0
 tox-pip-extensions==1.2.1
