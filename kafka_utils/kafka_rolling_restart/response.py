@@ -13,7 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class PrometheusRes:
+from abc import ABCMeta, abstractmethod
+
+class BaseRes():
+    __metaclass__ = ABCMeta
+    @abstractmethod
+    def __init__(self, status_code, json, exception=None):
+      self.status_code = status_code
+      self.json = json
+      self.exception = exception
+
+class PrometheusRes(BaseRes):
   """ API for metrics source. Return Prometheus Response.
       :returns Prometheus Response - status_code, json, exception
       :rtype: status_code: int , json: str, exception: Exception
@@ -22,8 +32,9 @@ class PrometheusRes:
     self.status_code = status_code
     self.json = json
     self.exception = exception
+    
 
-class JolokiaRes:
+class JolokiaRes(BaseRes):
   """ API for metrics source. Return Jolokia Response.
       :returns Jolokia Response - status_code, json, exception
       :rtype: status_code: int , json: str, exception: Exception
