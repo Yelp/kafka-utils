@@ -92,7 +92,7 @@ class Connection:
 
 
 @contextmanager
-def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5, ssh_password=None):
+def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5, ssh_password=None, ssh_username=None):
     """Manages a SSH connection to the desired host.
        Will leverage your ssh config at ~/.ssh/config if available
 
@@ -108,6 +108,8 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
     :type max_timeout: int
     :param ssh_password: SSH password to use if needed
     :type ssh_password: str
+    :param ssh_username: SSH username to use if needed
+    :type ssh_username: str
     :returns a SSH connection to the desired host
     :rtype: Connection
 
@@ -123,6 +125,8 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
         }
         if ssh_password:
             cfg['password'] = ssh_password
+        if ssh_username:
+            cfg['username'] = ssh_username
 
         ssh_config = SSHConfig()
         user_config_file = os.path.expanduser("~/.ssh/config")

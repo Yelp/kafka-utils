@@ -23,6 +23,8 @@ import math
 import sys
 import time
 from operator import itemgetter
+from typing import Any
+import re
 
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
@@ -32,6 +34,7 @@ from six.moves import zip
 from .task import PostStopTask
 from .task import PreStopTask
 from .task import TaskFailedException
+from .response import PrometheusRes, JolokiaRes
 from kafka_utils.util import config
 from kafka_utils.util.ssh import report_stderr
 from kafka_utils.util.ssh import report_stdout
@@ -40,7 +43,8 @@ from kafka_utils.util.utils import dynamic_import
 from kafka_utils.util.zookeeper import ZK
 
 
-UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
+JOLOKIA_UNDER_REPL_KEY = "kafka.server:name=UnderReplicatedPartitions,type=ReplicaManager/Value"
+EXPORTER_UNDER_REPL_KEY = "kafka_server_replicamanager_underreplicatedpartitions"
 
 DEFAULT_CHECK_INTERVAL_SECS = 10
 DEFAULT_CHECK_COUNT = 12
@@ -49,6 +53,8 @@ DEFAULT_JOLOKIA_PORT = 8778
 DEFAULT_JOLOKIA_PREFIX = "jolokia/"
 DEFAULT_JOLOKIA_USER = None
 DEFAULT_JOLOKIA_PASSWORD = None
+DEFAULT_EXPORTER_PORT = 9393
+DEFAULT_EXPORTER_SUFFIX = "metrics"
 DEFAULT_STOP_COMMAND = "service kafka stop"
 DEFAULT_START_COMMAND = "service kafka start"
 
@@ -56,6 +62,8 @@ DEFAULT_START_COMMAND = "service kafka start"
 class WaitTimeoutException(Exception):
     pass
 
+class PrometheusNotReady(Exception):
+    pass
 
 def parse_opts():
     parser = argparse.ArgumentParser(
@@ -108,16 +116,36 @@ def parse_opts():
         default=DEFAULT_TIME_LIMIT_SECS,
     )
     parser.add_argument(
+        '-p',
+        '--prometheus',
+        help='use Prometheus metrics exporter Default: %(default)s',
+        action="store_true",
+    )
+    parser.add_argument(
+        '--exporter-port',
+        help='the jolokia port on the server. Default: %(default)s',
+        type=int,
+        default=DEFAULT_EXPORTER_PORT,
+    )
+    parser.add_argument(
+        '--exporter-suffix',
+        help='the jolokia HTTP prefix. Default: %(default)s',
+        type=str,
+        default=DEFAULT_EXPORTER_SUFFIX,
+    )
+    parser.add_argument(
         '--jolokia-port',
         help='the jolokia port on the server. Default: %(default)s',
         type=int,
         default=DEFAULT_JOLOKIA_PORT,
+        dest='metrics_port'
     )
     parser.add_argument(
         '--jolokia-prefix',
         help='the jolokia HTTP prefix. Default: %(default)s',
         type=str,
         default=DEFAULT_JOLOKIA_PREFIX,
+        dest='metrics_prefix'
     )
     parser.add_argument(
         '--jolokia-user',
@@ -187,6 +215,11 @@ def parse_opts():
         type=str,
         help=('SSH passowrd to use if needed'),
     )
+    parser.add_argument(
+        '--ssh-username',
+        type=str,
+        help=('SSH username to use if needed'),
+    )
     return parser.parse_args()
 
 
@@ -224,17 +257,52 @@ def filter_broker_list(brokers, filter_by):
     filter_by_set = set(filter_by)
     return [(id, host) for id, host in brokers if id in filter_by_set]
 
-
-def generate_requests(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia_password):
-    """Return a generator of requests to fetch the under replicated
+def prometheus_requests(hosts, metrics_port, metrics_prefix):
+    """Use Prometheus to return a generator of requests to fetch the under replicated
     partition number from the specified hosts.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param metrics_port: HTTP port for Prometheus
+    :type metrics_port: integer
+    :param metrics_prefix: Endpoint suffix for the Prometheus request
+    :type metrics_prefix: string
+    """
+    pattern = '({key})({{.*}})\s(\d+.\d+)'.format(key=EXPORTER_UNDER_REPL_KEY)
+    session = FuturesSession()
+    for host in hosts:
+        url = "http://{host}:{port}/{prefix}".format(
+            host=host,
+            port=metrics_port,
+            prefix=metrics_prefix
+        )
+        try:
+            s = session.get(url).result()
+        except Exception as exception_type:
+            yield host, PrometheusRes(400,Any, exception_type)
+        if s.status_code != 200:
+            yield host, PrometheusRes(400,Any, exception_type)
+        else:
+            try:
+                match = re.search(pattern, s.text)
+                if match is None:
+                    return host, PrometheusRes(400, Any, PrometheusNotReady)
+                int_value = int(float(match.group(3)))
+            except re.error:
+                print("Regex pattern match failed for: {}".format(pattern))
+                yield host, PrometheusRes(400, Any)
+            yield host, PrometheusRes(s.status_code, int_value)
+
+def jolokia_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password):
+    """Use Jolokita to return a generator of requests to fetch the under replicated
+    partition number from the specified hosts.
+
+    :param hosts: list of brokers ip addresses
+    :type hosts: list of strings
+    :param metrics_port: HTTP port for Jolokia
+    :type metrics_port: integer
+    :param metrics_prefix: HTTP prefix on the server for the Jolokia queries
+    :type metrics_prefix: string
     :param jolokia_user: Username for Jolokia, if needed
     :type jolokia_user: string
     :param jolokia_password: Password for Jolokia, if needed
@@ -247,48 +315,80 @@ def generate_requests(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia
     for host in hosts:
         url = "http://{host}:{port}/{prefix}/read/{key}".format(
             host=host,
-            port=jolokia_port,
-            prefix=jolokia_prefix,
-            key=UNDER_REPL_KEY,
+            port=metrics_port,
+            prefix=metrics_prefix,
+            key=JOLOKIA_UNDER_REPL_KEY,
         )
-        yield host, session.get(url)
+        try:
+            s = session.get(url).result()
+        except Exception as exception_type:
+            yield host, JolokiaRes(s.status_code, s.json(), exception_type)
+        yield host, JolokiaRes(s.status_code, s.json())
+
+def generate_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password, is_prometheus):
+    """Return a generator of requests to fetch the under replicated
+    partition number from the specified hosts.
+
+    :param hosts: list of brokers ip addresses
+    :type hosts: list of strings
+    :param metrics_port: HTTP port for Jolokia
+    :type metrics_port: integer
+    :param metrics_prefix: HTTP prefix on the server for the Jolokia queries
+    :type metrics_prefix: string
+    :param jolokia_user: Username for Jolokia, if needed
+    :type jolokia_user: string
+    :param jolokia_password: Password for Jolokia, if needed
+    :type jolokia_password: string
+    :returns: generator of requests
+    :param is_prometheus: Use Prometheus over Jolokia
+    :type is_prometheus: bool
+    """
+    if is_prometheus:
+        return prometheus_requests(hosts, metrics_port, metrics_prefix)
+    else:
+        return jolokia_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password)
 
 
-def read_cluster_status(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia_password):
+def read_cluster_status(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password, is_prometheus):
     """Read and return the number of under replicated partitions and
     missing brokers from the specified hosts.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param metrics_port: HTTP port for Jolokia
+    :type metrics_port: integer
+    :param metrics_prefix: HTTP prefix on the server for the Jolokia queries
+    :type metrics_prefix: string
     :returns: tuple of integers
     :param jolokia_user: Username for Jolokia, if needed
     :type jolokia_user: string
     :param jolokia_password: Password for Jolokia, if needed
     :type jolokia_password: string
+    :param is_prometheus: Use Prometheus over Jolokia
+    :type is_prometheus: bool
     """
     under_replicated = 0
     missing_brokers = 0
-    for host, request in generate_requests(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolokia_password):
+    for host, response in generate_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password, is_prometheus):
         try:
-            response = request.result()
+            if response.exception != None:
+                raise response.exception
             if response.status_code == 401:
                 print("Jolokia Authentication Failed. Exiting.")
                 sys.exit(1)
             if 400 <= response.status_code <= 599:
                 print("Got status code {0}. Exiting.".format(response.status_code))
                 sys.exit(1)
-            json = response.json()
-            under_replicated += json['value']
+            under_replicated += response.json if is_prometheus else response.json['value']
         except RequestException as e:
             print("Broker {0} is down: {1}."
                   "This maybe because it is starting up".format(host, e), file=sys.stderr)
             missing_brokers += 1
         except KeyError:
             print("Cannot find the key, Kafka is probably still starting up", file=sys.stderr)
+            missing_brokers += 1
+        except PrometheusNotReady:
+            print("Prometheus is not yet ready and probably still starting up", file=sys.stderr)
             missing_brokers += 1
     return under_replicated, missing_brokers
 
@@ -341,23 +441,24 @@ def stop_broker(host, connection, stop_command, verbose):
 
 def wait_for_stable_cluster(
     hosts,
-    jolokia_port,
-    jolokia_prefix,
+    metrics_port,
+    metrics_prefix,
     jolokia_user,
     jolokia_password,
     check_interval,
     check_count,
     unhealthy_time_limit,
+    is_prometheus,
 ):
     """
     Block the caller until the cluster can be considered stable.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param metrics_port: HTTP port for Jolokia or Prometheus
+    :type metrics_port: integer
+    :param metrics_prefix: HTTP prefix on the server for the Jolokia or Prometheus queries
+    :type metrics_prefix: string
     :param jolokia_user: Username for Jolokia, if needed
     :type jolokia_user: string
     :param jolokia_password: Password for Jolokia, if needed
@@ -370,16 +471,19 @@ def wait_for_stable_cluster(
     :param unhealthy_time_limit: the maximum number of seconds it will wait for
     the cluster to become stable before exiting with error
     :type unhealthy_time_limit: integer
+    :param is_prometheus: Use Prometheus over Jolokia
+    :type is_prometheus: bool
     """
     stable_counter = 0
     max_checks = int(math.ceil(unhealthy_time_limit / check_interval))
     for i in itertools.count():
         partitions, brokers = read_cluster_status(
             hosts,
-            jolokia_port,
-            jolokia_prefix,
+            metrics_port,
+            metrics_prefix,
             jolokia_user,
-            jolokia_password
+            jolokia_password,
+            is_prometheus
         )
         if partitions or brokers:
             stable_counter = 0
@@ -410,8 +514,8 @@ def execute_task(tasks, host):
 
 def execute_rolling_restart(
     brokers,
-    jolokia_port,
-    jolokia_prefix,
+    metrics_port,
+    metrics_prefix,
     jolokia_user,
     jolokia_password,
     check_interval,
@@ -423,7 +527,9 @@ def execute_rolling_restart(
     post_stop_task,
     start_command,
     stop_command,
-    ssh_password=None
+    is_prometheus,
+    ssh_password=None,
+    ssh_username=None
 ):
     """Execute the rolling restart on the specified brokers. It checks the
     number of under replicated partitions on each broker, using Jolokia.
@@ -434,10 +540,10 @@ def execute_rolling_restart(
 
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
-    :param jolokia_port: HTTP port for Jolokia
-    :type jolokia_port: integer
-    :param jolokia_prefix: HTTP prefix on the server for the Jolokia queries
-    :type jolokia_prefix: string
+    :param metrics_port: HTTP port for Jolokia or Prometheus
+    :type metrics_port: integer
+    :param metrics_prefix: HTTP prefix on the server for the Jolokia or Prometheus queries
+    :type metrics_prefix: string
     :param jolokia_user: Username for Jolokia, if needed
     :type jolokia_user: string
     :param jolokia_password: Password for Jolokia, if needed
@@ -462,42 +568,48 @@ def execute_rolling_restart(
     :type start_command: string
     :param stop_command: the stop command for kafka
     :type stop_command: string
+    :param is_prometheus: Use Prometheus over Jolokia
+    :type is_prometheus: bool
     :param ssh_password: The ssh password to use if needed
     :type ssh_password: string
+    :param ssh_username: The ssh username to use if needed
+    :type ssh_username: string
     """
     all_hosts = [b[1] for b in brokers]
     for n, host in enumerate(all_hosts[skip:]):
         with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2,
-                 ssh_password=ssh_password) as connection:
+                 ssh_password=ssh_password, ssh_username=ssh_username) as connection:
             execute_task(pre_stop_task, host)
             wait_for_stable_cluster(
                 all_hosts,
-                jolokia_port,
-                jolokia_prefix,
+                metrics_port,
+                metrics_prefix,
                 jolokia_user,
                 jolokia_password,
                 check_interval,
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
+                is_prometheus,
             )
             print("Stopping {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
             stop_broker(host, connection, stop_command, verbose)
             execute_task(post_stop_task, host)
         # we open a new SSH connection in case the hostname has a new IP
         with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2,
-                 ssh_password=ssh_password) as connection:
+                 ssh_password=ssh_password, ssh_username=ssh_username) as connection:
             print("Starting {0} ({1}/{2})".format(host, n + 1, len(all_hosts) - skip))
             start_broker(host, connection, start_command, verbose)
     # Wait before terminating the script
     wait_for_stable_cluster(
         all_hosts,
-        jolokia_port,
-        jolokia_prefix,
+        metrics_port,
+        metrics_prefix,
         jolokia_user,
         jolokia_password,
         check_interval,
         check_count,
         unhealthy_time_limit,
+        is_prometheus,
     )
 
 
@@ -595,6 +707,9 @@ def run():
         sys.exit(1)
     pre_stop_tasks = []
     post_stop_tasks = []
+    if opts.prometheus:
+        print("Using Prometheus metrics exporter")
+        opts.metrics_port, opts.metrics_prefix = DEFAULT_EXPORTER_PORT, DEFAULT_EXPORTER_SUFFIX
     if opts.task:
         pre_stop_tasks, post_stop_tasks = get_task_class(opts.task, opts.task_args)
     print_brokers(cluster_config, brokers[opts.skip:])
@@ -603,8 +718,8 @@ def run():
         try:
             execute_rolling_restart(
                 brokers,
-                opts.jolokia_port,
-                opts.jolokia_prefix,
+                opts.metrics_port,
+                opts.metrics_prefix,
                 opts.jolokia_user,
                 opts.jolokia_password,
                 opts.check_interval,
@@ -616,7 +731,9 @@ def run():
                 post_stop_tasks,
                 opts.start_command,
                 opts.stop_command,
-                opts.ssh_password
+                opts.prometheus,
+                opts.ssh_password,
+                opts.ssh_username,
             )
         except TaskFailedException:
             print("ERROR: pre/post tasks failed, exiting")
