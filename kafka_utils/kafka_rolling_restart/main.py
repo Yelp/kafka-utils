@@ -123,13 +123,13 @@ def parse_opts():
     )
     parser.add_argument(
         '--exporter-port',
-        help='the jolokia port on the server. Default: %(default)s',
+        help='the metrics exporter port on the server. Default: %(default)s',
         type=int,
         default=DEFAULT_EXPORTER_PORT,
     )
     parser.add_argument(
         '--exporter-suffix',
-        help='the jolokia HTTP prefix. Default: %(default)s',
+        help='the metrics exporter suffix. Default: %(default)s',
         type=str,
         default=DEFAULT_EXPORTER_SUFFIX,
     )
@@ -258,9 +258,8 @@ def filter_broker_list(brokers, filter_by):
     return [(id, host) for id, host in brokers if id in filter_by_set]
 
 def prometheus_requests(hosts, metrics_port, metrics_prefix):
-    """Use Prometheus to return a generator of requests to fetch the under replicated
-    partition number from the specified hosts.
-
+    """Use Prometheus to fetch the under replicated partition number from the specified hosts.
+    
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
     :param metrics_port: HTTP port for Prometheus
@@ -294,8 +293,7 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
             yield host, PrometheusRes(s.status_code, int_value)
 
 def jolokia_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password):
-    """Use Jolokita to return a generator of requests to fetch the under replicated
-    partition number from the specified hosts.
+    """Use Jolokita to fetch the under replicated partition number from the specified hosts.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
@@ -326,8 +324,8 @@ def jolokia_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_
         yield host, JolokiaRes(s.status_code, s.json())
 
 def generate_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password, is_prometheus):
-    """Return a generator of requests to fetch the under replicated
-    partition number from the specified hosts.
+    """By default, use Jolokia to fetch under replicated metrics.
+    If is_prometheus bool set to true, use Prometheus exporter to fetch it.
 
     :param hosts: list of brokers ip addresses
     :type hosts: list of strings
