@@ -11,7 +11,7 @@ jsonschema==3.0.1
 kafka-python==1.4.7
 kazoo==2.6.1
 ndg-httpsclient==0.4.3
-paramiko==2.4.2
+paramiko==2.10.1
 pyOpenSSL==19.0.0
 pyasn1==0.4.5
 pytz==2018.4
