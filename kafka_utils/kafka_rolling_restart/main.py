@@ -285,7 +285,7 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
             try:
                 match = re.search(pattern, s.text)
                 if match is None:
-                    return host, PrometheusRes(400, Any, PrometheusNotReady)
+                    yield host, PrometheusRes(400, Any, PrometheusNotReady)
                 int_value = int(float(match.group(3)))
             except re.error:
                 print("Regex pattern match failed for: {}".format(pattern))
