@@ -292,6 +292,9 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
             except AssertionError:
                 print("Prometheus is not ready, or unable to find key: {}".format(EXPORTER_UNDER_REPL_KEY))
                 yield host, PrometheusRes(400, Any, PrometheusNotReady)
+            except Exception as e:
+                print("Prometheus is not ready.\n{e}".format(e))
+                yield host, PrometheusRes(400, Any, PrometheusNotReady)
             yield host, PrometheusRes(s.status_code, int(match.samples[0].value))
 
 def jolokia_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password):
