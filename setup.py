@@ -59,6 +59,7 @@ setup(
         "requests<3.0.0",
         "retrying",
         "six>=1.10.0",
+        "prometheus-client=0.14.1",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
