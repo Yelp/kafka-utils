@@ -24,7 +24,7 @@ import sys
 import time
 from operator import itemgetter
 from typing import Any
-import re
+from prometheus_client.parser import text_string_to_metric_families
 
 from requests.exceptions import RequestException
 from requests_futures.sessions import FuturesSession
@@ -257,6 +257,12 @@ def filter_broker_list(brokers, filter_by):
     filter_by_set = set(filter_by)
     return [(id, host) for id, host in brokers if id in filter_by_set]
 
+def prometheus_requests_parse(metrics_output, metric_name):
+  metrics = list(text_string_to_metric_families(metrics_output))
+  target_metric = list(filter(lambda x: x.name == metric_name, metrics))
+  assert len(target_metric) == 1
+  return target_metric[0]
+
 def prometheus_requests(hosts, metrics_port, metrics_prefix):
     """Use Prometheus to fetch the under replicated partition number from the specified hosts.
     
@@ -267,7 +273,6 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
     :param metrics_prefix: Endpoint suffix for the Prometheus request
     :type metrics_prefix: string
     """
-    pattern = '({key})({{.*}})\s(\d+.\d+)'.format(key=EXPORTER_UNDER_REPL_KEY)
     session = FuturesSession()
     for host in hosts:
         url = "http://{host}:{port}/{prefix}".format(
@@ -283,12 +288,12 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
             yield host, PrometheusRes(400,Any, exception_type)
         else:
             try:
-                match = re.search(pattern, s.text)
+                match = prometheus_requests_parse(s.text, EXPORTER_UNDER_REPL_KEY)
                 if match is None:
                     yield host, PrometheusRes(400, Any, PrometheusNotReady)
-                int_value = int(float(match.group(3)))
-            except re.error:
-                print("Regex pattern match failed for: {}".format(pattern))
+                int_value = int(match.samples[0].value)
+            except AssertionError:
+                print("Unable to find key in Prometheus output: {}".format(EXPORTER_UNDER_REPL_KEY))
                 yield host, PrometheusRes(400, Any)
             yield host, PrometheusRes(s.status_code, int_value)
 
