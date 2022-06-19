@@ -287,6 +287,7 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
         if s.status_code != 200:
             yield host, PrometheusRes(400,Any, exception_type)
         else:
+            int_value = 0
             try:
                 match = prometheus_requests_parse(s.text, EXPORTER_UNDER_REPL_KEY)
                 int_value = int(match.samples[0].value)
