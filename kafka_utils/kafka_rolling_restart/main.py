@@ -289,12 +289,10 @@ def prometheus_requests(hosts, metrics_port, metrics_prefix):
         else:
             try:
                 match = prometheus_requests_parse(s.text, EXPORTER_UNDER_REPL_KEY)
-                if match is None:
-                    yield host, PrometheusRes(400, Any, PrometheusNotReady)
                 int_value = int(match.samples[0].value)
             except AssertionError:
-                print("Unable to find key in Prometheus output: {}".format(EXPORTER_UNDER_REPL_KEY))
-                yield host, PrometheusRes(400, Any)
+                print("Prometheus is not ready, or unable to find key: {}".format(EXPORTER_UNDER_REPL_KEY))
+                yield host, PrometheusRes(400, Any, PrometheusNotReady)
             yield host, PrometheusRes(s.status_code, int_value)
 
 def jolokia_requests(hosts, metrics_port, metrics_prefix, jolokia_user, jolokia_password):
