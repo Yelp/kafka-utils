@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 MAINTAINER Team Data Streams Core <data-streams-core@yelp.com>
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -30,17 +30,17 @@ RUN chmod 755 /tmp/download-kafka.sh
 RUN /tmp/download-kafka.sh && tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz -C /opt && rm /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
 ENV PATH="$PATH:$KAFKA_HOME/bin"
 
+RUN add-apt-repository ppa:deadsnakes/ppa
+
 # Install Python
-RUN apt-get install -y \
+RUN apt-get update && apt-get install -y \
     build-essential \
     libffi-dev \
     libssl-dev \
-    python2.7 \
-    python2.7-dev \
-    python3.6 \
-    python3.6-dev \
-    python3-distutils \
-    python-pip \
+    python3.7 \
+    python3.7-distutils \
+    python3.8 \
+    python3.8-distutils \
     python-pkg-resources \
     python-setuptools \
     tox
