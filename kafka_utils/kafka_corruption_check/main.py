@@ -72,7 +72,7 @@ def report_stderr(host, stderr):
     """
     lines = stderr.readlines()
     if lines:
-        print("STDERR from {host}:".format(host=host))
+        print(f"STDERR from {host}:")
         for line in lines:
             print(line.rstrip(), file=sys.stderr)
 
@@ -308,7 +308,7 @@ def print_line(host, path, line, line_type):
             path=path,
         )
     )
-    print("{ltype} Output: {line}".format(ltype=line_type, line=line))
+    print(f"{line_type} Output: {line}")
 
 
 def check_files_on_host(java_home, host, files, batch_size):
@@ -439,7 +439,7 @@ def check_cluster(
     if not check_replicas:  # remove replicas
         broker_files = filter_leader_files(cluster_config, broker_files)
     processes = []
-    print("Starting {n} parallel processes".format(n=len(broker_files)))
+    print(f"Starting {len(broker_files)} parallel processes")
     try:
         for broker, host, files in broker_files:
             print(

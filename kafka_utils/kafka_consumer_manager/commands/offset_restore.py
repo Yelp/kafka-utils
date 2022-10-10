@@ -179,4 +179,4 @@ class OffsetRestore(OffsetManagerBase):
         # Commit offsets
         consumer_group = parsed_consumer_offsets['groupid']
         set_consumer_offsets(client, consumer_group, new_offsets)
-        print("Restored to new offsets {offsets}".format(offsets=dict(new_offsets)))
+        print(f"Restored to new offsets {dict(new_offsets)}")

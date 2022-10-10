@@ -139,7 +139,7 @@ class Partition:
         return count
 
     def __str__(self):
-        return "{name}".format(name=self._name)
+        return f"{self._name}"
 
     def __repr__(self):
-        return "{}".format(self)
+        return f"{self}"

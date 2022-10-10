@@ -272,7 +272,7 @@ def read_cluster_status(hosts, jolokia_port, jolokia_prefix, jolokia_user, jolok
                 print("Jolokia Authentication Failed. Exiting.")
                 sys.exit(1)
             if 400 <= response.status_code <= 599:
-                print("Got status code {}. Exiting.".format(response.status_code))
+                print(f"Got status code {response.status_code}. Exiting.")
                 sys.exit(1)
             json = response.json()
             under_replicated += json['value']
@@ -294,9 +294,9 @@ def print_brokers(cluster_config, brokers):
     :param brokers: the brokers that will be restarted
     :type brokers: map of broker ids and host names
     """
-    print("Will restart the following brokers in {}:".format(cluster_config.name))
+    print(f"Will restart the following brokers in {cluster_config.name}:")
     for id, host in brokers:
-        print("  {}: {}".format(id, host))
+        print(f"  {id}: {host}")
 
 
 def ask_confirmation():
@@ -473,13 +473,13 @@ def execute_rolling_restart(
                 1 if n == 0 else check_count,
                 unhealthy_time_limit,
             )
-            print("Stopping {} ({}/{})".format(host, n + 1, len(all_hosts) - skip))
+            print(f"Stopping {host} ({n + 1}/{len(all_hosts) - skip})")
             stop_broker(host, connection, stop_command, verbose)
             execute_task(post_stop_task, host)
         # we open a new SSH connection in case the hostname has a new IP
         with ssh(host=host, forward_agent=True, sudoable=True, max_attempts=3, max_timeout=2,
                  ssh_password=ssh_password) as connection:
-            print("Starting {} ({}/{})".format(host, n + 1, len(all_hosts) - skip))
+            print(f"Starting {host} ({n + 1}/{len(all_hosts) - skip})")
             start_broker(host, connection, start_command, verbose)
     # Wait before terminating the script
     wait_for_stable_cluster(
@@ -536,7 +536,7 @@ def validate_broker_ids_subset(broker_ids, subset_ids):
     for subset_id in subset_ids:
         valid = valid and subset_id in all_ids
         if subset_id not in all_ids:
-            print("Error: user specified broker id {} does not exist in cluster.".format(subset_id))
+            print(f"Error: user specified broker id {subset_id} does not exist in cluster.")
     return valid
 
 

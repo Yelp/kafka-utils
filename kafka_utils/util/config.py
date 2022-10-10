@@ -121,7 +121,7 @@ class TopologyConfiguration:
         """Load the topology configuration"""
         config_path = os.path.join(
             self.kafka_topology_path,
-            '{id}.yaml'.format(id=self.cluster_type),
+            f'{self.cluster_type}.yaml',
         )
         self.log.debug("Loading configuration from %s", config_path)
         if os.path.isfile(config_path):
@@ -164,7 +164,7 @@ class TopologyConfiguration:
                 broker_list=cluster['broker_list'],
                 zookeeper=cluster['zookeeper'],
             )
-        raise ConfigurationError("No cluster with name: {}".format(name))
+        raise ConfigurationError(f"No cluster with name: {name}")
 
     def get_local_cluster(self):
         if self.local_config:
@@ -238,7 +238,7 @@ def get_cluster_config(
             pass
     if not topology:
         raise MissingConfigurationError(
-            "No available configuration for type {}".format(cluster_type),
+            f"No available configuration for type {cluster_type}",
         )
 
     if cluster_name:
@@ -260,7 +260,7 @@ def iter_configurations(kafka_topology_base_path=None):
     for config_dir in config_dirs:
         new_types = [x for x in map(
             lambda x: os.path.basename(x)[:-5],
-            glob.glob('{}/*.yaml'.format(config_dir)),
+            glob.glob(f'{config_dir}/*.yaml'),
         ) if x not in types]
         for cluster_type in new_types:
             try:

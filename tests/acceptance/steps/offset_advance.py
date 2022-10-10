@@ -53,5 +53,5 @@ def step_impl4(context):
 @then('the latest message offsets will be shown')
 def step_impl5_2(context):
     offset = context.msgs_produced
-    pattern = 'Current Offset: {}'.format(offset)
+    pattern = f'Current Offset: {offset}'
     assert pattern in context.output

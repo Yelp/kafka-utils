@@ -168,7 +168,7 @@ class OffsetGet(OffsetManagerBase):
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
         for topic, metadata_tuples in consumer_offsets_metadata.items():
             diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
-            print("Topic Name: {topic}  Total Distance: {diff}".format(topic=topic, diff=diff_sum))
+            print(f"Topic Name: {topic}  Total Distance: {diff_sum}")
             for metadata_tuple in metadata_tuples:
                 print(
                     "\tPartition ID: {partition}".format(

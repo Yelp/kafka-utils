@@ -104,7 +104,7 @@ class ReplaceBrokerCmd(ClusterManagerCmd):
         ):
             self.log.error('Invalid assignment %s.', cluster_topology.assignment)
             print(
-                'Invalid assignment: {}'.format(cluster_topology.assignment),
+                f'Invalid assignment: {cluster_topology.assignment}',
                 file=sys.stderr,
             )
             sys.exit(1)

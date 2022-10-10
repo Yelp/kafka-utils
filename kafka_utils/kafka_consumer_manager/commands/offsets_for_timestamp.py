@@ -98,10 +98,10 @@ class OffsetsForTimestamp(OffsetManagerBase):
         topics = OrderedDict(sorted(topics.items(), key=lambda k: k[0]))
         for topic in topics.keys():
             topics[topic] = OrderedDict(sorted(topics[topic].items(), key=lambda k: k[0]))
-            print("Topic Name: {}".format(topic))
+            print(f"Topic Name: {topic}")
             for partition, offset_timestamp in topics[topic].items():
                 print(
-                    "\tPartition ID: {}".format(partition),
+                    f"\tPartition ID: {partition}",
                 )
                 offset = "not found"
                 timestamp = orig_timestamp
@@ -118,4 +118,4 @@ class OffsetsForTimestamp(OffsetManagerBase):
                         date=date,
                     ),
                 )
-                print("\t\tOffset: {offset}".format(offset=offset))
+                print(f"\t\tOffset: {offset}")

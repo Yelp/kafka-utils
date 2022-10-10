@@ -70,11 +70,11 @@ def _prepare_output(partitions, unavailable_brokers, verbose, head_limit):
         )
         if verbose:
             lines = (
-                '{}:{}'.format(topic, partition)
+                f'{topic}:{partition}'
                 for (topic, partition) in partitions
             )
             if head_limit != -1:
-                title = "Top {} partitions:\n".format(head_limit)
+                title = f"Top {head_limit} partitions:\n"
             else:
                 title = "Partitions:\n"
 

@@ -102,7 +102,7 @@ def _prepare_output(topics_with_wrong_rf, verbose, head_limit):
                 for topic in topics_with_wrong_rf
             )
             if head_limit != -1:
-                title = "Top {} topics:\n".format(head_limit)
+                title = f"Top {head_limit} topics:\n"
             else:
                 title = "Topics:\n"
 

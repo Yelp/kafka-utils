@@ -276,7 +276,7 @@ class GeneticBalancer(ClusterBalancer):
                 decommission_brokers.append(broker)
             except KeyError:
                 raise InvalidBrokerIdError(
-                    "No broker found with id {broker_id}".format(broker_id=broker_id)
+                    f"No broker found with id {broker_id}"
                 )
 
         partitions = defaultdict(int)
@@ -323,7 +323,7 @@ class GeneticBalancer(ClusterBalancer):
             partition = self.cluster_topology.partitions[partition_name]
         except KeyError:
             raise InvalidPartitionError(
-                "Partition name {name} not found.".format(name=partition_name),
+                f"Partition name {partition_name} not found.",
             )
 
         active_brokers = self.cluster_topology.active_brokers
@@ -399,7 +399,7 @@ class GeneticBalancer(ClusterBalancer):
             partition = self.cluster_topology.partitions[partition_name]
         except KeyError:
             raise InvalidPartitionError(
-                "Partition name {name} not found.".format(name=partition_name),
+                f"Partition name {partition_name} not found.",
             )
 
         if partition.replication_factor - count < 1:

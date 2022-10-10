@@ -57,7 +57,7 @@ class ListTopics(OffsetManagerBase):
             ))
             sys.exit(1)
 
-        print("Consumer Group ID: {groupid}".format(groupid=args.groupid))
+        print(f"Consumer Group ID: {args.groupid}")
         for topic, partitions in topics_dict.items():
-            print("\tTopic: {topic}".format(topic=topic))
-            print("\t\tPartitions: {partitions}".format(partitions=partitions))
+            print(f"\tTopic: {topic}")
+            print(f"\t\tPartitions: {partitions}")

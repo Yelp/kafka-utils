@@ -378,7 +378,7 @@ def display_assignment_changes(plan_details, to_log=True):
     topic-partition to replica layout over brokers.
     """
     curr_plan_list, new_plan_list, total_changes = plan_details
-    action_cnt = '\n[INFO] Total actions required {}'.format(total_changes)
+    action_cnt = f'\n[INFO] Total actions required {total_changes}'
     _log_or_display(to_log, action_cnt)
     action_cnt = (
         '[INFO] Total actions that will be executed {}'
@@ -416,7 +416,7 @@ def display_assignment_changes(plan_details, to_log=True):
         proposed_repl = [
             tp_repl[1] for tp_repl in new_plan_list if tp_repl[0] == tp
         ][0]
-        tp_str = '{topic} - {partition:<2d}'.format(topic=tp[0], partition=tp[1])
+        tp_str = f'{tp[0]} - {tp[1]:<2d}'
         row = (
             '{tp:<30s}: {curr_repl:<20s} ==> {proposed_repl:<20s}'.format(
                 tp=tp_str,

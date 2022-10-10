@@ -48,7 +48,7 @@ class Connection:
 
         :raises SSHException: if the server fails to execute the command
         """
-        new_command = "sudo {}".format(command)
+        new_command = f"sudo {command}"
         return self.exec_command(new_command, bufsize)
 
     def exec_command(self, command, bufsize=-1, check_status=True):
@@ -77,7 +77,7 @@ class Connection:
 
         channel.exec_command(command)
         if check_status and channel.recv_exit_status() != 0:
-            raise RuntimeError("Command execution error: {}".format(command))
+            raise RuntimeError(f"Command execution error: {command}")
 
         stdin = channel.makefile('wb', bufsize)
         stdout = channel.makefile('rb', bufsize)
@@ -144,14 +144,14 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
                 break
             except OSError as e:
                 if attempts < max_attempts:
-                    print("SSH to host {} failed, retrying...".format(host))
+                    print(f"SSH to host {host} failed, retrying...")
                     time.sleep(max_timeout)
                 else:
-                    print("SSH Exception: {}".format(e))
+                    print(f"SSH Exception: {e}")
 
         else:
             raise MaxConnectionAttemptsError(
-                "Exceeded max attempts to connect to host {} after {} retries".format(host, max_attempts)
+                f"Exceeded max attempts to connect to host {host} after {max_attempts} retries"
             )
 
         yield Connection(client, forward_agent, sudoable)
@@ -167,7 +167,7 @@ def report_stdout(host, stdout):
     """
     lines = stdout.readlines()
     if lines:
-        print("STDOUT from {host}:".format(host=host))
+        print(f"STDOUT from {host}:")
         for line in lines:
             print(line.rstrip(), file=sys.stdout)
 
@@ -182,6 +182,6 @@ def report_stderr(host, stderr):
     """
     lines = stderr.readlines()
     if lines:
-        print("STDERR from {host}:".format(host=host))
+        print(f"STDERR from {host}:")
         for line in lines:
             print(line.rstrip(), file=sys.stderr)

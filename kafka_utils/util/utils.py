@@ -21,7 +21,7 @@ def get_module(module_full_name):
     if ':' in module_full_name:
         path, module_name = module_full_name.rsplit(':', 1)
         if not os.path.isdir(path):
-            print("{} is not a valid directory".format(path), file=sys.stderr)
+            print(f"{path} is not a valid directory", file=sys.stderr)
             sys.exit(1)
         sys.path.append(path)
         return importlib.import_module(module_name)

@@ -205,7 +205,7 @@ def consumer_partitions_for_topic(consumer, topic):
             topic_partitions.append(TopicPartition(topic, partition))
     else:
         logging.error(
-            "No partitions found for topic {}. Maybe it doesn't exist?".format(topic),
+            f"No partitions found for topic {topic}. Maybe it doesn't exist?",
         )
     return topic_partitions
 
@@ -367,7 +367,7 @@ class KafkaGroupReader:
                 # If offsets for all partitions are 0, consider the topic as unsubscribed
                 if not any(partitions.values()):
                     del self._kafka_groups[group][topic]
-                    self.log.info("Removed group {group} topic {topic} from list of groups".format(group=group, topic=topic))
+                    self.log.info(f"Removed group {group} topic {topic} from list of groups")
 
     def remove_partition_from_consumer(self, partition):
         deleted = self.active_partitions.pop(partition)
@@ -427,7 +427,7 @@ class KafkaGroupReader:
         elif offset is None and group in self._kafka_groups and \
                 topic in self._kafka_groups[group]:  # No offset means topic deletion
             del self._kafka_groups[group][topic]
-            self.log.info("Removed group {group} topic {topic} from list of groups".format(group=group, topic=topic))
+            self.log.info(f"Removed group {group} topic {topic} from list of groups")
 
     def get_current_watermarks(self, partitions=None):
         client = KafkaToolClient(self.kafka_config.broker_list)

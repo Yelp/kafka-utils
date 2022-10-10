@@ -349,7 +349,7 @@ def _commit_offsets_to_watermark(
         ]
     else:
         raise ValueError(
-            "Unknown watermark: {watermark}".format(watermark=watermark)
+            f"Unknown watermark: {watermark}"
         )
 
     send_api = kafka_client.send_offset_commit_request_kafka

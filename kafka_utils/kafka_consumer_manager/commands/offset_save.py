@@ -141,6 +141,6 @@ class OffsetSave(OffsetManagerBase):
             try:
                 json.dump(consumer_offsets_data, json_file)
             except ValueError:
-                print("Error: Invalid json data {data}".format(data=consumer_offsets_data))
+                print(f"Error: Invalid json data {consumer_offsets_data}")
                 raise
-            print("Consumer offset data saved in json-file {file}".format(file=json_file_name))
+            print(f"Consumer offset data saved in json-file {json_file_name}")

@@ -30,7 +30,7 @@ def parse_args():
         '-v',
         '--version',
         action='version',
-        version="%(prog)s {}".format(__version__),
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument(
         '--discovery-base-path',
@@ -48,7 +48,7 @@ def run():
     args = parse_args()
 
     for config in iter_configurations(args.discovery_base_path):
-        print("cluster-type {type}:".format(type=config.cluster_type))
+        print(f"cluster-type {config.cluster_type}:")
         for cluster in config.get_all_clusters():
             print(
                 "\tcluster-name: {name}\n"

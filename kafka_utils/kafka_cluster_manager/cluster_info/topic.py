@@ -57,7 +57,7 @@ class Topic:
         self._partitions.add(partition)
 
     def __str__(self):
-        return "{}".format(self._id)
+        return f"{self._id}"
 
     def __repr__(self):
-        return "{}".format(self)
+        return f"{self}"

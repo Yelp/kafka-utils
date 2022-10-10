@@ -88,5 +88,5 @@ def step_impl6(context):
 @then('the earliest message offsets will be shown')
 def step_impl7(context):
     offset = 0
-    pattern = 'Current Offset: {}'.format(offset)
+    pattern = f'Current Offset: {offset}'
     assert pattern in context.output

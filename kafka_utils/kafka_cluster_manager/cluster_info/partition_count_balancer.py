@@ -74,7 +74,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 # Raise an error for now. As alternative we may ignore the
                 # invalid id and continue with the others.
                 raise InvalidBrokerIdError(
-                    "Broker id {} does not exist in cluster".format(b_id),
+                    f"Broker id {b_id} does not exist in cluster",
                 )
             broker.mark_decommissioned()
             groups.add(broker.replication_group)
@@ -210,7 +210,7 @@ class PartitionCountBalancer(ClusterBalancer):
             except KeyError:
                 self.log.error("Invalid broker id %s.", b_id)
                 raise InvalidBrokerIdError(
-                    "Broker id {} does not exist in cluster".format(b_id),
+                    f"Broker id {b_id} does not exist in cluster",
                 )
             broker.mark_revoked_leadership()
 
@@ -424,7 +424,7 @@ class PartitionCountBalancer(ClusterBalancer):
             partition = self.cluster_topology.partitions[partition_name]
         except KeyError:
             raise InvalidPartitionError(
-                "Partition name {name} not found".format(name=partition_name),
+                f"Partition name {partition_name} not found",
             )
         if partition.replication_factor + count > len(self.cluster_topology.brokers):
             raise InvalidReplicationFactorError(
@@ -491,7 +491,7 @@ class PartitionCountBalancer(ClusterBalancer):
             partition = self.cluster_topology.partitions[partition_name]
         except KeyError:
             raise InvalidPartitionError(
-                "Partition name {name} not found".format(name=partition_name),
+                f"Partition name {partition_name} not found",
             )
         if partition.replication_factor <= count:
             raise InvalidReplicationFactorError(
@@ -505,7 +505,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 osr.append(self.cluster_topology.brokers[broker_id])
             except KeyError:
                 raise InvalidBrokerIdError(
-                    "No broker found with id {bid}".format(bid=broker_id),
+                    f"No broker found with id {broker_id}",
                 )
 
         non_empty_rgs = [

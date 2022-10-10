@@ -169,7 +169,7 @@ class ClusterTopology:
         except KeyError as e:
             self.log.error("Invalid broker id %s.", e.args[0])
             raise InvalidBrokerIdError(
-                "Broker id {} does not exist in cluster".format(e.args[0])
+                f"Broker id {e.args[0]} does not exist in cluster"
             )
 
     def update_cluster_topology(self, assignment):
@@ -226,5 +226,5 @@ class ClusterTopology:
                         .format(partition_name[0], partition_name[1]),
                     )
         except KeyError:
-            self.log.error("Could not parse given assignment {}".format(assignment))
+            self.log.error(f"Could not parse given assignment {assignment}")
             raise

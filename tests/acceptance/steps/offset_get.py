@@ -30,14 +30,14 @@ def step_impl4_5(context):
 @then('the correct offset will be shown')
 def step_impl5(context):
     offset = context.msgs_consumed
-    pattern = 'Current Offset: {}'.format(offset)
+    pattern = f'Current Offset: {offset}'
     assert pattern in context.output
 
 
 @then('the offset that was committed into Kafka will be shown')
 def step_impl5_2(context):
     offset = context.set_offset_kafka
-    pattern = 'Current Offset: {}'.format(offset)
+    pattern = f'Current Offset: {offset}'
     assert pattern in context.output
 
 

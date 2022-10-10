@@ -116,7 +116,7 @@ def _prepare_output(partitions, verbose, head_limit):
                 )
                 for p in partitions
             )
-            title = "Top {} partitions:\n".format(head_limit) + "\n".join(lines) if head_limit != -1 else "Partitions:\n"
+            title = f"Top {head_limit} partitions:\n" + "\n".join(lines) if head_limit != -1 else "Partitions:\n"
 
             out['verbose'] = title + "\n".join(lines)
     if verbose:

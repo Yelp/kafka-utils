@@ -31,7 +31,7 @@ class ReplicationGroup:
         self._id = id
         if brokers and not isinstance(brokers, set):
             raise TypeError(
-                "brokers has to be a set but type is {}".format(type(brokers)),
+                f"brokers has to be a set but type is {type(brokers)}",
             )
         self._brokers = brokers or set()
         self._sibling_distance = None
@@ -93,7 +93,7 @@ class ReplicationGroup:
         broker_dest = self._elect_dest_broker(partition)
         if not broker_dest:
             raise NotEligibleGroupError(
-                "No eligible brokers to accept partition {p}".format(p=partition),
+                f"No eligible brokers to accept partition {partition}",
             )
         source_broker.move_partition(partition, broker_dest)
 
@@ -417,7 +417,7 @@ class ReplicationGroup:
         broker.remove_partition(partition)
 
     def __str__(self):
-        return "{}".format(self._id)
+        return f"{self._id}"
 
     def __repr__(self):
-        return "{}".format(self)
+        return f"{self}"
