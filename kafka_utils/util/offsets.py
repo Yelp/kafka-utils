@@ -36,7 +36,7 @@ PartitionOffsets = namedtuple(
     'PartitionOffsets',
     ['topic', 'partition', 'highmark', 'lowmark']
 )
-"""Tuple representing the offsets for a topic partition.
+r"""Tuple representing the offsets for a topic partition.
 
 * **topic**\(``str``): Name of the topic
 * **partition**\(``int``): Partition number

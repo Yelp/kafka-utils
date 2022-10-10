@@ -124,7 +124,7 @@ def fetch_offsets(zk, consumer_group, topics):
 
 
 def prompt_user_input(in_str):
-    while(True):
+    while True:
         answer = input(in_str + ' ')
         if answer == "n" or answer == "no":
             sys.exit(0)

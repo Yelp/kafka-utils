@@ -31,7 +31,7 @@ ConsumerPartitionOffsets = namedtuple(
     'ConsumerPartitionOffsets',
     ['topic', 'partition', 'current', 'highmark', 'lowmark']
 )
-"""Tuple representing the consumer offsets for a topic partition.
+r"""Tuple representing the consumer offsets for a topic partition.
 
 * **topic**\(``str``): Name of the topic
 * **partition**\(``int``): Partition number

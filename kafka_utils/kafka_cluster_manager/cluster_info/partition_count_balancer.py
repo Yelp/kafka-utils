@@ -221,7 +221,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 )
             broker.mark_revoked_leadership()
 
-        assert(len(self.cluster_topology.brokers) - len(broker_ids) > 0), "Not " \
+        assert len(self.cluster_topology.brokers) - len(broker_ids) > 0, "Not " \
             "all brokers can be revoked for leadership"
         opt_leader_cnt = len(self.cluster_topology.partitions) // (
             len(self.cluster_topology.brokers) - len(broker_ids)

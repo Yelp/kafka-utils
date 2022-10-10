@@ -128,7 +128,7 @@ class Broker(object):
 
     def add_partition(self, partition):
         """Add partition to partition list."""
-        assert(partition not in self._partitions)
+        assert partition not in self._partitions
         # Add partition to existing set
         self._partitions.add(partition)
         # Add broker to replica list

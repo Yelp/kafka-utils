@@ -109,7 +109,7 @@ class Partition(object):
         partition needs to be changed.
         """
         # Replica set cannot be changed
-        assert(new_leader in self._replicas)
+        assert new_leader in self._replicas
         curr_leader = self.leader
         idx = self._replicas.index(new_leader)
         self._replicas[0], self._replicas[idx] = \

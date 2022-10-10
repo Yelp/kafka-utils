@@ -28,7 +28,7 @@ IONICE = "ionice -c 3"
 
 FIND_MINUTES_COMMAND = 'find "{data_path}" -type f -name "*.log" -mmin -{minutes}'
 FIND_START_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}"'
-FIND_RANGE_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}" \! -newermt "{end_time}"'
+FIND_RANGE_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}" \\! -newermt "{end_time}"'
 CHECK_COMMAND = 'JAVA_HOME="{java_home}" {ionice} kafka-run-class kafka.tools.DumpLogSegments --files "{files}"'
 REDUCE_OUTPUT = 'grep -v "isvalid: true"'
 

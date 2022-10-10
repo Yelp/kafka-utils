@@ -258,7 +258,7 @@ class OffsetWriter(OffsetManagerBase):
 
     @classmethod
     def get_forced_topic_partitions(cls, groupid, topic, partitions, client):
-        assert(topic is not None)
+        assert topic is not None
         if not partitions:
             partitions = client.get_partition_ids_for_topic(topic)
         return {topic: partitions}
