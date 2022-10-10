@@ -42,9 +42,8 @@ RUN apt-get install -y \
     python3-distutils \
     python-pip \
     python-pkg-resources \
-    python-setuptools
-
-RUN pip install tox
+    python-setuptools \
+    tox
 
 COPY run_tests.sh /scripts/run_tests.sh
 RUN chmod 755 /scripts/run_tests.sh
