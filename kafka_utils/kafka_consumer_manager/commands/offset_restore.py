@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
 import sys
 from collections import defaultdict
 from contextlib import closing
-
-import six
 
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util.client import KafkaToolClient
@@ -55,16 +48,16 @@ class OffsetRestore(OffsetManagerBase):
     @classmethod
     def parse_consumer_offsets(cls, json_file):
         """Parse current offsets from json-file."""
-        with open(json_file, 'r') as consumer_offsets_json:
+        with open(json_file) as consumer_offsets_json:
             try:
                 parsed_offsets = {}
                 parsed_offsets_data = json.load(consumer_offsets_json)
                 # Create new dict with partition-keys as integers
                 parsed_offsets['groupid'] = parsed_offsets_data['groupid']
                 parsed_offsets['offsets'] = {}
-                for topic, topic_data in six.iteritems(parsed_offsets_data['offsets']):
+                for topic, topic_data in parsed_offsets_data['offsets'].items():
                     parsed_offsets['offsets'][topic] = {}
-                    for partition, offset in six.iteritems(topic_data):
+                    for partition, offset in topic_data.items():
                         parsed_offsets['offsets'][topic][int(partition)] = offset
                 return parsed_offsets
             except ValueError:
@@ -82,7 +75,7 @@ class OffsetRestore(OffsetManagerBase):
         """
         new_offsets = defaultdict(dict)
         try:
-            for topic, partitions in six.iteritems(topic_partitions):
+            for topic, partitions in topic_partitions.items():
                 # Validate current offsets in range of low and highmarks
                 # Currently we only validate for positive offsets and warn
                 # if out of range of low and highmarks
@@ -159,10 +152,10 @@ class OffsetRestore(OffsetManagerBase):
         try:
             consumer_group = parsed_consumer_offsets['groupid']
             topics_offset_data = parsed_consumer_offsets['offsets']
-            topic_partitions = dict(
-                (topic, [partition for partition in offset_data.keys()])
-                for topic, offset_data in six.iteritems(topics_offset_data)
-            )
+            topic_partitions = {
+                topic: [partition for partition in offset_data.keys()]
+                for topic, offset_data in topics_offset_data.items()
+            }
         except IndexError:
             print(
                 "Error: Given parsed consumer-offset data {consumer_offsets} "

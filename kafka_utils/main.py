@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import logging
 
@@ -35,7 +30,7 @@ def parse_args():
         '-v',
         '--version',
         action='version',
-        version="%(prog)s {0}".format(__version__),
+        version="%(prog)s {}".format(__version__),
     )
     parser.add_argument(
         '--discovery-base-path',

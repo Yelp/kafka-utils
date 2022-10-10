@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import pytest
 
 from .helper import broker_range
@@ -44,13 +41,13 @@ def create_partition():
 @pytest.fixture
 def default_assignment():
     return {
-        (u'T0', 0): ['1', '2'],
-        (u'T0', 1): ['2', '3'],
-        (u'T1', 0): ['0', '1', '2', '3'],
-        (u'T1', 1): ['0', '1', '2', '3'],
-        (u'T2', 0): ['2'],
-        (u'T3', 0): ['0', '1', '2'],
-        (u'T3', 1): ['0', '1', '4'],
+        ('T0', 0): ['1', '2'],
+        ('T0', 1): ['2', '3'],
+        ('T1', 0): ['0', '1', '2', '3'],
+        ('T1', 1): ['0', '1', '2', '3'],
+        ('T2', 0): ['2'],
+        ('T3', 0): ['0', '1', '2'],
+        ('T3', 1): ['0', '1', '4'],
     }
 
 
@@ -86,26 +83,26 @@ def default_get_replication_group_id(default_broker_rg):
 @pytest.fixture
 def default_partition_weight():
     return {
-        (u'T0', 0): 2,
-        (u'T0', 1): 3,
-        (u'T1', 0): 4,
-        (u'T1', 1): 5,
-        (u'T2', 0): 6,
-        (u'T3', 0): 7,
-        (u'T3', 1): 8,
+        ('T0', 0): 2,
+        ('T0', 1): 3,
+        ('T1', 0): 4,
+        ('T1', 1): 5,
+        ('T2', 0): 6,
+        ('T3', 0): 7,
+        ('T3', 1): 8,
     }
 
 
 @pytest.fixture
 def default_partition_size():
     return {
-        (u'T0', 0): 3,
-        (u'T0', 1): 4,
-        (u'T1', 0): 5,
-        (u'T1', 1): 6,
-        (u'T2', 0): 7,
-        (u'T3', 0): 8,
-        (u'T3', 1): 9,
+        ('T0', 0): 3,
+        ('T0', 1): 4,
+        ('T1', 0): 5,
+        ('T1', 1): 6,
+        ('T2', 0): 7,
+        ('T3', 0): 8,
+        ('T3', 1): 9,
     }
 
 
@@ -117,7 +114,7 @@ def default_partition_measurer(
     class TestMeasurer(PartitionMeasurer):
 
         def __init__(self):
-            super(TestMeasurer, self).__init__(None, None, None, None)
+            super().__init__(None, None, None, None)
 
         def get_weight(self, partition_name):
             try:

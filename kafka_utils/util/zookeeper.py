@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import logging
 import re
 
-import six
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
@@ -323,7 +319,7 @@ class ZK:
                 return {}
             # Prepare data for each partition
             partitions_data = {}
-            for p_id, replicas in six.iteritems(topic_data['partitions']):
+            for p_id, replicas in topic_data['partitions'].items():
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
@@ -606,8 +602,8 @@ class ZK:
                 'partition': int(p_id),
                 'replicas': partitions_data['replicas']
             }
-            for topic_id, topic_info in six.iteritems(cluster_layout)
-            for p_id, partitions_data in six.iteritems(topic_info['partitions'])
+            for topic_id, topic_info in cluster_layout.items()
+            for p_id, partitions_data in topic_info['partitions'].items()
         ]
         return {
             'version': 1,

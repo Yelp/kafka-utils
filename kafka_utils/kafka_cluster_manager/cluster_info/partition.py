@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 from .error import InvalidPartitionMeasurementError
 
 
-class Partition(object):
+class Partition:
     """Class representing the partition object.
     It contains topic-partition_id tuple as name, topic and replicas
     (list of brokers).
@@ -143,4 +142,4 @@ class Partition(object):
         return "{name}".format(name=self._name)
 
     def __repr__(self):
-        return "{0}".format(self)
+        return "{}".format(self)

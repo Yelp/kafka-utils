@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import logging
 from collections import OrderedDict
-
-import six
 
 from .broker import Broker
 from .error import InvalidBrokerIdError
@@ -29,7 +22,7 @@ from .rg import ReplicationGroup
 from .topic import Topic
 
 
-class ClusterTopology(object):
+class ClusterTopology:
     """Represent a Kafka cluster and functionalities supported over the cluster.
 
         :param assignment: cluster assignment is a dict (topic, partition): replicas
@@ -78,7 +71,7 @@ class ClusterTopology(object):
 
     def _build_brokers(self, brokers):
         """Build broker objects using broker-ids."""
-        for broker_id, metadata in six.iteritems(brokers):
+        for broker_id, metadata in brokers.items():
             self.brokers[broker_id] = self._create_broker(broker_id, metadata)
 
     def _create_broker(self, broker_id, metadata=None):
@@ -100,7 +93,7 @@ class ClusterTopology(object):
         topic objects.
         """
         self.partitions = {}
-        for partition_name, replica_ids in six.iteritems(assignment):
+        for partition_name, replica_ids in assignment.items():
             # Get topic
             topic_id = partition_name[0]
             partition_id = partition_name[1]
@@ -137,14 +130,14 @@ class ClusterTopology(object):
     def active_brokers(self):
         """Set of brokers that are not inactive or decommissioned."""
         return {
-            broker for broker in six.itervalues(self.brokers)
+            broker for broker in self.brokers.values()
             if not broker.inactive and not broker.decommissioned
         }
 
     @property
     def assignment(self):
         assignment = {}
-        for partition in six.itervalues(self.partitions):
+        for partition in self.partitions.values():
             assignment[
                 (partition.topic.id, partition.partition_id)
             ] = [broker.id for broker in partition.replicas]
@@ -190,7 +183,7 @@ class ClusterTopology(object):
         :raises: InvalidPartitionError when partition-name is invalid
         """
         try:
-            for partition_name, replica_ids in six.iteritems(assignment):
+            for partition_name, replica_ids in assignment.items():
                 try:
                     new_replicas = [self.brokers[b_id] for b_id in replica_ids]
                 except KeyError:
@@ -201,7 +194,7 @@ class ClusterTopology(object):
                         partition_name[1],
                     )
                     raise InvalidBrokerIdError(
-                        "Invalid replicas {0}.".format(
+                        "Invalid replicas {}.".format(
                             ', '.join([str(id) for id in replica_ids])
                         ),
                     )
@@ -229,9 +222,9 @@ class ClusterTopology(object):
                         partition_name[1],
                     )
                     raise InvalidPartitionError(
-                        "Invalid topic-partition {0}-{1}."
+                        "Invalid topic-partition {}-{}."
                         .format(partition_name[0], partition_name[1]),
                     )
         except KeyError:
-            self.log.error("Could not parse given assignment {0}".format(assignment))
+            self.log.error("Could not parse given assignment {}".format(assignment))
             raise

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 import sys
 
-import six
 from kafka.errors import UnknownMemberIdError
 
 from .offset_manager import OffsetWriter
@@ -94,7 +89,7 @@ class UnsubscribeTopics(OffsetWriter):
         )
 
 
-class TopicUnsubscriber(object):
+class TopicUnsubscriber:
     """Base class used to unsubscribe consumer groups from topic partitions."""
 
     def unsubscribe_topics(self, group, topics, partitions, topics_dict):
@@ -124,7 +119,7 @@ class TopicUnsubscriber(object):
                     raise
 
         else:
-            for topic, partitions in six.iteritems(topics_dict):
+            for topic, partitions in topics_dict.items():
                 self.delete_topic(group, topic)
 
     def unsubscribe_partitions(self, group, topic, partitions):

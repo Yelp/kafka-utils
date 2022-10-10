@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest import mock
 
-import mock
 import pytest
 
 from kafka_utils.util.config import ClusterConfig
@@ -185,11 +183,11 @@ def test_load_yaml():
     mocked_open = mock.mock_open(read_data=MOCK_TOPOLOGY_CONFIG)
     with mock.patch('kafka_utils.util.config.open', mocked_open) as mock_open:
         actual = load_yaml_config('test')
-        mock_open.assert_called_once_with("test", "r")
+        mock_open.assert_called_once_with("test")
         assert actual == MOCK_YAML_1
 
 
-class TestTopologyConfig(object):
+class TestTopologyConfig:
 
     def test_missing_cluster(self):
         with pytest.raises(ConfigurationError):

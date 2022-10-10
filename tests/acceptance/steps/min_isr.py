@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import call_cmd
@@ -43,27 +40,27 @@ def set_min_isr(topic, min_isr):
         zk.set_topic_config(topic, config)
 
 
-@when(u'we call the min_isr command')
+@when('we call the min_isr command')
 def step_impl2(context):
     context.min_isr_out = call_min_isr()
 
 
-@when(u'we change min.isr settings for a topic to 1')
+@when('we change min.isr settings for a topic to 1')
 def step_impl3(context):
     set_min_isr(context.topic, 1)
 
 
-@when(u'we change min.isr settings for a topic to 2')
+@when('we change min.isr settings for a topic to 2')
 def step_impl4(context):
     set_min_isr(context.topic, 2)
 
 
-@then(u'OK min_isr will be printed')
+@then('OK min_isr will be printed')
 def step_impl5(context):
     assert context.min_isr_out == 'OK: All replicas in sync.\n', context.min_isr_out
 
 
-@then(u'CRITICAL min_isr will be printed')
+@then('CRITICAL min_isr will be printed')
 def step_impl6(context):
     error_msg = ("CRITICAL: 1 partition(s) have the number of "
                  "replicas in sync that is lower than the specified min ISR.\n")

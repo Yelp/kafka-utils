@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from argparse import Namespace
+from unittest import mock
 
-import mock
 import pytest
-import six
 
 from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info \
@@ -29,7 +25,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info \
     .partition_count_balancer import PartitionCountBalancer
 
 
-class TestClusterBalancer(object):
+class TestClusterBalancer:
 
     @pytest.fixture(params=[PartitionCountBalancer, GeneticBalancer])
     def create_balancer(self, request):
@@ -50,7 +46,7 @@ class TestClusterBalancer(object):
         """Verify that the partition replicas are balanced across
         replication-groups.
         """
-        for rg in six.itervalues(ct.rgs):
+        for rg in ct.rgs.values():
             replica_cnt_rg = rg.count_replica(partition)
 
             # Verify evenly-balanced partition
@@ -63,9 +59,9 @@ class TestClusterBalancer(object):
             create_cluster_topology,
     ):
         assignment = {
-            (u'T0', 0): ['0', '2'],
-            (u'T0', 1): ['0', '3'],
-            (u'T1', 0): ['0', '5'],
+            ('T0', 0): ['0', '2'],
+            ('T0', 1): ['0', '3'],
+            ('T1', 0): ['0', '5'],
         }
         ct = create_cluster_topology(assignment)
         partitions_count = len(ct.partitions)
@@ -86,12 +82,12 @@ class TestClusterBalancer(object):
             create_cluster_topology,
     ):
         assignment = {
-            (u'T0', 0): ['0', '2'],
-            (u'T0', 1): ['0', '3'],
-            (u'T1', 0): ['0', '5'],
-            (u'T1', 1): ['1', '5'],
-            (u'T1', 2): ['1', '5'],
-            (u'T2', 0): ['0', '3'],
+            ('T0', 0): ['0', '2'],
+            ('T0', 1): ['0', '3'],
+            ('T1', 0): ['0', '5'],
+            ('T1', 1): ['1', '5'],
+            ('T1', 2): ['1', '5'],
+            ('T2', 0): ['0', '3'],
         }
         ct = create_cluster_topology(assignment)
         partitions_count = len(ct.partitions)
@@ -110,12 +106,12 @@ class TestClusterBalancer(object):
             create_cluster_topology,
     ):
         assignment = {
-            (u'T0', 0): ['0', '1', '2'],
-            (u'T0', 1): ['0', '1', '2'],
-            (u'T1', 0): ['0', '1'],
-            (u'T1', 1): ['1', '4'],
-            (u'T1', 2): ['1', '4'],
-            (u'T2', 0): ['0', '3'],
+            ('T0', 0): ['0', '1', '2'],
+            ('T0', 1): ['0', '1', '2'],
+            ('T1', 0): ['0', '1'],
+            ('T1', 1): ['1', '4'],
+            ('T1', 2): ['1', '4'],
+            ('T2', 0): ['0', '3'],
         }
         # r1 b0 t00, t01, t10, t20
         # r1 b1 t00, t01, t10, t11, t12
@@ -142,12 +138,12 @@ class TestClusterBalancer(object):
             create_cluster_topology,
     ):
         assignment = {
-            (u'T0', 0): ['0', '1', '2'],
-            (u'T0', 1): ['0', '1', '2'],
-            (u'T1', 0): ['0', '1'],
-            (u'T1', 1): ['1', '2'],
-            (u'T1', 2): ['1', '2'],
-            (u'T2', 0): ['0', '2'],
+            ('T0', 0): ['0', '1', '2'],
+            ('T0', 1): ['0', '1', '2'],
+            ('T1', 0): ['0', '1'],
+            ('T1', 1): ['1', '2'],
+            ('T1', 2): ['1', '2'],
+            ('T2', 0): ['0', '2'],
         }
         # r0 b0 t00, t01, t10, t20
         # r1 b1 t00, t01, t10, t11, t12
@@ -184,7 +180,7 @@ class TestClusterBalancer(object):
         # rg4:      (6) = 1
         # rg1 and rg2 are over-replicated and rg3 being under-replicated
         # source-replication-group should be rg1 having the highest replicas
-        p1_info = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
+        p1_info = (('T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
         assignment = dict([p1_info])
         ct = create_cluster_topology(assignment, broker_range(7))
         p1 = ct.partitions[p1_info[0]]
@@ -213,7 +209,7 @@ class TestClusterBalancer(object):
         # rg3: (5) = 1
         # rg1 and rg2 are over-replicated and rg3 being under-replicated
         # source-replication-group should be rg1 having the highest replicas
-        p1_info = ((u'T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
+        p1_info = (('T0', 0), ['0', '1', '2', '3', '4', '5', '6'])
         assignment = dict([p1_info])
         ct = create_cluster_topology(assignment, broker_range(7))
         p1 = ct.partitions[p1_info[0]]
@@ -333,9 +329,9 @@ class TestClusterBalancer(object):
             create_cluster_topology,
     ):
         assignment = {
-            (u'T1', 0): ['0', '1', '2', '3', '4'],
-            (u'T1', 1): ['0', '1', '2', '4'],
-            (u'T2', 1): ['0', '1', '2', '4'],
+            ('T1', 0): ['0', '1', '2', '3', '4'],
+            ('T1', 1): ['0', '1', '2', '4'],
+            ('T2', 1): ['0', '1', '2', '4'],
         }
         ct = create_cluster_topology(assignment)
 
@@ -348,9 +344,9 @@ class TestClusterBalancer(object):
             create_balancer,
             create_cluster_topology,
     ):
-        assignment = dict([((u'T1', 0), ['1', '3'])])
+        assignment = dict([(('T1', 0), ['1', '3'])])
         ct = create_cluster_topology(assignment, broker_range(6))
-        partition = ct.partitions[(u'T1', 0)]
+        partition = ct.partitions[('T1', 0)]
 
         cb = create_balancer(ct)
         cb.add_replica(partition.name, count=3)
@@ -363,9 +359,9 @@ class TestClusterBalancer(object):
             create_balancer,
             create_cluster_topology,
     ):
-        assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
+        assignment = dict([(('T1', 0), ['0', '1', '2', '3', '5'])])
         ct = create_cluster_topology(assignment, broker_range(6))
-        partition = ct.partitions[(u'T1', 0)]
+        partition = ct.partitions[('T1', 0)]
         osr_broker_ids = ['1', '2']
 
         cb = create_balancer(ct)
@@ -379,12 +375,12 @@ class TestClusterBalancer(object):
             create_balancer,
             create_cluster_topology,
     ):
-        assignment = dict([((u'T1', 0), ['0', '1', '2', '3', '5'])])
+        assignment = dict([(('T1', 0), ['0', '1', '2', '3', '5'])])
         ct = create_cluster_topology(assignment, broker_range(6))
-        partition = ct.partitions[(u'T1', 0)]
+        partition = ct.partitions[('T1', 0)]
         osr_broker_ids = ['1', '2']
 
         cb = create_balancer(ct)
         cb.remove_replica(partition.name, osr_broker_ids, count=2)
 
-        assert set(b.id for b in partition.replicas) == set(['0', '3', '5'])
+        assert {b.id for b in partition.replicas} == {'0', '3', '5'}

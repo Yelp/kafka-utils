@@ -1,7 +1,4 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
-import mock
+from unittest import mock
 
 from kafka_utils.kafka_corruption_check import main
 

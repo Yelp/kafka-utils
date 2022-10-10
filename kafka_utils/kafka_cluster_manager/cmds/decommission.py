@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 import logging
 import sys
 
@@ -35,7 +31,7 @@ DEFAULT_MAX_LEADER_CHANGES = 5
 class DecommissionCmd(ClusterManagerCmd):
 
     def __init__(self):
-        super(DecommissionCmd, self).__init__()
+        super().__init__()
         self.log = logging.getLogger(self.__class__.__name__)
 
     def build_subparser(self, subparsers):
@@ -158,7 +154,7 @@ class DecommissionCmd(ClusterManagerCmd):
         ):
             self.log.error('Invalid assignment %s.', cluster_topology.assignment)
             print(
-                'Invalid assignment: {0}'.format(cluster_topology.assignment),
+                'Invalid assignment: {}'.format(cluster_topology.assignment),
                 file=sys.stderr,
             )
             sys.exit(1)

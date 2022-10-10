@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest.mock import sentinel
 
 import pytest
-from mock import sentinel
 
 from kafka_utils.kafka_cluster_manager.cluster_info.error \
     import InvalidPartitionMeasurementError
 from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 
 
-class TestPartition(object):
+class TestPartition:
 
     @pytest.fixture
     def partition(self):

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,21 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest.mock import Mock
+from unittest.mock import sentinel
 
 import pytest
-from mock import Mock
-from mock import sentinel
 
 from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
 
 
-class TestTopic(object):
+class TestTopic:
 
     @pytest.fixture
     def topic(self):
-        return Topic('t0', 2, set([sentinel.p1, sentinel.p2]))
+        return Topic('t0', 2, {sentinel.p1, sentinel.p2})
 
     def test_id(self, topic):
         assert topic.id == 't0'
@@ -35,10 +33,10 @@ class TestTopic(object):
         assert topic.replication_factor == 2
 
     def test_partitions(self, topic):
-        assert topic.partitions == set([sentinel.p1, sentinel.p2])
+        assert topic.partitions == {sentinel.p1, sentinel.p2}
 
     def test_add_partition(self):
-        mock_partitions = set([
+        mock_partitions = {
             Mock(
                 spec=Partition,
                 replicas=[sentinel.r1, sentinel.r2],
@@ -47,8 +45,8 @@ class TestTopic(object):
                 spec=Partition,
                 replicas=[sentinel.r4, sentinel.r3],
             ),
-        ])
+        }
         topic = Topic('t0', 2, mock_partitions)
         new_partition = Mock(spec=Partition, replicas=[sentinel.r2])
         topic.add_partition(new_partition)
-        assert topic.partitions == mock_partitions | set([new_partition])
+        assert topic.partitions == mock_partitions | {new_partition}

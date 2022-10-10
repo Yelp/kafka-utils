@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import os
 import tempfile
 
-import six
 from behave import given
 from behave import then
 from behave import when
@@ -45,8 +41,7 @@ def create_restore_file(group, topic, offset):
 
     f = tempfile.NamedTemporaryFile()
 
-    if six.PY3:
-        offset_restore_data = offset_restore_data.encode()
+    offset_restore_data = offset_restore_data.encode()
 
     f.write(offset_restore_data)
     f.flush()
@@ -63,7 +58,7 @@ def call_offset_restore(offsets_file):
     return call_cmd(cmd)
 
 
-@given(u'we have a json offsets file')
+@given('we have a json offsets file')
 def step_impl2(context):
     context.restored_offset = RESTORED_OFFSET
     context.offsets_file = create_restore_file(
@@ -74,12 +69,12 @@ def step_impl2(context):
     assert os.path.isfile(context.offsets_file.name)
 
 
-@when(u'we call the offset_restore command with the offsets file')
+@when('we call the offset_restore command with the offsets file')
 def step_impl3_2(context):
     call_offset_restore(context.offsets_file.name)
 
 
-@then(u'the committed offsets will match the offsets file')
+@then('the committed offsets will match the offsets file')
 def step_impl4(context):
     config = get_cluster_config()
     context.client = KafkaToolClient(config.broker_list)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import division
-
 import argparse
 import logging
 import random
@@ -22,9 +18,6 @@ import time
 from collections import defaultdict
 from copy import copy
 from math import sqrt
-
-import six
-from six.moves import range
 
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
@@ -80,7 +73,7 @@ class GeneticBalancer(ClusterBalancer):
     """
 
     def __init__(self, cluster_topology, args):
-        super(GeneticBalancer, self).__init__(cluster_topology, args)
+        super().__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
         self.state = _State(
             self.cluster_topology,
@@ -301,7 +294,7 @@ class GeneticBalancer(ClusterBalancer):
         self.state = _State(self.cluster_topology, brokers=active_brokers)
 
         # Add partition replicas to active brokers one-by-one.
-        for partition_name in sorted(six.iterkeys(partitions)):  # repeatability
+        for partition_name in sorted(partitions.keys()):  # repeatability
             partition = self.cluster_topology.partitions[partition_name]
             replica_count = partitions[partition_name]
             try:
@@ -351,7 +344,7 @@ class GeneticBalancer(ClusterBalancer):
         for _ in range(count):
             # Find eligible replication-groups.
             non_full_rgs = [
-                rg for rg in six.itervalues(self.cluster_topology.rgs)
+                rg for rg in self.cluster_topology.rgs.values()
                 if rg.count_replica(partition) < len(rg.active_brokers)
             ]
             # Since replicas can only be added to non-full rgs, only consider
@@ -431,7 +424,7 @@ class GeneticBalancer(ClusterBalancer):
         for _ in range(count):
             # Find eligible replication groups.
             non_empty_rgs = [
-                rg for rg in six.itervalues(self.cluster_topology.rgs)
+                rg for rg in self.cluster_topology.rgs.values()
                 if rg.count_replica(partition) > 0
             ]
             rgs_with_osr = [
@@ -623,7 +616,7 @@ class GeneticBalancer(ClusterBalancer):
         return score / max_score
 
 
-class _State(object):
+class _State:
     """An internal representation of a cluster's state used in GeneticBalancer.
     This representation stores precomputed sums and values that make
     calculating the score of the state much faster. The state refers to

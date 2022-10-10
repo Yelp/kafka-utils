@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import logging
 import re
@@ -13,10 +9,7 @@ from multiprocessing import Process
 from operator import itemgetter
 
 import paramiko
-import six
 from kafka import KafkaClient
-from six.moves import range
-from six.moves import zip
 
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -358,8 +351,8 @@ def get_partition_leaders(cluster_config):
     """
     client = KafkaClient(cluster_config.broker_list)
     result = {}
-    for topic, topic_data in six.iteritems(client.topic_partitions):
-        for partition, p_data in six.iteritems(topic_data):
+    for topic, topic_data in client.topic_partitions.items():
+        for partition, p_data in topic_data.items():
             topic_partition = topic + "-" + str(partition)
             result[topic_partition] = p_data.leader
     return result

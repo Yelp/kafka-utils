@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import copy
+from unittest import mock
 
-import mock
 import pytest
 from kafka.common import NotLeaderForPartitionError
 from kafka.common import RequestTimedOutError
@@ -39,12 +36,12 @@ from kafka_utils.util.offsets import UnknownPartitions
 from kafka_utils.util.offsets import UnknownTopic
 
 
-@pytest.fixture(params=[['topic1'], set(['topic1']), ('topic1',)])
+@pytest.fixture(params=[['topic1'], {'topic1'}, ('topic1',)])
 def topics(request):
     return request.param
 
 
-class MyKafkaToolClient(object):
+class MyKafkaToolClient:
 
     def __init__(
         self,
@@ -159,7 +156,7 @@ class MyKafkaToolClient(object):
         ]
 
 
-class TestOffsetsBase(object):
+class TestOffsetsBase:
     topics = {
         'topic1': [0, 1, 2],
         'topic2': [0, 1]

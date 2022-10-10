@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import call_cmd
@@ -36,7 +33,7 @@ def call_offset_advance(groupid, topic=None, force=False):
     return call_cmd(cmd)
 
 
-@when(u'we call the offset_advance command and commit into kafka')
+@when('we call the offset_advance command and commit into kafka')
 def step_impl3_2(context):
     call_offset_advance(
         context.group,
@@ -45,7 +42,7 @@ def step_impl3_2(context):
     )
 
 
-@then(u'the committed offsets will match the latest message offsets')
+@then('the committed offsets will match the latest message offsets')
 def step_impl4(context):
     cluster_config = get_cluster_config()
     with ZK(cluster_config) as zk:
@@ -53,7 +50,7 @@ def step_impl4(context):
     assert offsets[context.topic]["0"] == context.msgs_produced
 
 
-@then(u'the latest message offsets will be shown')
+@then('the latest message offsets will be shown')
 def step_impl5_2(context):
     offset = context.msgs_produced
     pattern = 'Current Offset: {}'.format(offset)

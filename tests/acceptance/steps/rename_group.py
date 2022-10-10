@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import call_cmd
@@ -34,12 +31,12 @@ def call_rename_group(old_group, new_group):
     return call_cmd(cmd)
 
 
-@when(u'we call the rename_group command')
+@when('we call the rename_group command')
 def step_impl2(context):
     call_rename_group(context.group, NEW_GROUP)
 
 
-@then(u'the committed offsets in the new group will match the expected values')
+@then('the committed offsets in the new group will match the expected values')
 def step_impl3(context):
     new_group = call_offset_get(NEW_GROUP, True)
     old_group = call_offset_get(context.group, True)
@@ -47,7 +44,7 @@ def step_impl3(context):
     assert context.topic in new_group
 
 
-@then(u'the group named has been changed')
+@then('the group named has been changed')
 def step_impl4(context):
     new_groups = call_offset_get(NEW_GROUP)
     old_group = call_offset_get(context.group)

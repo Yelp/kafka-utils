@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import glob
 import logging
 import os
 from collections import namedtuple
 
-import six
 import yaml
-from six.moves import map
 
 from kafka_utils.util.error import ConfigurationError
 from kafka_utils.util.error import InvalidConfigurationError
@@ -65,11 +60,11 @@ class ClusterConfig(
 
 
 def load_yaml_config(config_path):
-    with open(config_path, 'r') as config_file:
+    with open(config_path) as config_file:
         return yaml.safe_load(config_file)
 
 
-class TopologyConfiguration(object):
+class TopologyConfiguration:
     """Topology configuration for a kafka cluster.
 
     Read a cluster_type.yaml from the kafka_topology_path.
@@ -133,7 +128,7 @@ class TopologyConfiguration(object):
             topology_config = load_yaml_config(config_path)
         else:
             raise MissingConfigurationError(
-                "Topology configuration {0} for cluster {1} "
+                "Topology configuration {} for cluster {} "
                 "does not exist".format(
                     config_path,
                     self.cluster_type,
@@ -144,7 +139,7 @@ class TopologyConfiguration(object):
             self.clusters = topology_config['clusters']
         except KeyError:
             self.log.exception("Invalid topology file")
-            raise InvalidConfigurationError("Invalid topology file {0}".format(
+            raise InvalidConfigurationError("Invalid topology file {}".format(
                 config_path))
         if 'local_config' in topology_config:
             self.local_config = topology_config['local_config']
@@ -157,7 +152,7 @@ class TopologyConfiguration(object):
                 broker_list=cluster['broker_list'],
                 zookeeper=cluster['zookeeper'],
             )
-            for name, cluster in six.iteritems(self.clusters)
+            for name, cluster in self.clusters.items()
         ]
 
     def get_cluster_by_name(self, name):
@@ -169,7 +164,7 @@ class TopologyConfiguration(object):
                 broker_list=cluster['broker_list'],
                 zookeeper=cluster['zookeeper'],
             )
-        raise ConfigurationError("No cluster with name: {0}".format(name))
+        raise ConfigurationError("No cluster with name: {}".format(name))
 
     def get_local_cluster(self):
         if self.local_config:
@@ -187,8 +182,8 @@ class TopologyConfiguration(object):
             raise ConfigurationError("No default local cluster configured")
 
     def __repr__(self):
-        return ("TopologyConfig: cluster_type {0}, clusters: {1},"
-                "local_config {2}".format(
+        return ("TopologyConfig: cluster_type {}, clusters: {},"
+                "local_config {}".format(
                     self.cluster_type,
                     self.clusters,
                     self.local_config
@@ -243,7 +238,7 @@ def get_cluster_config(
             pass
     if not topology:
         raise MissingConfigurationError(
-            "No available configuration for type {0}".format(cluster_type),
+            "No available configuration for type {}".format(cluster_type),
         )
 
     if cluster_name:
@@ -265,7 +260,7 @@ def iter_configurations(kafka_topology_base_path=None):
     for config_dir in config_dirs:
         new_types = [x for x in map(
             lambda x: os.path.basename(x)[:-5],
-            glob.glob('{0}/*.yaml'.format(config_dir)),
+            glob.glob('{}/*.yaml'.format(config_dir)),
         ) if x not in types]
         for cluster_type in new_types:
             try:

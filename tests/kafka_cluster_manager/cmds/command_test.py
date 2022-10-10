@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from collections import OrderedDict
+from unittest import mock
 
-import mock
 from pytest import fixture
 from pytest import raises
 
@@ -34,11 +31,11 @@ from kafka_utils.kafka_cluster_manager.cmds.command import ClusterManagerCmd
 @fixture
 def orig_assignment():
     return OrderedDict([
-        ((u'T1', 1), [2, 1]),
-        ((u'T0', 0), [0, 1]),
-        ((u'T0', 1), [1, 2]),
-        ((u'T1', 0), [0, 1]),
-        ((u'T2', 0), [3, 1]),
+        (('T1', 1), [2, 1]),
+        (('T0', 0), [0, 1]),
+        (('T0', 1), [1, 2]),
+        (('T1', 0), [0, 1]),
+        (('T2', 0), [3, 1]),
     ])
 
 
@@ -47,11 +44,11 @@ def orig_assignment():
 @fixture
 def new_assignment():
     return OrderedDict([
-        ((u'T0', 0), [2, 0]),
-        ((u'T1', 1), [2, 3]),
-        ((u'T0', 1), [2, 1]),
-        ((u'T1', 0), [0, 1]),
-        ((u'T2', 0), [1, 3]),
+        (('T0', 0), [2, 0]),
+        (('T1', 1), [2, 3]),
+        (('T0', 1), [2, 1]),
+        (('T1', 0), [0, 1]),
+        (('T2', 0), [1, 3]),
     ])
 
 
@@ -59,11 +56,11 @@ def new_assignment():
 @fixture
 def two_partition_same_topic_assignment():
     return OrderedDict([
-        ((u'T1', 1), [2, 1]),
-        ((u'T0', 1), [0, 2]),
-        ((u'T0', 0), [2, 1]),
-        ((u'T1', 0), [0, 1]),
-        ((u'T2', 0), [3, 1]),
+        (('T1', 1), [2, 1]),
+        (('T0', 1), [0, 2]),
+        (('T0', 0), [2, 1]),
+        (('T1', 0), [0, 1]),
+        (('T2', 0), [3, 1]),
     ])
 
 
@@ -141,7 +138,7 @@ def cmd():
     return ClusterManagerCmd()
 
 
-class TestClusterManagerCmd(object):
+class TestClusterManagerCmd:
 
     def test_reduced_proposed_plan_no_change(self, cmd, orig_assignment, orig_cluster_topology):
         # Provide same assignment
@@ -157,10 +154,10 @@ class TestClusterManagerCmd(object):
 
     def test_extract_actions_unique_topics_limited_actions(self, cmd, cluster_topology):
         movements_count = [
-            ((u'T0', 0), 1),
-            ((u'T0', 1), 1),
-            ((u'T1', 0), 1),
-            ((u'T2', 0), 1),
+            (('T0', 0), 1),
+            (('T0', 1), 1),
+            (('T1', 0), 1),
+            (('T2', 0), 1),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -172,14 +169,14 @@ class TestClusterManagerCmd(object):
         assert len(red_actions) == 3
         # Verify that all actions have unique topic
         topics = [action[0] for action in red_actions]
-        assert set(topics) == set([u'T0', u'T1', u'T2'])
+        assert set(topics) == {'T0', 'T1', 'T2'}
 
     def test_extract_actions_unique_topics_limited_actions_size(self, cmd, cluster_topology):
         movements_count = [
-            ((u'T0', 0), 1),
-            ((u'T0', 1), 1),
-            ((u'T1', 0), 1),
-            ((u'T2', 0), 1),
+            (('T0', 0), 1),
+            (('T0', 1), 1),
+            (('T1', 0), 1),
+            (('T2', 0), 1),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -193,10 +190,10 @@ class TestClusterManagerCmd(object):
     def test_extract_actions_unique_topics_partition_size_zero(self, cmd, zero_size_cluster_topology):
         # If we have max_movement_size 0, we should still be able to move 0-size partitions
         movements_count = [
-            ((u'T0', 0), 1),
-            ((u'T0', 1), 1),
-            ((u'T1', 0), 1),
-            ((u'T2', 0), 1),
+            (('T0', 0), 1),
+            (('T0', 1), 1),
+            (('T1', 0), 1),
+            (('T2', 0), 1),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -219,10 +216,10 @@ class TestClusterManagerCmd(object):
         # In case max-allowed partition-movements is less than replication-factor
         # there is a possibility it will never converge
         movements_count = [
-            ((u'T0', 0), 2),
-            ((u'T0', 1), 2),
-            ((u'T1', 0), 2),
-            ((u'T2', 0), 2),
+            (('T0', 0), 2),
+            (('T0', 1), 2),
+            (('T1', 0), 2),
+            (('T2', 0), 2),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -237,10 +234,10 @@ class TestClusterManagerCmd(object):
 
     def test_extract_actions_partition_movements_all(self, cmd, cluster_topology):
         movements_count = [
-            ((u'T0', 0), 2),
-            ((u'T0', 1), 1),
-            ((u'T1', 0), 2),
-            ((u'T2', 0), 1),
+            (('T0', 0), 2),
+            (('T0', 1), 1),
+            (('T1', 0), 2),
+            (('T2', 0), 1),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -255,15 +252,15 @@ class TestClusterManagerCmd(object):
         assert len(red_actions) == 4
         assert all(
             t_p in red_actions
-            for t_p in ((u'T0', 0), (u'T0', 1), (u'T1', 0), (u'T2', 0))
+            for t_p in (('T0', 0), ('T0', 1), ('T1', 0), ('T2', 0))
         )
 
     def test_extract_actions_no_movements(self, cmd, cluster_topology):
         movements_count = [
-            ((u'T0', 0), 2),
-            ((u'T0', 1), 1),
-            ((u'T1', 0), 2),
-            ((u'T2', 0), 1),
+            (('T0', 0), 2),
+            (('T0', 1), 1),
+            (('T1', 0), 2),
+            (('T2', 0), 1),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -282,11 +279,11 @@ class TestClusterManagerCmd(object):
         # Expected: Final assignment should have all 3 actions
         # all 3 unique topics
         movements_count = [
-            ((u'T0', 0), 2),
-            ((u'T1', 1), 2),
-            ((u'T0', 1), 2),
-            ((u'T1', 0), 2),
-            ((u'T2', 0), 1),
+            (('T0', 0), 2),
+            (('T1', 1), 2),
+            (('T0', 1), 2),
+            (('T1', 0), 2),
+            (('T2', 0), 1),
         ]
         red_actions = cmd._extract_actions_unique_topics(
             movements_count,
@@ -298,7 +295,7 @@ class TestClusterManagerCmd(object):
         assert len(red_actions) == 3
         # Verify T0, T1 and T2 are all in the result
         topics = [action[0] for action in red_actions]
-        assert set(topics) == set([u'T0', u'T1', u'T2'])
+        assert set(topics) == {'T0', 'T1', 'T2'}
 
     def test_reduced_proposed_plan_zero_changes(
         self,
@@ -404,11 +401,11 @@ class TestClusterManagerCmd(object):
 
         assert len(result) == 2
         # T2 not in result because leader only change
-        assert (u'T2', 0) not in result
+        assert ('T2', 0) not in result
         # T1 no changes for 0
-        assert (u'T1', 0) not in result and (u'T1', 1) in result
+        assert ('T1', 0) not in result and ('T1', 1) in result
         # T0 leader only changes for 1
-        assert (u'T0', 0) in result and (u'T0', 1) not in result
+        assert ('T0', 0) in result and ('T0', 1) not in result
 
     def test_reduced_proposed_plan_only_leaders(
         self,
@@ -425,11 +422,11 @@ class TestClusterManagerCmd(object):
 
         assert len(result) == 2
         # T2 leader only change for 0
-        assert (u'T2', 0) in result
+        assert ('T2', 0) in result
         # T1 no leader only changes
-        assert (u'T1', 0) not in result and (u'T1', 1) not in result
+        assert ('T1', 0) not in result and ('T1', 1) not in result
         # T0 leader only changes for 1
-        assert (u'T0', 0) not in result and (u'T0', 1) in result
+        assert ('T0', 0) not in result and ('T0', 1) in result
 
     def test_reduced_proposed_plan(
         self,
@@ -445,10 +442,10 @@ class TestClusterManagerCmd(object):
         )
 
         assert len(result) == 4
-        assert (u'T2', 0) in result
+        assert ('T2', 0) in result
         # T1 no changes for 0
-        assert (u'T1', 0) not in result and (u'T1', 1) in result
-        assert (u'T0', 0) in result and (u'T0', 1) in result
+        assert ('T1', 0) not in result and ('T1', 1) in result
+        assert ('T0', 0) in result and ('T0', 1) in result
 
     def test_reduced_proposed_plan_max_movement_size(
         self,

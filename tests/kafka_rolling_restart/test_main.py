@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest import mock
 
-import mock
 import pytest
 import requests
 from requests.exceptions import RequestException
@@ -75,8 +73,7 @@ def test_read_cluster_value_server_down(mock_get):
 
 
 def read_cluster_state_values(first_part, repeat):
-    for value in first_part:
-        yield value
+    yield from first_part
     while True:
         yield repeat
 

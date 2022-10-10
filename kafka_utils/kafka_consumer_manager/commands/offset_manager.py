@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import sys
 
-import six
 from kazoo.exceptions import NoNodeError
 
 from kafka_utils.kafka_consumer_manager.util import get_kafka_group_reader
@@ -26,7 +20,7 @@ from kafka_utils.kafka_consumer_manager.util import prompt_user_input
 from kafka_utils.util.zookeeper import ZK
 
 
-class OffsetManagerBase(object):
+class OffsetManagerBase:
 
     @classmethod
     def get_topics_from_consumer_group_id(
@@ -219,7 +213,7 @@ class OffsetWriter(OffsetManagerBase):
         topics=None,
         use_admin_client=False,
     ):
-        topics_dict = super(OffsetWriter, cls).preprocess_args(
+        topics_dict = super().preprocess_args(
             groupid,
             topic,
             partitions,
@@ -239,7 +233,7 @@ class OffsetWriter(OffsetManagerBase):
             )
 
         topics_str = ""
-        for local_topic, local_partitions in six.iteritems(topics_dict):
+        for local_topic, local_partitions in topics_dict.items():
             temp_str = "Topic: {topic}, Partitions: {partitions}\n".format(
                 topic=local_topic,
                 partitions=local_partitions

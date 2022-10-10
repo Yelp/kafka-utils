@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from collections import defaultdict
 from collections import namedtuple
 
-import six
 from kafka.common import UnknownTopicOrPartitionError
 from kafka.errors import BrokerResponseError
 from kafka.errors import check_error
@@ -99,7 +95,7 @@ def _validate_topics_list_or_dict(topics):
     if isinstance(topics, dict):
         return topics
     elif isinstance(topics, (list, set, tuple)):
-        return dict([(topic, []) for topic in topics])
+        return {topic: [] for topic in topics}
     else:
         raise TypeError("Invalid topics: {topics}. It must be either a "
                         "list of topics or a dict "
@@ -109,7 +105,7 @@ def _validate_topics_list_or_dict(topics):
 def _verify_topics_and_partitions(kafka_client, topics, raise_on_error):
     topics = _validate_topics_list_or_dict(topics)
     valid_topics = {}
-    for topic, partitions in six.iteritems(topics):
+    for topic, partitions in topics.items():
         # Check topic exists
         if not kafka_client.has_metadata_for_topic(topic):
             if raise_on_error:
@@ -150,25 +146,25 @@ def _verify_commit_offsets_requests(kafka_client, new_offsets, raise_on_error):
     if not isinstance(new_offsets, dict):
         raise TypeError(type_error_str)
 
-    for topic, partitions in six.iteritems(new_offsets):
+    for topic, partitions in new_offsets.items():
         if not isinstance(partitions, dict):
             raise TypeError(type_error_str)
 
-    topics = dict(
-        (topic, list(partitions.keys()))
-        for topic, partitions in six.iteritems(new_offsets)
-    )
+    topics = {
+        topic: list(partitions.keys())
+        for topic, partitions in new_offsets.items()
+    }
 
     valid_topics = _verify_topics_and_partitions(kafka_client, topics, raise_on_error)
 
-    return dict(
-        (topic, dict(
-            (partition, new_offsets[topic][partition])
+    return {
+        topic: {
+            partition: new_offsets[topic][partition]
             for partition in partitions
-        ))
-        for topic, partitions in six.iteritems(valid_topics)
+        }
+        for topic, partitions in valid_topics.items()
         if partitions
-    )
+    }
 
 
 def get_current_consumer_offsets(
@@ -206,7 +202,7 @@ def get_current_consumer_offsets(
 
     group_offset_reqs = [
         OffsetFetchRequestPayload(topic, partition)
-        for topic, partitions in six.iteritems(topics)
+        for topic, partitions in topics.items()
         for partition in partitions
     ]
 
@@ -263,7 +259,7 @@ def get_topics_watermarks(kafka_client, topics, raise_on_error=True):
     highmark_offset_reqs = []
     lowmark_offset_reqs = []
 
-    for topic, partitions in six.iteritems(topics):
+    for topic, partitions in topics.items():
         # Batch watermark requests
         for partition in partitions:
             # Request the the latest offset
@@ -306,8 +302,8 @@ def get_topics_watermarks(kafka_client, topics, raise_on_error=True):
         aggregated_offsets[resp.topic][resp.partition]['lowmark'] = \
             resp.offsets[0]
 
-    for topic, partition_watermarks in six.iteritems(aggregated_offsets):
-        for partition, watermarks in six.iteritems(partition_watermarks):
+    for topic, partition_watermarks in aggregated_offsets.items():
+        for partition, watermarks in partition_watermarks.items():
             watermark_offsets.setdefault(
                 topic,
                 {},
@@ -338,7 +334,7 @@ def _commit_offsets_to_watermark(
                 watermark_offsets[topic][partition].highmark,
                 metadata=''
             )
-            for topic, partitions in six.iteritems(topics)
+            for topic, partitions in topics.items()
             for partition in partitions
         ]
     elif watermark == LOW_WATERMARK:
@@ -348,7 +344,7 @@ def _commit_offsets_to_watermark(
                 watermark_offsets[topic][partition].lowmark,
                 metadata=''
             )
-            for topic, partitions in six.iteritems(topics)
+            for topic, partitions in topics.items()
             for partition in partitions
         ]
     else:
@@ -497,8 +493,8 @@ def set_consumer_offsets(
             offset,
             metadata='',
         )
-        for topic, new_partition_offsets in six.iteritems(valid_new_offsets)
-        for partition, offset in six.iteritems(new_partition_offsets)
+        for topic, new_partition_offsets in valid_new_offsets.items()
+        for partition, offset in new_partition_offsets.items()
     ]
 
     send_api = kafka_client.send_offset_commit_request_kafka
@@ -531,6 +527,6 @@ def nullify_offsets(offsets):
     :returns: a dict topic: partition: offset
     """
     result = {}
-    for topic, partition_offsets in six.iteritems(offsets):
+    for topic, partition_offsets in offsets.items():
         result[topic] = _nullify_partition_offsets(partition_offsets)
     return result

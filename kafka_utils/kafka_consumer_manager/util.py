@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import logging
 import sys
 from collections import defaultdict
 
-import six
 from kafka.admin import KafkaAdminClient
 from kafka.consumer import KafkaConsumer
 from kafka.structs import OffsetAndMetadata
@@ -28,7 +22,6 @@ from kafka.structs import TopicPartition
 from kafka.util import read_short_string
 from kafka.util import relative_unpack
 from kazoo.exceptions import NodeExistsError
-from six.moves import input
 
 from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.error import UnknownTopic
@@ -83,8 +76,8 @@ def create_offsets(zk, consumer_group, offsets):
     :type offsets: dict(topic, dict(partition, offset))
     """
     # Create new offsets
-    for topic, partition_offsets in six.iteritems(offsets):
-        for partition, offset in six.iteritems(partition_offsets):
+    for topic, partition_offsets in offsets.items():
+        for partition, offset in partition_offsets.items():
             new_path = "/consumers/{groupid}/offsets/{topic}/{partition}".format(
                 groupid=consumer_group,
                 topic=topic,
@@ -110,7 +103,7 @@ def fetch_offsets(zk, consumer_group, topics):
     :rtype: dict(topic, dict(partition, offset))
     """
     source_offsets = defaultdict(dict)
-    for topic, partitions in six.iteritems(topics):
+    for topic, partitions in topics.items():
         for partition in partitions:
             offset, _ = zk.get(
                 "/consumers/{groupid}/offsets/{topic}/{partition}".format(
@@ -228,7 +221,7 @@ def consumer_commit_for_times(consumer, partition_to_offset, atomic=False):
             TopicPartition: timestamp pairs.
     """
     no_offsets = set()
-    for tp, offset in six.iteritems(partition_to_offset):
+    for tp, offset in partition_to_offset.items():
         if offset is None:
             logging.error(
                 "No offsets found for topic-partition {tp}. Either timestamps not supported"
@@ -245,7 +238,7 @@ def consumer_commit_for_times(consumer, partition_to_offset, atomic=False):
 
     offsets_metadata = {
         tp: OffsetAndMetadata(partition_to_offset[tp].offset, metadata=None)
-        for tp in six.iterkeys(partition_to_offset) if tp not in no_offsets
+        for tp in partition_to_offset.keys() if tp not in no_offsets
     }
 
     if len(offsets_metadata) != 0:
@@ -267,7 +260,7 @@ class KafkaAdminGroupReader:
     def read_group(self, groupid):
         topics = set()
         group_offsets = self.admin_client.list_consumer_group_offsets(groupid)
-        for tp in six.iterkeys(group_offsets):
+        for tp in group_offsets.keys():
             topics.add(tp.topic)
 
         return list(topics)
@@ -364,13 +357,13 @@ class KafkaGroupReader:
 
         return {
             group: topics.keys()
-            for group, topics in six.iteritems(self._kafka_groups)
+            for group, topics in self._kafka_groups.items()
             if topics
         }
 
     def _remove_unsubscribed_topics(self):
-        for group, topics in list(six.iteritems(self._kafka_groups)):
-            for topic, partitions in list(six.iteritems(topics)):
+        for group, topics in list(self._kafka_groups.items()):
+            for topic, partitions in list(topics.items()):
                 # If offsets for all partitions are 0, consider the topic as unsubscribed
                 if not any(partitions.values()):
                     del self._kafka_groups[group][topic]
@@ -443,9 +436,9 @@ class KafkaGroupReader:
             client,
             [CONSUMER_OFFSET_TOPIC],
         )
-        partitions_set = set(tp.partition for tp in partitions) if partitions else None
+        partitions_set = {tp.partition for tp in partitions} if partitions else None
         return {part: offset for part, offset
-                in six.iteritems(offsets[CONSUMER_OFFSET_TOPIC])
+                in offsets[CONSUMER_OFFSET_TOPIC].items()
                 if offset.highmark > offset.lowmark and
                 (partitions is None or part in partitions_set)}
 

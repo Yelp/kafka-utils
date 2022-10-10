@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import os
-import socket
 import sys
 import time
 from contextlib import closing
@@ -54,7 +48,7 @@ class Connection:
 
         :raises SSHException: if the server fails to execute the command
         """
-        new_command = "sudo {0}".format(command)
+        new_command = "sudo {}".format(command)
         return self.exec_command(new_command, bufsize)
 
     def exec_command(self, command, bufsize=-1, check_status=True):
@@ -148,16 +142,16 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
                 attempts += 1
                 client.connect(**cfg)
                 break
-            except socket.error as e:
+            except OSError as e:
                 if attempts < max_attempts:
-                    print("SSH to host {0} failed, retrying...".format(host))
+                    print("SSH to host {} failed, retrying...".format(host))
                     time.sleep(max_timeout)
                 else:
-                    print("SSH Exception: {0}".format(e))
+                    print("SSH Exception: {}".format(e))
 
         else:
             raise MaxConnectionAttemptsError(
-                "Exceeded max attempts to connect to host {0} after {1} retries".format(host, max_attempts)
+                "Exceeded max attempts to connect to host {} after {} retries".format(host, max_attempts)
             )
 
         yield Connection(client, forward_agent, sudoable)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest.mock import Mock
+from unittest.mock import sentinel
 
 import pytest
-from mock import Mock
-from mock import sentinel
 
 from .helper import create_and_attach_partition
 from .helper import create_broker
@@ -50,7 +48,7 @@ def rg_unbalanced(create_partition):
     b2 = create_broker('b2', [p11, p20, p30, p40])
     b3 = create_broker('b3', [p40])
     b4 = create_broker('b4', [p50])
-    return ReplicationGroup('test_rg', set([b1, b2, b3, b4]))
+    return ReplicationGroup('test_rg', {b1, b2, b3, b4})
 
 
 @pytest.fixture
@@ -71,7 +69,7 @@ def rg_balanced(create_partition):
     b1 = create_broker('b1', [p10, p11, p20, p40])
     b2 = create_broker('b2', [p12, p13, p21])
     b3 = create_broker('b3', [p21, p30, p40])
-    return ReplicationGroup('test_rg', set([b1, b2, b3]))
+    return ReplicationGroup('test_rg', {b1, b2, b3})
 
 
 def assert_rg_balanced(rg):
@@ -81,7 +79,7 @@ def assert_rg_balanced(rg):
             assert len(broker.partitions) in (expected_count, expected_count + 1)
 
 
-class TestReplicationGroup(object):
+class TestReplicationGroup:
 
     def test_active_brokers(self, rg_unbalanced):
         b1 = next(b for b in rg_unbalanced.brokers if b.id == 'b1')
@@ -92,7 +90,7 @@ class TestReplicationGroup(object):
         b2.mark_decommissioned()
         b3.mark_inactive()
 
-        assert rg_unbalanced.active_brokers == set([b1, b4])
+        assert rg_unbalanced.active_brokers == {b1, b4}
 
     def test_rebalance_brokers(self, rg_unbalanced):
         orig_partitions = rg_unbalanced.partitions
@@ -121,7 +119,7 @@ class TestReplicationGroup(object):
         # No partitions are missing
         assert sorted(orig_partitions, key=id) == sorted(rg_unbalanced.partitions, key=id)
         # b4 has not changed
-        assert b4.partitions == set([p51])
+        assert b4.partitions == {p51}
         for broker in rg_unbalanced.brokers:
             if not broker.decommissioned and not broker.inactive:
                 assert len(broker.partitions) in (
@@ -193,7 +191,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p11, p20])
         b2 = create_broker('b2', [])
         b2.mark_inactive()
-        rg = ReplicationGroup('rg', set([b1, b2]))
+        rg = ReplicationGroup('rg', {b1, b2})
         b1.mark_decommissioned()
 
         # Two brokers b1 decommissioned b2 inactive
@@ -206,7 +204,7 @@ class TestReplicationGroup(object):
         p20 = create_partition('topic2', 0, replication_factor=2)
         b1 = create_broker('b1', [p10, p11, p20])
         b2 = create_broker('b1', [p20])
-        rg = ReplicationGroup('rg', set([b1, b2]))
+        rg = ReplicationGroup('rg', {b1, b2})
         b2.mark_decommissioned()
 
         rg.rebalance_brokers()
@@ -229,7 +227,7 @@ class TestReplicationGroup(object):
         b3 = create_broker('b3', [p20, p21, p22, p23])
         b4 = create_broker('b4', [p20, p21, p22])
 
-        rg = ReplicationGroup('rg', set([b1, b2, b3, b4]))
+        rg = ReplicationGroup('rg', {b1, b2, b3, b4})
         b1.mark_decommissioned()
 
         rg.rebalance_brokers()
@@ -275,7 +273,7 @@ class TestReplicationGroup(object):
         rg = ReplicationGroup('test_rg', None)
         rg.add_broker(sentinel.broker)
 
-        assert set([sentinel.broker]) == rg.brokers
+        assert {sentinel.broker} == rg.brokers
 
     def test_invalid_brokers_type_list(self):
         with pytest.raises(TypeError):
@@ -284,7 +282,7 @@ class TestReplicationGroup(object):
     def test_add_broker(self):
         rg = ReplicationGroup(
             'test_rg',
-            set([sentinel.broker1, sentinel.broker2]),
+            {sentinel.broker1, sentinel.broker2},
         )
         rg.add_broker(sentinel.broker)
 
@@ -296,10 +294,10 @@ class TestReplicationGroup(object):
         assert 'test_rg' == rg.id
 
     def test_partitions(self):
-        mock_brokers = set([
-            Mock(spec=Broker, partitions=set([sentinel.p1, sentinel.p2])),
-            Mock(spec=Broker, partitions=set([sentinel.p3, sentinel.p1])),
-        ])
+        mock_brokers = {
+            Mock(spec=Broker, partitions={sentinel.p1, sentinel.p2}),
+            Mock(spec=Broker, partitions={sentinel.p3, sentinel.p1}),
+        }
         rg = ReplicationGroup('test_rg', mock_brokers)
         expected = [
             sentinel.p1,
@@ -319,7 +317,7 @@ class TestReplicationGroup(object):
         p21 = create_partition('t2', 1)
         b1 = create_broker('b1', [p10, p11, p20])
         b2 = create_broker('b2', [p12, p21])
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
         b3 = create_broker('b3', [p13])
 
         rg.acquire_partition(p13, b3)
@@ -332,7 +330,7 @@ class TestReplicationGroup(object):
         p11 = create_partition('t1', 1)
         p20 = create_partition('t2', 0)
         b1 = create_broker('b1', [p10, p11, p20])
-        rg = ReplicationGroup('test_rg', set([b1]))
+        rg = ReplicationGroup('test_rg', {b1})
         b3 = create_broker('b3', [p11])
 
         # Not eligible because broker b3 has already a replica of partition p11
@@ -346,7 +344,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p11])  # b1 -> t1: {0,1}, t2: 0
         p30 = create_partition('t3', 0)
         b2 = create_broker('b2', [p10, p20, p30])  # b2 -> t1: 0, t2: 1, t3: 0
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
 
         # b1 has 2 partitions (p1 and p3) for same topic t1
         # b2 has only 1 partition (p1) for topic t1
@@ -363,7 +361,7 @@ class TestReplicationGroup(object):
         p30 = create_partition('t3', 0)
         b1 = create_broker('b1', [p10, p20, p11])  # b1 -> t1: {0,1}, t2: 0
         b2 = create_broker('b2', [p10, p30])  # b2 -> t1: 0, t3: 0
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
 
         # Since p30 is already in b2 so the preferred destination will be b1
         # although b2 has less partitions.
@@ -380,7 +378,7 @@ class TestReplicationGroup(object):
         p31 = create_partition('t3', 1)
         p32 = create_partition('t3', 2)
         b2 = create_broker('b2', [p10, p30, p31, p32])  # b2 -> t1: 0, t3: 0
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
 
         # Since t1 has two partitions in b1 but only one in b2,
         # the preferred destination should be b2
@@ -393,7 +391,7 @@ class TestReplicationGroup(object):
         p2 = create_partition('t2', 0)
         p3 = create_partition('t1', 1)
         b1 = create_broker('b1', [p1, p2, p3])  # b1 -> t1: {0,1}, t2: 0
-        rg = ReplicationGroup('test_rg', set([b1]))
+        rg = ReplicationGroup('test_rg', {b1})
         # p1 already exists in b1
         # This should never happen and we expect the application to fail badly
         victim_partition = p1
@@ -406,7 +404,7 @@ class TestReplicationGroup(object):
         p13 = create_partition('t1', 3)
         b1 = create_broker('b1', [p10, p11, p12])
         b2 = create_broker('b2', [p10, p13])
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
 
         assert rg.count_replica(p10) == 2
         assert rg.count_replica(p11) == 1
@@ -422,12 +420,12 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p20])
         b2 = create_broker('b2', [p20, p11])
         b3 = create_broker('b3', [p10, p20, p11])
-        rg_source = ReplicationGroup('rg1', set([b0, b1, b2, b3]))
+        rg_source = ReplicationGroup('rg1', {b0, b1, b2, b3})
         b4 = create_broker('b4', [p20, p11])
         b5 = create_broker('b5', [p20])
         b6 = create_broker('b6', [p10])
         b7 = create_broker('b7', [p11])
-        rg_dest = ReplicationGroup('rg2', set([b4, b5, b6, b7]))
+        rg_dest = ReplicationGroup('rg2', {b4, b5, b6, b7})
 
         # Select best-suitable brokers for moving partition 'p10'
         broker_source, broker_dest = rg_source._select_broker_pair(rg_dest, p10)
@@ -447,11 +445,11 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p20, p11])
         b2 = create_broker('b2', [p10, p11])
         # 2 p1 replicas are in rg_source
-        rg_source = ReplicationGroup('rg1', set([b1, b2]))
+        rg_source = ReplicationGroup('rg1', {b1, b2})
         b3 = create_broker('b3', [p10, p11])
         b4 = create_broker('b4', [p20])
         # 1 p1 replica is in rg_dest
-        rg_dest = ReplicationGroup('rg2', set([b3, b4]))
+        rg_dest = ReplicationGroup('rg2', {b3, b4})
 
         # Move partition p1 from rg1 to rg2
         rg_source.move_partition(rg_dest, p10)
@@ -473,7 +471,7 @@ class TestReplicationGroup(object):
         p30 = create_partition('topic3', 0)
         b1 = create_broker('b1', [p10, p11, p20, p30])
         b2 = create_broker('b2', [p10, p20])
-        rg = ReplicationGroup('rg', set([b1, b2]))
+        rg = ReplicationGroup('rg', {b1, b2})
 
         over_loaded = [b1]
         under_loaded = [b2]
@@ -496,7 +494,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p11, p20])
         b2 = create_broker('b2', [p10, p30])
         b3 = create_broker('b3', [p21])
-        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        rg = ReplicationGroup('rg', {b1, b2, b3})
 
         over_loaded = [b1]
         under_loaded = [b2, b3]
@@ -523,7 +521,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p11, p20])
         b2 = create_broker('b2', [p12, p21, p30, p31])
         b3 = create_broker('b3', [])
-        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        rg = ReplicationGroup('rg', {b1, b2, b3})
 
         over_loaded = [b1, b2]
         under_loaded = [b3]
@@ -554,7 +552,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p11, p20, p21, p30, p31])
         b2 = create_broker('b2', [p12, p21, p22])
         b3 = create_broker('b3', [p10, p11, p22])
-        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        rg = ReplicationGroup('rg', {b1, b2, b3})
 
         expected = {
             b1: {b2: {t1: 1, t2: 0, t3: 2}, b3: {t1: 0, t2: 1, t3: 2}},
@@ -580,7 +578,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p11, p20, p21, p30, p31])
         b2 = create_broker('b2', [p12, p21, p22])
         b3 = create_broker('b3', [p10, p11, p22])
-        rg = ReplicationGroup('rg', set([b1, b2, b3]))
+        rg = ReplicationGroup('rg', {b1, b2, b3})
         sibling_distance = {
             b2: {
                 b1: {t1: -1, t2: 0, t3: -2},
@@ -616,11 +614,11 @@ class TestReplicationGroup(object):
         p40 = create_partition('topic4', 0)
         b1 = create_broker('b1', [p10, p11, p12, p13, p20, p21, p30, p40])
         b2 = create_broker('b2', [])
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
         rg.rebalance_brokers()
 
-        possible_topics1 = set([p10.topic, p11.topic, p20.topic, p30.topic])
-        possible_topics2 = set([p10.topic, p11.topic, p20.topic, p40.topic])
+        possible_topics1 = {p10.topic, p11.topic, p20.topic, p30.topic}
+        possible_topics2 = {p10.topic, p11.topic, p20.topic, p40.topic}
         assert (
             b1.topics == possible_topics1 and
             b2.topics == possible_topics2
@@ -635,12 +633,12 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10, p20])
         b2 = create_broker('b2', [p10, p20])
         b3 = create_broker('b3', [p20])
-        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
+        rg = ReplicationGroup('test_rg', {b1, b2, b3})
         rg.add_replica(p10)
 
-        assert b1.partitions == set([p10, p20])
-        assert b2.partitions == set([p10, p20])
-        assert b3.partitions == set([p10, p20])
+        assert b1.partitions == {p10, p20}
+        assert b2.partitions == {p10, p20}
+        assert b3.partitions == {p10, p20}
 
     def test_remove_replica(self, create_partition):
         p10 = create_partition('topic1', 0)
@@ -649,12 +647,12 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10])
         b2 = create_broker('b2', [p10, p20])
         b3 = create_broker('b3', [p10, p20, p30])
-        rg = ReplicationGroup('test_rg', set([b1, b2, b3]))
+        rg = ReplicationGroup('test_rg', {b1, b2, b3})
         rg.remove_replica(p10, [b1, b2])
 
-        assert b1.partitions == set([p10])
-        assert b2.partitions == set([p20])
-        assert b3.partitions == set([p10, p20, p30])
+        assert b1.partitions == {p10}
+        assert b2.partitions == {p20}
+        assert b3.partitions == {p10, p20, p30}
 
     def test_remove_replica_invalid_broker(self, create_partition):
         p10 = create_partition('topic1', 0)
@@ -662,7 +660,7 @@ class TestReplicationGroup(object):
         b1 = create_broker('b1', [p10])
         b2 = create_broker('b2', [p20])
         b3 = create_broker('b3', [p10])
-        rg = ReplicationGroup('test_rg', set([b1, b2]))
+        rg = ReplicationGroup('test_rg', {b1, b2})
 
         with pytest.raises(AssertionError):
             rg.remove_replica(p10, [b2, b3])

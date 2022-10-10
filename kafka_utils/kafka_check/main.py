@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +15,6 @@
 Kafka checks module.
 Each check is separated subcommand for kafka-check.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-
 import argparse
 import logging
 
@@ -180,7 +176,7 @@ def run():
     except ConfigurationError as e:
         terminate(
             status_code.CRITICAL,
-            prepare_terminate_message("ConfigurationError {0}".format(e)),
+            prepare_terminate_message("ConfigurationError {}".format(e)),
             args.json,
         )
 

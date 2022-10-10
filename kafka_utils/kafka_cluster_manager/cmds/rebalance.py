@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 import logging
 import sys
-
-import six
 
 from .command import ClusterManagerCmd
 from kafka_utils.kafka_cluster_manager.cluster_info.display \
@@ -38,7 +32,7 @@ DEFAULT_MAX_LEADER_CHANGES = 5
 class RebalanceCmd(ClusterManagerCmd):
 
     def __init__(self):
-        super(RebalanceCmd, self).__init__()
+        super().__init__()
         self.log = logging.getLogger('ClusterRebalance')
 
     def build_subparser(self, subparsers):
@@ -127,7 +121,7 @@ class RebalanceCmd(ClusterManagerCmd):
         if self.args.max_movement_size:
             total_weight = sum(
                 partition.weight
-                for partition in six.itervalues(cluster_topology.partitions)
+                for partition in cluster_topology.partitions.values()
             )
             broker_count = len(cluster_topology.brokers)
             optimal_weight = total_weight / broker_count
@@ -171,7 +165,7 @@ class RebalanceCmd(ClusterManagerCmd):
         elif self.args.auto_max_movement_size:
             self.args.max_movement_size = max(
                 partition.size
-                for partition in six.itervalues(cluster_topology.partitions)
+                for partition in cluster_topology.partitions.values()
             )
             self.log.info(
                 'Auto-max-movement-size: using {max_movement_size} as'

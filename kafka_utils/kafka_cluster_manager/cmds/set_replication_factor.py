@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import logging
 import sys
 
@@ -24,7 +21,7 @@ from kafka_utils.util import positive_nonzero_int
 class SetReplicationFactorCmd(ClusterManagerCmd):
 
     def __init__(self):
-        super(SetReplicationFactorCmd, self).__init__()
+        super().__init__()
         self.log = logging.getLogger(self.__class__.__name__)
 
     def build_subparser(self, subparsers):
