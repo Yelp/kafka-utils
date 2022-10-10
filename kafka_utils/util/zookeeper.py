@@ -15,9 +15,9 @@
 from __future__ import absolute_import
 
 import logging
+import re
 
 import six
-import re
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError

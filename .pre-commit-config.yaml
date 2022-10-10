@@ -6,11 +6,13 @@ repos:
     -   id: check-merge-conflict
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-    -   id: autopep8-wrapper
-        args: [--ignore=E501, --in-place]
     -   id: flake8
         args: ["--ignore=W504,E501"]
-
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.7.0
+    hooks:
+    -   id: autopep8
+        args: [--ignore=E501, --in-place]
 -   repo: https://github.com/asottile/reorder_python_imports.git
     rev: v1.9.0
     hooks:
