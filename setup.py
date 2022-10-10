@@ -58,7 +58,6 @@ setup(
         "paramiko>1.8.0,<3.0.0",
         "requests<3.0.0",
         "retrying",
-        "six>=1.10.0",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

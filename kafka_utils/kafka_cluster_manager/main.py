@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import configparser
 import logging
 import sys
 from logging.config import fileConfig
-
-import six.moves.configparser
 
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
@@ -185,7 +184,7 @@ def configure_logging(log_conf=None, log_unhandled_exceptions=True):
     if log_conf:
         try:
             fileConfig(log_conf, disable_existing_loggers=False)
-        except six.moves.configparser.NoSectionError:
+        except configparser.NoSectionError:
             logging.basicConfig(level=logging.INFO)
             _log.error(
                 'Failed to load {logconf} file.'

@@ -16,7 +16,6 @@ import subprocess
 import time
 import uuid
 
-import six
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
 
@@ -97,16 +96,10 @@ def call_cmd(cmd):
     except subprocess.CalledProcessError as e:
         output += e.output
 
-    if six.PY3:
-        if out:
-            output += out.decode()
-        if err:
-            output += err.decode()
-    else:
-        if out:
-            output += out
-        if err:
-            output += err
+    if out:
+        output += out.decode()
+    if err:
+        output += err.decode()
 
     return output
 
