@@ -6,14 +6,14 @@ on: [pull_request, release]
 
 jobs:
   tox:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         toxenv:
-          - py36-unittest
-          - py36-kafka10-dockeritest
-          - py36-kafka11-dockeritest
+          - py38-unittest
+          - py38-kafka10-dockeritest
+          - py38-kafka11-dockeritest
     env:
       PIP_INDEX_URL: https://pypi.python.org/simple
     steps:
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.6
+          python-version: 3.8
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
