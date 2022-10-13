@@ -17,8 +17,7 @@ def _read_generated_broker_id(meta_properties_path):
             broker_id = _parse_meta_properties_file(f)
     except OSError:
         raise OSError(
-            "Cannot open meta.properties file: {path}"
-            .format(path=meta_properties_path),
+            f"Cannot open meta.properties file: {meta_properties_path}",
         )
     except ValueError:
         raise ValueError("Broker id not valid")
