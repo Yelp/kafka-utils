@@ -1,0 +1,28 @@
+name: Publish on PyPI
+
+on:
+  push:
+    tags:
+    - v*
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+
+    - name: Install Python dependencies
+      run: pip install wheel
+
+    - name: Create a Wheel file and source distribution
+      run: python setup.py sdist bdist_wheel
+
+    - name: Publish distribution package to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.5.1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_PASSWORD }}
