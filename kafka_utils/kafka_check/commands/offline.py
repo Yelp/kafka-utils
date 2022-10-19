@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import itertools
 import sys
 
@@ -61,13 +58,13 @@ def _prepare_output(partitions, verbose, head_limit):
     if partitions_count == 0:
         out['message'] = 'No offline partitions.'
     else:
-        out['message'] = "{count} offline partitions.".format(count=partitions_count)
+        out['message'] = f"{partitions_count} offline partitions."
         if verbose:
             lines = (
-                '{}:{}'.format(topic, partition)
+                f'{topic}:{partition}'
                 for (topic, partition) in partitions
             )
-            title = "Top {0} partitions:\n".format(head_limit) if head_limit != -1 else "Partitions:\n"
+            title = f"Top {head_limit} partitions:\n" if head_limit != -1 else "Partitions:\n"
             out['verbose'] = title + "\n".join(lines)
         else:
             cmdline = sys.argv[:]

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """"Provide functions to validate and generate a Kafka assignment"""
-from __future__ import absolute_import
-
 import logging
 from collections import Counter
 
-import six
 
 _log = logging.getLogger(__name__)
 
@@ -43,7 +39,7 @@ def assignment_to_plan(assignment):
         [{'topic': t_p[0],
           'partition': t_p[1],
           'replicas': replica
-          } for t_p, replica in six.iteritems(assignment)]
+          } for t_p, replica in assignment.items()]
     }
 
 
@@ -98,14 +94,14 @@ def _validate_plan_base(
     """
 
     # Verify that partitions in plan are subset of base plan.
-    new_partitions = set([
+    new_partitions = {
         (p_data['topic'], p_data['partition'])
         for p_data in new_plan['partitions']
-    ])
-    base_partitions = set([
+    }
+    base_partitions = {
         (p_data['topic'], p_data['partition'])
         for p_data in base_plan['partitions']
-    ])
+    }
     if is_partition_subset:
         invalid_partitions = list(new_partitions - base_partitions)
     else:
@@ -133,7 +129,7 @@ def _validate_plan_base(
     }
     if not allow_rf_change:
         invalid_replication_factor = False
-        for new_partition, replicas in six.iteritems(new_partition_replicas):
+        for new_partition, replicas in new_partition_replicas.items():
             base_replica_cnt = len(base_partition_replicas[new_partition])
             if len(replicas) != base_replica_cnt:
                 invalid_replication_factor = True
@@ -172,7 +168,7 @@ def _validate_format(plan):
         ]}
     """
     # Verify presence of required keys
-    if set(plan.keys()) != set(['version', 'partitions']):
+    if set(plan.keys()) != {'version', 'partitions'}:
         _log.error(
             'Invalid or incomplete keys in given plan. Expected: "version", '
             '"partitions". Found:{keys}'
@@ -200,14 +196,14 @@ def _validate_format(plan):
 
     # Invalid partition-data
     for p_data in plan['partitions']:
-        if set(p_data.keys()) != set(['topic', 'partition', 'replicas']):
+        if set(p_data.keys()) != {'topic', 'partition', 'replicas'}:
             _log.error(
                 'Invalid keys in partition-data {keys}'
                 .format(keys=', '.join(list(p_data.keys()))),
             )
             return False
         # Check types
-        if not isinstance(p_data['topic'], six.text_type):
+        if not isinstance(p_data['topic'], str):
             _log.error(
                 '"topic" of type unicode expected {p_data}, found {t_type}'
                 .format(p_data=p_data, t_type=type(p_data['topic'])),
@@ -261,7 +257,7 @@ def _validate_plan(plan, allow_rf_mismatch=False):
         for p_data in plan['partitions']
     ]
     duplicate_partitions = [
-        partition for partition, count in six.iteritems(Counter(partition_names))
+        partition for partition, count in Counter(partition_names).items()
         if count > 1
     ]
     if duplicate_partitions:

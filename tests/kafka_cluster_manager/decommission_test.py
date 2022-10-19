@@ -1,8 +1,6 @@
-from __future__ import unicode_literals
-
 from argparse import Namespace
+from unittest import mock
 
-import mock
 import pytest
 
 from kafka_utils.kafka_cluster_manager.cluster_info \

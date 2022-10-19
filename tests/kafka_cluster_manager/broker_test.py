@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest.mock import Mock
+from unittest.mock import sentinel
 
-from mock import Mock
-from mock import sentinel
 from pytest import fixture
 
 from .helper import create_and_attach_partition
@@ -25,7 +23,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
 
 
-class TestBroker(object):
+class TestBroker:
 
     @fixture
     def partition(self):
@@ -39,13 +37,13 @@ class TestBroker(object):
         assert broker.partitions == set()
 
     def test_partitions(self):
-        broker = Broker('test-broker', partitions=set([sentinel.p1, sentinel.p2]))
+        broker = Broker('test-broker', partitions={sentinel.p1, sentinel.p2})
 
-        assert broker.partitions == set([sentinel.p1, sentinel.p2])
+        assert broker.partitions == {sentinel.p1, sentinel.p2}
 
     def test_remove_partition(self, partition):
         p1 = partition
-        b1 = Broker('test-broker', partitions=set([p1]))
+        b1 = Broker('test-broker', partitions={p1})
         p1.add_replica(b1)
 
         # Remove partition
@@ -57,39 +55,39 @@ class TestBroker(object):
     def test_add_partition(self, create_partition):
         p10 = create_partition('t1', 0)
         p20 = create_partition('t2', 0)
-        broker = Broker('test-broker', partitions=set([p10]))
+        broker = Broker('test-broker', partitions={p10})
 
         broker.add_partition(p20)
 
-        assert broker.partitions == set([p10, p20])
+        assert broker.partitions == {p10, p20}
         assert p20.replicas == [broker]
 
     def test_topics(self):
-        partitions = set([
+        partitions = {
             Mock(spec=Partition, topic=sentinel.t1),
             Mock(spec=Partition, topic=sentinel.t1),
             Mock(spec=Partition, topic=sentinel.t2),
-        ])
+        }
         broker = Broker('test-broker', partitions=partitions)
 
-        assert broker.topics == set([sentinel.t1, sentinel.t2])
+        assert broker.topics == {sentinel.t1, sentinel.t2}
 
     def test_weight(self):
-        partitions = set([
+        partitions = {
             Mock(spec=Partition, topic=sentinel.t1, weight=1),
             Mock(spec=Partition, topic=sentinel.t1, weight=2),
             Mock(spec=Partition, topic=sentinel.t2, weight=3),
-        ])
+        }
         broker = Broker('test-broker', partitions=partitions)
 
         assert broker.weight == 6
 
     def test_size(self):
-        partitions = set([
+        partitions = {
             Mock(spec=Partition, topic=sentinel.t1, size=1),
             Mock(spec=Partition, topic=sentinel.t1, size=2),
             Mock(spec=Partition, topic=sentinel.t2, size=3),
-        ])
+        }
         broker = Broker('test-broker', partitions=partitions)
 
         assert broker.size == 6
@@ -101,14 +99,14 @@ class TestBroker(object):
         p30 = create_partition('t3', 0)
         t1 = p10.topic
         t3 = p30.topic
-        broker = Broker('test-broker', partitions=set([p10, p11, p20]))
+        broker = Broker('test-broker', partitions={p10, p11, p20})
 
         assert broker.count_partitions(t1) == 2
         assert broker.count_partitions(t3) == 0
 
     def test_move_partition(self, partition):
         victim_partition = partition
-        source_broker = Broker('b1', partitions=set([victim_partition]))
+        source_broker = Broker('b1', partitions={victim_partition})
         victim_partition.add_replica(source_broker)
         dest_broker = Broker('b2')
 
@@ -125,7 +123,7 @@ class TestBroker(object):
 
     def test_count_preferred_replica(self, partition):
         p1 = partition
-        b1 = Broker('test-broker', partitions=set([p1]))
+        b1 = Broker('test-broker', partitions={p1})
         p1.add_replica(b1)
         p2 = Mock(spec=Partition, topic=sentinel.t1, replicas=[sentinel.b2])
         b1.add_partition(p2)
@@ -174,7 +172,7 @@ class TestBroker(object):
         assert broker.empty()
 
     def test_not_empty(self, partition):
-        broker = Broker('test-broker', partitions=set([partition]))
+        broker = Broker('test-broker', partitions={partition})
 
         assert not broker.empty()
 

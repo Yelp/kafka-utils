@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 
 
-class ReplicationGroupParser(object):
+class ReplicationGroupParser:
     """Base class for replication group parsers"""
 
     def get_replication_group(self, broker):

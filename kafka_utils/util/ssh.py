@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import os
-import socket
 import sys
 import time
 from contextlib import closing
@@ -54,7 +48,7 @@ class Connection:
 
         :raises SSHException: if the server fails to execute the command
         """
-        new_command = "sudo {0}".format(command)
+        new_command = f"sudo {command}"
         return self.exec_command(new_command, bufsize)
 
     def exec_command(self, command, bufsize=-1, check_status=True):
@@ -83,7 +77,7 @@ class Connection:
 
         channel.exec_command(command)
         if check_status and channel.recv_exit_status() != 0:
-            raise RuntimeError("Command execution error: {}".format(command))
+            raise RuntimeError(f"Command execution error: {command}")
 
         stdin = channel.makefile('wb', bufsize)
         stdout = channel.makefile('rb', bufsize)
@@ -148,16 +142,16 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
                 attempts += 1
                 client.connect(**cfg)
                 break
-            except socket.error as e:
+            except OSError as e:
                 if attempts < max_attempts:
-                    print("SSH to host {0} failed, retrying...".format(host))
+                    print(f"SSH to host {host} failed, retrying...")
                     time.sleep(max_timeout)
                 else:
-                    print("SSH Exception: {0}".format(e))
+                    print(f"SSH Exception: {e}")
 
         else:
             raise MaxConnectionAttemptsError(
-                "Exceeded max attempts to connect to host {0} after {1} retries".format(host, max_attempts)
+                f"Exceeded max attempts to connect to host {host} after {max_attempts} retries"
             )
 
         yield Connection(client, forward_agent, sudoable)
@@ -173,7 +167,7 @@ def report_stdout(host, stdout):
     """
     lines = stdout.readlines()
     if lines:
-        print("STDOUT from {host}:".format(host=host))
+        print(f"STDOUT from {host}:")
         for line in lines:
             print(line.rstrip(), file=sys.stdout)
 
@@ -188,6 +182,6 @@ def report_stderr(host, stderr):
     """
     lines = stderr.readlines()
     if lines:
-        print("STDERR from {host}:".format(host=host))
+        print(f"STDERR from {host}:")
         for line in lines:
             print(line.rstrip(), file=sys.stderr)

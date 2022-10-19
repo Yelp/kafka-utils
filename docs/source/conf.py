@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,8 +58,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Kafka-Utils'
-copyright = u'2015-2016, Yelp-Inc.'
+project = 'Kafka-Utils'
+copyright = '2015-2016, Yelp-Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -193,8 +192,8 @@ htmlhelp_basename = 'kafkatoolsdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ('index', 'Kafka_Utils.tex', u'Kafka-Utils Documentation',
-     u'Yelp Inc.', 'manual'),
+    ('index', 'Kafka_Utils.tex', 'Kafka-Utils Documentation',
+     'Yelp Inc.', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

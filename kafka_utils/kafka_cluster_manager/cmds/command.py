@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import json
 import logging
 import sys
 from collections import defaultdict
 
 import humanfriendly
-import six
-from six.moves import input
 
 from kafka_utils.kafka_cluster_manager. \
     cluster_info.cluster_topology import ClusterTopology
@@ -31,7 +26,7 @@ from kafka_utils.util.zookeeper import ZK
 DEFAULT_MAX_MOVEMENT_SIZE = float('inf')
 
 
-class ClusterManagerCmd(object):
+class ClusterManagerCmd:
     """Interface used by all kafka_cluster_manager commands
     The attributes cluster_config, args and zk are initialized on run().
     """
@@ -193,7 +188,7 @@ class ClusterManagerCmd(object):
         # The replica set stays the same for leaders only changes
         leaders_changes = [
             (t_p, new_assignment[t_p])
-            for t_p, replica in six.iteritems(original_assignment)
+            for t_p, replica in original_assignment.items()
             if replica != new_assignment[t_p] and
             set(replica) == set(new_assignment[t_p])
         ]
@@ -205,7 +200,7 @@ class ClusterManagerCmd(object):
                 t_p,
                 len(set(replica) - set(new_assignment[t_p])),
             )
-            for t_p, replica in six.iteritems(original_assignment)
+            for t_p, replica in original_assignment.items()
             if set(replica) != set(new_assignment[t_p])
         ]
 
@@ -285,7 +280,7 @@ class ClusterManagerCmd(object):
         action_available = True
         while curr_movements < max_movements and curr_size <= max_movement_size and action_available:
             action_available = False
-            for topic, actions in six.iteritems(topic_actions):
+            for topic, actions in topic_actions.items():
                 # Iterate through a copy of actions so we can remove elements in the original list
                 for action in actions[:]:
                     action_size = cluster_topology.partitions[action[0]].size
@@ -324,7 +319,7 @@ class ClusterManagerCmd(object):
             self.log.error('Need to specify topic partition filter file')
             sys.exit(1)
         filter_set = set()
-        with open(self.args.topic_partition_filter, 'r') as f:
+        with open(self.args.topic_partition_filter) as f:
             for line in f:
                 tokens = line.split(':')
                 if len(tokens) != 2:

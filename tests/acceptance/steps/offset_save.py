@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import tempfile
 
 from behave import then
@@ -37,13 +34,13 @@ def call_offset_save(groupid, offsets_file):
     return call_cmd(cmd)
 
 
-@when(u'we call the offset_save command with an offsets file')
+@when('we call the offset_save command with an offsets file')
 def step_impl2_2(context):
     context.offsets_file = create_saved_file()
     call_offset_save(context.group, context.offsets_file.name)
 
 
-@then(u'the correct offsets will be saved into the given file')
+@then('the correct offsets will be saved into the given file')
 def step_impl3(context):
     offset = context.msgs_consumed
 
@@ -52,7 +49,7 @@ def step_impl3(context):
     context.offsets_file.close()
 
 
-@then(u'the restored offsets will be saved into the given file')
+@then('the restored offsets will be saved into the given file')
 def step_impl3_2(context):
     offset = context.restored_offset
 

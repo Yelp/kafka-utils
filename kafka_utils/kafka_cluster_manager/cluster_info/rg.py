@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,21 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import logging
 import sys
 from collections import defaultdict
-
-import six
-from six.moves import filter
 
 from .error import EmptyReplicationGroupError
 from .error import NotEligibleGroupError
 from .util import separate_groups
 
 
-class ReplicationGroup(object):
+class ReplicationGroup:
     """Represent attributes and functions specific to replication-groups
     abbreviated as rg.
     """
@@ -37,7 +31,7 @@ class ReplicationGroup(object):
         self._id = id
         if brokers and not isinstance(brokers, set):
             raise TypeError(
-                "brokers has to be a set but type is {0}".format(type(brokers)),
+                f"brokers has to be a set but type is {type(brokers)}",
             )
         self._brokers = brokers or set()
         self._sibling_distance = None
@@ -99,7 +93,7 @@ class ReplicationGroup(object):
         broker_dest = self._elect_dest_broker(partition)
         if not broker_dest:
             raise NotEligibleGroupError(
-                "No eligible brokers to accept partition {p}".format(p=partition),
+                f"No eligible brokers to accept partition {partition}",
             )
         source_broker.move_partition(partition, broker_dest)
 
@@ -206,13 +200,13 @@ class ReplicationGroup(object):
         return min_count_pair[0]
 
     def get_active_brokers(self):
-        return set(b for b in self.brokers if not b.inactive)
+        return {b for b in self.brokers if not b.inactive}
 
     # Re-balancing brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers."""
         total_partitions = sum(len(b.partitions) for b in self.brokers)
-        blacklist = set(b for b in self.brokers if b.decommissioned)
+        blacklist = {b for b in self.brokers if b.decommissioned}
         active_brokers = self.get_active_brokers() - blacklist
         if not active_brokers:
             raise EmptyReplicationGroupError("No active brokers in %s", self._id)
@@ -339,7 +333,7 @@ class ReplicationGroup(object):
 
     def update_sibling_distance(self, sibling_distance, dest, topic):
         """Update the sibling distance for topic and destination broker."""
-        for source in six.iterkeys(sibling_distance[dest]):
+        for source in sibling_distance[dest].keys():
             sibling_distance[dest][source][topic] = \
                 dest.count_partitions(topic) - \
                 source.count_partitions(topic)
@@ -423,7 +417,7 @@ class ReplicationGroup(object):
         broker.remove_partition(partition)
 
     def __str__(self):
-        return "{0}".format(self._id)
+        return f"{self._id}"
 
     def __repr__(self):
-        return "{0}".format(self)
+        return f"{self}"

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import sys
 from collections import OrderedDict
-
-import six
 
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
@@ -173,9 +166,9 @@ class OffsetGet(OffsetManagerBase):
 
     @classmethod
     def print_output(cls, consumer_offsets_metadata, watermark_filter):
-        for topic, metadata_tuples in six.iteritems(consumer_offsets_metadata):
+        for topic, metadata_tuples in consumer_offsets_metadata.items():
             diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
-            print("Topic Name: {topic}  Total Distance: {diff}".format(topic=topic, diff=diff_sum))
+            print(f"Topic Name: {topic}  Total Distance: {diff_sum}")
             for metadata_tuple in metadata_tuples:
                 print(
                     "\tPartition ID: {partition}".format(

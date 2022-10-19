@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import logging
 import re
 from collections import namedtuple
 
-import six
 from kafka.common import KafkaUnavailableError
 
 from kafka_utils.util.offsets import get_current_consumer_offsets
@@ -31,7 +27,7 @@ ConsumerPartitionOffsets = namedtuple(
     'ConsumerPartitionOffsets',
     ['topic', 'partition', 'current', 'highmark', 'lowmark']
 )
-"""Tuple representing the consumer offsets for a topic partition.
+r"""Tuple representing the consumer offsets for a topic partition.
 
 * **topic**\(``str``): Name of the topic
 * **partition**\(``int``): Partition number
@@ -76,7 +72,7 @@ def get_consumer_offsets_metadata(
     )
 
     result = {}
-    for topic, partitions in six.iteritems(group_offsets):
+    for topic, partitions in group_offsets.items():
         result[topic] = [
             ConsumerPartitionOffsets(
                 topic=topic,
@@ -173,7 +169,7 @@ def merge_partition_offsets(*partition_offsets):
     """
     output = dict()
     for partition_offset in partition_offsets:
-        for partition, offset in six.iteritems(partition_offset):
+        for partition, offset in partition_offset.items():
             prev_offset = output.get(partition, 0)
             output[partition] = max(prev_offset, offset)
     return output

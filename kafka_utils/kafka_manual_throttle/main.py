@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import logging
 import sys
 
 import humanfriendly
-import six
 
 from kafka_utils.util import config
 from kafka_utils.util.zookeeper import ZK
@@ -133,7 +127,7 @@ def print_throttles(zk, brokers):
 
     broker_throttles = read_throttles(zk, brokers)
 
-    for broker_id, (leader_throttle, follower_throttle) in six.iteritems(broker_throttles):
+    for broker_id, (leader_throttle, follower_throttle) in broker_throttles.items():
         print(
             "\tBroker ID: {broker_id} - Leader: {leader_throttle} ({leader_human}) - Follower: {follower_throttle} ({follower_human})".format(
                 broker_id=broker_id,

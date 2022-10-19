@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,18 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import itertools
 import logging
 import shlex
 
-import six
-
 from .util import separate_groups
 
 
-class ClusterBalancer(object):
+class ClusterBalancer:
     """Interface that is used to implement any cluster partition balancing approach.
 
     :param cluster_topology: The ClusterTopology object that should be acted on.
@@ -103,7 +98,7 @@ class ClusterBalancer(object):
         """
         movement_count = 0
         movement_size = 0
-        for partition in six.itervalues(self.cluster_topology.partitions):
+        for partition in self.cluster_topology.partitions.values():
             count, size = self._rebalance_partition_replicas(
                 partition,
                 None if not max_movement_count

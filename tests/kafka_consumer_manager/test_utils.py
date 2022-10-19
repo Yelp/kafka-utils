@@ -1,16 +1,12 @@
-from __future__ import absolute_import
-
 import struct
 from collections import namedtuple
+from unittest import mock
 
-import mock
 import pytest
-import six
 from kafka.consumer.fetcher import ConsumerRecord
 from kafka.structs import OffsetAndMetadata
 from kafka.structs import OffsetAndTimestamp
 from kafka.structs import TopicPartition
-from six.moves import range
 
 from kafka_utils.kafka_consumer_manager.util import consumer_commit_for_times
 from kafka_utils.kafka_consumer_manager.util import consumer_partitions_for_topic
@@ -27,7 +23,7 @@ from kafka_utils.util.offsets import PartitionOffsets
 Message = namedtuple("Message", ["partition", "offset", "key", "value"])
 
 
-class TestKafkaAdminGroupReader(object):
+class TestKafkaAdminGroupReader:
 
     @pytest.fixture
     def mock_admin_client(self):
@@ -102,7 +98,7 @@ class TestKafkaAdminGroupReader(object):
         assert groups == ["group1", "group2"]
 
 
-class TestKafkaGroupReader(object):
+class TestKafkaGroupReader:
 
     groups = [r'^test\..*', r'^my_test$', r'^my_test2$']
 
@@ -188,11 +184,11 @@ class TestKafkaGroupReader(object):
 
         # Convert the defaultdict to a normal dict for comparison
         actual = {}
-        for group, topics in six.iteritems(kafka_group_reader._kafka_groups):
+        for group, topics in kafka_group_reader._kafka_groups.items():
             actual[group] = {}
-            for topic, partitions in six.iteritems(topics):
+            for topic, partitions in topics.items():
                 actual[group][topic] = {}
-                for partition, offset in six.iteritems(partitions):
+                for partition, offset in partitions.items():
                     actual[group][topic][partition] = offset
 
         assert actual == expected
@@ -378,7 +374,7 @@ class TestKafkaGroupReader(object):
         assert result3 == 5
 
 
-class TestKafkaConsumerTimestamps(object):
+class TestKafkaConsumerTimestamps:
 
     @mock.patch("kafka.KafkaConsumer")
     def test_topic_offsets_timestamp(self, mock_kconsumer):
@@ -435,7 +431,7 @@ class TestKafkaConsumerTimestamps(object):
     @mock.patch("kafka.KafkaConsumer")
     def test_consumer_partitions_for_topic(self, mock_kconsumer):
         topic = "topic1"
-        partitions = set([0, 1, 2, 3, 4])
+        partitions = {0, 1, 2, 3, 4}
         mock_kconsumer.partitions_for_topic.return_value = partitions
         expected = [TopicPartition(topic, part) for part in partitions]
 
@@ -444,7 +440,7 @@ class TestKafkaConsumerTimestamps(object):
         assert set(actual) == set(expected)
 
 
-class TestGetKafkaGroupReader(object):
+class TestGetKafkaGroupReader:
 
     @pytest.fixture
     def mock_admin_group_reader(self):

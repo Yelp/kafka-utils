@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import json
 import subprocess
 import time
 import uuid
 
-import six
 from kafka import SimpleProducer
 from kafka.common import LeaderNotAvailableError
-from six.moves import range
 
 from kafka_utils.util import config
 from kafka_utils.util.client import KafkaToolClient
@@ -33,17 +28,13 @@ ZOOKEEPER_URL = 'zookeeper:2181'
 KAFKA_URL = 'kafka:9092'
 
 
-if six.PY3:
-    def load_json(bytes_or_str):
-        if isinstance(bytes_or_str, six.binary_type):
-            data = bytes_or_str.decode()
-        else:
-            data = bytes_or_str
+def load_json(bytes_or_str):
+    if isinstance(bytes_or_str, bytes):
+        data = bytes_or_str.decode()
+    else:
+        data = bytes_or_str
 
-        return json.loads(data)
-else:
-    def load_json(data_str):
-        return json.loads(data_str)
+    return json.loads(data)
 
 
 def get_cluster_config():
@@ -105,16 +96,10 @@ def call_cmd(cmd):
     except subprocess.CalledProcessError as e:
         output += e.output
 
-    if six.PY3:
-        if out:
-            output += out.decode()
-        if err:
-            output += err.decode()
-    else:
-        if out:
-            output += out
-        if err:
-            output += err
+    if out:
+        output += out.decode()
+    if err:
+        output += err.decode()
 
     return output
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import create_random_group_id
@@ -48,19 +45,19 @@ def fetch_offsets(group, topics):
     return offsets
 
 
-@when(u'we commit some offsets for a group into kafka')
+@when('we commit some offsets for a group into kafka')
 def step_impl4(context):
     context.offsets = {context.topic: {0: TEST_OFFSET}}
     context.group = create_random_group_id()
     commit_offsets(context.offsets, context.group)
 
 
-@when(u'we fetch offsets for the group')
+@when('we fetch offsets for the group')
 def step_impl4_3(context):
     topics = list(context.offsets.keys())
     context.fetched_offsets = fetch_offsets(context.group, topics)
 
 
-@then(u'the fetched offsets will match the committed offsets')
+@then('the fetched offsets will match the committed offsets')
 def step_impl5(context):
     assert context.fetched_offsets == context.offsets

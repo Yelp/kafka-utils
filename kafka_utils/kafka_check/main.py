@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +15,6 @@
 Kafka checks module.
 Each check is separated subcommand for kafka-check.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-
 import argparse
 import logging
 
@@ -36,7 +32,7 @@ from kafka_utils.util.error import ConfigurationError
 
 def convert_to_broker_id(string):
     """Convert string to kafka broker_id."""
-    error_msg = 'Positive integer or -1 required, {string} given.'.format(string=string)
+    error_msg = f'Positive integer or -1 required, {string} given.'
     try:
         value = int(string)
     except ValueError:
@@ -149,7 +145,7 @@ def validate_args(args):
             except Exception as e:
                 terminate(
                     status_code.WARNING,
-                    prepare_terminate_message("{}".format(e)),
+                    prepare_terminate_message(f"{e}"),
                     args.json,
                 )
 
@@ -180,7 +176,7 @@ def run():
     except ConfigurationError as e:
         terminate(
             status_code.CRITICAL,
-            prepare_terminate_message("ConfigurationError {0}".format(e)),
+            prepare_terminate_message(f"ConfigurationError {e}"),
             args.json,
         )
 

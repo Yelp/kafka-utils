@@ -4,7 +4,7 @@
 # Kafka-Utils
 
 A suite of python tools to interact and manage Apache Kafka clusters.
-Kafka-Utils runs on python2.7 and python3.
+Kafka-Utils runs on python 3.7+.
 
 ## Configuration
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 from argparse import Namespace
+from unittest import mock
 
-import mock
 import pytest
-import six
 
 from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info.error import RebalanceError
@@ -35,7 +30,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info \
     .stats import get_replication_group_imbalance_stats
 
 
-class TestPartitionCountBalancer(object):
+class TestPartitionCountBalancer:
 
     @pytest.fixture
     def create_balancer(self):
@@ -57,7 +52,7 @@ class TestPartitionCountBalancer(object):
 
         # Verify that partitions remain same
         assert set(orig_assignment.keys()) == set(new_assignment.keys())
-        for t_p, new_replicas in six.iteritems(new_assignment):
+        for t_p, new_replicas in new_assignment.items():
             orig_replicas = orig_assignment[t_p]
             # Verify that new-replicas are amongst given broker-list
             assert all([broker in orig_brokers for broker in new_replicas])
@@ -74,7 +69,7 @@ class TestPartitionCountBalancer(object):
         # Partition-list remains unchanged
         assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
         # Replica-set remains same
-        for partition, orig_replicas in six.iteritems(orig_assignment):
+        for partition, orig_replicas in orig_assignment.items():
             assert set(orig_replicas) == set(new_assignment[partition])
 
     def test_rebalance_replication_groups(
@@ -111,10 +106,10 @@ class TestPartitionCountBalancer(object):
         # Replication-group is already balanced
         assignment = dict(
             [
-                ((u'T0', 0), ['0', '2']),
-                ((u'T0', 1), ['0', '3']),
-                ((u'T2', 0), ['2']),
-                ((u'T3', 0), ['0', '1', '2']),
+                (('T0', 0), ['0', '2']),
+                (('T0', 1), ['0', '3']),
+                (('T2', 0), ['2']),
+                (('T3', 0), ['0', '1', '2']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(5))
@@ -139,10 +134,10 @@ class TestPartitionCountBalancer(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['0', '2']),
-                ((u'T0', 1), ['0', '3']),
-                ((u'T2', 0), ['2']),
-                ((u'T3', 0), ['0', '1', '9']),  # broker 9 is not active
+                (('T0', 0), ['0', '2']),
+                (('T0', 1), ['0', '3']),
+                (('T2', 0), ['2']),
+                (('T3', 0), ['0', '1', '9']),  # broker 9 is not active
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(5))
@@ -162,10 +157,10 @@ class TestPartitionCountBalancer(object):
         # Result: rg's will be balanced for partition-count
         assignment = dict(
             [
-                ((u'T1', 1), ['0', '1', '2']),
-                ((u'T1', 0), ['1']),
-                ((u'T3', 0), ['1']),
-                ((u'T2', 0), ['0', '1', '3']),
+                (('T1', 1), ['0', '1', '2']),
+                (('T1', 0), ['1']),
+                (('T3', 0), ['1']),
+                (('T2', 0), ['0', '1', '3']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -200,10 +195,10 @@ class TestPartitionCountBalancer(object):
         # Result: rg's will be balanced for partition-count
         assignment = dict(
             [
-                ((u'T1', 1), ['0', '2']),
-                ((u'T3', 1), ['0']),
-                ((u'T3', 0), ['0']),
-                ((u'T2', 0), ['0', '5']),
+                (('T1', 1), ['0', '2']),
+                (('T3', 1), ['0']),
+                (('T3', 0), ['0']),
+                (('T2', 0), ['0', '5']),
             ]
         )
         brokers = {
@@ -244,10 +239,10 @@ class TestPartitionCountBalancer(object):
         # Result: rg's will be balanced for partition-count
         assignment = dict(
             [
-                ((u'T1', 1), ['0', '2']),
-                ((u'T3', 1), ['2']),
-                ((u'T3', 0), ['0']),
-                ((u'T2', 0), ['0', '5']),
+                (('T1', 1), ['0', '2']),
+                (('T3', 1), ['2']),
+                (('T3', 0), ['0']),
+                (('T2', 0), ['0', '5']),
             ]
         )
         brokers = {
@@ -287,8 +282,8 @@ class TestPartitionCountBalancer(object):
         # no available broker without partition movement
         assignment = dict(
             [
-                ((u'T1', 1), ['0', '1', '2']),
-                ((u'T2', 0), ['0', '1', '2']),
+                (('T1', 1), ['0', '1', '2']),
+                (('T2', 0), ['0', '1', '2']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -319,10 +314,10 @@ class TestPartitionCountBalancer(object):
         }
         assignment = dict(
             [
-                ((u'T0', 0), ['0', '2']),
-                ((u'T1', 0), ['1', '3']),
-                ((u'T2', 0), ['0', '5']),
-                ((u'T3', 0), ['1', '5']),
+                (('T0', 0), ['0', '2']),
+                (('T1', 0), ['1', '3']),
+                (('T2', 0), ['0', '5']),
+                (('T3', 0), ['1', '5']),
             ]
         )
         ct = create_cluster_topology(assignment, brokers)
@@ -367,10 +362,10 @@ class TestPartitionCountBalancer(object):
         }
         assignment = dict(
             [
-                ((u'T0', 0), ['0', '2']),
-                ((u'T1', 0), ['1', '0']),
-                ((u'T2', 0), ['0', '5']),
-                ((u'T3', 0), ['1']),
+                (('T0', 0), ['0', '2']),
+                (('T1', 0), ['1', '0']),
+                (('T2', 0), ['0', '5']),
+                (('T3', 0), ['1']),
             ]
         )
         ct = create_cluster_topology(assignment, brokers)
@@ -399,9 +394,9 @@ class TestPartitionCountBalancer(object):
         # opt-count: 3/3 = 1, extra-count: 3%3 = 0
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T0', 1), ['2', '0']),
-                ((u'T1', 0), ['0', '2']),
+                (('T0', 0), ['1', '2']),
+                (('T0', 1), ['2', '0']),
+                (('T1', 0), ['0', '2']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -428,8 +423,8 @@ class TestPartitionCountBalancer(object):
         # opt-count: 2/3 = 0, extra-count: 2%3 = 2
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T0', 1), ['2', '0']),
+                (('T0', 0), ['1', '2']),
+                (('T0', 1), ['2', '0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -457,9 +452,9 @@ class TestPartitionCountBalancer(object):
         # opt-count: 3/3 = 1, extra-count: 3%3 = 0
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T0', 1), ['2', '0']),
-                ((u'T1', 0), ['1', '0']),
+                (('T0', 0), ['1', '2']),
+                (('T0', 1), ['2', '0']),
+                (('T1', 0), ['1', '0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -473,7 +468,7 @@ class TestPartitionCountBalancer(object):
         # New-leader imbalance-count be less than previous imbal count
         new_leaders_per_broker = {
             broker.id: broker.count_preferred_replica()
-            for broker in six.itervalues(ct.brokers)
+            for broker in ct.brokers.values()
         }
         new_leader_imbal = get_net_imbalance(list(new_leaders_per_broker.values()))
         # Verify leader-balanced
@@ -493,9 +488,9 @@ class TestPartitionCountBalancer(object):
         # Leader-imbalance-value: 1
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T1', 0), ['0']),
+                (('T0', 0), ['1', '2']),
+                (('T1', 1), ['0', '1']),
+                (('T1', 0), ['0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -520,10 +515,10 @@ class TestPartitionCountBalancer(object):
         # imbalanced-broker: 0,2; balanced-brokers: 1,3
         assignment = dict(
             [
-                ((u'T0', 0), ['3', '2']),
-                ((u'T0', 1), ['1', '3']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T1', 0), ['0']),
+                (('T0', 0), ['3', '2']),
+                (('T0', 1), ['1', '3']),
+                (('T1', 1), ['0', '1']),
+                (('T1', 0), ['0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -548,10 +543,10 @@ class TestPartitionCountBalancer(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['3', '2']),
-                ((u'T1', 0), ['1', '2']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T2', 0), ['0']),
+                (('T0', 0), ['3', '2']),
+                (('T1', 0), ['1', '2']),
+                (('T1', 1), ['0', '1']),
+                (('T2', 0), ['0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -574,14 +569,14 @@ class TestPartitionCountBalancer(object):
         # Broker-2 requests leadership from multiple brokers (0, 1) once
         assignment = dict(
             [
-                ((u'T1', 0), ['1', '2']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T2', 0), ['0']),
-                ((u'T2', 1), ['0']),
-                ((u'T3', 0), ['3', '2']),
-                ((u'T3', 1), ['1', '3']),
-                ((u'T4', 0), ['1']),
-                ((u'T4', 2), ['3']),
+                (('T1', 0), ['1', '2']),
+                (('T1', 1), ['0', '1']),
+                (('T2', 0), ['0']),
+                (('T2', 1), ['0']),
+                (('T3', 0), ['3', '2']),
+                (('T3', 1), ['1', '3']),
+                (('T4', 0), ['1']),
+                (('T4', 2), ['3']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -604,12 +599,12 @@ class TestPartitionCountBalancer(object):
         # Broker-2 requests leadership from same broker-1 twice
         assignment = dict(
             [
-                ((u'T1', 0), ['1', '2']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T1', 2), ['0']),
-                ((u'T1', 3), ['1', '2']),
-                ((u'T1', 4), ['0', '1']),
-                ((u'T1', 5), ['0']),
+                (('T1', 0), ['1', '2']),
+                (('T1', 1), ['0', '1']),
+                (('T1', 2), ['0']),
+                (('T1', 3), ['1', '2']),
+                (('T1', 4), ['0', '1']),
+                (('T1', 5), ['0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -633,12 +628,12 @@ class TestPartitionCountBalancer(object):
         # from multiple brokers (1,4)
         assignment = dict(
             [
-                ((u'T1', 0), ['1', '2']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T2', 0), ['0']),
-                ((u'T3', 0), ['4', '5']),
-                ((u'T3', 1), ['3', '4']),
-                ((u'T4', 0), ['3']),
+                (('T1', 0), ['1', '2']),
+                (('T1', 1), ['0', '1']),
+                (('T2', 0), ['0']),
+                (('T3', 0), ['4', '5']),
+                (('T3', 1), ['3', '4']),
+                (('T4', 0), ['3']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(6))
@@ -660,9 +655,9 @@ class TestPartitionCountBalancer(object):
         # Imbalanced 0 and 2. No re-balance possible.
         assignment = dict(
             [
-                ((u'T1', 0), ['1', '2']),
-                ((u'T1', 1), ['0']),
-                ((u'T2', 0), ['0']),
+                (('T1', 0), ['1', '2']),
+                (('T1', 1), ['0']),
+                (('T2', 0), ['0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -689,11 +684,11 @@ class TestPartitionCountBalancer(object):
         # opt-count: 5/3 = 1, extra-count = 2
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T0', 1), ['0', '2']),
-                ((u'T1', 0), ['0']),
-                ((u'T1', 1), ['0']),
-                ((u'T1', 2), ['0']),
+                (('T0', 0), ['1', '2']),
+                (('T0', 1), ['0', '2']),
+                (('T1', 0), ['0']),
+                (('T1', 1), ['0']),
+                (('T1', 2), ['0']),
             ]
         )
 
@@ -707,7 +702,7 @@ class TestPartitionCountBalancer(object):
 
         new_leaders_per_broker = {
             broker.id: broker.count_preferred_replica()
-            for broker in six.itervalues(ct.brokers)
+            for broker in ct.brokers.values()
         }
         new_net_imbal = get_net_imbalance(list(new_leaders_per_broker.values()))
         # Verify that net-imbalance has reduced but not zero
@@ -724,11 +719,11 @@ class TestPartitionCountBalancer(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['2', '0']),
-                ((u'T1', 0), ['2', '0']),
-                ((u'T1', 1), ['0']),
-                ((u'T2', 0), ['1']),
-                ((u'T2', 1), ['2']),
+                (('T0', 0), ['2', '0']),
+                (('T1', 0), ['2', '0']),
+                (('T1', 1), ['0']),
+                (('T2', 0), ['1']),
+                (('T2', 1), ['2']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -751,12 +746,12 @@ class TestPartitionCountBalancer(object):
         # but 0 is overbalanced
         assignment = dict(
             [
-                ((u'T1', 1), ['0', '1']),
-                ((u'T2', 0), ['0']),
-                ((u'T2', 1), ['0']),
-                ((u'T3', 0), ['2', '3']),
-                ((u'T3', 1), ['3', '1']),
-                ((u'T4', 0), ['1']),
+                (('T1', 1), ['0', '1']),
+                (('T2', 0), ['0']),
+                (('T2', 1), ['0']),
+                (('T3', 0), ['2', '3']),
+                (('T3', 1), ['3', '1']),
+                (('T4', 0), ['1']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -779,10 +774,10 @@ class TestPartitionCountBalancer(object):
         # No leadership changes to be made to broker 2
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '0']),
-                ((u'T1', 0), ['0', '1']),
-                ((u'T1', 1), ['0']),
-                ((u'T2', 0), ['1']),
+                (('T0', 0), ['1', '0']),
+                (('T1', 0), ['0', '1']),
+                (('T1', 1), ['0']),
+                (('T2', 0), ['1']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -800,10 +795,10 @@ class TestPartitionCountBalancer(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['2', '0']),
-                ((u'T1', 0), ['2', '1']),
-                ((u'T1', 1), ['0', '2']),
-                ((u'T2', 0), ['1', '0']),
+                (('T0', 0), ['2', '0']),
+                (('T1', 0), ['2', '1']),
+                (('T1', 1), ['0', '2']),
+                (('T2', 0), ['1', '0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -812,14 +807,14 @@ class TestPartitionCountBalancer(object):
 
         new_leaders_per_broker = {
             broker.id: broker.count_preferred_replica()
-            for broker in six.itervalues(ct.brokers)
+            for broker in ct.brokers.values()
         }
         _, total_movements = \
             calculate_partition_movement(assignment, ct.assignment)
         # Get net imbalance statistics excluding brokers to be revoked
         # leadership from
         brokers = [
-            b for b in six.itervalues(ct.brokers)
+            b for b in ct.brokers.values()
             if b.id not in ['2', '3']
         ]
         new_net_imbal = get_net_imbalance(get_broker_leader_counts(brokers))
@@ -839,12 +834,12 @@ class TestPartitionCountBalancer(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['2', '0']),
-                ((u'T1', 0), ['2', '1']),
-                ((u'T1', 1), ['0', '2']),
-                ((u'T2', 0), ['0', '3']),
-                ((u'T3', 0), ['3', '1']),
-                ((u'T3', 1), ['3', '1']),
+                (('T0', 0), ['2', '0']),
+                (('T1', 0), ['2', '1']),
+                (('T1', 1), ['0', '2']),
+                (('T2', 0), ['0', '3']),
+                (('T3', 0), ['3', '1']),
+                (('T3', 1), ['3', '1']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -853,14 +848,14 @@ class TestPartitionCountBalancer(object):
 
         new_leaders_per_broker = {
             broker.id: broker.count_preferred_replica()
-            for broker in six.itervalues(ct.brokers)
+            for broker in ct.brokers.values()
         }
         _, total_movements = \
             calculate_partition_movement(assignment, ct.assignment)
         # Get net imbalance statistics excluding brokers to be revoked
         # leadership from
         brokers = [
-            b for b in six.itervalues(ct.brokers)
+            b for b in ct.brokers.values()
             if b.id not in ['2', '3']
         ]
         new_net_imbal = get_net_imbalance(get_broker_leader_counts(brokers))
@@ -881,10 +876,10 @@ class TestPartitionCountBalancer(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['2', '3']),
-                ((u'T1', 0), ['3']),
-                ((u'T1', 1), ['0', '1']),
-                ((u'T2', 0), ['1', '0']),
+                (('T0', 0), ['2', '3']),
+                (('T1', 0), ['3']),
+                (('T1', 1), ['0', '1']),
+                (('T2', 0), ['1', '0']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
@@ -893,7 +888,7 @@ class TestPartitionCountBalancer(object):
 
         new_leaders_per_broker = {
             broker.id: broker.count_preferred_replica()
-            for broker in six.itervalues(ct.brokers)
+            for broker in ct.brokers.values()
         }
         # Broker '2' and '3' are to be revoked from leadership
         # But (u'T0, 0) has replicas '2' and '3'

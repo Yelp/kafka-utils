@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 from collections import OrderedDict
 from datetime import datetime
 
 import pytz
-import six
 from kafka import KafkaConsumer
 
 from .offset_manager import OffsetManagerBase
@@ -97,17 +91,17 @@ class OffsetsForTimestamp(OffsetManagerBase):
                 )
             )
         topics = {}
-        for tp, offset_timestamp in six.iteritems(partition_to_offset):
+        for tp, offset_timestamp in partition_to_offset.items():
             if tp.topic not in topics:
                 topics[tp.topic] = {}
             topics[tp.topic][tp.partition] = offset_timestamp
         topics = OrderedDict(sorted(topics.items(), key=lambda k: k[0]))
-        for topic in six.iterkeys(topics):
+        for topic in topics.keys():
             topics[topic] = OrderedDict(sorted(topics[topic].items(), key=lambda k: k[0]))
-            print("Topic Name: {}".format(topic))
-            for partition, offset_timestamp in six.iteritems(topics[topic]):
+            print(f"Topic Name: {topic}")
+            for partition, offset_timestamp in topics[topic].items():
                 print(
-                    "\tPartition ID: {}".format(partition),
+                    f"\tPartition ID: {partition}",
                 )
                 offset = "not found"
                 timestamp = orig_timestamp
@@ -124,4 +118,4 @@ class OffsetsForTimestamp(OffsetManagerBase):
                         date=date,
                     ),
                 )
-                print("\t\tOffset: {offset}".format(offset=offset))
+                print(f"\t\tOffset: {offset}")

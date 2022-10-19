@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import sys
 from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
 
 import pytz
-import six
 from kafka import KafkaConsumer
 from kafka.structs import TopicPartition
 
@@ -119,12 +113,12 @@ class OffsetSetTimestamp(OffsetManagerBase):
             if len(topics) == 0:
                 return
             partition_to_offset = topic_offsets_for_timestamp(consumer, args.timestamp, topics)
-            for tp in six.iterkeys(partition_to_offset):
+            for tp in partition_to_offset.keys():
                 tp_timestamps[tp] = args.timestamp
         else:
             # Committing via a list of topic.partition=timestamp
-            for topic in six.iterkeys(cls.new_offsets_dict):
-                for partition in six.iterkeys(cls.new_offsets_dict[topic]):
+            for topic in cls.new_offsets_dict.keys():
+                for partition in cls.new_offsets_dict[topic].keys():
                     tp_timestamps[TopicPartition(topic, partition)] = cls.new_offsets_dict[topic][partition]
             partition_to_offset = consumer.offsets_for_times(tp_timestamps)
 
@@ -132,7 +126,7 @@ class OffsetSetTimestamp(OffsetManagerBase):
 
         # Display warning if consumer is attempting to commit offsets for a topic they
         # have never committed offsets for.
-        for tp in six.iterkeys(partition_to_offset):
+        for tp in partition_to_offset.keys():
             if tp.topic not in topics:
                 print(
                     "WARNING: Consumer group {cg} has never committed offsets for topic {topic}.".format(
@@ -151,22 +145,22 @@ class OffsetSetTimestamp(OffsetManagerBase):
         print("The above TopicPartitions and offsets will attempt to be committed.")
         print("Continue? (y/n)")
 
-        return six.moves.input() == "y"
+        return input() == "y"
 
     @classmethod
     def print_offsets(cls, partition_to_offset, tp_timestamps):
         topics = {}
-        for tp, offset_timestamp in six.iteritems(partition_to_offset):
+        for tp, offset_timestamp in partition_to_offset.items():
             if tp.topic not in topics:
                 topics[tp.topic] = {}
             topics[tp.topic][tp.partition] = offset_timestamp
         topics = OrderedDict(sorted(topics.items(), key=lambda k: k[0]))
-        for topic in six.iterkeys(topics):
+        for topic in topics.keys():
             topics[topic] = OrderedDict(sorted(topics[topic].items(), key=lambda k: k[0]))
-            print("Topic Name: {}".format(topic))
-            for partition, offset_timestamp in six.iteritems(topics[topic]):
+            print(f"Topic Name: {topic}")
+            for partition, offset_timestamp in topics[topic].items():
                 print(
-                    "\tPartition ID: {}".format(partition),
+                    f"\tPartition ID: {partition}",
                 )
                 offset = "not found"
                 timestamp = tp_timestamps[TopicPartition(topic, partition)]
@@ -183,4 +177,4 @@ class OffsetSetTimestamp(OffsetManagerBase):
                         date=date,
                     ),
                 )
-                print("\t\tOffset: {offset}".format(offset=offset))
+                print(f"\t\tOffset: {offset}")

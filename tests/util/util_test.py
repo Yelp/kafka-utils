@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from argparse import ArgumentTypeError
 
 import pytest
@@ -96,7 +93,7 @@ def test_positive_float_negative_float():
 
 
 def test_child_class():
-    class A(object):
+    class A:
         pass
 
     class B(A):

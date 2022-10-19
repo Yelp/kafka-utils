@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import logging
 import re
@@ -13,10 +9,7 @@ from multiprocessing import Process
 from operator import itemgetter
 
 import paramiko
-import six
 from kafka import KafkaClient
-from six.moves import range
-from six.moves import zip
 
 from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
@@ -28,7 +21,7 @@ IONICE = "ionice -c 3"
 
 FIND_MINUTES_COMMAND = 'find "{data_path}" -type f -name "*.log" -mmin -{minutes}'
 FIND_START_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}"'
-FIND_RANGE_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}" \! -newermt "{end_time}"'
+FIND_RANGE_COMMAND = 'find "{data_path}" -type f -name "*.log" -newermt "{start_time}" \\! -newermt "{end_time}"'
 CHECK_COMMAND = 'JAVA_HOME="{java_home}" {ionice} kafka-run-class kafka.tools.DumpLogSegments --files "{files}"'
 REDUCE_OUTPUT = 'grep -v "isvalid: true"'
 
@@ -79,7 +72,7 @@ def report_stderr(host, stderr):
     """
     lines = stderr.readlines()
     if lines:
-        print("STDERR from {host}:".format(host=host))
+        print(f"STDERR from {host}:")
         for line in lines:
             print(line.rstrip(), file=sys.stderr)
 
@@ -315,7 +308,7 @@ def print_line(host, path, line, line_type):
             path=path,
         )
     )
-    print("{ltype} Output: {line}".format(ltype=line_type, line=line))
+    print(f"{line_type} Output: {line}")
 
 
 def check_files_on_host(java_home, host, files, batch_size):
@@ -358,8 +351,8 @@ def get_partition_leaders(cluster_config):
     """
     client = KafkaClient(cluster_config.broker_list)
     result = {}
-    for topic, topic_data in six.iteritems(client.topic_partitions):
-        for partition, p_data in six.iteritems(topic_data):
+    for topic, topic_data in client.topic_partitions.items():
+        for partition, p_data in topic_data.items():
             topic_partition = topic + "-" + str(partition)
             result[topic_partition] = p_data.leader
     return result
@@ -446,7 +439,7 @@ def check_cluster(
     if not check_replicas:  # remove replicas
         broker_files = filter_leader_files(cluster_config, broker_files)
     processes = []
-    print("Starting {n} parallel processes".format(n=len(broker_files)))
+    print(f"Starting {len(broker_files)} parallel processes")
     try:
         for broker, host, files in broker_files:
             print(

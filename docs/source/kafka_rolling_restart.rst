@@ -61,7 +61,7 @@ unhealthy for more than 900 seconds:
 
    $ kafka-rolling-restart --cluster-type generic --cluster-name prod --unhealthy-time-limit 900
 
-Check/Perform pre/post tasks as part of rolling restart tool. You would need to implement 
+Check/Perform pre/post tasks as part of rolling restart tool. You would need to implement
 :code:`PreStopTask` or :code:`PostStopTask` depending on what action you want to do. An example
 of this is provided below:
 
@@ -84,19 +84,19 @@ of this is provided below:
                 # Execute Commands on the host
 
 Create a file named :code:`check_version.py` into a directory containing the
-:code:`__init__.py`. 
+:code:`__init__.py`.
 
 Example:
- 
+
 .. code-block:: none
- 
+
    $HOME/tasks
      |-- __init__.py
      |-- check_version.py
- 
+
 
 To use the custom task:
- 
+
 .. code-block:: bash
 
    $ kafka-rolling-restart --cluster-type <cluster-type> --cluster-name <cluster-name> --task tasks.check_version --task-args "--package-name 0.10.2.0"

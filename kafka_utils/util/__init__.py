@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 import json
 import sys
 from argparse import ArgumentTypeError
@@ -63,7 +59,7 @@ def tuple_remove(tup, *items):
 
 def positive_int(string):
     """Convert string to positive integer."""
-    error_msg = 'Positive integer required, {string} given.'.format(string=string)
+    error_msg = f'Positive integer required, {string} given.'
     try:
         value = int(string)
     except ValueError:
@@ -75,7 +71,7 @@ def positive_int(string):
 
 def positive_nonzero_int(string):
     """Convert string to positive integer greater than zero."""
-    error_msg = 'Positive non-zero integer required, {string} given.'.format(string=string)
+    error_msg = f'Positive non-zero integer required, {string} given.'
     try:
         value = int(string)
     except ValueError:
@@ -87,7 +83,7 @@ def positive_nonzero_int(string):
 
 def positive_float(string):
     """Convert string to positive float."""
-    error_msg = 'Positive float required, {string} given.'.format(string=string)
+    error_msg = f'Positive float required, {string} given.'
     try:
         value = float(string)
     except ValueError:
@@ -113,9 +109,9 @@ def to_h(num, suffix='B'):
         return "None"
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
+            return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)
+    return "{:.1f}{}{}".format(num, 'Yi', suffix)
 
 
 def to_int(num):
@@ -125,7 +121,7 @@ def to_int(num):
     """
     if num is None:
         return "None"
-    return "{:.0f}".format(num)
+    return f"{num:.0f}"
 
 
 def to_float(num):
@@ -135,7 +131,7 @@ def to_float(num):
     """
     if num is None:
         return "None"
-    return "{:.2f}".format(num)
+    return f"{num:.2f}"
 
 
 def format_to_json(data):

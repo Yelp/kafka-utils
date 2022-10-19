@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import logging
 
-from six.moves import filter
 
-
-class Broker(object):
+class Broker:
     """Represent a Kafka broker.
     A broker object contains as attributes the broker id, metadata
     (content of the broker node in zookeeper), partitions and replication group.
@@ -85,7 +80,7 @@ class Broker(object):
     @property
     def topics(self):
         """Return the set of topics current in broker."""
-        return set([partition.topic for partition in self._partitions])
+        return {partition.topic for partition in self._partitions}
 
     @property
     def weight(self):
@@ -128,7 +123,7 @@ class Broker(object):
 
     def add_partition(self, partition):
         """Add partition to partition list."""
-        assert(partition not in self._partitions)
+        assert partition not in self._partitions
         # Add partition to existing set
         self._partitions.add(partition)
         # Add broker to replica list
@@ -314,7 +309,7 @@ class Broker(object):
                             break
 
     def __str__(self):
-        return "{id}".format(id=self._id)
+        return f"{self._id}"
 
     def __repr__(self):
-        return "{0}".format(self)
+        return f"{self}"

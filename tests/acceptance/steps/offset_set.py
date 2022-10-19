@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import call_cmd
@@ -46,7 +43,7 @@ def call_offset_set(groupid, offsets_data, force=False):
     return call_cmd(cmd)
 
 
-@when(u'we call the offset_set command and commit into kafka')
+@when('we call the offset_set command and commit into kafka')
 def step_impl2_2(context):
     if not hasattr(context, 'group'):
         context.group = 'test_kafka_offset_group'
@@ -55,7 +52,7 @@ def step_impl2_2(context):
     call_offset_set(context.group, context.offsets)
 
 
-@when(u'we call the offset_set command with a new groupid and the force option')
+@when('we call the offset_set command with a new groupid and the force option')
 def step_impl2_3(context):
     if not hasattr(context, 'group'):
         context.group = 'offset_set_created_group'
@@ -64,7 +61,7 @@ def step_impl2_3(context):
     call_offset_set(context.group, context.offsets, force=True)
 
 
-@then(u'the committed offsets will match the specified offsets')
+@then('the committed offsets will match the specified offsets')
 def step_impl3(context):
     config = get_cluster_config()
     context.client = KafkaToolClient(config.broker_list)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,15 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import argparse
 import logging
 import sys
-
-import six
-from six.moves import filter
-from six.moves import range
 
 from .cluster_balancer import ClusterBalancer
 from .error import BrokerDecommissionError
@@ -44,7 +37,7 @@ class PartitionCountBalancer(ClusterBalancer):
     """
 
     def __init__(self, cluster_topology, args):
-        super(PartitionCountBalancer, self).__init__(cluster_topology, args)
+        super().__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
 
     def _set_arg_default(self, arg, value):
@@ -81,7 +74,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 # Raise an error for now. As alternative we may ignore the
                 # invalid id and continue with the others.
                 raise InvalidBrokerIdError(
-                    "Broker id {} does not exist in cluster".format(b_id),
+                    f"Broker id {b_id} does not exist in cluster",
                 )
             broker.mark_decommissioned()
             groups.add(broker.replication_group)
@@ -121,7 +114,7 @@ class PartitionCountBalancer(ClusterBalancer):
 
     def _force_broker_decommission(self, broker):
         available_groups = [
-            rg for rg in six.itervalues(self.cluster_topology.rgs)
+            rg for rg in self.cluster_topology.rgs.values()
             if rg is not broker.replication_group
         ]
 
@@ -184,7 +177,7 @@ class PartitionCountBalancer(ClusterBalancer):
         of the cluster.
         """
         # Balance replicas over replication-groups for each partition
-        if any(b.inactive for b in six.itervalues(self.cluster_topology.brokers)):
+        if any(b.inactive for b in self.cluster_topology.brokers.values()):
             self.log.error(
                 "Impossible to rebalance replication groups because of inactive "
                 "brokers."
@@ -203,7 +196,7 @@ class PartitionCountBalancer(ClusterBalancer):
     # Re-balancing partition count across brokers
     def rebalance_brokers(self):
         """Rebalance partition-count across brokers within each replication-group."""
-        for rg in six.itervalues(self.cluster_topology.rgs):
+        for rg in self.cluster_topology.rgs.values():
             rg.rebalance_brokers()
 
     def revoke_leadership(self, broker_ids):
@@ -217,11 +210,11 @@ class PartitionCountBalancer(ClusterBalancer):
             except KeyError:
                 self.log.error("Invalid broker id %s.", b_id)
                 raise InvalidBrokerIdError(
-                    "Broker id {} does not exist in cluster".format(b_id),
+                    f"Broker id {b_id} does not exist in cluster",
                 )
             broker.mark_revoked_leadership()
 
-        assert(len(self.cluster_topology.brokers) - len(broker_ids) > 0), "Not " \
+        assert len(self.cluster_topology.brokers) - len(broker_ids) > 0, "Not " \
             "all brokers can be revoked for leadership"
         opt_leader_cnt = len(self.cluster_topology.partitions) // (
             len(self.cluster_topology.brokers) - len(broker_ids)
@@ -232,7 +225,7 @@ class PartitionCountBalancer(ClusterBalancer):
         # If the broker-ids to be revoked from leadership are still leaders for any
         # partitions, try to forcefully move their leadership to followers if possible
         pending_brokers = [
-            b for b in six.itervalues(self.cluster_topology.brokers)
+            b for b in self.cluster_topology.brokers.values()
             if b.revoked_leadership and b.count_preferred_replica() > 0
         ]
         for b in pending_brokers:
@@ -313,7 +306,7 @@ class PartitionCountBalancer(ClusterBalancer):
         # Don't include leaders if they are marked for leadership removal
         under_brokers = list(filter(
             lambda b: b.count_preferred_replica() < opt_cnt and not b.revoked_leadership,
-            six.itervalues(self.cluster_topology.brokers),
+            self.cluster_topology.brokers.values(),
         ))
         if under_brokers:
             skip_brokers, skip_partitions = [], []
@@ -323,7 +316,7 @@ class PartitionCountBalancer(ClusterBalancer):
 
         over_brokers = list(filter(
             lambda b: b.count_preferred_replica() > opt_cnt + 1,
-            six.itervalues(self.cluster_topology.brokers),
+            self.cluster_topology.brokers.values(),
         ))
         # Any over-balanced brokers tries to donate their leadership to followers
         if over_brokers:
@@ -354,7 +347,7 @@ class PartitionCountBalancer(ClusterBalancer):
         6) Repeat steps 1) to 5) until groups are balanced or cannot be balanced further.
         """
         # Segregate replication-groups based on partition-count
-        total_elements = sum(len(rg.partitions) for rg in six.itervalues(self.cluster_topology.rgs))
+        total_elements = sum(len(rg.partitions) for rg in self.cluster_topology.rgs.values())
         over_loaded_rgs, under_loaded_rgs = separate_groups(
             list(self.cluster_topology.rgs.values()),
             lambda rg: len(rg.partitions),
@@ -431,12 +424,12 @@ class PartitionCountBalancer(ClusterBalancer):
             partition = self.cluster_topology.partitions[partition_name]
         except KeyError:
             raise InvalidPartitionError(
-                "Partition name {name} not found".format(name=partition_name),
+                f"Partition name {partition_name} not found",
             )
         if partition.replication_factor + count > len(self.cluster_topology.brokers):
             raise InvalidReplicationFactorError(
-                "Cannot increase replication factor to {0}. There are only "
-                "{1} brokers."
+                "Cannot increase replication factor to {}. There are only "
+                "{} brokers."
                 .format(
                     partition.replication_factor + count,
                     len(self.cluster_topology.brokers),
@@ -498,11 +491,11 @@ class PartitionCountBalancer(ClusterBalancer):
             partition = self.cluster_topology.partitions[partition_name]
         except KeyError:
             raise InvalidPartitionError(
-                "Partition name {name} not found".format(name=partition_name),
+                f"Partition name {partition_name} not found",
             )
         if partition.replication_factor <= count:
             raise InvalidReplicationFactorError(
-                "Cannot remove {0} replicas. Replication factor is only {1}."
+                "Cannot remove {} replicas. Replication factor is only {}."
                 .format(count, partition.replication_factor)
             )
 
@@ -512,7 +505,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 osr.append(self.cluster_topology.brokers[broker_id])
             except KeyError:
                 raise InvalidBrokerIdError(
-                    "No broker found with id {bid}".format(bid=broker_id),
+                    f"No broker found with id {broker_id}",
                 )
 
         non_empty_rgs = [

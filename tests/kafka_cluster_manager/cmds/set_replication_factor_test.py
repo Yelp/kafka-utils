@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from argparse import Namespace
+from unittest import mock
 
-import mock
 import pytest
 
 from kafka_utils.kafka_cluster_manager.cluster_info.partition_count_balancer \
@@ -39,12 +36,12 @@ def mock_zk():
     return zk
 
 
-class TestSetReplicationFactorCmd(object):
+class TestSetReplicationFactorCmd:
 
     def test_run_command_add_replica(self, create_cluster_topology, mock_zk):
         assignment = {
-            (u'T0', 0): ['0', '1'],
-            (u'T0', 1): ['1', '2'],
+            ('T0', 0): ['0', '1'],
+            ('T0', 1): ['1', '2'],
         }
         brokers = {
             '0': {'host': 'host2'},
@@ -56,7 +53,7 @@ class TestSetReplicationFactorCmd(object):
         with mock.patch.object(SetReplicationFactorCmd, 'process_assignment'):
             cmd = SetReplicationFactorCmd()
             cmd.args = mock.Mock(spec=Namespace)
-            cmd.args.topic = u'T0'
+            cmd.args.topic = 'T0'
             cmd.args.replication_factor = 5
             cmd.args.rf_mismatch = False
             cmd.zk = mock_zk
@@ -69,15 +66,15 @@ class TestSetReplicationFactorCmd(object):
 
             assignment = args[0]
             assert len(assignment) == 2
-            assert set(assignment[(u'T0', 0)]) == set(['0', '1', '2', '3', '4'])
-            assert set(assignment[(u'T0', 1)]) == set(['0', '1', '2', '3', '4'])
+            assert set(assignment[('T0', 0)]) == {'0', '1', '2', '3', '4'}
+            assert set(assignment[('T0', 1)]) == {'0', '1', '2', '3', '4'}
 
             assert kwargs['allow_rf_change']
 
     def test_run_command_remove_replica(self, create_cluster_topology, mock_zk):
         assignment = {
-            (u'T0', 0): ['0', '1', '2', '3', '4'],
-            (u'T0', 1): ['0', '1', '2', '3', '4'],
+            ('T0', 0): ['0', '1', '2', '3', '4'],
+            ('T0', 1): ['0', '1', '2', '3', '4'],
         }
         brokers = {
             '0': {'host': 'host2'},
@@ -89,7 +86,7 @@ class TestSetReplicationFactorCmd(object):
         with mock.patch.object(SetReplicationFactorCmd, 'process_assignment'):
             cmd = SetReplicationFactorCmd()
             cmd.args = mock.Mock(spec=Namespace)
-            cmd.args.topic = u'T0'
+            cmd.args.topic = 'T0'
             cmd.args.replication_factor = 2
             cmd.args.rf_mismatch = False
             cmd.zk = mock_zk
@@ -103,15 +100,15 @@ class TestSetReplicationFactorCmd(object):
 
             assignment = args[0]
             assert len(assignment) == 2
-            assert set(assignment[(u'T0', 0)]) == set(['0', '1'])
-            assert set(assignment[(u'T0', 1)]) == set(['1', '2'])
+            assert set(assignment[('T0', 0)]) == {'0', '1'}
+            assert set(assignment[('T0', 1)]) == {'1', '2'}
 
             assert kwargs['allow_rf_change']
 
     def test_rf_mismatch(self, create_cluster_topology, mock_zk):
         assignment = {
-            (u'T0', 0): ['0', '1', '2', '3', '4'],
-            (u'T0', 1): ['0', '1', '2', '3'],
+            ('T0', 0): ['0', '1', '2', '3', '4'],
+            ('T0', 1): ['0', '1', '2', '3'],
         }
         brokers = {
             '0': {'host': 'host2'},
@@ -123,7 +120,7 @@ class TestSetReplicationFactorCmd(object):
         with mock.patch.object(SetReplicationFactorCmd, 'process_assignment'):
             cmd = SetReplicationFactorCmd()
             cmd.args = mock.Mock(spec=Namespace)
-            cmd.args.topic = u'T0'
+            cmd.args.topic = 'T0'
             cmd.args.replication_factor = 2
             cmd.args.rf_mismatch = True
             cmd.zk = mock_zk
@@ -137,7 +134,7 @@ class TestSetReplicationFactorCmd(object):
 
             assignment = args[0]
             assert len(assignment) == 2
-            assert set(assignment[(u'T0', 0)]) == set(['0', '1'])
-            assert set(assignment[(u'T0', 1)]) == set(['1', '2'])
+            assert set(assignment[('T0', 0)]) == {'0', '1'}
+            assert set(assignment[('T0', 1)]) == {'1', '2'}
 
             assert kwargs['allow_rf_change']

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from kafka_utils.util.validation import _validate_format
 from kafka_utils.util.validation import _validate_plan
 from kafka_utils.util.validation import _validate_plan_base
@@ -24,9 +21,9 @@ def test_validate_format():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 1]},
-            {"partition": 1, "topic": u't1', "replicas": [1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [1, 2]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 1]},
+            {"partition": 1, "topic": 't1', "replicas": [1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [1, 2]}
         ]
     }
 
@@ -37,7 +34,7 @@ def test_validate_format():
 def test_validate_format_version_absent():
     assignment = {
         "partitions":
-        [{"partition": 0, "topic": u't1', "replicas": [0, 1, 2]}]
+        [{"partition": 0, "topic": 't1', "replicas": [0, 1, 2]}]
     }
 
     # 'version' key missing: Verify Validation failed
@@ -49,7 +46,7 @@ def test_validate_format_invalid_key():
     assignment = {
         "cluster": "invalid_key",
         "partitions":
-        [{"partition": 0, "topic": u't1', "replicas": [0, 1, 2]}]
+        [{"partition": 0, "topic": 't1', "replicas": [0, 1, 2]}]
     }
 
     # Verify validation failed
@@ -68,7 +65,7 @@ def test_validate_format_version_wrong():
     assignment = {
         "version": 2,
         "partitions":
-        [{"partition": 0, "topic": u't1', "replicas": [0, 1, 2]}]
+        [{"partition": 0, "topic": 't1', "replicas": [0, 1, 2]}]
     }
 
     # Verify validation failed
@@ -100,8 +97,8 @@ def test_validate_format_invalid_key_partition():
         "version": 1,
         "partitions":
         [
-            {"topic": u't1', "replicas": [0, 1, 2]},
-            {"isr": [0, 1, 2], "partition": 0, "topic": u't2', "replicas": [0, 1, 2]}
+            {"topic": 't1', "replicas": [0, 1, 2]},
+            {"isr": [0, 1, 2], "partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
         ]
     }
 
@@ -115,8 +112,8 @@ def test_validate_format_missing_key_partition():
         "version": 1,
         "partitions":
         [
-            {"topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1, 2]}
+            {"topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
         ]
     }
 
@@ -131,7 +128,7 @@ def test_validate_format_missing_key_topic():
         "partitions":
         [
             {"partition": 0, "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1, 2]}
+            {"partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
         ]
     }
 
@@ -145,8 +142,8 @@ def test_validate_format_missing_key_replicas():
         "version": 1,
         "partitions":
         [
-            {"partition": 0, "topic": u't1'},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1, 2]}
+            {"partition": 0, "topic": 't1'},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
         ]
     }
 
@@ -158,7 +155,7 @@ def test_validate_format_invalid_type_partitions():
     # 'partitions' is not list
     assignment = {
         "version": 1,
-        "partitions": {"partition": 0, "topic": u't2', "replicas": [0, 1, 2]}
+        "partitions": {"partition": 0, "topic": 't2', "replicas": [0, 1, 2]}
     }
 
     # Verify validation failed
@@ -169,7 +166,7 @@ def test_validate_format_invalid_type_partition():
     # partition-id is not int
     assignment = {
         "version": 1,
-        "partitions": [{"partition": '0', "topic": u't2', "replicas": [0, 1, 2]}]
+        "partitions": [{"partition": '0', "topic": 't2', "replicas": [0, 1, 2]}]
     }
 
     # Verify validation failed
@@ -191,7 +188,7 @@ def test_validate_format_invalid_type_replicas():
     # replicas is not list
     assignment = {
         "version": 1,
-        "partitions": [{"partition": 0, "topic": u't1', "replicas": 0}]
+        "partitions": [{"partition": 0, "topic": 't1', "replicas": 0}]
     }
 
     # Verify validation failed
@@ -202,7 +199,7 @@ def test_validate_format_invalid_type_replica_brokers():
     # replica-brokers are not int
     assignment = {
         "version": 1,
-        "partitions": [{"partition": 0, "topic": u't1', "replicas": ['0', 1]}]
+        "partitions": [{"partition": 0, "topic": 't1', "replicas": ['0', 1]}]
     }
 
     # Verify validation failed
@@ -213,7 +210,7 @@ def test_validate_format_replica_empty():
     # replica-brokers are empty
     assignment = {
         "version": 1,
-        "partitions": [{"partition": 0, "topic": u't1', "replicas": []}]
+        "partitions": [{"partition": 0, "topic": 't1', "replicas": []}]
     }
 
     # Verify validation failed
@@ -224,8 +221,8 @@ def test_validate_plan():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 1]},
-            {"partition": 1, "topic": u't1', "replicas": [1, 2]},
+            {"partition": 0, "topic": 't1', "replicas": [0, 1]},
+            {"partition": 1, "topic": 't1', "replicas": [1, 2]},
         ]
     }
 
@@ -238,8 +235,8 @@ def test_validate_plan_duplicate_partitions():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 1]},
-            {"partition": 0, "topic": u't1', "replicas": [1, 2]},
+            {"partition": 0, "topic": 't1', "replicas": [0, 1]},
+            {"partition": 0, "topic": 't1', "replicas": [1, 2]},
         ]
     }
 
@@ -251,7 +248,7 @@ def test_validate_plan_duplicate_replica_brokers():
     # Duplicate replica-brokers [0, 0, 1]
     assignment = {
         "version": 1,
-        "partitions": [{"partition": 0, "topic": u't1', "replicas": [0, 0, 1]}]
+        "partitions": [{"partition": 0, "topic": 't1', "replicas": [0, 0, 1]}]
     }
 
     # Verify validation failed
@@ -264,8 +261,8 @@ def test_validate_plan_different_replication_factor():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2, 1]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 1]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1]}
         ]
     }
 
@@ -277,16 +274,16 @@ def test_validate_plan_base():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [1, 2]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [1, 2]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2]},
-            {"partition": 1, "topic": u't1', "replicas": [1, 2]},
-            {"partition": 1, "topic": u't2', "replicas": [0]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2]},
+            {"partition": 1, "topic": 't1', "replicas": [1, 2]},
+            {"partition": 1, "topic": 't2', "replicas": [0]}
         ]
     }
 
@@ -299,15 +296,15 @@ def test_validate_plan_base_invalid_partitions():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [1, 2]},
-            {"partition": 0, "topic": u'invalid', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [1, 2]},
+            {"partition": 0, "topic": 'invalid', "replicas": [0, 1]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -320,15 +317,15 @@ def test_validate_plan_base_invalid_partitions_2():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [1, 2]},
-            {"partition": 1, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [1, 2]},
+            {"partition": 1, "topic": 't2', "replicas": [0, 1]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -341,15 +338,15 @@ def test_validate_plan_base_replication_factor_changed():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [1]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [1]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -362,15 +359,15 @@ def test_validate_plan_base_replication_factor_changed_allowed():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [1]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [1]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -383,8 +380,8 @@ def test_validate_plan_1():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [1, 4]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [1, 4]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -397,17 +394,17 @@ def test_validate_plan_2():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [2, 1, 0]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 3]}
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 3]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2, 3]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -421,16 +418,16 @@ def test_validate_plan_incomplete_partition_subset():
     complete_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [2, 1, 0]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2, 3]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -448,18 +445,18 @@ def test_validate_plan_incomplete_partition_subset_2():
     complete_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [2, 1, 0]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]},
-            {"partition": 0, "topic": u't3', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]},
+            {"partition": 0, "topic": 't3', "replicas": [0, 1]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2, 3]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -475,16 +472,16 @@ def test_validate_plan_3():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [2, 1, 0]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 3]}
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 3]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2, 3]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -497,16 +494,16 @@ def test_validate_plan_invalid_format():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": '0', "topic": u't1', "replicas": [2, 1, 0]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 3]}
+            {"partition": '0', "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 3]}
         ]
     }
     base_assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [0, 2, 3]},
-            {"partition": 1, "topic": u't1', "replicas": [0, 1, 2]},
-            {"partition": 0, "topic": u't2', "replicas": [0, 1]}
+            {"partition": 0, "topic": 't1', "replicas": [0, 2, 3]},
+            {"partition": 1, "topic": 't1', "replicas": [0, 1, 2]},
+            {"partition": 0, "topic": 't2', "replicas": [0, 1]}
         ]
     }
 
@@ -519,8 +516,8 @@ def test_validate_plan_duplicate_partition():
     assignment = {
         "version": 1,
         "partitions": [
-            {"partition": 0, "topic": u't1', "replicas": [2, 1, 0]},
-            {"partition": 0, "topic": u't1', "replicas": [0, 3]}
+            {"partition": 0, "topic": 't1', "replicas": [2, 1, 0]},
+            {"partition": 0, "topic": 't1', "replicas": [0, 3]}
         ]
     }
 

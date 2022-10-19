@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 import sys
-
-import six
 
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util.client import KafkaToolClient
@@ -63,7 +57,7 @@ class ListTopics(OffsetManagerBase):
             ))
             sys.exit(1)
 
-        print("Consumer Group ID: {groupid}".format(groupid=args.groupid))
-        for topic, partitions in six.iteritems(topics_dict):
-            print("\tTopic: {topic}".format(topic=topic))
-            print("\t\tPartitions: {partitions}".format(partitions=partitions))
+        print(f"Consumer Group ID: {args.groupid}")
+        for topic, partitions in topics_dict.items():
+            print(f"\tTopic: {topic}")
+            print(f"\t\tPartitions: {partitions}")

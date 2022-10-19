@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +16,10 @@
 Useful as part of reassignment project when deciding upon moving
 partitions of same topic over different brokers.
 """
-from __future__ import absolute_import
-
 import logging
 
 
-class Topic(object):
+class Topic:
     """Information of a topic object.
 
     :params
@@ -34,7 +31,7 @@ class Topic(object):
     def __init__(self, id, replication_factor=0, partitions=None):
         self._id = id
         self._replication_factor = replication_factor
-        self._partitions = partitions or set([])
+        self._partitions = partitions or set()
         self.log = logging.getLogger(self.__class__.__name__)
 
     @property
@@ -60,7 +57,7 @@ class Topic(object):
         self._partitions.add(partition)
 
     def __str__(self):
-        return "{0}".format(self._id)
+        return f"{self._id}"
 
     def __repr__(self):
-        return "{0}".format(self)
+        return f"{self}"

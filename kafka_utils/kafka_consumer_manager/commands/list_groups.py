@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 from .offset_manager import OffsetManagerBase
 from kafka_utils.kafka_consumer_manager.util import get_kafka_group_reader
 
@@ -41,7 +37,7 @@ class ListGroups(OffsetManagerBase):
     def print_groups(cls, groups, cluster_config):
         print("Consumer Groups:")
         for groupid in groups:
-            print("\t{groupid}".format(groupid=groupid))
+            print(f"\t{groupid}")
         print(
             "{num_groups} groups found for cluster {cluster_name} "
             "of type {cluster_type}".format(

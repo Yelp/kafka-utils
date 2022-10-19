@@ -13,12 +13,11 @@ def _read_generated_broker_id(meta_properties_path):
     :returns int: broker_id from meta_properties_path
     """
     try:
-        with open(meta_properties_path, 'r') as f:
+        with open(meta_properties_path) as f:
             broker_id = _parse_meta_properties_file(f)
-    except IOError:
-        raise IOError(
-            "Cannot open meta.properties file: {path}"
-            .format(path=meta_properties_path),
+    except OSError:
+        raise OSError(
+            f"Cannot open meta.properties file: {meta_properties_path}",
         )
     except ValueError:
         raise ValueError("Broker id not valid")

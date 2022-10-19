@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 import json
 
-import six
-
 
 def load_json(input_data):
-    if six.PY3:
-        data_str = input_data.decode()
-    else:
-        data_str = input_data
+    data_str = input_data.decode()
 
     return json.loads(data_str)
 
@@ -29,7 +23,6 @@ def load_json(input_data):
 def dump_json(obj):
     serialized = json.dumps(obj, sort_keys=True)
 
-    if six.PY3:
-        serialized = serialized.encode()
+    serialized = serialized.encode()
 
     return serialized

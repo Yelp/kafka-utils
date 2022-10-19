@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
 import sys
 from collections import defaultdict
 
-import six
 from kafka.common import KafkaUnavailableError
 
 from .offset_manager import OffsetManagerBase
@@ -131,7 +125,7 @@ class OffsetSave(OffsetManagerBase):
         """
         # Build consumer-offset data in desired format
         current_consumer_offsets = defaultdict(dict)
-        for topic, topic_offsets in six.iteritems(consumer_offsets_metadata):
+        for topic, topic_offsets in consumer_offsets_metadata.items():
             for partition_offset in topic_offsets:
                 current_consumer_offsets[topic][partition_offset.partition] = \
                     partition_offset.current
@@ -147,6 +141,6 @@ class OffsetSave(OffsetManagerBase):
             try:
                 json.dump(consumer_offsets_data, json_file)
             except ValueError:
-                print("Error: Invalid json data {data}".format(data=consumer_offsets_data))
+                print(f"Error: Invalid json data {consumer_offsets_data}")
                 raise
-            print("Consumer offset data saved in json-file {file}".format(file=json_file_name))
+            print(f"Consumer offset data saved in json-file {json_file_name}")

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import division
-
 from argparse import Namespace
+from unittest import mock
 
-import mock
 import pytest
 
 from kafka_utils.kafka_cluster_manager.cluster_info.genetic_balancer \
@@ -26,7 +22,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info.genetic_balancer \
     import GeneticBalancer
 
 
-class TestGeneticBalancer(object):
+class TestGeneticBalancer:
 
     @pytest.fixture(autouse=True)
     def _create_cluster_topology(self, create_cluster_topology):
@@ -216,11 +212,11 @@ class TestGeneticBalancer(object):
         partition weight is more balanced across brokers.
         """
         assert self.score_lt({
-            (u'T0', 0): ['0'],
-            (u'T1', 0): ['0'],
+            ('T0', 0): ['0'],
+            ('T1', 0): ['0'],
         }, {
-            (u'T0', 0): ['0'],
-            (u'T1', 0): ['1'],
+            ('T0', 0): ['0'],
+            ('T1', 0): ['1'],
         })
 
     def test_score_broker_leader_weight(self):
@@ -228,11 +224,11 @@ class TestGeneticBalancer(object):
         leader weight is more balanced across brokers.
         """
         assert self.score_lt({
-            (u'T0', 0): ['0', '1'],
-            (u'T1', 0): ['0', '1'],
+            ('T0', 0): ['0', '1'],
+            ('T1', 0): ['0', '1'],
         }, {
-            (u'T0', 0): ['0', '1'],
-            (u'T1', 0): ['1', '0'],
+            ('T0', 0): ['0', '1'],
+            ('T1', 0): ['1', '0'],
         })
 
     def test_score_topic_broker_imbalance(self):
@@ -240,15 +236,15 @@ class TestGeneticBalancer(object):
         partitions are more distributed across brokers.
         """
         assert self.score_lt({
-            (u'T0', 0): ['0', '1'],
-            (u'T0', 1): ['1', '0'],
-            (u'T1', 0): ['4', '7'],
-            (u'T1', 1): ['7', '4'],
+            ('T0', 0): ['0', '1'],
+            ('T0', 1): ['1', '0'],
+            ('T1', 0): ['4', '7'],
+            ('T1', 1): ['7', '4'],
         }, {
-            (u'T0', 0): ['0', '1'],
-            (u'T0', 1): ['4', '7'],
-            (u'T1', 0): ['1', '0'],
-            (u'T1', 1): ['7', '4'],
+            ('T0', 0): ['0', '1'],
+            ('T0', 1): ['4', '7'],
+            ('T1', 0): ['1', '0'],
+            ('T1', 1): ['7', '4'],
         })
 
     def test_score_balanced_eq(self):
@@ -256,19 +252,19 @@ class TestGeneticBalancer(object):
         balanced, but are different.
         """
         assert self.score_eq({
-            (u'T0', 0): ['0', '1'],
-            (u'T0', 1): ['4', '7'],
-            (u'T1', 0): ['1', '0'],
-            (u'T1', 1): ['7', '4'],
+            ('T0', 0): ['0', '1'],
+            ('T0', 1): ['4', '7'],
+            ('T1', 0): ['1', '0'],
+            ('T1', 1): ['7', '4'],
         }, {
-            (u'T0', 0): ['4', '7'],
-            (u'T0', 1): ['0', '1'],
-            (u'T1', 0): ['7', '4'],
-            (u'T1', 1): ['1', '0'],
+            ('T0', 0): ['4', '7'],
+            ('T0', 1): ['0', '1'],
+            ('T1', 0): ['7', '4'],
+            ('T1', 1): ['1', '0'],
         })
 
 
-class Test_State(object):
+class Test_State:
 
     @pytest.fixture(autouse=True)
     def _ct(self, create_cluster_topology):
@@ -283,22 +279,22 @@ class Test_State(object):
     def test_partitions(self):
         """Test that partitions are sorted by partition name."""
         assert self.state.partitions == (
-            self.ct.partitions[(u'T0', 0)],
-            self.ct.partitions[(u'T0', 1)],
-            self.ct.partitions[(u'T1', 0)],
-            self.ct.partitions[(u'T1', 1)],
-            self.ct.partitions[(u'T2', 0)],
-            self.ct.partitions[(u'T3', 0)],
-            self.ct.partitions[(u'T3', 1)],
+            self.ct.partitions[('T0', 0)],
+            self.ct.partitions[('T0', 1)],
+            self.ct.partitions[('T1', 0)],
+            self.ct.partitions[('T1', 1)],
+            self.ct.partitions[('T2', 0)],
+            self.ct.partitions[('T3', 0)],
+            self.ct.partitions[('T3', 1)],
         )
 
     def test_topics(self):
         """Test that topics are sorted by topic id."""
         assert self.state.topics == (
-            self.ct.topics[u'T0'],
-            self.ct.topics[u'T1'],
-            self.ct.topics[u'T2'],
-            self.ct.topics[u'T3'],
+            self.ct.topics['T0'],
+            self.ct.topics['T1'],
+            self.ct.topics['T2'],
+            self.ct.topics['T3'],
         )
 
     def test_brokers(self):
@@ -418,7 +414,7 @@ class Test_State(object):
         new_state = self.state.add_replica(4, 4)
 
         assert new_state.pending_assignment == {
-            (u'T2', 0): ['2', '4']
+            ('T2', 0): ['2', '4']
         }
 
     def test_broker_partition_count_cv(self):

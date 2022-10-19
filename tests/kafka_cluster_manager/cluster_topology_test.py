@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import pytest
-import six
 
 from .helper import broker_range
 from kafka_utils.kafka_cluster_manager.cluster_info \
@@ -24,7 +20,7 @@ from kafka_utils.kafka_cluster_manager.cluster_info \
     .error import InvalidPartitionError
 
 
-class TestClusterTopology(object):
+class TestClusterTopology:
 
     def assert_valid(self, new_assignment, orig_assignment, orig_brokers):
         """Assert if new-assignment is valid based on given assignment.
@@ -37,7 +33,7 @@ class TestClusterTopology(object):
 
         # Verify that partitions remain same
         assert sorted(orig_assignment.keys()) == sorted(new_assignment.keys())
-        for t_p, new_replicas in six.iteritems(new_assignment):
+        for t_p, new_replicas in new_assignment.items():
             orig_replicas = orig_assignment[t_p]
             # Verify that new-replicas are amongst given broker-list
             assert all([broker in orig_brokers for broker in new_replicas])
@@ -53,26 +49,26 @@ class TestClusterTopology(object):
         ct.brokers['1'].mark_decommissioned()
         ct.brokers['3'].mark_inactive()
 
-        assert set(b.id for b in ct.active_brokers) == set(['0', '2', '4'])
+        assert {b.id for b in ct.active_brokers} == {'0', '2', '4'}
 
     def test_replace_broker_leader(self, create_cluster_topology):
         assignment = dict(
             [
-                ((u'T1', 0), ['1', '2']),
-                ((u'T1', 1), ['0', '2']),
-                ((u'T2', 0), ['1']),
+                (('T1', 0), ['1', '2']),
+                (('T1', 1), ['0', '2']),
+                (('T2', 0), ['1']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
 
         ct.replace_broker('1', '3')
 
-        assert ct.brokers['1'].partitions == set([])
-        assert ct.brokers['3'].partitions == set([
-            ct.partitions[(u'T1', 0)],
-            ct.partitions[(u'T2', 0)],
-        ])
-        assert ct.partitions[(u'T1', 0)].replicas == [
+        assert ct.brokers['1'].partitions == set()
+        assert ct.brokers['3'].partitions == {
+            ct.partitions[('T1', 0)],
+            ct.partitions[('T2', 0)],
+        }
+        assert ct.partitions[('T1', 0)].replicas == [
             ct.brokers['3'],
             ct.brokers['2'],
         ]
@@ -80,29 +76,29 @@ class TestClusterTopology(object):
     def test_replace_broker_non_leader(self, create_cluster_topology):
         assignment = dict(
             [
-                ((u'T1', 0), ['1', '2']),
-                ((u'T2', 0), ['1']),
+                (('T1', 0), ['1', '2']),
+                (('T2', 0), ['1']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(4))
         ct.replace_broker('2', '0')
 
-        assert ct.brokers['2'].partitions == set([])
-        assert ct.brokers['0'].partitions == set([ct.partitions[(u'T1', 0)]])
-        assert ct.partitions[(u'T1', 0)].replicas == [
+        assert ct.brokers['2'].partitions == set()
+        assert ct.brokers['0'].partitions == {ct.partitions[('T1', 0)]}
+        assert ct.partitions[('T1', 0)].replicas == [
             ct.brokers['1'],
             ct.brokers['0'],
         ]
 
     def test_replace_broker_invalid_source_broker(self, create_cluster_topology):
-        assignment = dict([((u'T1', 0), ['0', '1'])])
+        assignment = dict([(('T1', 0), ['0', '1'])])
         ct = create_cluster_topology(assignment, broker_range(3))
 
         with pytest.raises(InvalidBrokerIdError):
             ct.replace_broker('444', '2')
 
     def test_replace_broker_invalid_destination_broker(self, create_cluster_topology):
-        assignment = dict([((u'T1', 0), ['0', '1'])])
+        assignment = dict([(('T1', 0), ['0', '1'])])
         ct = create_cluster_topology(assignment, broker_range(3))
 
         with pytest.raises(InvalidBrokerIdError):
@@ -113,8 +109,8 @@ class TestClusterTopology(object):
             create_cluster_topology,
     ):
         assignment = {
-            (u'T0', 0): ['0', '1'],
-            (u'T0', 1): ['8', '9'],  # 8 and 9 are not in active brokers
+            ('T0', 0): ['0', '1'],
+            ('T0', 1): ['8', '9'],  # 8 and 9 are not in active brokers
         }
         brokers = {
             '0': {'host': 'host0'},
@@ -140,7 +136,7 @@ class TestClusterTopology(object):
             default_partition_weight,
     ):
         ct = create_cluster_topology()
-        for name, weight in six.iteritems(default_partition_weight):
+        for name, weight in default_partition_weight.items():
             assert ct.partitions[name].weight == weight
 
     def test_cluster_topology_partition_size(
@@ -149,15 +145,15 @@ class TestClusterTopology(object):
             default_partition_size,
     ):
         ct = create_cluster_topology()
-        for name, size in six.iteritems(default_partition_size):
+        for name, size in default_partition_size.items():
             assert ct.partitions[name].size == size
 
     def test_update_cluster_topology_invalid_broker(
             self,
             create_cluster_topology,
     ):
-        assignment = dict([((u'T0', 0), ['1', '2'])])
-        new_assignment = dict([((u'T0', 0), ['1', '3'])])
+        assignment = dict([(('T0', 0), ['1', '2'])])
+        new_assignment = dict([(('T0', 0), ['1', '3'])])
         ct = create_cluster_topology(assignment, broker_range(3))
 
         with pytest.raises(InvalidBrokerIdError):
@@ -167,8 +163,8 @@ class TestClusterTopology(object):
             self,
             create_cluster_topology,
     ):
-        assignment = dict([((u'T0', 0), ['1', '2'])])
-        new_assignment = dict([((u'invalid_topic', 0), ['1', '0'])])
+        assignment = dict([(('T0', 0), ['1', '2'])])
+        new_assignment = dict([(('invalid_topic', 0), ['1', '0'])])
         ct = create_cluster_topology(assignment, broker_range(3))
 
         with pytest.raises(InvalidPartitionError):
@@ -180,15 +176,15 @@ class TestClusterTopology(object):
     ):
         assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T0', 1), ['2', '0']),
-                ((u'T1', 0), ['0', '2']),
+                (('T0', 0), ['1', '2']),
+                (('T0', 1), ['2', '0']),
+                (('T1', 0), ['0', '2']),
             ]
         )
         new_assignment = dict(
             [
-                ((u'T0', 0), ['1', '2']),
-                ((u'T0', 1), ['1', '2']),
+                (('T0', 0), ['1', '2']),
+                (('T0', 1), ['1', '2']),
             ]
         )
         ct = create_cluster_topology(assignment, broker_range(3))
@@ -196,25 +192,25 @@ class TestClusterTopology(object):
         ct.update_cluster_topology(new_assignment)
 
         # Verify updates of partition and broker objects
-        r_T0_0 = [b.id for b in ct.partitions[(u'T0', 0)].replicas]
-        r_T0_1 = [b.id for b in ct.partitions[(u'T0', 1)].replicas]
-        r_T1_0 = [b.id for b in ct.partitions[(u'T1', 0)].replicas]
+        r_T0_0 = [b.id for b in ct.partitions[('T0', 0)].replicas]
+        r_T0_1 = [b.id for b in ct.partitions[('T0', 1)].replicas]
+        r_T1_0 = [b.id for b in ct.partitions[('T1', 0)].replicas]
         assert r_T0_0 == ['1', '2']
         assert r_T0_1 == ['1', '2']
         assert r_T1_0 == ['0', '2']
 
         # Assert partitions of brokers get updated
-        assert ct.brokers['0'].partitions == set([
-            ct.partitions[(u'T1', 0)],
-        ])
+        assert ct.brokers['0'].partitions == {
+            ct.partitions[('T1', 0)],
+        }
 
-        assert ct.brokers['1'].partitions == set([
-            ct.partitions[(u'T0', 0)],
-            ct.partitions[(u'T0', 1)],
-        ])
+        assert ct.brokers['1'].partitions == {
+            ct.partitions[('T0', 0)],
+            ct.partitions[('T0', 1)],
+        }
 
-        assert ct.brokers['2'].partitions == set([
-            ct.partitions[(u'T0', 0)],
-            ct.partitions[(u'T0', 1)],
-            ct.partitions[(u'T1', 0)],
-        ])
+        assert ct.brokers['2'].partitions == {
+            ct.partitions[('T0', 0)],
+            ct.partitions[('T0', 1)],
+            ct.partitions[('T1', 0)],
+        }

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,39 +11,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import call_offset_get
 from steps.util import load_json
 
 
-@when(u'we call the offset_get command')
+@when('we call the offset_get command')
 def step_impl4_2(context):
     context.output = call_offset_get(context.group)
 
 
-@when(u'we call the offset_get command with the json option')
+@when('we call the offset_get command with the json option')
 def step_impl4_5(context):
     context.output = call_offset_get(context.group, json=True)
 
 
-@then(u'the correct offset will be shown')
+@then('the correct offset will be shown')
 def step_impl5(context):
     offset = context.msgs_consumed
-    pattern = 'Current Offset: {}'.format(offset)
+    pattern = f'Current Offset: {offset}'
     assert pattern in context.output
 
 
-@then(u'the offset that was committed into Kafka will be shown')
+@then('the offset that was committed into Kafka will be shown')
 def step_impl5_2(context):
     offset = context.set_offset_kafka
-    pattern = 'Current Offset: {}'.format(offset)
+    pattern = f'Current Offset: {offset}'
     assert pattern in context.output
 
 
-@then(u'the correct json output will be shown')
+@then('the correct json output will be shown')
 def step_impl5_3(context):
     offset = context.msgs_consumed
     if context.msgs_produced > 0.0:

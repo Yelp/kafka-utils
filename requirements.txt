@@ -21,4 +21,3 @@ requests-futures==0.9.9
 retrying==1.3.3
 setproctitle==1.1.10
 simplejson==3.16.0
-six==1.12.0

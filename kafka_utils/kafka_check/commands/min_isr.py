@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import itertools
 
 from kazoo.exceptions import NoNodeError
@@ -105,7 +102,7 @@ def _prepare_output(partitions, verbose, head_limit):
         out['message'] = 'All replicas in sync.'
     else:
         out['message'] = (
-            "{0} partition(s) have the number of replicas in "
+            "{} partition(s) have the number of replicas in "
             "sync that is lower than the specified min ISR."
         ).format(partitions_count)
         if verbose:
@@ -119,7 +116,7 @@ def _prepare_output(partitions, verbose, head_limit):
                 )
                 for p in partitions
             )
-            title = "Top {0} partitions:\n".format(head_limit) + "\n".join(lines) if head_limit != -1 else "Partitions:\n"
+            title = f"Top {head_limit} partitions:\n" + "\n".join(lines) if head_limit != -1 else "Partitions:\n"
 
             out['verbose'] = title + "\n".join(lines)
     if verbose:

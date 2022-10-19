@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,6 +47,7 @@ setup(
         "scripts/kafka-check",
         "scripts/kafka-corruption-check",
     ],
+    python_requires='>=3.7',
     install_requires=[
         "humanfriendly>=4.8",
         "kafka-python>=1.3.2,<1.5.0",
@@ -58,16 +58,14 @@ setup(
         "paramiko>1.8.0,<3.0.0",
         "requests<3.0.0",
         "retrying",
-        "six>=1.10.0",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",

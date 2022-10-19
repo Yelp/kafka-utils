@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 from .error import InvalidPartitionMeasurementError
 
 
-class Partition(object):
+class Partition:
     """Class representing the partition object.
     It contains topic-partition_id tuple as name, topic and replicas
     (list of brokers).
@@ -109,7 +108,7 @@ class Partition(object):
         partition needs to be changed.
         """
         # Replica set cannot be changed
-        assert(new_leader in self._replicas)
+        assert new_leader in self._replicas
         curr_leader = self.leader
         idx = self._replicas.index(new_leader)
         self._replicas[0], self._replicas[idx] = \
@@ -140,7 +139,7 @@ class Partition(object):
         return count
 
     def __str__(self):
-        return "{name}".format(name=self._name)
+        return f"{self._name}"
 
     def __repr__(self):
-        return "{0}".format(self)
+        return f"{self}"

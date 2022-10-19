@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import then
 from behave import when
 from steps.util import call_cmd
@@ -29,23 +26,23 @@ def call_replication_factor_check(min_isr='1'):
     return call_cmd(cmd)
 
 
-@when(u'we call the replication_factor check')
+@when('we call the replication_factor check')
 def step_impl2(context):
     context.replication_factor_out = call_replication_factor_check()
 
 
-@when(u'we call the replication_factor check with adjusted min.isr')
+@when('we call the replication_factor check with adjusted min.isr')
 def step_impl3(context):
     context.replication_factor_out = call_replication_factor_check('0')
 
 
-@then(u'OK from replication_factor will be printed')
+@then('OK from replication_factor will be printed')
 def step_impl5(context):
     msg = 'OK: All topics have proper replication factor.\n'
     assert context.replication_factor_out == msg, context.replication_factor_out
 
 
-@then(u'CRITICAL from replication_factor will be printed')
+@then('CRITICAL from replication_factor will be printed')
 def step_impl6(context):
     msg = (
         "CRITICAL: 1 topic(s) have replication factor lower than specified min ISR + 1.\n"

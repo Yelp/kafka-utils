@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
-import mock
+from unittest import mock
 
 from kafka_utils.kafka_consumer_manager. \
     commands.offset_save import OffsetSave
 from kafka_utils.util.monitoring import ConsumerPartitionOffsets
 
 
-class TestOffsetSave(object):
+class TestOffsetSave:
     topics_partitions = {
         "topic1": [0, 1, 2],
         "topic2": [0, 1, 2, 3],

@@ -1,7 +1,4 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
-import mock
+from unittest import mock
 
 from kafka_utils.kafka_corruption_check import main
 
@@ -29,7 +26,7 @@ def test_find_files_cmd_start():
 
 def test_find_files_cmd_range():
     cmd = main.find_files_cmd("path", None, "START", "END")
-    assert cmd == 'find "path" -type f -name "*.log" -newermt "START" \! -newermt "END"'
+    assert cmd == 'find "path" -type f -name "*.log" -newermt "START" \\! -newermt "END"'
 
 
 @mock.patch(

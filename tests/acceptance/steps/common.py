@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from behave import given
 from behave import when
 from steps.util import create_consumer_group
@@ -26,12 +23,12 @@ PRODUCED_MSG_COUNT = 82
 CONSUMED_MSG_COUNT = 39
 
 
-@given(u'we have an existing kafka cluster with a topic')
+@given('we have an existing kafka cluster with a topic')
 def step_impl1(context):
     context.topic = create_random_topic(1, 1)
 
 
-@given(u'we have a kafka consumer group')
+@given('we have a kafka consumer group')
 def step_impl2(context):
     context.group = create_random_group_id()
     context.client = create_consumer_group(
@@ -40,13 +37,13 @@ def step_impl2(context):
     )
 
 
-@when(u'we produce some number of messages into the topic')
+@when('we produce some number of messages into the topic')
 def step_impl3(context):
     produce_example_msg(context.topic, num_messages=PRODUCED_MSG_COUNT)
     context.msgs_produced = PRODUCED_MSG_COUNT
 
 
-@when(u'we consume some number of messages from the topic')
+@when('we consume some number of messages from the topic')
 def step_impl4(context):
     context.group = create_random_group_id()
     context.client = create_consumer_group(
@@ -57,18 +54,18 @@ def step_impl4(context):
     context.msgs_consumed = CONSUMED_MSG_COUNT
 
 
-@given(u'we have initialized kafka offsets storage')
+@given('we have initialized kafka offsets storage')
 def step_impl5(context):
 
     initialize_kafka_offsets_topic()
 
 
-@given(u'we have an existing kafka cluster')
+@given('we have an existing kafka cluster')
 def step_impl6(context):
     pass
 
 
-@given(u'we have an existing kafka cluster with multiple topics')
+@given('we have an existing kafka cluster with multiple topics')
 def step_impl7(context):
     context.topic = []
     context.topic.append(create_random_topic(1, 1, 'abcde'))

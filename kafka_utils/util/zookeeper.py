@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import logging
-
-import six
 import re
+
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
@@ -61,21 +57,21 @@ class ZK:
     def get_children(self, path, watch=None):
         """Returns the children of the specified node."""
         _log.debug(
-            "ZK: Getting children of {path}".format(path=path),
+            f"ZK: Getting children of {path}",
         )
         return self.zk.get_children(path, watch)
 
     def get(self, path, watch=None):
         """Returns the data of the specified node."""
         _log.debug(
-            "ZK: Getting {path}".format(path=path),
+            f"ZK: Getting {path}",
         )
         return self.zk.get(path, watch)
 
     def set(self, path, value):
         """Sets and returns new data for the specified node."""
         _log.debug(
-            "ZK: Setting {path} to {value}".format(path=path, value=value)
+            f"ZK: Setting {path} to {value}"
         )
         return self.zk.set(path, value)
 
@@ -87,7 +83,7 @@ class ZK:
     def get_broker_metadata(self, broker_id):
         try:
             broker_json = load_json(self.get(
-                "/brokers/ids/{b_id}".format(b_id=broker_id)
+                f"/brokers/ids/{broker_id}"
             )[0])
             if (broker_json['host'] is None):
                 pattern = '(?:[SSL|INTERNAL|PLAINTEXTSASL].*://)?(?P<host>[^:/ ]+).?(?P<port>[0-9]*).*'
@@ -95,7 +91,7 @@ class ZK:
                 broker_json['host'] = result.group('host')
         except NoNodeError:
             _log.error(
-                "broker '{b_id}' not found.".format(b_id=broker_id),
+                f"broker '{broker_id}' not found.",
             )
             raise
         return broker_json
@@ -179,7 +175,7 @@ class ZK:
         try:
             config_data = load_json(
                 self.get(
-                    "/config/{entity_type}/{entity_name}".format(entity_type=entity_type, entity_name=entity_name)
+                    f"/config/{entity_type}/{entity_name}"
                 )[0]
             )
         except NoNodeError as e:
@@ -190,7 +186,7 @@ class ZK:
                 ))
                 config_data = {"config": {}}
             else:
-                _log.error("{entity_type} {entity_name} not found".format(entity_type=entity_type, entity_name=entity_name))
+                _log.error(f"{entity_type} {entity_name} not found")
                 raise e
 
         return config_data
@@ -213,7 +209,7 @@ class ZK:
         try:
             # Change value
             return_value = self.set(
-                "/config/{entity_type}/{entity_name}".format(entity_type=entity_type, entity_name=entity_name),
+                f"/config/{entity_type}/{entity_name}",
                 config_data,
             )
 
@@ -246,7 +242,7 @@ class ZK:
             )
         except NoNodeError as e:
             _log.error(
-                "{entity_type}: {entity_name} not found.".format(entity_type=entity_type, entity_name=entity_name)
+                f"{entity_type}: {entity_name} not found."
             )
             raise e
         return return_value
@@ -312,18 +308,18 @@ class ZK:
         topics_data = {}
         for topic_id in topic_names:
             try:
-                topic_info = self.get("/brokers/topics/{id}".format(id=topic_id))
+                topic_info = self.get(f"/brokers/topics/{topic_id}")
                 topic_data = load_json(topic_info[0])
                 topic_ctime = topic_info[1].ctime / 1000.0
                 topic_data['ctime'] = topic_ctime
             except NoNodeError:
                 _log.info(
-                    "topic '{topic}' not found.".format(topic=topic_id),
+                    f"topic '{topic_id}' not found.",
                 )
                 return {}
             # Prepare data for each partition
             partitions_data = {}
-            for p_id, replicas in six.iteritems(topic_data['partitions']):
+            for p_id, replicas in topic_data['partitions'].items():
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
                     # Fetch partition-state from zookeeper
@@ -437,7 +433,7 @@ class ZK:
                     offset_json, _ = self.get(path)
                     group_offsets[topic][partition] = load_json(offset_json)
                 except NoNodeError:
-                    _log.error("Path {path} not found".format(path=path))
+                    _log.error(f"Path {path} not found")
                     raise
         return group_offsets
 
@@ -470,7 +466,7 @@ class ZK:
         :returns list of kafka topics
         :rtype: list
         """
-        path = "/consumers/{group_id}/offsets".format(group_id=groupid)
+        path = f"/consumers/{groupid}/offsets"
         return self.get_children(path)
 
     def get_my_subscribed_partitions(self, groupid, topic):
@@ -555,7 +551,7 @@ class ZK:
             topic_names_from_proposed_plan.add(partition['topic'])
         base_plan = self.get_cluster_plan(topic_names=list(topic_names_from_proposed_plan))
         if not validate_plan(plan, base_plan, allow_rf_change=allow_rf_change, allow_rf_mismatch=allow_rf_mismatch):
-            _log.error('Given plan is invalid. Aborting new reassignment plan ... {plan}'.format(plan=plan))
+            _log.error(f'Given plan is invalid. Aborting new reassignment plan ... {plan}')
             return False
         # Send proposed-plan to zookeeper
         try:
@@ -568,7 +564,7 @@ class ZK:
             return True
         except NodeExistsError:
             _log.warning('Previous plan in progress. Exiting..')
-            _log.warning('Aborting new reassignment plan... {plan}'.format(plan=plan))
+            _log.warning(f'Aborting new reassignment plan... {plan}')
             in_progress_plan = load_json(self.get(reassignment_path)[0])
             in_progress_partitions = [
                 '{topic}-{p_id}'.format(
@@ -606,8 +602,8 @@ class ZK:
                 'partition': int(p_id),
                 'replicas': partitions_data['replicas']
             }
-            for topic_id, topic_info in six.iteritems(cluster_layout)
-            for p_id, partitions_data in six.iteritems(topic_info['partitions'])
+            for topic_id, topic_info in cluster_layout.items()
+            for p_id, partitions_data in topic_info['partitions'].items()
         ]
         return {
             'version': 1,

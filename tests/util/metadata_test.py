@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from unittest import mock
 
-import mock
 from kafka.common import PartitionMetadata
 
 from kafka_utils.util.config import ClusterConfig
@@ -106,7 +104,7 @@ METADATA_RESPONSE_WITH_ERRORS = {
 @mock.patch(
     'kafka_utils.util.metadata.get_topic_partition_metadata',
 )
-class TestMetadata(object):
+class TestMetadata:
     cluster_config = ClusterConfig(
         type='mytype',
         name='some_cluster',
@@ -121,7 +119,7 @@ class TestMetadata(object):
             'kafka_utils.util.metadata.ZK',
         ):
             actual = get_topic_partition_with_error(self.cluster_config, 5)
-        expected = set([])
+        expected = set()
         assert actual == expected
         mock_get_metadata.asserd_called_wity('some_list')
 
@@ -132,7 +130,7 @@ class TestMetadata(object):
             'kafka_utils.util.metadata.ZK',
         ):
             actual = get_topic_partition_with_error(self.cluster_config, 5)
-        expected = set([])
+        expected = set()
         assert actual == expected
 
     def test_get_topic_partition_metadata_replica_not_available(self, mock_get_metadata):
@@ -152,5 +150,5 @@ class TestMetadata(object):
             'kafka_utils.util.metadata.ZK',
         ):
             actual = get_topic_partition_with_error(self.cluster_config, LEADER_NOT_AVAILABLE_ERROR)
-        expected = set([('topic0', 1)])
+        expected = {('topic0', 1)}
         assert actual == expected

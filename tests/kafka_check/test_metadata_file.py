@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 from kafka_utils.kafka_check.metadata_file import _parse_meta_properties_file
 
 
@@ -25,7 +22,7 @@ META_PROPERTIES_CONTENT = [
 ]
 
 
-class TestParseMetaPropertiesFile(object):
+class TestParseMetaPropertiesFile:
 
     def test_parse_meta_properties_file(self):
         broker_id = _parse_meta_properties_file(META_PROPERTIES_CONTENT)

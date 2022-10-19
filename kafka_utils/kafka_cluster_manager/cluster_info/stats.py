@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +14,8 @@
 """This files contains supporting api's required to evaluate stats of the
 cluster at any given time.
 """
-from __future__ import absolute_import
-from __future__ import division
-
 from collections import defaultdict
 from math import sqrt
-
-import six
 
 from .util import compute_optimum
 
@@ -198,7 +192,7 @@ def get_topic_imbalance_stats(brokers, topics):
             extra_partition_cnt_per_broker[broker.id] += extra_partitions
 
     # Net extra partitions over all brokers
-    net_imbalance = sum(six.itervalues(extra_partition_cnt_per_broker))
+    net_imbalance = sum(extra_partition_cnt_per_broker.values())
     return net_imbalance, extra_partition_cnt_per_broker
 
 
@@ -227,7 +221,7 @@ def get_weighted_topic_imbalance_stats(brokers, topics):
             weighted_imbalance_per_broker[broker.id] += \
                 extra_partitions * topic.weight / total_weight
 
-    total_imbalance = sum(six.itervalues(weighted_imbalance_per_broker))
+    total_imbalance = sum(weighted_imbalance_per_broker.values())
     return total_imbalance, weighted_imbalance_per_broker
 
 
@@ -236,7 +230,7 @@ def get_partition_movement_stats(ct, prev_assignment):
     movement_count = 0
     movement_size = 0.0
     leader_changes = 0
-    for prev_partition, prev_replicas in six.iteritems(prev_assignment):
+    for prev_partition, prev_replicas in prev_assignment.items():
         curr_replicas = curr_assignment[prev_partition]
         diff = len(set(curr_replicas) - set(prev_replicas))
         movement_count += diff
@@ -261,7 +255,7 @@ def calculate_partition_movement(prev_assignment, curr_assignment):
     """
     total_movements = 0
     movements = {}
-    for prev_partition, prev_replicas in six.iteritems(prev_assignment):
+    for prev_partition, prev_replicas in prev_assignment.items():
         curr_replicas = curr_assignment[prev_partition]
         diff = len(set(curr_replicas) - set(prev_replicas))
         if diff:

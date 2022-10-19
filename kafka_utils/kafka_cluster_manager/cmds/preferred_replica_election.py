@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-
 import json
 import logging
 import sys
@@ -25,7 +21,7 @@ from .command import ClusterManagerCmd
 class PreferredReplicaElectionCmd(ClusterManagerCmd):
 
     def __init__(self):
-        super(PreferredReplicaElectionCmd, self).__init__()
+        super().__init__()
         self.log = logging.getLogger(self.__class__.__name__)
 
     def build_subparser(self, subparsers):
@@ -52,7 +48,7 @@ class PreferredReplicaElectionCmd(ClusterManagerCmd):
         # Validate the filter_set to check that all of the partitions provided are part of the cluster_topology
         for t_p in filter_set:
             if t_p not in cluster_topology.assignment:
-                self.log.error('Topic partition {} from filter not in cluster topology'.format(t_p))
+                self.log.error(f'Topic partition {t_p} from filter not in cluster topology')
                 sys.exit(1)
             topic, partition = t_p[0], t_p[1]
             output['partitions'].append({'topic': topic, 'partition': partition})
@@ -62,4 +58,4 @@ class PreferredReplicaElectionCmd(ClusterManagerCmd):
 
         if self.args.proposed_plan_file:
             self.write_json_plan(output, self.args.proposed_plan_file)
-            self.log.info('Saved plan to file {}'.format(self.args.proposed_plan_file))
+            self.log.info(f'Saved plan to file {self.args.proposed_plan_file}')

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import sys
 from collections import defaultdict
+from unittest import mock
 
-import mock
 import pytest
 
 from kafka_utils.kafka_consumer_manager. \
@@ -25,7 +22,7 @@ from kafka_utils.kafka_consumer_manager. \
 from kafka_utils.util.error import OffsetCommitError
 
 
-class TestOffsetSet(object):
+class TestOffsetSet:
 
     def test_topics_dict(self):
         offset_update_tuple = "topic1.23=1000"

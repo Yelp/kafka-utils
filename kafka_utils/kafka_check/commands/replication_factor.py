@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-
 import itertools
 
 from kafka_utils.kafka_check import status_code
@@ -91,7 +88,7 @@ def _prepare_output(topics_with_wrong_rf, verbose, head_limit):
         out['message'] = 'All topics have proper replication factor.'
     else:
         out['message'] = (
-            "{0} topic(s) have replication factor lower than specified min ISR + 1."
+            "{} topic(s) have replication factor lower than specified min ISR + 1."
         ).format(topics_count)
 
         if verbose:
@@ -105,7 +102,7 @@ def _prepare_output(topics_with_wrong_rf, verbose, head_limit):
                 for topic in topics_with_wrong_rf
             )
             if head_limit != -1:
-                title = "Top {0} topics:\n".format(head_limit)
+                title = f"Top {head_limit} topics:\n"
             else:
                 title = "Topics:\n"
 
