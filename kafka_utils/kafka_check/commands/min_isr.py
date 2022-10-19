@@ -11,18 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import itertools
+from __future__ import annotations
 
+import itertools
+from typing import Any
+
+from kafka.structs import PartitionMetadata
 from kazoo.exceptions import NoNodeError
+from typing_extensions import TypedDict
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.util.metadata import get_topic_partition_metadata
+from kafka_utils.util.zookeeper import ZK
 
 
 class MinIsrCmd(KafkaCheckCmd):
 
-    def build_subparser(self, subparsers):
+    def build_subparser(self, subparsers: Any) -> Any:
         subparser = subparsers.add_parser(
             'min_isr',
             description='Check min isr number for each topic in the cluster.',
@@ -40,7 +46,7 @@ class MinIsrCmd(KafkaCheckCmd):
         )
         return subparser
 
-    def run_command(self):
+    def run_command(self) -> tuple[int, dict[str, Any]]:
         """Min_isr command, checks number of actual min-isr
         for each topic-partition with configuration for that topic."""
         topics = get_topic_partition_metadata(self.cluster_config.broker_list)
@@ -55,7 +61,7 @@ class MinIsrCmd(KafkaCheckCmd):
         return errcode, out
 
 
-def get_min_isr(zk, topic):
+def get_min_isr(zk: ZK, topic: str) -> int | None:
     """Return the min-isr for topic, or None if not specified"""
     ISR_CONF_NAME = 'min.insync.replicas'
     try:
@@ -68,9 +74,16 @@ def get_min_isr(zk, topic):
         return None
 
 
-def _process_metadata_response(topics, zk, default_min_isr):
+class PartitionDict(TypedDict):
+    isr: int
+    min_isr: int
+    topic: str
+    partition: str
+
+
+def _process_metadata_response(topics: dict[str, dict[str, PartitionMetadata]], zk: ZK, default_min_isr: int) -> list[PartitionDict]:
     """Returns not in sync partitions."""
-    not_in_sync_partitions = []
+    not_in_sync_partitions: list[PartitionDict] = []
     for topic_name, partitions in topics.items():
         min_isr = get_min_isr(zk, topic_name) or default_min_isr
         if min_isr is None:
@@ -88,9 +101,9 @@ def _process_metadata_response(topics, zk, default_min_isr):
     return not_in_sync_partitions
 
 
-def _prepare_output(partitions, verbose, head_limit):
+def _prepare_output(partitions: list[PartitionDict], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
-    out = {}
+    out: dict[str, Any] = {}
     partitions_count = len(partitions)
     out['raw'] = {
         'not_enough_replicas_count': partitions_count,

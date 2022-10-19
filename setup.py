@@ -58,6 +58,7 @@ setup(
         "paramiko>1.8.0,<3.0.0",
         "requests<3.0.0",
         "tenacity",
+        "typing-extensions>=3.7.4",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

@@ -15,8 +15,12 @@
 Kafka checks module.
 Each check is separated subcommand for kafka-check.
 """
+from __future__ import annotations
+
 import argparse
 import logging
+from typing import Any
+from typing import cast
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
@@ -30,7 +34,7 @@ from kafka_utils.util import config
 from kafka_utils.util.error import ConfigurationError
 
 
-def convert_to_broker_id(string):
+def convert_to_broker_id(string: str) -> int:
     """Convert string to kafka broker_id."""
     error_msg = f'Positive integer or -1 required, {string} given.'
     try:
@@ -42,7 +46,7 @@ def convert_to_broker_id(string):
     return value
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse the command line arguments."""
     parser = argparse.ArgumentParser(
         description='Check kafka current status',
@@ -122,13 +126,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def validate_args(args):
+def validate_args(args: argparse.Namespace) -> None:
     if args.controller_only and args.first_broker_only:
         terminate(
             status_code.WARNING,
-            prepare_terminate_message(
+            cast(dict[str, Any], prepare_terminate_message(
                 "Only one of controller_only and first_broker_only should be used",
-            ),
+            )),
             args.json,
         )
 
@@ -136,7 +140,7 @@ def validate_args(args):
         if args.broker_id is None:
             terminate(
                 status_code.WARNING,
-                prepare_terminate_message("broker_id is not specified"),
+                cast(dict[str, Any], prepare_terminate_message("broker_id is not specified")),
                 args.json,
             )
         elif args.broker_id == -1:
@@ -145,19 +149,19 @@ def validate_args(args):
             except Exception as e:
                 terminate(
                     status_code.WARNING,
-                    prepare_terminate_message(f"{e}"),
+                    cast(dict[str, Any], prepare_terminate_message(f"{e}")),
                     args.json,
                 )
 
     if args.head != -1 and not args.verbose:
         terminate(
             status_code.WARNING,
-            prepare_terminate_message("--head option works only as addition to --verbose option"),
+            cast(dict[str, Any], prepare_terminate_message("--head option works only as addition to --verbose option")),
             args.json,
         )
 
 
-def run():
+def run() -> None:
     """Verify command-line arguments and run commands"""
     args = parse_args()
     validate_args(args)
@@ -176,7 +180,7 @@ def run():
     except ConfigurationError as e:
         terminate(
             status_code.CRITICAL,
-            prepare_terminate_message(f"ConfigurationError {e}"),
+            cast(dict[str, Any], prepare_terminate_message(f"ConfigurationError {e}")),
             args.json,
         )
 

@@ -11,7 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import sys
+from typing import Any
+
+from typing_extensions import TypedDict
 
 from kafka_utils.util import print_json
 
@@ -26,14 +31,19 @@ STATUS_STRING = {
 }
 
 
-def prepare_terminate_message(string):
+class TerminateMessageDict(TypedDict):
+    message: str
+    raw: str
+
+
+def prepare_terminate_message(string: str) -> TerminateMessageDict:
     return {
         'message': string,
         'raw': string,
     }
 
 
-def terminate(err_code, msg, json):
+def terminate(err_code: int, msg: dict[str, Any], json: bool) -> None:
     if json:
         output = {
             'status': STATUS_STRING[err_code],

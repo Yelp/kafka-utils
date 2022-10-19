@@ -11,17 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import itertools
+from typing import Any
+
+from kafka.structs import PartitionMetadata
+from typing_extensions import TypedDict
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
 from kafka_utils.kafka_check.commands.min_isr import get_min_isr
 from kafka_utils.util.metadata import get_topic_partition_metadata
+from kafka_utils.util.zookeeper import ZK
 
 
 class ReplicationFactorCmd(KafkaCheckCmd):
 
-    def build_subparser(self, subparsers):
+    def build_subparser(self, subparsers: Any) -> Any:
         subparser = subparsers.add_parser(
             'replication_factor',
             description='Check replication factor settings for each topic in the cluster.',
@@ -38,7 +45,7 @@ class ReplicationFactorCmd(KafkaCheckCmd):
         )
         return subparser
 
-    def run_command(self):
+    def run_command(self) -> tuple[int, dict[str, Any]]:
         """Replication factor command, checks replication factor settings and compare it with
         min.isr in the cluster."""
         topics = get_topic_partition_metadata(self.cluster_config.broker_list)
@@ -54,9 +61,15 @@ class ReplicationFactorCmd(KafkaCheckCmd):
         return errcode, out
 
 
-def _find_topics_with_wrong_rp(topics, zk, default_min_isr):
+class TopicDict(TypedDict):
+    replication_factor: int
+    min_isr: int
+    topic: str
+
+
+def _find_topics_with_wrong_rp(topics: dict[str, list[PartitionMetadata]], zk: ZK, default_min_isr: int) -> list[TopicDict]:
     """Returns topics with wrong replication factor."""
-    topics_with_wrong_rf = []
+    topics_with_wrong_rf: list[TopicDict] = []
 
     for topic_name, partitions in topics.items():
         min_isr = get_min_isr(zk, topic_name) or default_min_isr
@@ -74,9 +87,9 @@ def _find_topics_with_wrong_rp(topics, zk, default_min_isr):
     return topics_with_wrong_rf
 
 
-def _prepare_output(topics_with_wrong_rf, verbose, head_limit):
+def _prepare_output(topics_with_wrong_rf: list[TopicDict], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
-    out = {}
+    out: dict[str, Any] = {}
     topics_count = len(topics_with_wrong_rf)
     out['raw'] = {
         'topics_with_wrong_replication_factor_count': topics_count,

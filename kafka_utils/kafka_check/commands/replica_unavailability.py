@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import itertools
+from typing import Any
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
@@ -21,7 +24,7 @@ from kafka_utils.util.metadata import REPLICA_NOT_AVAILABLE_ERROR
 
 class ReplicaUnavailabilityCmd(KafkaCheckCmd):
 
-    def build_subparser(self, subparsers):
+    def build_subparser(self, subparsers: Any) -> Any:
         subparser = subparsers.add_parser(
             'replica_unavailability',
             description='Check availability of replicas for all brokers in cluster.',
@@ -30,7 +33,7 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
         )
         return subparser
 
-    def run_command(self):
+    def run_command(self) -> tuple[int, dict[str, Any]]:
         """replica_unavailability command, checks number of replicas not available
         for communication over all brokers in the Kafka cluster."""
         fetch_unavailable_brokers = True
@@ -49,10 +52,10 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
         return errcode, out
 
 
-def _prepare_output(partitions, unavailable_brokers, verbose, head_limit):
+def _prepare_output(partitions: list[tuple[int, int]], unavailable_brokers: list[str], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
     partitions_count = len(partitions)
-    out = {}
+    out: dict[str, Any] = {}
     out['raw'] = {
         'replica_unavailability_count': partitions_count,
     }
