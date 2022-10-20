@@ -11,7 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
+from typing import Any
+from typing import TYPE_CHECKING
+
+from kafka_utils.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
+from kafka_utils.kafka_cluster_manager.cluster_info.topic import Topic
+
+if TYPE_CHECKING:
+    from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 
 
 class Broker:
@@ -22,89 +32,89 @@ class Broker:
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, id, metadata=None, partitions=None):
+    def __init__(self, id: int, metadata: dict[str, Any] | None = None, partitions: set[Partition] | None = None):
         self._id = id
         self._metadata = metadata
         self._partitions = partitions or set()
         self._decommissioned = False
         self._revoked_leadership = False
         self._inactive = False
-        self._replication_group = None
+        self._replication_group: ReplicationGroup | None = None
 
     @property
-    def metadata(self):
+    def metadata(self) -> dict[str, Any] | None:
         return self._metadata
 
-    def mark_decommissioned(self):
+    def mark_decommissioned(self) -> None:
         """Mark a broker as decommissioned. Decommissioned brokers can still
         have partitions assigned.
         """
         self._decommissioned = True
 
-    def mark_revoked_leadership(self):
+    def mark_revoked_leadership(self) -> None:
         """Mark a broker as to be revoked from leadership."""
         self._revoked_leadership = True
 
-    def mark_inactive(self):
+    def mark_inactive(self) -> None:
         """Mark a broker as inactive. Inactive brokers may not have metadata."""
         self._inactive = True
 
     @property
-    def inactive(self):
+    def inactive(self) -> bool:
         return self._inactive
 
     @property
-    def replication_group(self):
+    def replication_group(self) -> ReplicationGroup | None:
         return self._replication_group
 
     @replication_group.setter
-    def replication_group(self, group):
+    def replication_group(self, group: ReplicationGroup) -> None:
         self._replication_group = group
 
     @property
-    def decommissioned(self):
+    def decommissioned(self) -> bool:
         return self._decommissioned
 
     @property
-    def revoked_leadership(self):
+    def revoked_leadership(self) -> bool:
         return self._revoked_leadership
 
     @property
-    def partitions(self):
+    def partitions(self) -> set[Partition]:
         return self._partitions
 
     @property
-    def id(self):
+    def id(self) -> int:
         return self._id
 
     @property
-    def topics(self):
+    def topics(self) -> set[Topic]:
         """Return the set of topics current in broker."""
         return {partition.topic for partition in self._partitions}
 
     @property
-    def weight(self):
+    def weight(self) -> float:
         """Return the total weight of all partitions on this broker."""
         return sum(partition.weight for partition in self.partitions)
 
     @property
-    def size(self):
+    def size(self) -> float:
         """Return the total size of all partitions on this broker."""
         return sum(partition.size for partition in self.partitions)
 
     @property
-    def leader_weight(self):
+    def leader_weight(self) -> float:
         return sum(
             partition.weight
             for partition in self.partitions
             if partition.leader == self
         )
 
-    def empty(self):
+    def empty(self) -> bool:
         """Return true if the broker has no replicas assigned"""
         return len(self.partitions) == 0
 
-    def remove_partition(self, partition):
+    def remove_partition(self, partition: Partition) -> None:
         """Remove partition from partition list."""
         if partition in self._partitions:
             # Remove partition from set
@@ -121,7 +131,7 @@ class Broker:
                 )
             )
 
-    def add_partition(self, partition):
+    def add_partition(self, partition: Partition) -> None:
         """Add partition to partition list."""
         assert partition not in self._partitions
         # Add partition to existing set
@@ -129,22 +139,22 @@ class Broker:
         # Add broker to replica list
         partition.add_replica(self)
 
-    def move_partition(self, partition, broker_destination):
+    def move_partition(self, partition: Partition, broker_destination: Broker) -> None:
         """Move partition to destination broker and adjust replicas."""
         self.remove_partition(partition)
         broker_destination.add_partition(partition)
 
-    def count_partitions(self, topic):
+    def count_partitions(self, topic: Topic) -> int:
         """Return count of partitions for given topic."""
         return sum(1 for p in topic.partitions if p in self.partitions)
 
-    def count_preferred_replica(self):
+    def count_preferred_replica(self) -> int:
         """Return number of times broker is set as preferred leader."""
         return sum(
             1 for partition in self.partitions if partition.leader == self
         )
 
-    def get_preferred_partition(self, broker, sibling_distance):
+    def get_preferred_partition(self, broker: Broker, sibling_distance: dict[Topic, int]) -> Partition | None:
         """The preferred partition belongs to the topic with the minimum
         (also negative) distance between destination and source.
 
@@ -168,7 +178,7 @@ class Broker:
         else:
             return None
 
-    def request_leadership(self, opt_count, skip_brokers, skip_partitions):
+    def request_leadership(self, opt_count: int, skip_brokers: list[Broker], skip_partitions: list[Partition]) -> None:
         """Under-balanced broker requests leadership from current leader, on the
         pretext that it recursively can maintain its leadership count as optimal.
 
@@ -237,7 +247,7 @@ class Broker:
                     else:
                         continue
 
-    def donate_leadership(self, opt_count, skip_brokers, used_edges):
+    def donate_leadership(self, opt_count: int, skip_brokers: list[Broker], used_edges: list[tuple[Partition, Broker, Broker]]) -> None:
         """Over-loaded brokers tries to donate their leadership to one of their
         followers recursively until they become balanced.
 
@@ -308,8 +318,8 @@ class Broker:
                             # Try next-partition, not another follower
                             break
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self._id}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self}"

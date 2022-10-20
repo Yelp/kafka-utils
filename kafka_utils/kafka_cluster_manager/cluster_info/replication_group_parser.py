@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from kafka_utils.kafka_cluster_manager.cluster_info.broker import Broker
 
 
 class ReplicationGroupParser:
     """Base class for replication group parsers"""
 
-    def get_replication_group(self, broker):
+    def get_replication_group(self, broker: Broker) -> str | None:
         """Implement the logic to extract the replication group id of a broker.
 
         This method is called with a broker object as argument.
@@ -38,7 +41,7 @@ class ReplicationGroupParser:
 
 class DefaultReplicationGroupParser(ReplicationGroupParser):
 
-    def get_replication_group(self, broker):
+    def get_replication_group(self, broker: Broker) -> str | None:
         """Default group is None. All brokers are considered in the same group.
 
         TODO: Support kafka 0.10 and rack tag.

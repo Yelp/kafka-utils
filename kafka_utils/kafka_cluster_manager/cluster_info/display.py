@@ -11,17 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
 from collections import OrderedDict
+from typing import Any
 
 import kafka_utils.kafka_cluster_manager.cluster_info.stats as stats
+from kafka_utils.kafka_cluster_manager.cluster_info.broker import Broker
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology \
     import ClusterTopology
 from kafka_utils.util.validation import assignment_to_plan
 _log = logging.getLogger('kafka-cluster-manager')
 
 
-def display_table(headers, table):
+def display_table(headers: list[str], table: list[list[str]]) -> None:
     """Print a formatted table.
 
     :param headers: A list of header objects that are displayed in the first
@@ -55,7 +59,7 @@ def display_table(headers, table):
         )
 
 
-def _display_table_title_multicolumn(title, key_name, keys, names, values):
+def _display_table_title_multicolumn(title: str, key_name: str, keys: list[Any], names: list[Any], values: list[Any]) -> None:
     assert len(names) == len(values)
     if len(names) == 1:
         headers = [key_name, title]
@@ -65,7 +69,7 @@ def _display_table_title_multicolumn(title, key_name, keys, names, values):
     display_table(headers, list(zip(keys, *values)))
 
 
-def display_replica_imbalance(cluster_topologies):
+def display_replica_imbalance(cluster_topologies: dict[str, ClusterTopology]) -> None:
     """Display replica replication-group distribution imbalance statistics.
 
     :param cluster_topologies: A dictionary mapping a string name to a
@@ -113,7 +117,7 @@ def display_replica_imbalance(cluster_topologies):
         )
 
 
-def display_partition_imbalance(cluster_topologies):
+def display_partition_imbalance(cluster_topologies: dict[str, ClusterTopology]) -> None:
     """Display partition count and weight imbalance statistics.
 
     :param cluster_topologies: A dictionary mapping a string name to a
@@ -179,7 +183,7 @@ def display_partition_imbalance(cluster_topologies):
         )
 
 
-def display_leader_imbalance(cluster_topologies):
+def display_leader_imbalance(cluster_topologies: dict[str, ClusterTopology]) -> None:
     """Display leader count and weight imbalance statistics.
 
     :param cluster_topologies: A dictionary mapping a string name to a
@@ -246,7 +250,7 @@ def display_leader_imbalance(cluster_topologies):
         )
 
 
-def display_topic_broker_imbalance(cluster_topologies):
+def display_topic_broker_imbalance(cluster_topologies: dict[str, ClusterTopology]) -> None:
     """Display topic broker imbalance statistics.
 
     :param cluster_topologies: A dictionary mapping a string name to a
@@ -320,7 +324,7 @@ def display_topic_broker_imbalance(cluster_topologies):
         )
 
 
-def display_movements_stats(ct, base_assignment):
+def display_movements_stats(ct: ClusterTopology, base_assignment: dict[tuple[str, int], list[int]]) -> None:
     """Display how the amount of movement between two assignments.
 
     :param ct: The cluster's ClusterTopology.
@@ -340,13 +344,18 @@ def display_movements_stats(ct, base_assignment):
     )
 
 
-def display_cluster_topology_stats(cluster_topology, base_assignment=None):
+def display_cluster_topology_stats(cluster_topology: ClusterTopology, base_assignment: dict[tuple[str, int], list[int]] | None = None) -> None:
     if base_assignment:
+        def get_replication_group_id(broker: Broker) -> str:
+            replication_group = cluster_topology.brokers[broker.id].replication_group
+            assert replication_group is not None
+            return replication_group.id
+
         base_cluster_topology = ClusterTopology(
             base_assignment,
             {broker.id: broker.metadata for broker in cluster_topology.brokers.values()},
             cluster_topology.partition_measurer,
-            lambda broker: cluster_topology.brokers[broker.id].replication_group.id,
+            get_replication_group_id,
         )
         cluster_topologies = OrderedDict([
             ('Before', base_cluster_topology),
@@ -369,11 +378,11 @@ def display_cluster_topology_stats(cluster_topology, base_assignment=None):
         display_movements_stats(cluster_topology, base_assignment)
 
 
-def display_cluster_topology(cluster_topology):
+def display_cluster_topology(cluster_topology: ClusterTopology) -> None:
     print(assignment_to_plan(cluster_topology.assignment))
 
 
-def display_assignment_changes(plan_details, to_log=True):
+def display_assignment_changes(plan_details: tuple[list[tuple[str, str]], list[tuple[str, str]], int], to_log: bool = True) -> None:
     """Display current and proposed changes in
     topic-partition to replica layout over brokers.
     """
@@ -427,7 +436,7 @@ def display_assignment_changes(plan_details, to_log=True):
         _log_or_display(to_log, row)
 
 
-def _log_or_display(to_log, msg):
+def _log_or_display(to_log: bool, msg: str) -> None:
     """Log or display the information."""
     if to_log:
         _log.info(msg)

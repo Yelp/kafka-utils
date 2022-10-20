@@ -70,7 +70,7 @@ def cluster_topology(new_assignment):
     """
     brokers = {0: None, 1: None, 2: None, 3: None}
     pm = UniformPartitionMeasurer({}, brokers, new_assignment, {})
-    return ClusterTopology(new_assignment, brokers, pm)
+    return ClusterTopology(new_assignment, brokers, pm, lambda _: 'id')
 
 
 @fixture
@@ -79,7 +79,7 @@ def empty_cluster_topology():
     """
     brokers = {0: None, 1: None, 2: None, 3: None}
     pm = UniformPartitionMeasurer({}, brokers, {}, {})
-    return ClusterTopology({}, brokers, pm)
+    return ClusterTopology({}, brokers, pm, lambda _: 'id')
 
 
 @fixture
@@ -88,7 +88,7 @@ def orig_cluster_topology(orig_assignment):
     """
     brokers = {0: None, 1: None, 2: None, 3: None}
     pm = UniformPartitionMeasurer({}, brokers, orig_assignment, {})
-    return ClusterTopology(orig_assignment, brokers, pm)
+    return ClusterTopology(orig_assignment, brokers, pm, lambda _: 'id')
 
 
 class MixedSizePartitionMeasurer(PartitionMeasurer):
@@ -109,7 +109,7 @@ class MixedSizePartitionMeasurer(PartitionMeasurer):
 def two_partition_same_topic_topology(two_partition_same_topic_assignment):
     brokers = {0: None, 1: None, 2: None, 3: None}
     pm = MixedSizePartitionMeasurer({}, brokers, two_partition_same_topic_assignment, {})
-    return ClusterTopology(two_partition_same_topic_assignment, brokers, pm)
+    return ClusterTopology(two_partition_same_topic_assignment, brokers, pm, lambda _: 'id')
 
 
 class ZeroSizePartitionMeasurer(PartitionMeasurer):
@@ -130,7 +130,7 @@ def zero_size_cluster_topology(orig_assignment):
     """
     brokers = {0: None, 1: None, 2: None, 3: None}
     pm = ZeroSizePartitionMeasurer({}, brokers, orig_assignment, {})
-    return ClusterTopology(orig_assignment, brokers, pm)
+    return ClusterTopology(orig_assignment, brokers, pm, lambda _: 'id')
 
 
 @fixture

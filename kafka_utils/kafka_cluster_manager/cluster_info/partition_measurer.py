@@ -11,8 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+import argparse
 import itertools
 import shlex
+
+from kafka_utils.kafka_cluster_manager.cluster_info.broker import Broker
+from kafka_utils.util.config import ClusterConfig
 
 
 class PartitionMeasurer:
@@ -25,11 +31,11 @@ class PartitionMeasurer:
     """
 
     def __init__(
-            self,
-            cluster_config,
-            brokers,
-            assignment,
-            args,
+        self,
+        cluster_config: ClusterConfig,
+        brokers: list[Broker],
+        assignment: dict[tuple[str, int], list[int]],
+        args: argparse.Namespace,
     ):
         self.cluster_config = cluster_config
         self.brokers = brokers
@@ -42,14 +48,14 @@ class PartitionMeasurer:
         else:
             self.parse_args([])
 
-    def parse_args(self, _measurer_args):
+    def parse_args(self, _measurer_args: list[str]) -> None:
         """Parse partition measurer command line arguments.
 
         :param _measurer_args: The list of arguments as strings.
         """
         pass
 
-    def get_weight(self, partition_name):
+    def get_weight(self, partition_name: tuple[str, int]) -> float:
         """Return a positive number representing the relative weight of this
         partition compared to the other partitions in the cluster. The weight
         is a measure of how much load this partition will place on any broker
@@ -59,7 +65,7 @@ class PartitionMeasurer:
         """
         raise NotImplementedError("Implement in subclass.")
 
-    def get_size(self, partition_name):
+    def get_size(self, partition_name: tuple[str, int]) -> float:
         """Return a positive number representing the size of this partition.
         The size is a measure of how expensive it is to move this partition
         from one broker to another.
@@ -74,8 +80,8 @@ class UniformPartitionMeasurer(PartitionMeasurer):
     for all partitions.
     """
 
-    def get_weight(self, _):
+    def get_weight(self, partition_name: tuple[str, int]) -> float:
         return 1.0
 
-    def get_size(self, _):
+    def get_size(self, partition_name: tuple[str, int]) -> float:
         return 1.0

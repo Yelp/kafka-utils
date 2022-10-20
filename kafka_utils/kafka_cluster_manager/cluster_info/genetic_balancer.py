@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import argparse
 import logging
 import random
@@ -18,7 +20,12 @@ import time
 from collections import defaultdict
 from copy import copy
 from math import sqrt
+from typing import Any
+from typing import Collection
+from typing import Iterable
+from typing import TypeVar
 
+from .broker import Broker
 from .error import BrokerDecommissionError
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
@@ -26,6 +33,7 @@ from .error import InvalidReplicationFactorError
 from .util import compute_optimum
 from kafka_utils.kafka_cluster_manager.cluster_info.cluster_balancer \
     import ClusterBalancer
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology import ClusterTopology
 from kafka_utils.kafka_cluster_manager.cluster_info.stats \
     import coefficient_of_variation
 from kafka_utils.util import positive_float
@@ -56,7 +64,10 @@ DEFAULT_MOVEMENT_SIZE_SCORE_WEIGHT = 0.01
 DEFAULT_LEADER_CHANGE_SCORE_WEIGHT = 0.001
 
 
-def reverse_lookup(data):
+T = TypeVar('T')
+
+
+def reverse_lookup(data: Iterable[T]) -> dict[T, int]:
     """Construct an index reverse lookup map from an iterable."""
     return {
         datum: i for i, datum in enumerate(data)
@@ -72,7 +83,7 @@ class GeneticBalancer(ClusterBalancer):
     :param args: The program arguments.
     """
 
-    def __init__(self, cluster_topology, args):
+    def __init__(self, cluster_topology: ClusterTopology, args: argparse.Namespace) -> None:
         super().__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
         self.state = _State(
@@ -80,11 +91,11 @@ class GeneticBalancer(ClusterBalancer):
             brokers=self.cluster_topology.active_brokers,
         )
 
-    def _set_arg_default(self, arg, value):
+    def _set_arg_default(self, arg: str, value: Any) -> None:
         if not hasattr(self.args, arg):
             setattr(self.args, arg, value)
 
-    def parse_args(self, balancer_args):
+    def parse_args(self, balancer_args: list[str] | None) -> None:
         # If the command being run is not rebalance, then these arguments
         # won't exist
         self._set_arg_default('replication_groups', False)
@@ -171,7 +182,7 @@ class GeneticBalancer(ClusterBalancer):
         )
         parser.parse_args(balancer_args, self.args)
 
-    def rebalance(self):
+    def rebalance(self) -> None:
         """The genetic rebalancing algorithm runs for a fixed number of
         generations. Each generation has two phases: exploration and pruning.
         In exploration, a large set of possible states are found by randomly
@@ -180,6 +191,7 @@ class GeneticBalancer(ClusterBalancer):
         states with the highest scores are chosen as the starting states for
         the next generation.
         """
+        assert self.args is not None
         if self.args.num_gens < self.args.max_partition_movements:
             self.log.warning(
                 "num-gens ({num_gens}) is less than max-partition-movements"
@@ -254,14 +266,14 @@ class GeneticBalancer(ClusterBalancer):
         # brokers need to be added back to the new assignment.
         all_brokers = set(self.cluster_topology.brokers.values())
         inactive_brokers = all_brokers - set(state.brokers)
-        for partition_name, replicas in assignment:
+        for partition_name, replicas in assignment.items():
             for broker in inactive_brokers:
                 if broker in self.cluster_topology.partitions[partition_name].replicas:
                     replicas.append(broker.id)
 
         self.cluster_topology.update_cluster_topology(assignment)
 
-    def decommission_brokers(self, broker_ids):
+    def decommission_brokers(self, broker_ids: list[int]) -> None:
         """Decommissioning brokers is done by removing all partitions from
         the decommissioned brokers and adding them, one-by-one, back to the
         cluster.
@@ -279,7 +291,7 @@ class GeneticBalancer(ClusterBalancer):
                     f"No broker found with id {broker_id}"
                 )
 
-        partitions = defaultdict(int)
+        partitions: dict[tuple[str, int], int] = defaultdict(int)
 
         # Remove all partitions from decommissioned brokers.
         for broker in decommission_brokers:
@@ -311,7 +323,7 @@ class GeneticBalancer(ClusterBalancer):
                     )
                 )
 
-    def add_replica(self, partition_name, count=1):
+    def add_replica(self, partition_name: tuple[str, int], count: int = 1) -> None:
         """Adding a replica is done by trying to add the replica to every
         broker in the cluster and choosing the resulting state with the
         highest fitness score.
@@ -386,7 +398,7 @@ class GeneticBalancer(ClusterBalancer):
             # Update the internal state to match.
             self.state.clear_pending_assignment()
 
-    def remove_replica(self, partition_name, osr_broker_ids, count=1):
+    def remove_replica(self, partition_name: tuple[str, int], osr_broker_ids: set[int], count: int = 1) -> None:
         """Removing a replica is done by trying to remove a replica from every
         broker and choosing the resulting state with the highest fitness score.
         Out-of-sync replicas will always be removed before in-sync replicas.
@@ -469,16 +481,17 @@ class GeneticBalancer(ClusterBalancer):
             self.cluster_topology.update_cluster_topology(state.assignment)
             osr = {b for b in osr if b in partition.replicas}
 
-    def score(self):
+    def score(self) -> float:
         return self._score(_State(self.cluster_topology), score_movement=False)
 
-    def _explore(self, pop):
+    def _explore(self, pop: set[_State]) -> set[_State]:
         """Exploration phase: Find a set of candidate states based on
         the current population.
 
         :param pop: The starting population for this generation.
         """
         new_pop = set(pop)
+        assert self.args is not None
         exploration_per_state = self.args.max_exploration // len(pop)
 
         mutations = []
@@ -495,7 +508,7 @@ class GeneticBalancer(ClusterBalancer):
 
         return new_pop
 
-    def _move_partition(self, state):
+    def _move_partition(self, state: _State) -> _State | None:
         """Attempt to move a random partition to a random broker. If the
         chosen movement is not possible, None is returned.
 
@@ -523,6 +536,7 @@ class GeneticBalancer(ClusterBalancer):
 
         # Ensure movement size capacity is not surpassed
         partition_size = state.partition_sizes[partition]
+        assert self.args is not None
         if (self.args.max_movement_size is not None and
                 state.movement_size + partition_size >
                 self.args.max_movement_size):
@@ -530,7 +544,7 @@ class GeneticBalancer(ClusterBalancer):
 
         return state.move(partition, source, dest)
 
-    def _move_leadership(self, state):
+    def _move_leadership(self, state: _State) -> _State | None:
         """Attempt to move a random partition to a random broker. If the
         chosen movement is not possible, None is returned.
 
@@ -550,24 +564,26 @@ class GeneticBalancer(ClusterBalancer):
             return None
         dest_index = random.randint(1, len(state.replicas[partition]) - 1)
         dest = state.replicas[partition][dest_index]
+        assert self.args is not None
         if (self.args.max_leader_changes is not None and
                 state.leader_movement_count >= self.args.max_leader_changes):
             return None
 
         return state.move_leadership(partition, dest)
 
-    def _prune(self, pop_candidates):
+    def _prune(self, pop_candidates: set[_State]) -> set[_State]:
         """Choose a subset of the candidate states to continue on to the next
         generation.
 
         :param pop_candidates: The set of candidate states.
         """
+        assert self.args is not None
         return set(
             sorted(pop_candidates, key=self._score, reverse=True)
             [:self.args.max_pop]
         )
 
-    def _score(self, state, score_movement=True):
+    def _score(self, state: _State, score_movement: bool = True) -> float:
         """Score a state based on how balanced it is. A higher score represents
         a more balanced state.
 
@@ -575,6 +591,7 @@ class GeneticBalancer(ClusterBalancer):
         """
         score = 0
         max_score = 0
+        assert self.args is not None
         if state.total_weight:
             # Coefficient of variance is a value between 0 and the sqrt(n)
             # where n is the length of the series (the number of brokers)
@@ -628,7 +645,7 @@ class _State:
         modeled. Default: all brokers in the cluster.
     """
 
-    def __init__(self, cluster_topology, brokers=None):
+    def __init__(self, cluster_topology: ClusterTopology, brokers: Collection[Broker] | None = None) -> None:
         # Use tuples instead of lists to store all state so that shallow copies
         # can be performed without the danger of accidentally mutating the
         # original object. Since dict.values() has an arbitrary order, the
@@ -770,18 +787,18 @@ class _State:
 
         # A tuple containing indices of partitions affect by changes made to
         # this state
-        self.pending_partitions = tuple()
+        self.pending_partitions: tuple[int, ...] = tuple()
 
         # The total size and count of the partitions that have been moved to
         # reach this state.
-        self.movement_size = 0
+        self.movement_size: float = 0
         self.movement_count = 0
 
         # The number of the leadership changes that have been made to reach
         # this state.
         self.leader_movement_count = 0
 
-    def move(self, partition, source, dest):
+    def move(self, partition: int, source: int, dest: int) -> _State:
         """Return a new state that is the result of moving a single partition.
 
         :param partition: The partition index of the partition to move.
@@ -881,7 +898,7 @@ class _State:
 
         return new_state
 
-    def move_leadership(self, partition, new_leader):
+    def move_leadership(self, partition: int, new_leader: int) -> _State:
         """Return a new state that is the result of changing the leadership of
         a single partition.
 
@@ -925,7 +942,7 @@ class _State:
 
         return new_state
 
-    def add_replica(self, partition, broker):
+    def add_replica(self, partition: int, broker: int) -> _State:
         new_state = copy(self)
 
         # Add replica to partition replica tuple
@@ -999,7 +1016,7 @@ class _State:
 
         return new_state
 
-    def remove_replica(self, partition, broker):
+    def remove_replica(self, partition: int, broker: int) -> _State:
         new_state = copy(self)
 
         # Add replica to partition replica tuple
@@ -1073,11 +1090,11 @@ class _State:
 
         return new_state
 
-    def clear_pending_assignment(self):
+    def clear_pending_assignment(self) -> None:
         self.pending_partitions = tuple()
 
     @property
-    def assignment(self):
+    def assignment(self) -> dict[tuple[str, int], list[int]]:
         """Return the partition assignment that this state represents."""
         return {
             partition.name: [
@@ -1087,7 +1104,7 @@ class _State:
         }
 
     @property
-    def pending_assignment(self):
+    def pending_assignment(self) -> dict[tuple[str, int], list[int]]:
         """Return the pending partition assignment that this state represents."""
         return {
             self.partitions[pid].name: [
@@ -1097,27 +1114,27 @@ class _State:
         }
 
     @property
-    def broker_weight_cv(self):
+    def broker_weight_cv(self) -> float:
         """Return the coefficient of variation of the weight of the brokers."""
         return coefficient_of_variation(self.broker_weights)
 
     @property
-    def broker_partition_count_cv(self):
+    def broker_partition_count_cv(self) -> float:
         return coefficient_of_variation(self.broker_partition_counts)
 
     @property
-    def broker_leader_count_cv(self):
+    def broker_leader_count_cv(self) -> float:
         return coefficient_of_variation(self.broker_leader_counts)
 
     @property
-    def broker_leader_weight_cv(self):
+    def broker_leader_weight_cv(self) -> float:
         return coefficient_of_variation(self.broker_leader_weights)
 
     @property
-    def weighted_topic_broker_imbalance(self):
+    def weighted_topic_broker_imbalance(self) -> float:
         return self._weighted_topic_broker_imbalance / self.total_weight
 
-    def _calculate_topic_imbalance(self, topic):
+    def _calculate_topic_imbalance(self, topic: int) -> int:
         topic_optimum, _ = compute_optimum(
             len(self.brokers),
             self.topic_replica_count[topic],
