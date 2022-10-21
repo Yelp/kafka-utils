@@ -38,6 +38,7 @@ setup(
     url="https://github.com/Yelp/kafka-utils",
     license="Apache License 2.0",
     long_description=README,
+    long_description_content_type="text/markdown",
     keywords="apache kafka",
     scripts=[
         "scripts/kafka-consumer-manager",
