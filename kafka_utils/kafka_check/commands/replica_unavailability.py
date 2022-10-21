@@ -52,7 +52,7 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
         return errcode, out
 
 
-def _prepare_output(partitions: list[tuple[int, int]], unavailable_brokers: list[str], verbose: bool, head_limit: int) -> dict[str, Any]:
+def _prepare_output(partitions: list[tuple[str, int]], unavailable_brokers: list[int], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
     partitions_count = len(partitions)
     out: dict[str, Any] = {}

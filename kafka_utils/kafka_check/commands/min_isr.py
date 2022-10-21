@@ -78,10 +78,10 @@ class PartitionDict(TypedDict):
     isr: int
     min_isr: int
     topic: str
-    partition: str
+    partition: int
 
 
-def _process_metadata_response(topics: dict[str, dict[str, PartitionMetadata]], zk: ZK, default_min_isr: int) -> list[PartitionDict]:
+def _process_metadata_response(topics: dict[str, dict[int, PartitionMetadata]], zk: ZK, default_min_isr: int) -> list[PartitionDict]:
     """Returns not in sync partitions."""
     not_in_sync_partitions: list[PartitionDict] = []
     for topic_name, partitions in topics.items():

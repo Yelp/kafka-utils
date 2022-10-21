@@ -47,7 +47,7 @@ class OfflineCmd(KafkaCheckCmd):
         return errcode, out
 
 
-def _prepare_output(partitions: list[tuple[str, str]], verbose: bool, head_limit: int) -> dict[str, Any]:
+def _prepare_output(partitions: list[tuple[str, int]], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
     out: dict[str, Any] = {}
     partitions_count = len(partitions)
