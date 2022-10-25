@@ -1,5 +1,5 @@
 PyStaticConfiguration==0.10.4
-PyYAML==5.1
+PyYAML==5.4
 argcomplete==1.9.4
 boto==2.48.0
 cffi==1.12.2
