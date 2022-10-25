@@ -14,6 +14,7 @@
 import functools
 import time
 
+import tenacity
 from kafka import SimpleClient
 from kafka.conn import get_ip_port_afi
 from kafka.errors import ConnectionError
@@ -21,7 +22,6 @@ from kafka.errors import FailedPayloadsError
 from kafka.errors import GroupCoordinatorNotAvailableError
 from kafka.errors import GroupLoadInProgressError
 from kafka.errors import NotCoordinatorForGroupError
-from retrying import retry
 
 from kafka_utils.util.protocol import KafkaToolProtocol
 
@@ -31,25 +31,17 @@ CONSUMER_OFFSET_TOPIC_CREATION_RETRIES = 20
 CONSUMER_OFFSET_RETRY_INTERVAL_SEC = 0.5
 
 
-def _retry_if_kafka_consumer_coordination_error(exception):
-    """
-
-    :param exception: Exception to be checked if its of type
-        GroupCoordinatorNotAvailableError
-    :return: boolean
-    """
-    return isinstance(exception, (GroupCoordinatorNotAvailableError, NotCoordinatorForGroupError))
-
-
 class KafkaToolClient(SimpleClient):
     '''
     Extends the KafkaClient class, and includes a method for sending offset
     commit requests to Kafka.
     '''
 
-    @retry(retry_on_exception=_retry_if_kafka_consumer_coordination_error,
-           stop_max_attempt_number=RETRY_ATTEMPTS,
-           wait_fixed=WAIT_BEFORE_RETRYING)
+    @tenacity.retry(
+        retry=tenacity.retry_if_exception_type((GroupCoordinatorNotAvailableError, NotCoordinatorForGroupError)),
+        stop=tenacity.stop_after_attempt(RETRY_ATTEMPTS),
+        wait=tenacity.wait_fixed(WAIT_BEFORE_RETRYING),
+    )
     def send_offset_commit_request_kafka(
             self, group, payloads=[],
             fail_on_error=True, callback=None):

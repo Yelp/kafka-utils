@@ -58,7 +58,8 @@ setup(
         "requests-futures>0.9.0",
         "paramiko>1.8.0,<3.0.0",
         "requests<3.0.0",
-        "retrying",
+        "tenacity",
+        "typing-extensions>=3.7.4",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

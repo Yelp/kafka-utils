@@ -1,4 +1,9 @@
-def _parse_meta_properties_file(content):
+from __future__ import annotations
+
+from typing import TextIO
+
+
+def _parse_meta_properties_file(content: TextIO) -> int | None:
     for line in content:
         parts = line.rstrip().split("=")
         if len(parts) == 2 and parts[0] == "broker.id":
@@ -6,7 +11,7 @@ def _parse_meta_properties_file(content):
     return None
 
 
-def _read_generated_broker_id(meta_properties_path):
+def _read_generated_broker_id(meta_properties_path: str) -> int:
     """reads broker_id from meta.properties file.
 
     :param string meta_properties_path: path for meta.properties file
@@ -28,7 +33,7 @@ def _read_generated_broker_id(meta_properties_path):
     return broker_id
 
 
-def get_broker_id(data_path):
+def get_broker_id(data_path: str) -> int:
     """This function will look into the data folder to get the automatically created
     broker_id.
 
