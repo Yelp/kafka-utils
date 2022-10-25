@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import sys
 
 from kazoo.exceptions import NoNodeError
 
 from kafka_utils.kafka_consumer_manager.util import get_kafka_group_reader
 from kafka_utils.kafka_consumer_manager.util import prompt_user_input
+from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -25,9 +28,9 @@ class OffsetManagerBase:
     @classmethod
     def get_topics_from_consumer_group_id(
         cls,
-        cluster_config,
-        groupid,
-        use_admin_client=False,
+        cluster_config: ClusterConfig,
+        groupid: int,
+        use_admin_client: bool = False,
     ):
         return cls.get_topics_for_group_from_kafka(
             cluster_config, groupid, use_admin_client,
@@ -139,9 +142,9 @@ class OffsetManagerBase:
     @classmethod
     def get_topics_for_group_from_kafka(
         cls,
-        cluster_config,
-        groupid,
-        use_admin_client=False,
+        cluster_config: ClusterConfig,
+        groupid: int,
+        use_admin_client: bool = False,
     ):
         kafka_group_reader = get_kafka_group_reader(
             cluster_config, use_admin_client,

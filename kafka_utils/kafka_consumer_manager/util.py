@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
 import sys
 from collections import defaultdict
@@ -257,7 +259,7 @@ class KafkaAdminGroupReader:
             bootstrap_servers=kafka_config.broker_list,
         )
 
-    def read_group(self, groupid):
+    def read_group(self, groupid: int) -> list[str]:
         topics = set()
         group_offsets = self.admin_client.list_consumer_group_offsets(groupid)
         for tp in group_offsets.keys():
@@ -265,7 +267,7 @@ class KafkaAdminGroupReader:
 
         return list(topics)
 
-    def read_groups(self, groupids=None, list_only=False):
+    def read_groups(self, groupids: list[int] | None = None, list_only: bool = False) -> dict[int, list[str]]:
         if groupids is None:
             groupids = self._list_groups()
 
@@ -279,7 +281,7 @@ class KafkaAdminGroupReader:
 
         return groups
 
-    def _list_groups(self):
+    def _list_groups(self) -> list[int]:
         groups_and_protocol_types = self.admin_client.list_consumer_groups()
         return [
             gpt[0]
@@ -301,7 +303,7 @@ class KafkaGroupReader:
         partition = get_group_partition(group_id, partition_count)
         return self.read_groups(partition)[group_id]
 
-    def read_groups(self, partition=None, list_only=False):
+    def read_groups(self, partition=None, list_only: bool = False) -> dict[int, list[str]]:
         self.consumer = KafkaConsumer(
             group_id='offset_monitoring_consumer',
             bootstrap_servers=self.kafka_config.broker_list,
@@ -391,7 +393,7 @@ class KafkaGroupReader:
             self.active_partitions,
         )
 
-    def parse_consumer_offset_message(self, message):
+    def parse_consumer_offset_message(self, message) -> tuple[str, str, int, int]:
         key = message.key
         ((key_schema,), cur) = relative_unpack(b'>h', key, 0)
         if key_schema not in [0, 1]:
@@ -446,7 +448,7 @@ class KafkaGroupReader:
         return self._finished
 
 
-def get_kafka_group_reader(cluster_config, use_admin_client=False):
+def get_kafka_group_reader(cluster_config, use_admin_client=False) -> KafkaGroupReader | KafkaAdminGroupReader:
     if use_admin_client:
         return KafkaAdminGroupReader(cluster_config)
     else:

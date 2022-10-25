@@ -11,19 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import sys
+from typing import Any
 
 from kafka.errors import UnknownMemberIdError
 
 from .offset_manager import OffsetWriter
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.offsets import advance_consumer_offsets
 
 
 class OffsetAdvance(OffsetWriter):
 
     @classmethod
-    def setup_subparser(cls, subparsers):
+    def setup_subparser(cls, subparsers: Any) -> None:
         parser_offset_advance = subparsers.add_parser(
             "offset_advance",
             description="Advance consumer offsets for the specified consumer "
@@ -59,7 +62,7 @@ class OffsetAdvance(OffsetWriter):
         parser_offset_advance.set_defaults(command=cls.run)
 
     @classmethod
-    def run(cls, args, cluster_config):
+    def run(cls, args: argparse.Namespace, cluster_config: ClusterConfig) -> None:
         # Setup the Kafka client
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()

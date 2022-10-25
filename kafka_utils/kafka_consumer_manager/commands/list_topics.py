@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import sys
+from typing import Any
 
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.config import ClusterConfig
 
 
 class ListTopics(OffsetManagerBase):
 
     @classmethod
-    def setup_subparser(cls, subparsers):
+    def setup_subparser(cls, subparsers: Any) -> None:
         parser_list_topics = subparsers.add_parser(
             "list_topics",
             description="List topics by consumer group.",
@@ -37,7 +40,7 @@ class ListTopics(OffsetManagerBase):
         parser_list_topics.set_defaults(command=cls.run)
 
     @classmethod
-    def run(cls, args, cluster_config):
+    def run(cls, args: argparse.Namespace, cluster_config: ClusterConfig) -> None:
         # Setup the Kafka client
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()

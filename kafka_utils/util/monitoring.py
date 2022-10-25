@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
 import re
 from collections import namedtuple
@@ -42,7 +44,7 @@ def get_consumer_offsets_metadata(
     group,
     topics,
     raise_on_error=True,
-):
+) -> dict[str, list[ConsumerPartitionOffsets]]:
     """This method:
         * refreshes metadata for the kafka client
         * fetches group offsets

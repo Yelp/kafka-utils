@@ -11,19 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+import argparse
 import sys
 from collections import OrderedDict
+from typing import Any
 
 from .offset_manager import OffsetManagerBase
 from kafka_utils.util import print_json
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.config import ClusterConfig
+from kafka_utils.util.monitoring import ConsumerPartitionOffsets
 from kafka_utils.util.monitoring import get_consumer_offsets_metadata
 
 
 class OffsetGet(OffsetManagerBase):
 
     @classmethod
-    def setup_subparser(cls, subparsers):
+    def setup_subparser(cls, subparsers: Any) -> None:
         parser_offset_get = subparsers.add_parser(
             "offset_get",
             description="Get consumer offsets for the"
@@ -77,7 +83,7 @@ class OffsetGet(OffsetManagerBase):
         parser_offset_get.set_defaults(command=cls.run)
 
     @classmethod
-    def run(cls, args, cluster_config):
+    def run(cls, args: argparse.Namespace, cluster_config: ClusterConfig) -> None:
         # Setup the Kafka client
         client = KafkaToolClient(cluster_config.broker_list)
         client.load_metadata_for_topics()
@@ -129,8 +135,8 @@ class OffsetGet(OffsetManagerBase):
             cls.print_output(consumer_offsets_metadata, args.watermark)
 
     @classmethod
-    def sort_by_distance(cls, consumer_offsets_metadata):
-        """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns a
+    def sort_by_distance(cls, consumer_offsets_metadata: dict[str, list[ConsumerPartitionOffsets]]) -> dict[str, list[ConsumerPartitionOffsets]]:
+        """Receives a dict of (topic_name: ConsumerPartitionOffsets) and returns a
         similar dict where the topics are sorted by total offset distance."""
         sorted_offsets = sorted(
             list(consumer_offsets_metadata.items()),
@@ -139,7 +145,7 @@ class OffsetGet(OffsetManagerBase):
         return OrderedDict(sorted_offsets)
 
     @classmethod
-    def sort_by_distance_percentage(cls, consumer_offsets_metadata):
+    def sort_by_distance_percentage(cls, consumer_offsets_metadata: dict[str, list[ConsumerPartitionOffsets]]) -> dict[str, list[ConsumerPartitionOffsets]]:
         """Receives a dict of (topic_name: ConsumerPartitionOffset) and returns an
         similar dict where the topics are sorted by average offset distance
         in percentage."""
@@ -152,7 +158,7 @@ class OffsetGet(OffsetManagerBase):
         return OrderedDict(sorted_offsets)
 
     @classmethod
-    def get_offsets(cls, client, group, topics_dict):
+    def get_offsets(cls, client: KafkaToolClient, group: int, topics_dict: dict[str, list[int]]) -> dict[str, list[ConsumerPartitionOffsets]]:
         try:
             return get_consumer_offsets_metadata(
                 client, group, topics_dict, False,
@@ -165,7 +171,7 @@ class OffsetGet(OffsetManagerBase):
             raise
 
     @classmethod
-    def print_output(cls, consumer_offsets_metadata, watermark_filter):
+    def print_output(cls, consumer_offsets_metadata: dict[str, list[ConsumerPartitionOffsets]], watermark_filter: str) -> None:
         for topic, metadata_tuples in consumer_offsets_metadata.items():
             diff_sum = sum([t.highmark - t.current for t in metadata_tuples])
             print(f"Topic Name: {topic}  Total Distance: {diff_sum}")
@@ -210,7 +216,7 @@ class OffsetGet(OffsetManagerBase):
                     )
 
     @classmethod
-    def percentage_distance(cls, highmark, current):
+    def percentage_distance(cls, highmark: int, current: int) -> float:
         """Percentage of distance the current offset is behind the highmark."""
         highmark = int(highmark)
         current = int(current)
