@@ -67,7 +67,7 @@ class TopicDict(TypedDict):
     topic: str
 
 
-def _find_topics_with_wrong_rp(topics: dict[str, list[PartitionMetadata]], zk: ZK, default_min_isr: int) -> list[TopicDict]:
+def _find_topics_with_wrong_rp(topics: dict[str, dict[int, PartitionMetadata]], zk: ZK, default_min_isr: int) -> list[TopicDict]:
     """Returns topics with wrong replication factor."""
     topics_with_wrong_rf: list[TopicDict] = []
 

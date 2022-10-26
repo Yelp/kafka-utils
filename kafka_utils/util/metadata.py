@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from collections import defaultdict
 
 from kafka.structs import PartitionMetadata
 
 from kafka_utils.util.client import KafkaToolClient
+from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.zookeeper import ZK
 
 
@@ -23,13 +26,13 @@ LEADER_NOT_AVAILABLE_ERROR = 5
 REPLICA_NOT_AVAILABLE_ERROR = 9
 
 
-def get_topic_partition_metadata(hosts):
+def get_topic_partition_metadata(hosts: list[str]) -> dict[str, dict[int, PartitionMetadata]]:
     """Returns topic-partition metadata from Kafka broker.
 
     kafka-python 1.3+ doesn't include partition metadata information in
     topic_partitions so we extract it from metadata ourselves.
     """
-    topic_partitions = defaultdict(dict)
+    topic_partitions: dict[str, dict[int, PartitionMetadata]] = defaultdict(dict)
 
     kafka_client = KafkaToolClient(hosts, timeout=10)
     resp = kafka_client.send_metadata_request()
@@ -47,7 +50,7 @@ def get_topic_partition_metadata(hosts):
     return topic_partitions
 
 
-def get_unavailable_brokers(zk, partition_metadata):
+def get_unavailable_brokers(zk: ZK, partition_metadata: PartitionMetadata) -> set[int]:
     """Returns the set of unavailable brokers from the difference of replica
     set of given partition to the set of available replicas.
     """
@@ -59,7 +62,11 @@ def get_unavailable_brokers(zk, partition_metadata):
     return expected_replicas - available_replicas
 
 
-def get_topic_partition_with_error(cluster_config, error, fetch_unavailable_brokers=False):
+def get_topic_partition_with_error(
+    cluster_config: ClusterConfig,
+    error: int,
+    fetch_unavailable_brokers: bool = False,
+) -> set[tuple[str, int]] | tuple[set[tuple[str, int]], set[int]]:
     """Fetches the metadata from the cluster and returns the set of
     (topic, partition) tuples containing all the topic-partitions
     currently affected by the specified error. It also fetches unavailable-broker list

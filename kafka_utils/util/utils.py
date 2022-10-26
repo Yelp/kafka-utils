@@ -11,13 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import importlib
 import inspect
 import os
 import sys
+from types import ModuleType
+from typing import Collection
 
 
-def get_module(module_full_name):
+def get_module(module_full_name: str) -> ModuleType:
     if ':' in module_full_name:
         path, module_name = module_full_name.rsplit(':', 1)
         if not os.path.isdir(path):
@@ -29,7 +33,7 @@ def get_module(module_full_name):
         return importlib.import_module(module_full_name)
 
 
-def child_class(class_types, base_class):
+def child_class(class_types: Collection[type], base_class: type) -> type | None:
     """
     Find the child-most class of `base_class`.
 
@@ -69,7 +73,7 @@ def child_class(class_types, base_class):
         return subclasses.pop()
 
 
-def dynamic_import(module_full_name, base_class):
+def dynamic_import(module_full_name: str, base_class: type) -> type | None:
     module = get_module(module_full_name)
     class_types = [
         class_type

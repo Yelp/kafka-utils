@@ -158,7 +158,7 @@ class OffsetGet(OffsetManagerBase):
         return OrderedDict(sorted_offsets)
 
     @classmethod
-    def get_offsets(cls, client: KafkaToolClient, group: int, topics_dict: dict[str, list[int]]) -> dict[str, list[ConsumerPartitionOffsets]]:
+    def get_offsets(cls, client: KafkaToolClient, group: str, topics_dict: dict[str, list[int]]) -> dict[str, list[ConsumerPartitionOffsets]]:
         try:
             return get_consumer_offsets_metadata(
                 client, group, topics_dict, False,

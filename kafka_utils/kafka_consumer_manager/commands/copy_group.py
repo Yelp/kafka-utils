@@ -83,6 +83,6 @@ class CopyGroup(OffsetManagerBase):
         )
 
     @classmethod
-    def copy_group_kafka(cls, client: KafkaToolClient, topics: dict[str, list[int]], source_group: int, destination_group: int) -> None:
+    def copy_group_kafka(cls, client: KafkaToolClient, topics: dict[str, list[int]], source_group: str, destination_group: str) -> None:
         copied_offsets = get_current_consumer_offsets(client, source_group, topics)
         set_consumer_offsets(client, destination_group, copied_offsets)

@@ -60,6 +60,6 @@ class DeleteGroup(OffsetWriter):
         cls.delete_group_kafka(client, args.groupid, topics_dict)
 
     @classmethod
-    def delete_group_kafka(cls, client: KafkaToolClient, group: int, topics: dict[str, dict[int, int]]) -> None:
+    def delete_group_kafka(cls, client: KafkaToolClient, group: str, topics: dict[str, dict[int, int]]) -> None:
         new_offsets = nullify_offsets(topics)
         set_consumer_offsets(client, group, new_offsets)

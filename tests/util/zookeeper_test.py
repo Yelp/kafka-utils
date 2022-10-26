@@ -60,7 +60,7 @@ class TestZK:
             call_list = [
                 mock.call(
                     '/kafka/consumers/some_group/offsets',
-                    '', None, False, False, False
+                    b'', None, False, False, False
                 ),
                 mock.call(
                     '/kafka/consumers/some_group/offsets',

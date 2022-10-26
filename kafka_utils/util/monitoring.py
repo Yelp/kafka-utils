@@ -15,35 +15,41 @@ from __future__ import annotations
 
 import logging
 import re
-from collections import namedtuple
+from typing import NamedTuple
 
 from kafka.common import KafkaUnavailableError
 
+from kafka_utils.util.client import KafkaToolClient
 from kafka_utils.util.offsets import get_current_consumer_offsets
 from kafka_utils.util.offsets import get_topics_watermarks
+from kafka_utils.util.offsets import PartitionOffsets
+from kafka_utils.util.offsets import TopicsCollection
 
 
 log = logging.getLogger(__name__)
 
-ConsumerPartitionOffsets = namedtuple(
-    'ConsumerPartitionOffsets',
-    ['topic', 'partition', 'current', 'highmark', 'lowmark']
-)
-r"""Tuple representing the consumer offsets for a topic partition.
 
-* **topic**\(``str``): Name of the topic
-* **partition**\(``int``): Partition number
-* **current**\(``int``): current group offset
-* **highmark**\(``int``): high watermark
-* **lowmark**\(``int``): low watermark
-"""
+class ConsumerPartitionOffsets(NamedTuple):
+    r"""Tuple representing the consumer offsets for a topic partition.
+
+    * **topic**\(``str``): Name of the topic
+    * **partition**\(``int``): Partition number
+    * **current**\(``int``): current group offset
+    * **highmark**\(``int``): high watermark
+    * **lowmark**\(``int``): low watermark
+    """
+    topic: str
+    partition: int
+    current: int
+    highmark: int
+    lowmark: int
 
 
 def get_consumer_offsets_metadata(
-    kafka_client,
-    group,
-    topics,
-    raise_on_error=True,
+    kafka_client: KafkaToolClient,
+    group: str,
+    topics: TopicsCollection,
+    raise_on_error: bool = True,
 ) -> dict[str, list[ConsumerPartitionOffsets]]:
     """This method:
         * refreshes metadata for the kafka client
@@ -88,16 +94,16 @@ def get_consumer_offsets_metadata(
 
 
 def get_watermark_for_regex(
-    kafka_client,
-    topic_regex,
-):
+    kafka_client: KafkaToolClient,
+    topic_regex: str,
+) -> dict[str, dict[int, PartitionOffsets]]:
     """This method:
         * refreshes metadata for the kafka client
         * fetches watermarks
 
     :param kafka_client: KafkaToolClient instance
     :param topic: the topic regex
-    :returns: dict <topic>: [ConsumerPartitionOffsets]
+    :returns: {topic: {partition_id: PartitionOffsets}}
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -120,16 +126,16 @@ def get_watermark_for_regex(
 
 
 def get_watermark_for_topic(
-    kafka_client,
-    topic,
-):
+    kafka_client: KafkaToolClient,
+    topic: str,
+) -> dict[str, dict[int, PartitionOffsets]]:
     """This method:
         * refreshes metadata for the kafka client
         * fetches watermarks
 
     :param kafka_client: KafkaToolClient instance
     :param topic: the topic
-    :returns: dict <topic>: [ConsumerPartitionOffsets]
+    :returns: {topic: {partition_id: PartitionOffsets}}
     """
     # Refresh client metadata. We do not use the topic list, because we
     # don't want to accidentally create the topic if it does not exist.
@@ -145,7 +151,7 @@ def get_watermark_for_topic(
     return watermarks
 
 
-def merge_offsets_metadata(topics, *offsets_responses):
+def merge_offsets_metadata(topics: TopicsCollection, *offsets_responses: dict[str, dict[int, int]]) -> dict[str, dict[int, int]]:
     """Merge the offset metadata dictionaries from multiple responses.
 
     :param topics: list of topics
@@ -163,13 +169,13 @@ def merge_offsets_metadata(topics, *offsets_responses):
     return result
 
 
-def merge_partition_offsets(*partition_offsets):
+def merge_partition_offsets(*partition_offsets: dict[int, int]) -> dict[int, int]:
     """Merge the partition offsets of a single topic from multiple responses.
 
     :param partition_offsets: list of dict partition: offset
     :returns: dict partition: offset
     """
-    output = dict()
+    output: dict[int, int] = dict()
     for partition_offset in partition_offsets:
         for partition, offset in partition_offset.items():
             prev_offset = output.get(partition, 0)

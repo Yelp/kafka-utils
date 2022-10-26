@@ -11,14 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
 import re
+from types import TracebackType
+from typing import Any
+from typing import Callable
+from typing import Sequence
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
+from kazoo.protocol.states import WatchedEvent
+from kazoo.protocol.states import ZnodeStat
 from kazoo.retry import KazooRetry
+from kazoo.security import ACL
+from typing_extensions import TypedDict
 
+from kafka_utils.util.config import ClusterConfig
 from kafka_utils.util.serialization import dump_json
 from kafka_utils.util.serialization import load_json
 from kafka_utils.util.validation import validate_plan
@@ -28,14 +39,40 @@ REASSIGNMENT_NODE = "reassign_partitions"
 _log = logging.getLogger('kafka-zookeeper-manager')
 
 
+class TopicDataPartitionDict(TypedDict, total=False):
+    replicas: list[int]
+    isr: list[int]
+    controller_epcoh: int
+    leader_epoch: int
+    version: int
+    leader: int
+    ctime: float
+
+
+class TopicDataDict(TypedDict):
+    version: int
+    partitions: dict[str, TopicDataPartitionDict]
+
+
+class ClusterPlanPartitionDict(TypedDict):
+    topic: str
+    partition: int
+    replicas: list[int]
+
+
+class ClusterPlanDict(TypedDict):
+    version: int
+    partitions: list[ClusterPlanPartitionDict]
+
+
 class ZK:
     """Opens a connection to a kafka zookeeper. "
     "To be used in the 'with' statement."""
 
-    def __init__(self, cluster_config):
+    def __init__(self, cluster_config: ClusterConfig) -> None:
         self.cluster_config = cluster_config
 
-    def __enter__(self):
+    def __enter__(self) -> ZK:
         kazooRetry = KazooRetry(
             max_tries=5,
         )
@@ -51,36 +88,36 @@ class ZK:
         self.zk.start()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type: type | None, value: BaseException, traceback: TracebackType) -> None:
         self.zk.stop()
 
-    def get_children(self, path, watch=None):
+    def get_children(self, path: str, watch: Callable[[WatchedEvent], None] | None = None) -> list[str]:
         """Returns the children of the specified node."""
         _log.debug(
             f"ZK: Getting children of {path}",
         )
         return self.zk.get_children(path, watch)
 
-    def get(self, path, watch=None):
+    def get(self, path: str, watch: Callable[[WatchedEvent], None] | None = None) -> tuple[bytes, ZnodeStat]:
         """Returns the data of the specified node."""
         _log.debug(
             f"ZK: Getting {path}",
         )
         return self.zk.get(path, watch)
 
-    def set(self, path, value):
+    def set(self, path: str, value: bytes) -> ZnodeStat:
         """Sets and returns new data for the specified node."""
         _log.debug(
-            f"ZK: Setting {path} to {value}"
+            f"ZK: Setting {path} to {value!r}"
         )
         return self.zk.set(path, value)
 
-    def get_json(self, path, watch=None):
+    def get_json(self, path: str, watch: Callable[[WatchedEvent], None] | None = None) -> Any:
         """Reads the data of the specified node and converts it to json."""
         data, _ = self.get(path, watch)
         return load_json(data) if data else None
 
-    def get_broker_metadata(self, broker_id):
+    def get_broker_metadata(self, broker_id: str) -> dict[str, Any]:
         try:
             broker_json = load_json(self.get(
                 f"/brokers/ids/{broker_id}"
@@ -88,6 +125,7 @@ class ZK:
             if (broker_json['host'] is None):
                 pattern = '(?:[SSL|INTERNAL|PLAINTEXTSASL].*://)?(?P<host>[^:/ ]+).?(?P<port>[0-9]*).*'
                 result = re.search(pattern, broker_json['endpoints'][0])
+                assert result is not None
                 broker_json['host'] = result.group('host')
         except NoNodeError:
             _log.error(
@@ -96,7 +134,7 @@ class ZK:
             raise
         return broker_json
 
-    def get_brokers(self, names_only=False):
+    def get_brokers(self, names_only: bool = False) -> dict[int, dict[str, Any] | None]:
         """Get information on all the available brokers.
 
         :rtype : dict of brokers
@@ -113,7 +151,7 @@ class ZK:
             return {int(b_id): None for b_id in broker_ids}
         return {int(b_id): self.get_broker_metadata(b_id) for b_id in broker_ids}
 
-    def get_topic_config(self, topic):
+    def get_topic_config(self, topic: str) -> dict[str, Any]:
         """Get configuration information for specified topic.
 
         :rtype : dict of configuration
@@ -124,7 +162,7 @@ class ZK:
             lambda topic: len(self.get_topics(topic_name=topic, fetch_partition_state=False)) > 0,
         )
 
-    def set_topic_config(self, topic, value, kafka_version=(0, 10, )):
+    def set_topic_config(self, topic: str, value: str, kafka_version: tuple[int, int] = (0, 10, )) -> None:
         """Set configuration information for specified topic.
 
         :topic : topic whose configuration needs to be changed
@@ -137,7 +175,7 @@ class ZK:
         """
         self._set_entity_config("topics", topic, value, kafka_version)
 
-    def get_broker_config(self, broker_id):
+    def get_broker_config(self, broker_id: str) -> dict[str, Any]:
         """Get configuration information for specified broker.
 
         :rtype : dict of configuration
@@ -148,7 +186,7 @@ class ZK:
             lambda broker_id: broker_id in self.get_brokers(names_only=True)
         )
 
-    def set_broker_config(self, broker_id, value, kafka_version=(0, 10, )):
+    def set_broker_config(self, broker_id: str, value: str, kafka_version: tuple[int, int] = (0, 10, )) -> ZnodeStat:
         """Set configuration information for specified broker.
 
         :broker_id : broker whose configuration needs to be changed
@@ -160,7 +198,7 @@ class ZK:
         """
         return self._set_entity_config("brokers", broker_id, value, kafka_version)
 
-    def _get_entity_config(self, entity_type, entity_name, entity_exists):
+    def _get_entity_config(self, entity_type: str, entity_name: str, entity_exists: Callable[[str], bool]) -> dict[str, Any]:
         """Get configuration information for specified broker.
 
         :entity_type : "brokers" or "topics"
@@ -191,7 +229,7 @@ class ZK:
 
         return config_data
 
-    def _set_entity_config(self, entity_type, entity_name, value, kafka_version=(0, 10, )):
+    def _set_entity_config(self, entity_type: str, entity_name: str, value: str, kafka_version: tuple[int, int] = (0, 10, )) -> ZnodeStat:
         """Set configuration information for specified entity.
 
         :entity_type : "brokers" or "topics"
@@ -249,19 +287,19 @@ class ZK:
 
     def get_topics(
         self,
-        topic_name=None,
-        names_only=False,
-        fetch_partition_state=True,
-    ):
+        topic_name: str | None = None,
+        names_only: bool = False,
+        fetch_partition_state: bool = True,
+    ) -> dict[str, TopicDataDict] | list[str]:
         topic_names = [topic_name] if topic_name else None
         return self.get_multiple_topics(topic_names, names_only, fetch_partition_state)
 
     def get_multiple_topics(
         self,
-        topic_names=None,
-        names_only=False,
-        fetch_partition_state=True,
-    ):
+        topic_names: list[str] | None = None,
+        names_only: bool = False,
+        fetch_partition_state: bool = True,
+    ) -> dict[str, TopicDataDict] | list[str]:
         """Get information on all the available topics.
 
         Topic-data format with fetch_partition_state as False :-
@@ -318,7 +356,7 @@ class ZK:
                 )
                 return {}
             # Prepare data for each partition
-            partitions_data = {}
+            partitions_data: dict[str, TopicDataPartitionDict] = {}
             for p_id, replicas in topic_data['partitions'].items():
                 partitions_data[p_id] = {}
                 if fetch_partition_state:
@@ -335,7 +373,7 @@ class ZK:
             topics_data[topic_id] = topic_data
         return topics_data
 
-    def get_consumer_groups(self, consumer_group_id=None, names_only=False):
+    def get_consumer_groups(self, consumer_group_id: str | None = None, names_only: bool = False) -> dict[str, dict[str, dict[str, Any]] | None]:
         """Get information on all the available consumer-groups.
 
         If names_only is False, only list of consumer-group ids are sent.
@@ -366,12 +404,12 @@ class ZK:
         if names_only:
             return {g_id: None for g_id in group_ids}
 
-        consumer_offsets = {}
+        consumer_offsets: dict[str, dict[str, dict[str, Any]] | None] = {}
         for g_id in group_ids:
             consumer_offsets[g_id] = self.get_group_offsets(g_id)
         return consumer_offsets
 
-    def get_group_offsets(self, group, topic=None):
+    def get_group_offsets(self, group: str, topic: str | None = None) -> dict[str, dict[str, Any]]:
         """Fetch group offsets for given topic and partition otherwise all topics
         and partitions otherwise.
 
@@ -385,7 +423,7 @@ class ZK:
             }
         }
         """
-        group_offsets = {}
+        group_offsets: dict[str, dict[str, Any]] = {}
         try:
             all_topics = self.get_my_subscribed_topics(group)
         except NoNodeError:
@@ -437,7 +475,7 @@ class ZK:
                     raise
         return group_offsets
 
-    def _fetch_partition_state(self, topic_id, partition_id):
+    def _fetch_partition_state(self, topic_id: str, partition_id: str) -> Any:
         """Fetch partition-state for given topic-partition."""
         state_path = "/brokers/topics/{topic_id}/partitions/{p_id}/state"
         try:
@@ -448,7 +486,7 @@ class ZK:
         except NoNodeError:
             return {}  # The partition has no data
 
-    def _fetch_partition_info(self, topic_id, partition_id):
+    def _fetch_partition_info(self, topic_id: str, partition_id: str) -> Any:
         """Fetch partition info for given topic-partition."""
         info_path = "/brokers/topics/{topic_id}/partitions/{p_id}"
         try:
@@ -459,7 +497,7 @@ class ZK:
         except NoNodeError:
             return {}  # The partition has no data
 
-    def get_my_subscribed_topics(self, groupid):
+    def get_my_subscribed_topics(self, groupid: str) -> list[str]:
         """Get the list of topics that a consumer is subscribed to
 
         :param: groupid: The consumer group ID for the consumer
@@ -469,7 +507,7 @@ class ZK:
         path = f"/consumers/{groupid}/offsets"
         return self.get_children(path)
 
-    def get_my_subscribed_partitions(self, groupid, topic):
+    def get_my_subscribed_partitions(self, groupid: str, topic: str) -> list[str]:
         """Get the list of partitions of a topic
         that a consumer is subscribed to
 
@@ -484,7 +522,7 @@ class ZK:
         )
         return self.get_children(path)
 
-    def get_cluster_assignment(self, topic_names=None):
+    def get_cluster_assignment(self, topic_names: list[str] | None = None) -> dict[tuple[str, int], list[int]]:
         """Fetch the cluster layout in form of assignment from zookeeper"""
         plan = self.get_cluster_plan(topic_names)
         assignment = {}
@@ -497,13 +535,13 @@ class ZK:
 
     def create(
         self,
-        path,
-        value='',
-        acl=None,
-        ephemeral=False,
-        sequence=False,
-        makepath=False
-    ):
+        path: str,
+        value: bytes = b'',
+        acl: Sequence[ACL] | None = None,
+        ephemeral: bool = False,
+        sequence: bool = False,
+        makepath: bool = False,
+    ) -> str:
         """Creates a Zookeeper node.
 
         :param: path: The zookeeper node path
@@ -519,7 +557,7 @@ class ZK:
         _log.debug("ZK: Creating node " + path)
         return self.zk.create(path, value, acl, ephemeral, sequence, makepath)
 
-    def delete(self, path, recursive=False):
+    def delete(self, path: str, recursive: bool = False) -> bool:
         """Deletes a Zookeeper node.
 
         :param: path: The zookeeper node path
@@ -528,20 +566,20 @@ class ZK:
         _log.debug("ZK: Deleting node " + path)
         return self.zk.delete(path, recursive=recursive)
 
-    def delete_topic(self, groupid, topic):
+    def delete_topic(self, groupid: str, topic: str) -> None:
         path = "/consumers/{groupid}/offsets/{topic}".format(
             groupid=groupid,
             topic=topic,
         )
         self.delete(path, True)
 
-    def delete_group(self, groupid):
+    def delete_group(self, groupid: str) -> None:
         path = "/consumers/{groupid}".format(
             groupid=groupid,
         )
         self.delete(path, True)
 
-    def execute_plan(self, plan, allow_rf_change=False, allow_rf_mismatch=False):
+    def execute_plan(self, plan: ClusterPlanDict, allow_rf_change: bool = False, allow_rf_mismatch: bool = False) -> bool:
         """Submit reassignment plan for execution."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
@@ -590,13 +628,14 @@ class ZK:
             )
             return False
 
-    def get_cluster_plan(self, topic_names=None):
+    def get_cluster_plan(self, topic_names: list[str] | None = None) -> ClusterPlanDict:
         """Fetch cluster plan from zookeeper."""
 
         _log.info('Fetching current cluster-topology from Zookeeper...')
         cluster_layout = self.get_multiple_topics(topic_names, fetch_partition_state=False)
+        assert isinstance(cluster_layout, dict)
         # Re-format cluster-layout
-        partitions = [
+        partitions: list[ClusterPlanPartitionDict] = [
             {
                 'topic': topic_id,
                 'partition': int(p_id),
@@ -610,7 +649,7 @@ class ZK:
             'partitions': partitions
         }
 
-    def get_pending_plan(self):
+    def get_pending_plan(self) -> Any:
         """Read the currently running plan on reassign_partitions node."""
         reassignment_path = '{admin}/{reassignment_node}'\
             .format(admin=ADMIN_PATH, reassignment_node=REASSIGNMENT_NODE)
