@@ -11,13 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
 import sys
 from collections import defaultdict
+from collections.abc import Collection
+from typing import TYPE_CHECKING
 
 from .error import EmptyReplicationGroupError
 from .error import NotEligibleGroupError
+from .topic import Topic
 from .util import separate_groups
+
+
+if TYPE_CHECKING:
+    from .broker import Broker
+    from .partition import Partition
 
 
 class ReplicationGroup:
@@ -27,7 +37,7 @@ class ReplicationGroup:
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, id, brokers=None):
+    def __init__(self, id: str, brokers: set[Broker] | None = None) -> None:
         self._id = id
         if brokers and not isinstance(brokers, set):
             raise TypeError(
@@ -37,17 +47,17 @@ class ReplicationGroup:
         self._sibling_distance = None
 
     @property
-    def id(self):
+    def id(self) -> str:
         """Return name of replication-groups."""
         return self._id
 
     @property
-    def brokers(self):
+    def brokers(self) -> set[Broker]:
         """Return set of brokers."""
         return self._brokers
 
     @property
-    def active_brokers(self):
+    def active_brokers(self) -> set[Broker]:
         """Return set of brokers that are not inactive or decommissioned."""
         return {
             broker
@@ -55,7 +65,7 @@ class ReplicationGroup:
             if not broker.inactive and not broker.decommissioned
         }
 
-    def add_broker(self, broker):
+    def add_broker(self, broker: Broker) -> None:
         """Add broker to current broker-list."""
         if broker not in self._brokers:
             self._brokers.add(broker)
@@ -69,7 +79,7 @@ class ReplicationGroup:
             )
 
     @property
-    def partitions(self):
+    def partitions(self) -> list[Partition]:
         """Evaluate and return set of all partitions in replication-group.
         rtype: list, replicas of partitions can reside in this group
         """
@@ -79,11 +89,11 @@ class ReplicationGroup:
             for partition in broker.partitions
         ]
 
-    def count_replica(self, partition):
+    def count_replica(self, partition: Partition) -> int:
         """Return count of replicas of given partition."""
         return sum(1 for b in partition.replicas if b in self.brokers)
 
-    def acquire_partition(self, partition, source_broker):
+    def acquire_partition(self, partition: Partition, source_broker: Broker) -> None:
         """Move a partition from a broker to any of the eligible brokers
         of the replication group.
 
@@ -97,7 +107,7 @@ class ReplicationGroup:
             )
         source_broker.move_partition(partition, broker_dest)
 
-    def move_partition(self, rg_destination, victim_partition):
+    def move_partition(self, rg_destination: ReplicationGroup, victim_partition: Partition) -> None:
         """Move partition(victim) from current replication-group to destination
         replication-group.
 
@@ -111,6 +121,8 @@ class ReplicationGroup:
             rg_destination,
             victim_partition,
         )
+        assert broker_destination is not None
+        assert broker_source is not None
         # Actual-movement of victim-partition
         self.log.debug(
             'Moving partition {p_name} from broker {broker_source} to '
@@ -123,7 +135,7 @@ class ReplicationGroup:
         )
         broker_source.move_partition(victim_partition, broker_destination)
 
-    def _select_broker_pair(self, rg_destination, victim_partition):
+    def _select_broker_pair(self, rg_destination: ReplicationGroup, victim_partition: Partition) -> tuple[Broker | None, Broker | None]:
         """Select best-fit source and destination brokers based on partition
         count and presence of partition over the broker.
 
@@ -142,7 +154,7 @@ class ReplicationGroup:
         broker_destination = rg_destination._elect_dest_broker(victim_partition)
         return broker_source, broker_destination
 
-    def _elect_source_broker(self, victim_partition, broker_subset=None):
+    def _elect_source_broker(self, victim_partition: Partition, broker_subset: Collection[Broker] | None = None) -> Broker | None:
         """Select first over loaded broker having victim_partition.
 
         Note: The broker with maximum siblings of victim-partitions (same topic)
@@ -171,7 +183,7 @@ class ReplicationGroup:
         )
         return max_count_pair[0]
 
-    def _elect_dest_broker(self, victim_partition):
+    def _elect_dest_broker(self, victim_partition: Partition) -> Broker | None:
         """Select first under loaded brokers preferring not having
         partition of same topic as victim partition.
         """
@@ -199,11 +211,11 @@ class ReplicationGroup:
         )
         return min_count_pair[0]
 
-    def get_active_brokers(self):
+    def get_active_brokers(self) -> set[Broker]:
         return {b for b in self.brokers if not b.inactive}
 
     # Re-balancing brokers
-    def rebalance_brokers(self):
+    def rebalance_brokers(self) -> None:
         """Rebalance partition-count across brokers."""
         total_partitions = sum(len(b.partitions) for b in self.brokers)
         blacklist = {b for b in self.brokers if b.decommissioned}
@@ -238,6 +250,7 @@ class ReplicationGroup:
                 )
             # No valid source or target brokers found
             if broker_source and broker_destination:
+                assert victim_partition is not None
                 # Move partition
                 self.log.debug(
                     'Moving partition {p_name} from broker {broker_source} to '
@@ -266,7 +279,12 @@ class ReplicationGroup:
             # As before add brokers to decommission.
             over_loaded_brokers += [b for b in blacklist if not b.empty()]
 
-    def _get_target_brokers(self, over_loaded_brokers, under_loaded_brokers, sibling_distance):
+    def _get_target_brokers(
+        self,
+        over_loaded_brokers: list[Broker],
+        under_loaded_brokers: list[Broker],
+        sibling_distance: dict[Broker, dict[Broker, dict[Topic, int]]],
+    ) -> tuple[Broker | None, Broker | None, Partition | None]:
         """Pick best-suitable source-broker, destination-broker and partition to
         balance partition-count over brokers in given replication-group.
         """
@@ -283,7 +301,7 @@ class ReplicationGroup:
         # pick pair of brokers from source and destination brokers with
         # minimum same-partition-count
         # Set result in format: (source, dest, preferred-partition)
-        target = (None, None, None)
+        target: tuple[Broker | None, Broker | None, Partition | None] = (None, None, None)
         min_distance = sys.maxsize
         best_partition = None
         for source in over_loaded_brokers:
@@ -310,7 +328,7 @@ class ReplicationGroup:
                     break
         return target
 
-    def generate_sibling_distance(self):
+    def generate_sibling_distance(self) -> dict[Broker, dict[Broker, dict[Topic, int]]]:
         """Generate a dict containing the distance computed as difference in
         in number of partitions of each topic from under_loaded_brokers
         to over_loaded_brokers.
@@ -320,7 +338,7 @@ class ReplicationGroup:
 
         returns: dict {dest: {source: {topic: distance}}}
         """
-        sibling_distance = defaultdict(lambda: defaultdict(dict))
+        sibling_distance: dict[Broker, dict[Broker, dict[Topic, int]]] = defaultdict(lambda: defaultdict(dict))
         topics = {p.topic for p in self.partitions}
         for source in self.brokers:
             for dest in self.brokers:
@@ -331,7 +349,11 @@ class ReplicationGroup:
                             source.count_partitions(topic)
         return sibling_distance
 
-    def update_sibling_distance(self, sibling_distance, dest, topic):
+    def update_sibling_distance(
+        self,
+        sibling_distance: dict[Broker, dict[Broker, dict[Topic, int]]],
+        dest: Broker, topic: Topic,
+    ) -> dict[Broker, dict[Broker, dict[Topic, int]]]:
         """Update the sibling distance for topic and destination broker."""
         for source in sibling_distance[dest].keys():
             sibling_distance[dest][source][topic] = \
@@ -339,7 +361,7 @@ class ReplicationGroup:
                 source.count_partitions(topic)
         return sibling_distance
 
-    def move_partition_replica(self, under_loaded_rg, eligible_partition):
+    def move_partition_replica(self, under_loaded_rg: ReplicationGroup, eligible_partition: Partition) -> None:
         """Move partition to under-loaded replication-group if possible."""
         # Evaluate possible source and destination-broker
         source_broker, dest_broker = self._get_eligible_broker_pair(
@@ -359,7 +381,7 @@ class ReplicationGroup:
             # Move partition if eligible brokers found
             source_broker.move_partition(eligible_partition, dest_broker)
 
-    def _get_eligible_broker_pair(self, under_loaded_rg, eligible_partition):
+    def _get_eligible_broker_pair(self, under_loaded_rg: ReplicationGroup, eligible_partition: Partition) -> tuple[Broker | None, Broker | None]:
         """Evaluate and return source and destination broker-pair from over-loaded
         and under-loaded replication-group if possible, return None otherwise.
 
@@ -392,8 +414,9 @@ class ReplicationGroup:
             )
         return (source_broker, dest_broker)
 
-    def add_replica(self, partition):
+    def add_replica(self, partition: Partition) -> None:
         broker = self._elect_dest_broker(partition)
+        assert broker is not None
         self.log.debug(
             'Adding partition {p_name} to broker {broker}'
             .format(
@@ -403,10 +426,11 @@ class ReplicationGroup:
         )
         broker.add_partition(partition)
 
-    def remove_replica(self, partition, broker_subset=None):
+    def remove_replica(self, partition: Partition, broker_subset: Collection[Broker]) -> None:
         assert not any(broker not in self.brokers for broker in broker_subset)
 
         broker = self._elect_source_broker(partition, broker_subset)
+        assert broker is not None
         self.log.debug(
             'Removing partition {p_name} from broker {broker}'
             .format(
@@ -416,8 +440,8 @@ class ReplicationGroup:
         )
         broker.remove_partition(partition)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self._id}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self}"

@@ -11,13 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import logging
 from collections import OrderedDict
+from typing import Any
+from typing import Callable
 
 from .broker import Broker
 from .error import InvalidBrokerIdError
 from .error import InvalidPartitionError
 from .partition import Partition
+from .partition_measurer import PartitionMeasurer
 from .rg import ReplicationGroup
 from .topic import Topic
 
@@ -38,19 +43,19 @@ class ClusterTopology:
     """
 
     def __init__(
-            self,
-            assignment,
-            brokers,
-            partition_measurer,
-            extract_group=lambda x: None,
-    ):
+        self,
+        assignment: dict[tuple[str, int], list[int]],
+        brokers: dict[int, dict[str, Any] | None],
+        partition_measurer: PartitionMeasurer,
+        extract_group: Callable[[Broker], str],
+    ) -> None:
         self.extract_group = extract_group
         self.partition_measurer = partition_measurer
         self.log = logging.getLogger(self.__class__.__name__)
-        self.topics = {}
-        self.rgs = {}
-        self.brokers = {}
-        self.partitions = {}
+        self.topics: dict[str, Topic] = {}
+        self.rgs: dict[str, ReplicationGroup] = {}
+        self.brokers: dict[int, Broker] = {}
+        self.partitions: dict[tuple[str, int], Partition] = {}
         self._build_brokers(brokers)
         self._build_partitions(assignment)
         self.log.debug(
@@ -69,12 +74,12 @@ class ClusterTopology:
             ),
         )
 
-    def _build_brokers(self, brokers):
+    def _build_brokers(self, brokers: dict[int, dict[str, Any] | None]) -> None:
         """Build broker objects using broker-ids."""
         for broker_id, metadata in brokers.items():
             self.brokers[broker_id] = self._create_broker(broker_id, metadata)
 
-    def _create_broker(self, broker_id, metadata=None):
+    def _create_broker(self, broker_id: int, metadata: dict[str, Any] | None = None) -> Broker:
         """Create a broker object and assign to a replication group.
         A broker object with no metadata is considered inactive.
         An inactive broker may or may not belong to a group.
@@ -88,7 +93,7 @@ class ClusterTopology:
         broker.replication_group = group
         return broker
 
-    def _build_partitions(self, assignment):
+    def _build_partitions(self, assignment: dict[tuple[str, int], list[int]]) -> None:
         """Builds all partition objects and update corresponding broker and
         topic objects.
         """
@@ -127,7 +132,7 @@ class ClusterTopology:
                 self.brokers[broker_id].add_partition(partition)
 
     @property
-    def active_brokers(self):
+    def active_brokers(self) -> set[Broker]:
         """Set of brokers that are not inactive or decommissioned."""
         return {
             broker for broker in self.brokers.values()
@@ -135,7 +140,7 @@ class ClusterTopology:
         }
 
     @property
-    def assignment(self):
+    def assignment(self) -> dict[tuple[str, int], list[int]]:
         assignment = {}
         for partition in self.partitions.values():
             assignment[
@@ -144,7 +149,7 @@ class ClusterTopology:
         # assignment map created in sorted order for deterministic solution
         return OrderedDict(sorted(list(assignment.items()), key=lambda t: t[0]))
 
-    def replace_broker(self, source_id, dest_id):
+    def replace_broker(self, source_id: int, dest_id: int) -> None:
         """Move all partitions in source broker to destination broker.
 
         :param source_id: source broker-id
@@ -172,7 +177,7 @@ class ClusterTopology:
                 f"Broker id {e.args[0]} does not exist in cluster"
             )
 
-    def update_cluster_topology(self, assignment):
+    def update_cluster_topology(self, assignment: dict[tuple[str, int], list[int]]) -> None:
         """Modify the cluster-topology with given assignment.
 
         Change the replica set of partitions as in given assignment.

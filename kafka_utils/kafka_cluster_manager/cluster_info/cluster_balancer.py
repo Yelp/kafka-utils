@@ -11,11 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+import argparse
 import itertools
 import logging
 import shlex
 
 from .util import separate_groups
+from kafka_utils.kafka_cluster_manager.cluster_info.cluster_topology import ClusterTopology
+from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
+from kafka_utils.kafka_cluster_manager.cluster_info.rg import ReplicationGroup
 
 
 class ClusterBalancer:
@@ -25,10 +31,11 @@ class ClusterBalancer:
     :param args: The program arguments.
     """
 
-    def __init__(self, cluster_topology, args=None):
+    def __init__(self, cluster_topology: ClusterTopology, args: argparse.Namespace | None = None) -> None:
         self.cluster_topology = cluster_topology
         self.args = args
         if hasattr(args, 'balancer_args'):
+            assert args is not None
             self.parse_args(list(itertools.chain.from_iterable(
                 shlex.split(arg) for arg in args.balancer_args
             )))
@@ -36,18 +43,18 @@ class ClusterBalancer:
             self.parse_args([])
         self.log = logging.getLogger(self.__class__.__name__)
 
-    def parse_args(self, _balancer_args):
+    def parse_args(self, _balancer_args: list[str] | None) -> None:
         """Parse partition measurer command line arguments.
 
         :param _balancer_args: The list of arguments as strings.
         """
         pass
 
-    def rebalance(self):
+    def rebalance(self) -> None:
         """Rebalance partitions across the brokers in the cluster."""
         raise NotImplementedError("Implement in subclass")
 
-    def decommission_brokers(self, broker_ids):
+    def decommission_brokers(self, broker_ids: list[int]) -> None:
         """Decommission a broker and balance all of its partitions across the cluster.
 
         :param broker_ids: A list of strings representing valid broker ids in the cluster.
@@ -55,7 +62,7 @@ class ClusterBalancer:
         """
         raise NotImplementedError("Implement in subclass")
 
-    def add_replica(self, partition_name, count=1):
+    def add_replica(self, partition_name: tuple[str, int], count: int = 1) -> None:
         """Add replicas of a partition to the cluster, while maintaining the cluster's balance.
 
         :param partition_name: (topic_id, partition_id) of the partition to add replicas of.
@@ -65,7 +72,7 @@ class ClusterBalancer:
         """
         raise NotImplementedError("Implement in subclass")
 
-    def remove_replica(self, partition_name, osr_broker_ids, count=1):
+    def remove_replica(self, partition_name: tuple[str, int], osr_broker_ids: set[int], count: int = 1):
         """Remove replicas of a partition from the cluster, while maintaining the cluster's balance.
 
         :param partition_name: (topic_id, partition_id) of the partition to remove replicas of.
@@ -76,7 +83,7 @@ class ClusterBalancer:
         """
         raise NotImplementedError("Implement in subclass")
 
-    def score(self):
+    def score(self) -> float | None:
         """Give the current cluster topology a numerical score.
         The score should be relative to other possible cluster assignments.
         A result of None signifies that this ClusterBalancer cannot assign a score.
@@ -84,10 +91,10 @@ class ClusterBalancer:
         return None
 
     def rebalance_replicas(
-            self,
-            max_movement_count=None,
-            max_movement_size=None,
-    ):
+        self,
+        max_movement_count: int | None = None,
+        max_movement_size: int | None = None,
+    ) -> tuple[int, int]:
         """Balance replicas across replication-groups.
 
         :param max_movement_count: The maximum number of partitions to move.
@@ -112,10 +119,10 @@ class ClusterBalancer:
         return movement_count, movement_size
 
     def _rebalance_partition_replicas(
-            self,
-            partition,
-            max_movement_count=None,
-            max_movement_size=None,
+        self,
+        partition: Partition,
+        max_movement_count: int | None = None,
+        max_movement_size: int | None = None,
     ):
         """Rebalance replication groups for given partition."""
         # Separate replication-groups into under and over replicated
@@ -128,7 +135,7 @@ class ClusterBalancer:
 
         # Move replicas from over-replicated to under-replicated groups
         movement_count = 0
-        movement_size = 0
+        movement_size: float = 0
         while (
             under_replicated_rgs and over_replicated_rgs
         ) and (
@@ -173,10 +180,10 @@ class ClusterBalancer:
         return movement_count, movement_size
 
     def _elect_source_replication_group(
-            self,
-            over_replicated_rgs,
-            partition,
-    ):
+        self,
+        over_replicated_rgs: list[ReplicationGroup],
+        partition: Partition,
+    ) -> ReplicationGroup:
         """Decide source replication-group based as group with highest replica
         count.
         """
@@ -186,10 +193,10 @@ class ClusterBalancer:
         )
 
     def _elect_dest_replication_group(
-            self,
-            replica_count_source,
-            under_replicated_rgs,
-            partition,
+        self,
+        replica_count_source: int,
+        under_replicated_rgs: list[ReplicationGroup],
+        partition: Partition,
     ):
         """Decide destination replication-group based on replica-count."""
         min_replicated_rg = min(

@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from .broker import Broker
 from .error import InvalidPartitionMeasurementError
+from .topic import Topic
 
 
 class Partition:
@@ -20,7 +24,7 @@ class Partition:
     (list of brokers).
     """
 
-    def __init__(self, topic, id, replicas=None, weight=0, size=0):
+    def __init__(self, topic: Topic, id: int, replicas: list[Broker] | None = None, weight: float = 0, size: float = 0) -> None:
         # Every partition name has (topic, partition) tuple
         self._name = (topic.id, id)
         self._replicas = replicas or []
@@ -45,42 +49,42 @@ class Partition:
         self._size = size
 
     @property
-    def name(self):
+    def name(self) -> tuple[str, int]:
         "Name of partition, consisting of (topic_id, partition_id) tuple."""
         return self._name
 
     @property
-    def partition_id(self):
+    def partition_id(self) -> int:
         """Partition id component of the partition-tuple."""
         return int(self._name[1])
 
     @property
-    def topic(self):
+    def topic(self) -> Topic:
         return self._topic
 
     @property
-    def replicas(self):
+    def replicas(self) -> list[Broker]:
         """List of brokers in partition."""
         return self._replicas
 
     @property
-    def leader(self):
+    def leader(self) -> Broker:
         """Leader broker for the partition."""
         return self._replicas[0]
 
     @property
-    def replication_factor(self):
+    def replication_factor(self) -> int:
         return len(self._replicas)
 
     @property
-    def followers(self):
+    def followers(self) -> list[Broker]:
         """Return list of brokers not as preferred leader
         for a particular partition.
         """
         return self._replicas[1:]
 
     @property
-    def weight(self):
+    def weight(self) -> float:
         """Return a number representing the relative weight of this partition
         compared to the other partitions in the cluster. The weight is a
         measure of how much load this partition will place on any broker that
@@ -89,18 +93,18 @@ class Partition:
         return self._weight
 
     @property
-    def size(self):
+    def size(self) -> float:
         """Return a number representing the size of this partition. The size is
         a measure of how expensive it is to move this partition from one broker
         to another.
         """
         return self._size
 
-    def add_replica(self, broker):
+    def add_replica(self, broker: Broker) -> None:
         """Add broker to existing set of replicas."""
         self._replicas.append(broker)
 
-    def swap_leader(self, new_leader):
+    def swap_leader(self, new_leader: Broker) -> Broker:
         """Change the preferred leader with one of
         given replicas.
 
@@ -115,7 +119,7 @@ class Partition:
             self._replicas[idx], self._replicas[0]
         return curr_leader
 
-    def replace(self, source, dest):
+    def replace(self, source: Broker, dest: Broker) -> None:
         """Replace source broker with destination broker in replica set if found."""
         if dest is None:
             # Remove source if it's there
@@ -126,7 +130,7 @@ class Partition:
                 self.replicas[i] = dest
                 return
 
-    def count_siblings(self, partitions):
+    def count_siblings(self, partitions: list[Partition]) -> int:
         """Count siblings of partition in given partition-list.
 
         :key-term:
@@ -138,8 +142,8 @@ class Partition:
         )
         return count
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self._name}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self}"

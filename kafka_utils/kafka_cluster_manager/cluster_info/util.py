@@ -11,9 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from collections.abc import Collection
+from typing import Any
+from typing import Callable
+from typing import TypeVar
 
 
-def compute_optimum(groups, elements):
+def compute_optimum(groups: int, elements: int) -> tuple[int, int]:
     """Compute the number of elements per group and the remainder.
 
         :param elements: total number of elements
@@ -22,7 +28,10 @@ def compute_optimum(groups, elements):
     return elements // groups, elements % groups
 
 
-def _smart_separate_groups(groups, key, total):
+T = TypeVar('T')
+
+
+def _smart_separate_groups(groups: Collection[T], key: Callable[[T], Any], total: int) -> tuple[list[T], list[T], list[T]]:
     """Given a list of group objects, and a function to extract the number of
     elements for each of them, return the list of groups that have an excessive
     number of elements (when compared to a uniform distribution), a list of
@@ -52,7 +61,7 @@ def _smart_separate_groups(groups, key, total):
     return over_loaded, under_loaded, optimal
 
 
-def separate_groups(groups, key, total):
+def separate_groups(groups: Collection[T], key: Callable[[T], Any], total: int) -> tuple[list[T], list[T]]:
     """Separate the group into overloaded and under-loaded groups.
 
     The revised over-loaded groups increases the choice space for future

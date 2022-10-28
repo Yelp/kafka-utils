@@ -14,18 +14,27 @@
 """This files contains supporting api's required to evaluate stats of the
 cluster at any given time.
 """
+from __future__ import annotations
+
 from collections import defaultdict
 from math import sqrt
+from typing import Iterable
+from typing import Sequence
 
+from .broker import Broker
+from .cluster_topology import ClusterTopology
+from .partition import Partition
+from .rg import ReplicationGroup
+from .topic import Topic
 from .util import compute_optimum
 
 
-def mean(data):
+def mean(data: Sequence[float]) -> float:
     """Return the mean of a sequence of numbers."""
     return sum(data) / len(data)
 
 
-def variance(data, data_mean=None):
+def variance(data: Sequence[float], data_mean: float | None = None) -> float:
     """Return variance of a sequence of numbers.
     :param data_mean: Precomputed mean of the sequence.
     """
@@ -33,7 +42,7 @@ def variance(data, data_mean=None):
     return sum((x - data_mean) ** 2 for x in data) / len(data)
 
 
-def stdevp(data, data_mean=None, data_variance=None):
+def stdevp(data: Sequence[float], data_mean: float | None = None, data_variance: float | None = None) -> float:
     """Return standard deviation of a sequence of numbers.
     :param data_mean: Precomputed mean of the sequence.
     :param data_variance: Precomputed variance of the sequence.
@@ -42,7 +51,7 @@ def stdevp(data, data_mean=None, data_variance=None):
     return sqrt(data_variance)
 
 
-def coefficient_of_variation(data, data_mean=None, data_stdev=None):
+def coefficient_of_variation(data: Sequence[float], data_mean: float | None = None, data_stdev: float | None = None) -> float:
     """Return the coefficient of variation (CV) of a sequence of numbers.
     :param data_mean: Precomputed mean of the sequence.
     :param data_stdevp: Precomputed stdevp of the
@@ -56,7 +65,7 @@ def coefficient_of_variation(data, data_mean=None, data_stdev=None):
         return data_stdev / data_mean
 
 
-def get_net_imbalance(count_per_broker):
+def get_net_imbalance(count_per_broker: Sequence[int]) -> int:
     """Calculate and return net imbalance based on given count of
     partitions or leaders per broker.
 
@@ -78,7 +87,7 @@ def get_net_imbalance(count_per_broker):
     return net_imbalance
 
 
-def get_extra_element_count(curr_count, opt_count, extra_allowed_cnt):
+def get_extra_element_count(curr_count: int, opt_count: int, extra_allowed_cnt: int) -> tuple[int, int]:
     """Evaluate and return extra same element count based on given values.
 
     :key-term:
@@ -106,12 +115,12 @@ def get_extra_element_count(curr_count, opt_count, extra_allowed_cnt):
 
 
 # Get imbalance stats
-def get_replication_group_imbalance_stats(rgs, partitions):
+def get_replication_group_imbalance_stats(rgs: list[ReplicationGroup], partitions: list[Partition]) -> tuple[int, dict[str, int]]:
     """Calculate extra replica count replica count over each replication-group
     and net extra-same-replica count.
     """
     tot_rgs = len(rgs)
-    extra_replica_cnt_per_rg = defaultdict(int)
+    extra_replica_cnt_per_rg: dict[str, int] = defaultdict(int)
     for partition in partitions:
         # Get optimal replica-count for each partition
         opt_replica_cnt, extra_replicas_allowed = \
@@ -133,27 +142,27 @@ def get_replication_group_imbalance_stats(rgs, partitions):
     return net_imbalance, extra_replica_cnt_per_rg
 
 
-def get_broker_partition_counts(brokers):
+def get_broker_partition_counts(brokers: Iterable[Broker]) -> list[int]:
     """Get a list containing the number of partitions on each broker"""
     return [len(broker.partitions) for broker in brokers]
 
 
-def get_broker_weights(brokers):
+def get_broker_weights(brokers: Iterable[Broker]) -> list[float]:
     """Get a list containing the weight of each broker"""
     return [broker.weight for broker in brokers]
 
 
-def get_broker_leader_counts(brokers):
+def get_broker_leader_counts(brokers: Iterable[Broker]) -> list[int]:
     """Get a list containing the number of leaders of each broker"""
     return [broker.count_preferred_replica() for broker in brokers]
 
 
-def get_broker_leader_weights(brokers):
+def get_broker_leader_weights(brokers: Iterable[Broker]) -> list[float]:
     """Get a list containing the weight from leaders on each broker"""
     return [broker.leader_weight for broker in brokers]
 
 
-def get_topic_imbalance_stats(brokers, topics):
+def get_topic_imbalance_stats(brokers: list[Broker], topics: list[Topic]) -> tuple[int, dict[int, int]]:
     """Return count of topics and partitions on each broker having multiple
     partitions of same topic.
 
@@ -170,7 +179,7 @@ def get_topic_imbalance_stats(brokers, topics):
     b1: current-partitions - optimal-count = 4 - 2 - 1(extra allowed) = 1
     Net-imbalance = 1
     """
-    extra_partition_cnt_per_broker = defaultdict(int)
+    extra_partition_cnt_per_broker: dict[int, int] = defaultdict(int)
     tot_brokers = len(brokers)
     # Sort the brokers so that the iteration order is deterministic.
     sorted_brokers = sorted(brokers, key=lambda b: b.id)
@@ -196,8 +205,8 @@ def get_topic_imbalance_stats(brokers, topics):
     return net_imbalance, extra_partition_cnt_per_broker
 
 
-def get_weighted_topic_imbalance_stats(brokers, topics):
-    weighted_imbalance_per_broker = defaultdict(float)
+def get_weighted_topic_imbalance_stats(brokers: list[Broker], topics: list[Topic]) -> tuple[float, dict[int, float]]:
+    weighted_imbalance_per_broker: dict[int, float] = defaultdict(float)
     tot_brokers = len(brokers)
     # Sort the brokers so that the iteration order is deterministic.
     sorted_brokers = sorted(brokers, key=lambda b: b.id)
@@ -225,7 +234,7 @@ def get_weighted_topic_imbalance_stats(brokers, topics):
     return total_imbalance, weighted_imbalance_per_broker
 
 
-def get_partition_movement_stats(ct, prev_assignment):
+def get_partition_movement_stats(ct: ClusterTopology, prev_assignment: dict[tuple[str, int], list[int]]) -> tuple[int, float, int]:
     curr_assignment = ct.assignment
     movement_count = 0
     movement_size = 0.0
@@ -244,7 +253,7 @@ def get_partition_movement_stats(ct, prev_assignment):
     return movement_count, movement_size, leader_changes
 
 
-def calculate_partition_movement(prev_assignment, curr_assignment):
+def calculate_partition_movement(prev_assignment: dict[tuple[str, int], list[int]], curr_assignment: dict[tuple[str, int], list[int]]) -> tuple[dict[tuple[str, int], tuple[set[int], set[int]]], int]:
     """Calculate the partition movements from initial to current assignment.
     Algorithm:
         For each partition in initial assignment

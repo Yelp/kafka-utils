@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import argparse
 import logging
 import sys
+from typing import Any
 
+from .broker import Broker
 from .cluster_balancer import ClusterBalancer
+from .cluster_topology import ClusterTopology
 from .error import BrokerDecommissionError
 from .error import EmptyReplicationGroupError
 from .error import InvalidBrokerIdError
@@ -23,6 +28,8 @@ from .error import InvalidPartitionError
 from .error import InvalidReplicationFactorError
 from .error import NotEligibleGroupError
 from .error import RebalanceError
+from .partition import Partition
+from .rg import ReplicationGroup
 from .util import compute_optimum
 from .util import separate_groups
 
@@ -36,15 +43,15 @@ class PartitionCountBalancer(ClusterBalancer):
     :param args: The program arguments.
     """
 
-    def __init__(self, cluster_topology, args):
+    def __init__(self, cluster_topology: ClusterTopology, args: argparse.Namespace) -> None:
         super().__init__(cluster_topology, args)
         self.log = logging.getLogger(self.__class__.__name__)
 
-    def _set_arg_default(self, arg, value):
+    def _set_arg_default(self, arg: str, value: Any) -> None:
         if not hasattr(self.args, arg):
             setattr(self.args, arg, value)
 
-    def parse_args(self, balancer_args):
+    def parse_args(self, balancer_args: list[str] | None) -> None:
         self._set_arg_default('replication_groups', False)
         self._set_arg_default('brokers', False)
         self._set_arg_default('leaders', False)
@@ -58,7 +65,7 @@ class PartitionCountBalancer(ClusterBalancer):
         )
         parser.parse_args(balancer_args, self.args)
 
-    def decommission_brokers(self, broker_ids):
+    def decommission_brokers(self, broker_ids: list[int]) -> None:
         """Decommission a list of brokers trying to keep the replication group
         the brokers belong to balanced.
 
@@ -77,12 +84,13 @@ class PartitionCountBalancer(ClusterBalancer):
                     f"Broker id {b_id} does not exist in cluster",
                 )
             broker.mark_decommissioned()
+            assert broker.replication_group is not None
             groups.add(broker.replication_group)
 
         for group in groups:
             self._decommission_brokers_in_group(group)
 
-    def _decommission_brokers_in_group(self, group):
+    def _decommission_brokers_in_group(self, group: ReplicationGroup) -> None:
         """Decommission the marked brokers of a group."""
         try:
             group.rebalance_brokers()
@@ -112,7 +120,7 @@ class PartitionCountBalancer(ClusterBalancer):
                     )
                     raise BrokerDecommissionError("Broker decommission failed.")
 
-    def _force_broker_decommission(self, broker):
+    def _force_broker_decommission(self, broker: Broker) -> None:
         available_groups = [
             rg for rg in self.cluster_topology.rgs.values()
             if rg is not broker.replication_group
@@ -137,7 +145,8 @@ class PartitionCountBalancer(ClusterBalancer):
                 except NotEligibleGroupError:
                     pass
 
-    def rebalance(self):
+    def rebalance(self) -> None:
+        assert self.args is not None
         if self.args.max_movement_size:
             self.log.error(
                 '--max-movement-size can not be specified for {balancer}.'
@@ -168,7 +177,7 @@ class PartitionCountBalancer(ClusterBalancer):
             )
             self.rebalance_leaders()
 
-    def rebalance_replication_groups(self):
+    def rebalance_replication_groups(self) -> None:
         """Rebalance partitions over replication groups.
 
         First step involves rebalancing replica-count for each partition across
@@ -194,12 +203,12 @@ class PartitionCountBalancer(ClusterBalancer):
         self._rebalance_groups_partition_cnt()
 
     # Re-balancing partition count across brokers
-    def rebalance_brokers(self):
+    def rebalance_brokers(self) -> None:
         """Rebalance partition-count across brokers within each replication-group."""
         for rg in self.cluster_topology.rgs.values():
             rg.rebalance_brokers()
 
-    def revoke_leadership(self, broker_ids):
+    def revoke_leadership(self, broker_ids: list[int]) -> None:
         """Revoke leadership for given brokers.
 
         :param broker_ids: List of broker-ids whose leadership needs to be revoked.
@@ -231,7 +240,7 @@ class PartitionCountBalancer(ClusterBalancer):
         for b in pending_brokers:
             self._force_revoke_leadership(b)
 
-    def _force_revoke_leadership(self, broker):
+    def _force_revoke_leadership(self, broker: Broker) -> None:
         """Revoke the leadership of given broker for any remaining partitions.
 
         Algorithm:
@@ -274,7 +283,7 @@ class PartitionCountBalancer(ClusterBalancer):
                 )
 
     # Re-balancing leaders
-    def rebalance_leaders(self):
+    def rebalance_leaders(self) -> None:
         """Re-order brokers in replicas such that, every broker is assigned as
         preferred leader evenly.
         """
@@ -282,7 +291,7 @@ class PartitionCountBalancer(ClusterBalancer):
         # Balanced brokers transfer leadership to their under-balanced followers
         self.rebalancing_non_followers(opt_leader_cnt)
 
-    def rebalancing_non_followers(self, opt_cnt):
+    def rebalancing_non_followers(self, opt_cnt: int) -> None:
         """Transfer leadership to any under-balanced followers on the pretext
         that they remain leader-balanced or can be recursively balanced through
         non-followers (followers of other leaders).
@@ -309,7 +318,8 @@ class PartitionCountBalancer(ClusterBalancer):
             self.cluster_topology.brokers.values(),
         ))
         if under_brokers:
-            skip_brokers, skip_partitions = [], []
+            skip_brokers: list[Broker] = []
+            skip_partitions: list[Partition] = []
             for broker in under_brokers:
                 skip_brokers.append(broker)
                 broker.request_leadership(opt_cnt, skip_brokers, skip_partitions)
@@ -320,13 +330,14 @@ class PartitionCountBalancer(ClusterBalancer):
         ))
         # Any over-balanced brokers tries to donate their leadership to followers
         if over_brokers:
-            skip_brokers, used_edges = [], []
+            skip_brokers = []
+            used_edges: list[tuple[Partition, Broker, Broker]] = []
             for broker in over_brokers:
                 skip_brokers.append(broker)
                 broker.donate_leadership(opt_cnt, skip_brokers, used_edges)
 
     # Re-balancing partition count across brokers
-    def _rebalance_groups_partition_cnt(self):
+    def _rebalance_groups_partition_cnt(self) -> None:
         """Re-balance partition-count across replication-groups.
 
         Algorithm:
@@ -404,7 +415,7 @@ class PartitionCountBalancer(ClusterBalancer):
                     # Move to next over-loaded replication-group if balanced
                     break
 
-    def add_replica(self, partition_name, count=1):
+    def add_replica(self, partition_name: tuple[str, int], count: int = 1) -> None:
         """Increase the replication-factor for a partition.
 
         The replication-group to add to is determined as follows:
@@ -463,7 +474,7 @@ class PartitionCountBalancer(ClusterBalancer):
             if rg.count_replica(partition) >= len(rg.brokers):
                 non_full_rgs.remove(rg)
 
-    def remove_replica(self, partition_name, osr_broker_ids, count=1):
+    def remove_replica(self, partition_name: tuple[str, int], osr_broker_ids: set[int], count: int = 1) -> None:
         """Remove one replica of a partition from the cluster.
 
         The replication-group to remove from is determined as follows:

@@ -16,7 +16,13 @@
 Useful as part of reassignment project when deciding upon moving
 partitions of same topic over different brokers.
 """
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from kafka_utils.kafka_cluster_manager.cluster_info.partition import Partition
 
 
 class Topic:
@@ -28,36 +34,36 @@ class Topic:
         partitions:         List of Partition objects
     """
 
-    def __init__(self, id, replication_factor=0, partitions=None):
+    def __init__(self, id: str, replication_factor: int = 0, partitions: set[Partition] | None = None) -> None:
         self._id = id
         self._replication_factor = replication_factor
         self._partitions = partitions or set()
         self.log = logging.getLogger(self.__class__.__name__)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def replication_factor(self):
+    def replication_factor(self) -> int:
         return self._replication_factor
 
     @property
-    def partitions(self):
+    def partitions(self) -> set[Partition]:
         return self._partitions
 
     @property
-    def weight(self):
+    def weight(self) -> float:
         return sum(
             partition.weight * partition.replication_factor
             for partition in self._partitions
         )
 
-    def add_partition(self, partition):
+    def add_partition(self, partition: Partition) -> None:
         self._partitions.add(partition)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self._id}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self}"
