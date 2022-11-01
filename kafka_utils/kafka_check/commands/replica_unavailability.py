@@ -17,6 +17,8 @@ import itertools
 from collections.abc import Collection
 from typing import Any
 from typing import cast
+from typing import Set
+from typing import Tuple
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
@@ -38,7 +40,7 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
     def run_command(self) -> tuple[int, dict[str, Any]]:
         """replica_unavailability command, checks number of replicas not available
         for communication over all brokers in the Kafka cluster."""
-        result = cast(tuple[set[tuple[str, int]], set[int]], get_topic_partition_with_error(
+        result = cast(Tuple[Set[Tuple[str, int]], Set[int]], get_topic_partition_with_error(
             self.cluster_config,
             REPLICA_NOT_AVAILABLE_ERROR,
             fetch_unavailable_brokers=True,

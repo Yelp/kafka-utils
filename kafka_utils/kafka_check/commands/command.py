@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 from typing import cast
+from typing import Dict
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.status_code import prepare_terminate_message
@@ -58,7 +59,7 @@ class KafkaCheckCmd:
             if args.controller_only and not is_controller(self.zk, args.broker_id):
                 terminate(
                     status_code.OK,
-                    cast(dict[str, Any], prepare_terminate_message(
+                    cast(Dict[str, Any], prepare_terminate_message(
                         'Broker {} is not the controller, nothing to check'
                         .format(args.broker_id),
                     )),
@@ -67,7 +68,7 @@ class KafkaCheckCmd:
             if args.first_broker_only and not broker_ids:
                 terminate(
                     status_code.OK,
-                    cast(dict[str, Any], prepare_terminate_message(
+                    cast(Dict[str, Any], prepare_terminate_message(
                         'No brokers detected, nothing to check'
                     )),
                     args.json,
@@ -75,7 +76,7 @@ class KafkaCheckCmd:
             if args.first_broker_only and not is_first_broker(broker_ids, args.broker_id):
                 terminate(
                     status_code.OK,
-                    cast(dict[str, Any], prepare_terminate_message(
+                    cast(Dict[str, Any], prepare_terminate_message(
                         'Broker {} has not the lowest id, nothing to check'
                         .format(args.broker_id),
                     )),

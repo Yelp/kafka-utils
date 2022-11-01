@@ -18,6 +18,8 @@ import sys
 from collections.abc import Collection
 from typing import Any
 from typing import cast
+from typing import Set
+from typing import Tuple
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
@@ -39,7 +41,7 @@ class OfflineCmd(KafkaCheckCmd):
 
     def run_command(self) -> tuple[int, dict[str, Any]]:
         """Checks the number of offline partitions"""
-        offline = cast(set[tuple[str, int]], get_topic_partition_with_error(
+        offline = cast(Set[Tuple[str, int]], get_topic_partition_with_error(
             self.cluster_config,
             LEADER_NOT_AVAILABLE_ERROR,
         ))
