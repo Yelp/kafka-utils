@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from kafka.structs import OffsetCommitResponsePayload
 
 
 class KafkaToolError(Exception):
@@ -47,12 +48,13 @@ class UnknownPartitions(KafkaToolError):
 class OffsetCommitError(KafkaToolError):
     """Error during offset commit."""
 
-    def __init__(self, topic, partition, error):
+    def __init__(self, topic: str, partition: int, error: str) -> None:
         self.topic = topic
         self.partition = partition
         self.error = error
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, (OffsetCommitError, OffsetCommitResponsePayload))
         if all([
             self.topic == other.topic,
             self.partition == other.partition,

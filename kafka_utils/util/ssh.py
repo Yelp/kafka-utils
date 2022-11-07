@@ -11,15 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import os
 import sys
 import time
 from contextlib import closing
 from contextlib import contextmanager
+from typing import Iterator
 
 from paramiko import ProxyCommand
 from paramiko import SSHConfig
 from paramiko.agent import AgentRequestHandler
+from paramiko.channel import ChannelFile
 from paramiko.client import AutoAddPolicy
 from paramiko.client import SSHClient
 
@@ -30,12 +34,12 @@ class Connection:
     """Represents a SSH connection with an SSH server.
     """
 
-    def __init__(self, client, forward_agent, sudoable):
+    def __init__(self, client: SSHClient, forward_agent: bool, sudoable: bool) -> None:
         self.transport = client.get_transport()
         self.forward_agent = forward_agent
         self.sudoable = sudoable
 
-    def sudo_command(self, command, bufsize=-1):
+    def sudo_command(self, command: str, bufsize: int = -1) -> tuple[ChannelFile, ChannelFile, ChannelFile]:
         """Sudo a command on the SSH server.
         Delegates to :func`~ssh.Connection.exec_command`
 
@@ -51,7 +55,7 @@ class Connection:
         new_command = f"sudo {command}"
         return self.exec_command(new_command, bufsize)
 
-    def exec_command(self, command, bufsize=-1, check_status=True):
+    def exec_command(self, command: str, bufsize: int = -1, check_status: bool = True) -> tuple[ChannelFile, ChannelFile, ChannelFile]:
         """Execute a command on the SSH server while preserving underling
         agent forwarding and sudo privileges.
         https://github.com/paramiko/paramiko/blob/1.8/paramiko/client.py#L348
@@ -68,6 +72,7 @@ class Connection:
 
         :raises SSHException: if the server fails to execute the command
         """
+        assert self.transport is not None
         channel = self.transport.open_session()
 
         if self.forward_agent:
@@ -86,7 +91,7 @@ class Connection:
 
 
 @contextmanager
-def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5, ssh_password=None):
+def ssh(host: str, forward_agent: bool = False, sudoable: bool = False, max_attempts: int = 1, max_timeout: int = 5, ssh_password: str | None = None) -> Iterator[Connection]:
     """Manages a SSH connection to the desired host.
        Will leverage your ssh config at ~/.ssh/config if available
 
@@ -140,7 +145,7 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
         while attempts < max_attempts:
             try:
                 attempts += 1
-                client.connect(**cfg)
+                client.connect(**cfg)  # type: ignore[arg-type]
                 break
             except OSError as e:
                 if attempts < max_attempts:
@@ -157,7 +162,7 @@ def ssh(host, forward_agent=False, sudoable=False, max_attempts=1, max_timeout=5
         yield Connection(client, forward_agent, sudoable)
 
 
-def report_stdout(host, stdout):
+def report_stdout(host: str, stdout: ChannelFile) -> None:
     """Take a stdout and print it's lines to output if lines are present.
 
     :param host: the host where the process is running
@@ -172,7 +177,7 @@ def report_stdout(host, stdout):
             print(line.rstrip(), file=sys.stdout)
 
 
-def report_stderr(host, stderr):
+def report_stderr(host: str, stderr: ChannelFile) -> None:
     """Take a stderr and print it's lines to output if lines are present.
 
     :param host: the host where the process is running

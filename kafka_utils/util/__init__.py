@@ -11,13 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import json
 import sys
 from argparse import ArgumentTypeError
 from itertools import groupby
+from typing import Any
+from typing import Callable
+from typing import Iterator
+from typing import TypeVar
+from typing import Union
+
+from typing_extensions import Protocol
+
+T = TypeVar('T')
 
 
-def tuple_replace(tup, *pairs):
+def tuple_replace(tup: tuple[T, ...], *pairs: tuple[int, T]) -> tuple[T, ...]:
     """Return a copy of a tuple with some elements replaced.
 
     :param tup: The tuple to be copied.
@@ -30,7 +41,7 @@ def tuple_replace(tup, *pairs):
     return tuple(tuple_list)
 
 
-def tuple_alter(tup, *pairs):
+def tuple_alter(tup: tuple[T, ...], *pairs: tuple[int, Callable[[T], T]]) -> tuple[T, ...]:
     """Return a copy of a tuple with some elements altered.
 
     :param tup: The tuple to be copied.
@@ -44,7 +55,7 @@ def tuple_alter(tup, *pairs):
     return tuple(tuple_list)
 
 
-def tuple_remove(tup, *items):
+def tuple_remove(tup: tuple[T, ...], *items: T) -> tuple[T, ...]:
     """Return a copy of a tuple with some items removed.
 
     :param tup: The tuple to be copied.
@@ -57,7 +68,7 @@ def tuple_remove(tup, *items):
     return tuple(tuple_list)
 
 
-def positive_int(string):
+def positive_int(string: str) -> int:
     """Convert string to positive integer."""
     error_msg = f'Positive integer required, {string} given.'
     try:
@@ -69,7 +80,7 @@ def positive_int(string):
     return value
 
 
-def positive_nonzero_int(string):
+def positive_nonzero_int(string: str) -> int:
     """Convert string to positive integer greater than zero."""
     error_msg = f'Positive non-zero integer required, {string} given.'
     try:
@@ -81,7 +92,7 @@ def positive_nonzero_int(string):
     return value
 
 
-def positive_float(string):
+def positive_float(string: str) -> float:
     """Convert string to positive float."""
     error_msg = f'Positive float required, {string} given.'
     try:
@@ -93,17 +104,33 @@ def positive_float(string):
     return value
 
 
-def groupsortby(data, key):
+class SupportsLessThan(Protocol):
+    def __lt__(self: T, __other: T) -> bool:
+        ...
+
+
+class SupportsGreaterThan(Protocol):
+    def __gt__(self: T, __other: T) -> bool:
+        ...
+
+
+R = TypeVar('R', bound=Union[SupportsLessThan, SupportsGreaterThan])
+
+
+def groupsortby(data: list[T], key: Callable[[T], R]) -> Iterator[tuple[R, Iterator[T]]]:
     """Sort and group by the same key."""
     return groupby(sorted(data, key=key), key)
 
 
-def dict_merge(set1, set2):
+V = TypeVar('V')
+
+
+def dict_merge(set1: dict[T, V], set2: dict[T, V]) -> dict[T, V]:
     """Joins two dictionaries."""
     return dict(list(set1.items()) + list(set2.items()))
 
 
-def to_h(num, suffix='B'):
+def to_h(num: float | None, suffix: str = 'B') -> str:
     """Converts a byte value in human readable form."""
     if num is None:  # Show None when data is missing
         return "None"
@@ -114,7 +141,7 @@ def to_h(num, suffix='B'):
     return "{:.1f}{}{}".format(num, 'Yi', suffix)
 
 
-def to_int(num):
+def to_int(num: int | None) -> str:
     """
     Converts 'num' to int representation in string
     or to "None" in case of None.
@@ -124,7 +151,7 @@ def to_int(num):
     return f"{num:.0f}"
 
 
-def to_float(num):
+def to_float(num: float | None) -> str:
     """
     Converts 'num' to float representation in string
     or to "None" in case of None.
@@ -134,7 +161,7 @@ def to_float(num):
     return f"{num:.2f}"
 
 
-def format_to_json(data):
+def format_to_json(data: Any) -> str:
     """Converts `data` into json
     If stdout is a tty it performs a pretty print.
     """
@@ -144,6 +171,6 @@ def format_to_json(data):
         return json.dumps(data)
 
 
-def print_json(data):
+def print_json(data: Any) -> None:
     """Converts `data` into json and prints it to stdout."""
     print(format_to_json(data))

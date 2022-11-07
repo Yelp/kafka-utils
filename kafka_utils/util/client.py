@@ -11,8 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import functools
 import time
+from typing import Callable
+from typing import overload
+from typing import TypeVar
 
 import tenacity
 from kafka import SimpleClient
@@ -22,6 +27,11 @@ from kafka.errors import FailedPayloadsError
 from kafka.errors import GroupCoordinatorNotAvailableError
 from kafka.errors import GroupLoadInProgressError
 from kafka.errors import NotCoordinatorForGroupError
+from kafka.protocol.api import Request
+from kafka.protocol.api import Response
+from kafka.structs import BrokerMetadata
+from kafka.structs import ConsumerMetadataResponse
+from typing_extensions import Protocol
 
 from kafka_utils.util.protocol import KafkaToolProtocol
 
@@ -31,11 +41,45 @@ CONSUMER_OFFSET_TOPIC_CREATION_RETRIES = 20
 CONSUMER_OFFSET_RETRY_INTERVAL_SEC = 0.5
 
 
+class Payload(Protocol):
+    topic: str
+    partition: int
+
+
+T = TypeVar('T')
+KafkaResponse = TypeVar('KafkaResponse', bound=Response)
+
+
+class EncoderFn(Protocol):
+    def __call__(self, payloads: list[Payload]) -> Request:
+        ...
+
+
 class KafkaToolClient(SimpleClient):
     '''
     Extends the KafkaClient class, and includes a method for sending offset
     commit requests to Kafka.
     '''
+
+    @overload
+    def send_offset_commit_request_kafka(
+        self,
+        group: str,
+        payloads: list[Payload] = [],
+        fail_on_error: bool = True,
+        callback: Callable[[ConsumerMetadataResponse], T] = ...,
+    ) -> list[T]:
+        ...
+
+    @overload
+    def send_offset_commit_request_kafka(
+        self,
+        group: str,
+        payloads: list[Payload] = [],
+        fail_on_error: bool = True,
+        callback: None = None,
+    ) -> list[ConsumerMetadataResponse]:
+        ...
 
     @tenacity.retry(
         retry=tenacity.retry_if_exception_type((GroupCoordinatorNotAvailableError, NotCoordinatorForGroupError)),
@@ -43,8 +87,12 @@ class KafkaToolClient(SimpleClient):
         wait=tenacity.wait_fixed(WAIT_BEFORE_RETRYING),
     )
     def send_offset_commit_request_kafka(
-            self, group, payloads=[],
-            fail_on_error=True, callback=None):
+        self,
+        group: str,
+        payloads: list[Payload] = [],
+        fail_on_error: bool = True,
+        callback: Callable[[ConsumerMetadataResponse], T] | None = None,
+    ) -> list[T] | list[ConsumerMetadataResponse]:
         encoder = functools.partial(
             KafkaToolProtocol.encode_offset_commit_request_kafka,
             group=group,
@@ -55,8 +103,12 @@ class KafkaToolClient(SimpleClient):
         return [resp if not callback else callback(resp) for resp in resps
                 if not fail_on_error or not self._raise_on_response_error(resp)]
 
-    def send_consumer_metadata_request(self, payloads=[], fail_on_error=True,
-                                       callback=None):
+    def send_consumer_metadata_request(
+        self,
+        payloads: list[Payload] = [],
+        fail_on_error: bool = True,
+        callback: None = None,
+    ) -> ConsumerMetadataResponse:
         """
         Encode and decode consumer metadata requests.
 
@@ -68,7 +120,13 @@ class KafkaToolClient(SimpleClient):
 
         return self._send_broker_unaware_request(payloads, encoder, decoder)
 
-    def _send_consumer_aware_request(self, group, payloads, encoder_fn, decoder_fn):
+    def _send_consumer_aware_request(
+        self,
+        group: str,
+        payloads: list[Payload],
+        encoder_fn: EncoderFn,
+        decoder_fn: Callable[[Response], KafkaResponse],
+    ) -> list[KafkaResponse]:
         """
         Send a list of requests to the consumer coordinator for the group
         specified using the supplied encode/decode functions. As the payloads
@@ -79,10 +137,10 @@ class KafkaToolClient(SimpleClient):
         payloads: list of object-like entities with topic (str) and
             partition (int) attributes; payloads with duplicate
             topic+partition are not supported.
-        encode_fn: a method to encode the list of payloads to a request body,
+        encoder_fn: a method to encode the list of payloads to a request body,
             must accept client_id, correlation_id, and payloads as
             keyword arguments
-        decode_fn: a method to decode a response body into response objects.
+        decoder_fn: a method to decode a response body into response objects.
             The response objects must be object-like and have topic
             and partition attributes
         Returns:
@@ -93,7 +151,7 @@ class KafkaToolClient(SimpleClient):
         original_ordering = [(p.topic, p.partition) for p in payloads]
 
         retries = 0
-        broker = None
+        broker: BrokerMetadata | None = None
         while not broker:
             try:
                 broker = self._get_coordinator_for_group(group)
@@ -107,7 +165,7 @@ class KafkaToolClient(SimpleClient):
         # errors
         responses = {}
 
-        def failed_payloads(payloads):
+        def failed_payloads(payloads: list[Payload]) -> None:
             for payload in payloads:
                 topic_partition = (str(payload.topic), payload.partition)
                 responses[topic_partition] = FailedPayloadsError(payload)

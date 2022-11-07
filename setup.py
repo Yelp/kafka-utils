@@ -74,4 +74,7 @@ setup(
         "Operating System :: POSIX",
         "Operating System :: MacOS :: MacOS X",
     ],
+    package_data={
+        'kafka_utils': ['util/py.typed'],
+    },
 )

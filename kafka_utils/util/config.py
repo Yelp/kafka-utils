@@ -11,12 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import glob
 import logging
 import os
-from collections import namedtuple
+from typing import Iterator
+from typing import NamedTuple
 
 import yaml
+from typing_extensions import TypedDict
 
 from kafka_utils.util.error import ConfigurationError
 from kafka_utils.util.error import InvalidConfigurationError
@@ -27,29 +31,28 @@ DEFAULT_KAFKA_TOPOLOGY_BASE_PATH = '/etc/kafka_discovery'
 HOME_OVERRIDE = '.kafka_discovery'
 
 
-class ClusterConfig(
-    namedtuple(
-        'ClusterConfig',
-        ['type', 'name', 'broker_list', 'zookeeper'],
-    ),
-):
+class ClusterConfig(NamedTuple):
     """Cluster configuration.
     :param name: cluster name
     :param broker_list: list of kafka brokers
     :param zookeeper: zookeeper connection string
     """
+    type: str
+    name: str
+    broker_list: list[str]
+    zookeeper: str
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return self.__hash__() != other.__hash__()
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return self.__hash__() == other.__hash__()
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         if isinstance(self.broker_list, list):
             broker_list = self.broker_list
         else:
-            broker_list = self.broker_list.split(',')
+            broker_list = self.broker_list.split(',')  # type: ignore[unreachable]
         zk_list = self.zookeeper.split(',')
         return hash((
             self.type,
@@ -59,7 +62,21 @@ class ClusterConfig(
         ))
 
 
-def load_yaml_config(config_path):
+class ClusterConfigDict(TypedDict):
+    broker_list: list[str]
+    zookeeper: str
+
+
+class LocalConfigDict(TypedDict):
+    cluster: str
+
+
+class TopologyConfigurationDict(TypedDict):
+    clusters: dict[str, ClusterConfigDict]
+    local_config: LocalConfigDict
+
+
+def load_yaml_config(config_path: str) -> TopologyConfigurationDict:
     with open(config_path) as config_file:
         return yaml.safe_load(config_file)
 
@@ -95,17 +112,18 @@ class TopologyConfiguration:
 
     def __init__(
         self,
-        cluster_type,
-        kafka_topology_path=DEFAULT_KAFKA_TOPOLOGY_BASE_PATH
+        cluster_type: str,
+        kafka_topology_path: str = DEFAULT_KAFKA_TOPOLOGY_BASE_PATH,
     ):
         self.kafka_topology_path = kafka_topology_path
         self.cluster_type = cluster_type
         self.log = logging.getLogger(self.__class__.__name__)
-        self.clusters = None
-        self.local_config = None
+        self.clusters: dict[str, ClusterConfigDict] | None = None
+        self.local_config: LocalConfigDict | None = None
         self.load_topology_config()
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, TopologyConfiguration)
         if all([
             self.cluster_type == other.cluster_type,
             self.clusters == other.clusters,
@@ -114,10 +132,10 @@ class TopologyConfiguration:
             return True
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
-    def load_topology_config(self):
+    def load_topology_config(self) -> None:
         """Load the topology configuration"""
         config_path = os.path.join(
             self.kafka_topology_path,
@@ -144,7 +162,8 @@ class TopologyConfiguration:
         if 'local_config' in topology_config:
             self.local_config = topology_config['local_config']
 
-    def get_all_clusters(self):
+    def get_all_clusters(self) -> list[ClusterConfig]:
+        assert self.clusters is not None
         return [
             ClusterConfig(
                 type=self.cluster_type,
@@ -155,7 +174,8 @@ class TopologyConfiguration:
             for name, cluster in self.clusters.items()
         ]
 
-    def get_cluster_by_name(self, name):
+    def get_cluster_by_name(self, name: str) -> ClusterConfig:
+        assert self.clusters is not None
         if name in self.clusters:
             cluster = self.clusters[name]
             return ClusterConfig(
@@ -166,9 +186,10 @@ class TopologyConfiguration:
             )
         raise ConfigurationError(f"No cluster with name: {name}")
 
-    def get_local_cluster(self):
+    def get_local_cluster(self) -> ClusterConfig:
         if self.local_config:
             try:
+                assert self.clusters is not None
                 local_cluster = self.clusters[self.local_config['cluster']]
                 return ClusterConfig(
                     type=self.cluster_type,
@@ -181,7 +202,7 @@ class TopologyConfiguration:
         else:
             raise ConfigurationError("No default local cluster configured")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ("TopologyConfig: cluster_type {}, clusters: {},"
                 "local_config {}".format(
                     self.cluster_type,
@@ -190,7 +211,7 @@ class TopologyConfiguration:
                 ))
 
 
-def get_conf_dirs():
+def get_conf_dirs() -> list[str]:
     config_dirs = []
     if os.environ.get("KAFKA_DISCOVERY_DIR"):
         config_dirs.append(os.environ["KAFKA_DISCOVERY_DIR"])
@@ -206,10 +227,10 @@ def get_conf_dirs():
 
 
 def get_cluster_config(
-    cluster_type,
-    cluster_name=None,
-    kafka_topology_base_path=None,
-):
+    cluster_type: str,
+    cluster_name: str | None = None,
+    kafka_topology_base_path: str | None = None,
+) -> ClusterConfig:
     """Return the cluster configuration.
     Use the local cluster if cluster_name is not specified.
 
@@ -247,7 +268,7 @@ def get_cluster_config(
         return topology.get_local_cluster()
 
 
-def iter_configurations(kafka_topology_base_path=None):
+def iter_configurations(kafka_topology_base_path: str | None = None) -> Iterator[TopologyConfiguration]:
     """Cluster topology iterator.
     Iterate over all the topologies available in config.
     """

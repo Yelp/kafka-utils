@@ -21,6 +21,7 @@ import argparse
 import logging
 from typing import Any
 from typing import cast
+from typing import Dict
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.min_isr import MinIsrCmd
@@ -130,7 +131,7 @@ def validate_args(args: argparse.Namespace) -> None:
     if args.controller_only and args.first_broker_only:
         terminate(
             status_code.WARNING,
-            cast(dict[str, Any], prepare_terminate_message(
+            cast(Dict[str, Any], prepare_terminate_message(
                 "Only one of controller_only and first_broker_only should be used",
             )),
             args.json,
@@ -140,7 +141,7 @@ def validate_args(args: argparse.Namespace) -> None:
         if args.broker_id is None:
             terminate(
                 status_code.WARNING,
-                cast(dict[str, Any], prepare_terminate_message("broker_id is not specified")),
+                cast(Dict[str, Any], prepare_terminate_message("broker_id is not specified")),
                 args.json,
             )
         elif args.broker_id == -1:
@@ -149,14 +150,14 @@ def validate_args(args: argparse.Namespace) -> None:
             except Exception as e:
                 terminate(
                     status_code.WARNING,
-                    cast(dict[str, Any], prepare_terminate_message(f"{e}")),
+                    cast(Dict[str, Any], prepare_terminate_message(f"{e}")),
                     args.json,
                 )
 
     if args.head != -1 and not args.verbose:
         terminate(
             status_code.WARNING,
-            cast(dict[str, Any], prepare_terminate_message("--head option works only as addition to --verbose option")),
+            cast(Dict[str, Any], prepare_terminate_message("--head option works only as addition to --verbose option")),
             args.json,
         )
 
@@ -180,7 +181,7 @@ def run() -> None:
     except ConfigurationError as e:
         terminate(
             status_code.CRITICAL,
-            cast(dict[str, Any], prepare_terminate_message(f"ConfigurationError {e}")),
+            cast(Dict[str, Any], prepare_terminate_message(f"ConfigurationError {e}")),
             args.json,
         )
 

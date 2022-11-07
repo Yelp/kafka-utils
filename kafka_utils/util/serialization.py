@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+from typing import Any
 
 
-def load_json(input_data):
+def load_json(input_data: bytes) -> Any:
     data_str = input_data.decode()
 
     return json.loads(data_str)
 
 
-def dump_json(obj):
+def dump_json(obj: Any) -> bytes:
     serialized = json.dumps(obj, sort_keys=True)
 
-    serialized = serialized.encode()
-
-    return serialized
+    return serialized.encode()

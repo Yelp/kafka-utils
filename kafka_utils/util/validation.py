@@ -12,14 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """"Provide functions to validate and generate a Kafka assignment"""
+from __future__ import annotations
+
 import logging
 from collections import Counter
+
+from typing_extensions import TypedDict
 
 
 _log = logging.getLogger(__name__)
 
 
-def plan_to_assignment(plan):
+class PartitionDict(TypedDict):
+    topic: str
+    partition: int
+    replicas: list[int]
+
+
+class PlanDict(TypedDict):
+    version: int
+    partitions: list[PartitionDict]
+
+
+def plan_to_assignment(plan: PlanDict) -> dict[tuple[str, int], list[int]]:
     """Convert the plan to the format used by cluster-topology."""
     assignment = {}
     for elem in plan['partitions']:
@@ -29,7 +44,7 @@ def plan_to_assignment(plan):
     return assignment
 
 
-def assignment_to_plan(assignment):
+def assignment_to_plan(assignment: dict[tuple[str, int], list[int]]) -> PlanDict:
     """Convert an assignment to the format used by Kafka to
     describe a reassignment plan.
     """
@@ -44,12 +59,12 @@ def assignment_to_plan(assignment):
 
 
 def validate_plan(
-    new_plan,
-    base_plan=None,
-    is_partition_subset=True,
-    allow_rf_change=False,
-    allow_rf_mismatch=False,
-):
+    new_plan: PlanDict,
+    base_plan: PlanDict | None = None,
+    is_partition_subset: bool = True,
+    allow_rf_change: bool = False,
+    allow_rf_mismatch: bool = False,
+) -> bool:
     """Verify that the new plan is valid for execution.
 
     Given kafka-reassignment plan should affirm with following rules:
@@ -80,11 +95,11 @@ def validate_plan(
 
 
 def _validate_plan_base(
-    new_plan,
-    base_plan,
-    is_partition_subset=True,
-    allow_rf_change=False,
-):
+    new_plan: PlanDict,
+    base_plan: PlanDict,
+    is_partition_subset: bool = True,
+    allow_rf_change: bool = False,
+) -> bool:
     """Validate if given plan is valid comparing with given base-plan.
 
     Validate following assertions:
@@ -149,7 +164,7 @@ def _validate_plan_base(
     return True
 
 
-def _validate_format(plan):
+def _validate_format(plan: PlanDict) -> bool:
     """Validate if the format of the plan as expected.
 
     Validate format of plan on following rules:
@@ -191,7 +206,7 @@ def _validate_format(plan):
 
     # Invalid partitions type
     if not isinstance(plan['partitions'], list):
-        _log.error('"partitions" of type list expected.')
+        _log.error('"partitions" of type list expected.')  # type: ignore[unreachable]
         return False
 
     # Invalid partition-data
@@ -204,19 +219,19 @@ def _validate_format(plan):
             return False
         # Check types
         if not isinstance(p_data['topic'], str):
-            _log.error(
+            _log.error(  # type: ignore[unreachable]
                 '"topic" of type unicode expected {p_data}, found {t_type}'
                 .format(p_data=p_data, t_type=type(p_data['topic'])),
             )
             return False
         if not isinstance(p_data['partition'], int):
-            _log.error(
+            _log.error(  # type: ignore[unreachable]
                 '"partition" of type int expected {p_data}, found {p_type}'
                 .format(p_data=p_data, p_type=type(p_data['partition'])),
             )
             return False
         if not isinstance(p_data['replicas'], list):
-            _log.error(
+            _log.error(  # type: ignore[unreachable]
                 '"replicas" of type list expected {p_data}, found {r_type}'
                 .format(p_data=p_data, r_type=type(p_data['replicas'])),
             )
@@ -230,7 +245,7 @@ def _validate_format(plan):
         # Invalid broker-type
         for broker in p_data['replicas']:
             if not isinstance(broker, int):
-                _log.error(
+                _log.error(  # type: ignore[unreachable]
                     '"replicas" of type integer list expected {p_data}'
                     .format(p_data=p_data),
                 )
@@ -238,7 +253,7 @@ def _validate_format(plan):
     return True
 
 
-def _validate_plan(plan, allow_rf_mismatch=False):
+def _validate_plan(plan: PlanDict, allow_rf_mismatch: bool = False) -> bool:
     """Validate if given plan is valid based on kafka-cluster-assignment protocols.
 
     Validate following parameters:
@@ -288,7 +303,7 @@ def _validate_plan(plan, allow_rf_mismatch=False):
 
     # Verify same replication-factor for partitions in the same topic
     if not allow_rf_mismatch:
-        topic_replication_factor = {}
+        topic_replication_factor: dict[str, int] = {}
         for partition_info in plan['partitions']:
             topic = partition_info['topic']
             replication_factor = len(partition_info['replicas'])

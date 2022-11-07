@@ -15,7 +15,11 @@ from __future__ import annotations
 
 import itertools
 import sys
+from collections.abc import Collection
 from typing import Any
+from typing import cast
+from typing import Set
+from typing import Tuple
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
@@ -37,17 +41,17 @@ class OfflineCmd(KafkaCheckCmd):
 
     def run_command(self) -> tuple[int, dict[str, Any]]:
         """Checks the number of offline partitions"""
-        offline = get_topic_partition_with_error(
+        offline = cast(Set[Tuple[str, int]], get_topic_partition_with_error(
             self.cluster_config,
             LEADER_NOT_AVAILABLE_ERROR,
-        )
+        ))
 
         errcode = status_code.OK if not offline else status_code.CRITICAL
         out = _prepare_output(offline, self.args.verbose, self.args.head)
         return errcode, out
 
 
-def _prepare_output(partitions: list[tuple[str, int]], verbose: bool, head_limit: int) -> dict[str, Any]:
+def _prepare_output(partitions: Collection[tuple[str, int]], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
     out: dict[str, Any] = {}
     partitions_count = len(partitions)

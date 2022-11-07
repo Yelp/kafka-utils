@@ -14,7 +14,11 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Collection
 from typing import Any
+from typing import cast
+from typing import Set
+from typing import Tuple
 
 from kafka_utils.kafka_check import status_code
 from kafka_utils.kafka_check.commands.command import KafkaCheckCmd
@@ -36,23 +40,19 @@ class ReplicaUnavailabilityCmd(KafkaCheckCmd):
     def run_command(self) -> tuple[int, dict[str, Any]]:
         """replica_unavailability command, checks number of replicas not available
         for communication over all brokers in the Kafka cluster."""
-        fetch_unavailable_brokers = True
-        result = get_topic_partition_with_error(
+        result = cast(Tuple[Set[Tuple[str, int]], Set[int]], get_topic_partition_with_error(
             self.cluster_config,
             REPLICA_NOT_AVAILABLE_ERROR,
-            fetch_unavailable_brokers=fetch_unavailable_brokers,
-        )
-        if fetch_unavailable_brokers:
-            replica_unavailability, unavailable_brokers = result
-        else:
-            replica_unavailability = result
+            fetch_unavailable_brokers=True,
+        ))
+        replica_unavailability, unavailable_brokers = result
 
         errcode = status_code.OK if not replica_unavailability else status_code.CRITICAL
         out = _prepare_output(replica_unavailability, unavailable_brokers, self.args.verbose, self.args.head)
         return errcode, out
 
 
-def _prepare_output(partitions: list[tuple[str, int]], unavailable_brokers: list[int], verbose: bool, head_limit: int) -> dict[str, Any]:
+def _prepare_output(partitions: Collection[tuple[str, int]], unavailable_brokers: set[int], verbose: bool, head_limit: int) -> dict[str, Any]:
     """Returns dict with 'raw' and 'message' keys filled."""
     partitions_count = len(partitions)
     out: dict[str, Any] = {}
