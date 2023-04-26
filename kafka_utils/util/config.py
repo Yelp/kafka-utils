@@ -248,6 +248,15 @@ def get_cluster_config(
     else:
         config_dirs = [kafka_topology_base_path]
 
+    # If cluster_type is not set, and there is only one file in the config dir,
+    # then use that as the default cluster type
+    if cluster_type is None:
+        for config_dir in config_dirs:
+            cluster_types = [x for x in os.listdir(config_dir) if x.endswith(".yaml")]
+            if len(cluster_types) is 1:
+                cluster_type = cluster_types[0][:-5] # cut off the '.yaml' part
+                break
+
     topology = None
     for config_dir in config_dirs:
         try:
