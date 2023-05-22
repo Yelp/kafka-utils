@@ -16,7 +16,7 @@ pyOpenSSL==19.0.0
 pyasn1==0.4.5
 pytz==2018.4
 pycparser==2.18
-requests==2.21.0
+requests==2.31.0
 requests-futures==0.9.9
 setproctitle==1.1.10
 simplejson==3.16.0
