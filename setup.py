@@ -47,6 +47,7 @@ setup(
         "scripts/kafka-utils",
         "scripts/kafka-check",
         "scripts/kafka-corruption-check",
+        "scripts/kafka-manual-throttle",
     ],
     python_requires='>=3.7',
     install_requires=[
