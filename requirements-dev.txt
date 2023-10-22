@@ -1,4 +1,4 @@
-cryptography==3.0
+cryptography==41.0.3
 flake8
 importlib-metadata==3.7.2
 mock
